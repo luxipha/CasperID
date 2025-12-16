@@ -1,0 +1,160 @@
+
+> casper-id@0.1.0 dev
+> next dev
+
+   ▲ Next.js 14.0.4
+   - Local:        http://localhost:3000
+   - Environments: .env.local
+
+/bin/sh: yarn: command not found
+ ✓ Ready in 2.9s
+ ○ Compiling / ...
+Browserslist: caniuse-lite is outdated. Please run:
+  npx update-browserslist-db@latest
+  Why you should do it regularly: https://github.com/browserslist/update-db#readme
+ ✓ Compiled / in 8s (495 modules)
+ ✓ Compiled in 414ms (235 modules)
+ ○ Compiling /favicon.ico ...
+ ✓ Compiled /favicon.ico in 1265ms (500 modules)
+ ○ Compiling /me ...
+ ✓ Compiled /not-found in 26s (6121 modules)
+ ✓ Compiled in 3.9s (6103 modules)
+ ⨯ app/layout.tsx (20:9) @ CasperProvider
+ ⨯ ReferenceError: CasperProvider is not defined
+    at RootLayout (./app/layout.tsx:23:99)
+    at stringify (<anonymous>)
+[0m [90m 18 |[39m     [33m<[39m[33mhtml[39m lang[33m=[39m[32m"en"[39m[33m>[39m[0m
+[0m [90m 19 |[39m       [33m<[39m[33mbody[39m className[33m=[39m{font[33m.[39mclassName}[33m>[39m[0m
+[0m[31m[1m>[22m[39m[90m 20 |[39m         [33m<[39m[33mCasperProvider[39m[33m>[39m{children}[33m<[39m[33m/[39m[33mCasperProvider[39m[33m>[39m[0m
+[0m [90m    |[39m         [31m[1m^[22m[39m[0m
+[0m [90m 21 |[39m       [33m<[39m[33m/[39m[33mbody[39m[33m>[39m[0m
+[0m [90m 22 |[39m     [33m<[39m[33m/[39m[33mhtml[39m[33m>[39m[0m
+[0m [90m 23 |[39m   )[33m;[39m[0m
+ ⚠ Fast Refresh had to perform a full reload due to a runtime error.
+ ⚠ Fast Refresh had to perform a full reload due to a runtime error.
+ ⨯ ./lib/casper-context.tsx
+ReactServerComponentsError:
+
+You're importing a component that needs useEffect. It only works in a Client Component but none of its parents are marked with "use client", so they're Server Components by default.
+Learn more: https://nextjs.org/docs/getting-started/react-essentials
+
+   ,-[[36;1;4m/Users/abisoye/Projects/casperId/lib/casper-context.tsx[0m:1:1]
+ [2m1[0m | import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+   : [31;1m                                              ^^^^^^^^^[0m
+ [2m2[0m | 
+ [2m3[0m | interface CasperContextType {
+ [2m4[0m |     isConnected: boolean;
+   `----
+
+Maybe one of these should be marked as a client entry with "use client":
+  ./lib/casper-context.tsx
+  ./app/layout.tsx
+ ⚠ Fast Refresh had to perform a full reload due to a runtime error.
+ ○ Compiling /_error ...
+ ⚠ Fast Refresh had to perform a full reload due to a runtime error.
+ ⨯ ./lib/casper-context.tsx
+ReactServerComponentsError:
+
+You're importing a component that needs useEffect. It only works in a Client Component but none of its parents are marked with "use client", so they're Server Components by default.
+Learn more: https://nextjs.org/docs/getting-started/react-essentials
+
+   ,-[[36;1;4m/Users/abisoye/Projects/casperId/lib/casper-context.tsx[0m:1:1]
+ [2m1[0m | import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+   : [31;1m                                              ^^^^^^^^^[0m
+ [2m2[0m | 
+ [2m3[0m | interface CasperContextType {
+ [2m4[0m |     isConnected: boolean;
+   `----
+
+Maybe one of these should be marked as a client entry with "use client":
+  ./lib/casper-context.tsx
+  ./app/layout.tsx
+ ⨯ ./lib/casper-context.tsx
+ReactServerComponentsError:
+
+You're importing a component that needs useEffect. It only works in a Client Component but none of its parents are marked with "use client", so they're Server Components by default.
+Learn more: https://nextjs.org/docs/getting-started/react-essentials
+
+   ,-[[36;1;4m/Users/abisoye/Projects/casperId/lib/casper-context.tsx[0m:1:1]
+ [2m1[0m | import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+   : [31;1m                                              ^^^^^^^^^[0m
+ [2m2[0m | 
+ [2m3[0m | interface CasperContextType {
+ [2m4[0m |     isConnected: boolean;
+   `----
+
+Maybe one of these should be marked as a client entry with "use client":
+  ./lib/casper-context.tsx
+  ./app/layout.tsx
+ ⨯ ./lib/casper-context.tsx
+ReactServerComponentsError:
+
+You're importing a component that needs useEffect. It only works in a Client Component but none of its parents are marked with "use client", so they're Server Components by default.
+Learn more: https://nextjs.org/docs/getting-started/react-essentials
+
+   ,-[[36;1;4m/Users/abisoye/Projects/casperId/lib/casper-context.tsx[0m:1:1]
+ [2m1[0m | import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+   : [31;1m                                              ^^^^^^^^^[0m
+ [2m2[0m | 
+ [2m3[0m | interface CasperContextType {
+ [2m4[0m |     isConnected: boolean;
+   `----
+
+Maybe one of these should be marked as a client entry with "use client":
+  ./lib/casper-context.tsx
+  ./app/layout.tsx
+ ⚠ Fast Refresh had to perform a full reload due to a runtime error.
+ ⨯ ./lib/casper-context.tsx
+ReactServerComponentsError:
+
+You're importing a component that needs useEffect. It only works in a Client Component but none of its parents are marked with "use client", so they're Server Components by default.
+Learn more: https://nextjs.org/docs/getting-started/react-essentials
+
+   ,-[[36;1;4m/Users/abisoye/Projects/casperId/lib/casper-context.tsx[0m:1:1]
+ [2m1[0m | import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+   : [31;1m                                              ^^^^^^^^^[0m
+ [2m2[0m | 
+ [2m3[0m | interface CasperContextType {
+ [2m4[0m |     isConnected: boolean;
+   `----
+
+Maybe one of these should be marked as a client entry with "use client":
+  ./lib/casper-context.tsx
+  ./app/layout.tsx
+ ⚠ Fast Refresh had to perform a full reload due to a runtime error.
+ ⨯ ./lib/casper-context.tsx
+ReactServerComponentsError:
+
+You're importing a component that needs useEffect. It only works in a Client Component but none of its parents are marked with "use client", so they're Server Components by default.
+Learn more: https://nextjs.org/docs/getting-started/react-essentials
+
+   ,-[[36;1;4m/Users/abisoye/Projects/casperId/lib/casper-context.tsx[0m:1:1]
+ [2m1[0m | import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+   : [31;1m                                              ^^^^^^^^^[0m
+ [2m2[0m | 
+ [2m3[0m | interface CasperContextType {
+ [2m4[0m |     isConnected: boolean;
+   `----
+
+Maybe one of these should be marked as a client entry with "use client":
+  ./lib/casper-context.tsx
+  ./app/layout.tsx
+ ⚠ Fast Refresh had to perform a full reload due to a runtime error.
+ ⨯ ./lib/casper-context.tsx
+ReactServerComponentsError:
+
+You're importing a component that needs useEffect. It only works in a Client Component but none of its parents are marked with "use client", so they're Server Components by default.
+Learn more: https://nextjs.org/docs/getting-started/react-essentials
+
+   ,-[[36;1;4m/Users/abisoye/Projects/casperId/lib/casper-context.tsx[0m:1:1]
+ [2m1[0m | import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+   : [31;1m                                              ^^^^^^^^^[0m
+ [2m2[0m | 
+ [2m3[0m | interface CasperContextType {
+ [2m4[0m |     isConnected: boolean;
+   `----
+
+Maybe one of these should be marked as a client entry with "use client":
+  ./lib/casper-context.tsx
+  ./app/layout.tsx
+[?25h

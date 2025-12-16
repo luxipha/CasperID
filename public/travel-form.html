@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Travel Request - CasperID</title>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f3f4f6;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+        }
+
+        .card {
+            background: white;
+            padding: 2rem;
+            border-radius: 1rem;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+            width: 100%;
+            max-width: 540px;
+        }
+
+        h1 {
+            color: #111827;
+            margin-bottom: 1.5rem;
+            font-size: 1.5rem;
+        }
+
+        .form-group {
+            margin-bottom: 1rem;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 0.5rem;
+            color: #374151;
+            font-size: 0.875rem;
+            font-weight: 500;
+        }
+
+        input,
+        select {
+            width: 100%;
+            padding: 0.75rem;
+            border: 1px solid #d1d5db;
+            border-radius: 0.5rem;
+            box-sizing: border-box;
+            font-size: 1rem;
+        }
+
+        input:focus,
+        select:focus {
+            outline: none;
+            border-color: #6366f1;
+        }
+
+        button {
+            width: 100%;
+            background-color: #4f46e5;
+            color: white;
+            padding: 0.75rem;
+            border: none;
+            border-radius: 0.5rem;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            margin-top: 0.5rem;
+        }
+
+        button:hover {
+            background-color: #4338ca;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="card">
+        <h1>✈️ Travel Request (Flight / Hotel)</h1>
+        <form id="travel-form">
+            <div class="form-group">
+                <label for="fullName">Traveler Name</label>
+                <input type="text" id="fullName" name="fullName" autocomplete="name" placeholder="Morgan Traveler">
+            </div>
+
+            <div class="form-group">
+                <label for="email">Email</label>
+                <input type="email" id="email" name="email" autocomplete="email" placeholder="morgan@example.com">
+            </div>
+
+            <div class="form-group">
+                <label for="phone">Phone</label>
+                <input type="tel" id="phone" name="phone" autocomplete="tel" placeholder="+1 (555) 000-0000">
+            </div>
+
+            <div class="form-group">
+                <label for="travelType">Travel Type</label>
+                <select id="travelType" name="travelType">
+                    <option value="">Select option</option>
+                    <option value="flight">Flight</option>
+                    <option value="hotel">Hotel</option>
+                    <option value="flight_hotel">Flight + Hotel</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="departureCity">Departure City</label>
+                <input type="text" id="departureCity" name="departureCity" placeholder="City / Airport">
+            </div>
+
+            <div class="form-group">
+                <label for="arrivalCity">Arrival City</label>
+                <input type="text" id="arrivalCity" name="arrivalCity" placeholder="City / Airport">
+            </div>
+
+            <div class="form-group">
+                <label for="departDate">Departure Date</label>
+                <input type="date" id="departDate" name="departDate">
+            </div>
+
+            <div class="form-group">
+                <label for="returnDate">Return Date</label>
+                <input type="date" id="returnDate" name="returnDate">
+            </div>
+
+            <div class="form-group">
+                <label for="hotelName">Preferred Hotel</label>
+                <input type="text" id="hotelName" name="hotelName" placeholder="Hotel or chain name">
+            </div>
+
+            <div class="form-group">
+                <label for="checkIn">Check-in Date</label>
+                <input type="date" id="checkIn" name="checkIn">
+            </div>
+
+            <div class="form-group">
+                <label for="checkOut">Check-out Date</label>
+                <input type="date" id="checkOut" name="checkOut">
+            </div>
+
+            <div class="form-group">
+                <label for="guests">Guests</label>
+                <input type="number" id="guests" name="guests" min="1" placeholder="1">
+            </div>
+
+            <div class="form-group">
+                <label for="notes">Notes / Preferences</label>
+                <input type="text" id="notes" name="notes"
+                    placeholder="Seat preference, baggage, room type, loyalty numbers">
+            </div>
+
+            <button type="submit">Submit Travel Request</button>
+        </form>
+    </div>
+</body>
+
+</html>

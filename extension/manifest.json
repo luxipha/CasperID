@@ -1,0 +1,47 @@
+{
+    "manifest_version": 3,
+    "name": "CasperID Connect",
+    "version": "1.0.0",
+    "description": "Sign in to websites with your verified CasperID",
+    "permissions": [
+        "storage",
+        "activeTab",
+        "tabs",
+        "scripting",
+        "notifications"
+    ],
+    "host_permissions": [
+        "http://localhost:3000/*",
+        "http://localhost:3001/*",
+        "https://*/*"
+    ],
+    "action": {
+        "default_popup": "popup.html",
+        "default_icon": {
+            "16": "icons/icon-16.png",
+            "32": "icons/icon-32.png",
+            "48": "icons/icon-48.png",
+            "128": "icons/icon-128.png"
+        }
+    },
+    "content_scripts": [
+        {
+            "matches": [
+                "<all_urls>"
+            ],
+            "js": [
+                "content.js"
+            ],
+            "run_at": "document_end"
+        }
+    ],
+    "background": {
+        "service_worker": "background.js"
+    },
+    "icons": {
+        "16": "icons/icon-16.png",
+        "32": "icons/icon-32.png",
+        "48": "icons/icon-48.png",
+        "128": "icons/icon-128.png"
+    }
+}

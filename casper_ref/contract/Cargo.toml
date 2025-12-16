@@ -1,0 +1,21 @@
+[package]
+name = "contract"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+casper-contract = "5.1.1"
+casper-types = "6.0.1"
+base64ct = "=1.7.2"
+
+[[bin]]
+name = "contract"
+path = "src/main.rs"
+bench = false
+doctest = false
+test = false
+
+[profile.release]
+codegen-units = 1
+lto = true
+

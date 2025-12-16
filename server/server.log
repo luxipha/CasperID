@@ -1,0 +1,13 @@
+
+> casper-id-server@1.0.0 start
+> node src/index.js
+
+(node:6971) [MONGODB DRIVER] Warning: useNewUrlParser is a deprecated option: useNewUrlParser has no effect since Node.js Driver version 4.0.0 and will be removed in the next major version
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:6971) [MONGODB DRIVER] Warning: useUnifiedTopology is a deprecated option: useUnifiedTopology has no effect since Node.js Driver version 4.0.0 and will be removed in the next major version
+🚀 CasperID API server running on port 3001
+📍 Environment: development
+🌐 Frontend URL: http://localhost:3000
+✅ MongoDB connected successfully
+[Casper] Setting verification for account-hash-test-1765098408
+[Casper] Verification set. Deploy Hash: f2ece63174bc994f99f5477fb353861136097f93cfd88a950862cd2144e09607

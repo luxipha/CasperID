@@ -1,0 +1,28 @@
+{
+    "name": "[CasperID] Fraud Attempts Detected",
+    "type": "metric alert",
+    "query": "avg(last_5m):sum:casperid.fraud.attempts{*} > 10",
+    "message": "🚨 SECURITY: Multiple Fraud Attempts Detected\n\n**Fraud Attempts:** {{value}} in last 5 minutes\n**Threshold:** 10 attempts\n\n**Common Fraud Indicators:**\n- Multiple verification attempts from same device\n- Doctored/synthetic ID documents\n- Deepfake liveness photos\n- Stolen identity credentials\n\n**Immediate Actions:**\n1. Block identified IP addresses\n2. Flag affected wallet addresses\n3. Review recent verification requests in dashboard\n4. Report to fraud investigation team\n5. Update ML fraud detection models\n\n**Dashboard:** Check CasperID LLM Health dashboard for details\n\n@security-team @fraud-ops @slack-security",
+    "tags": [
+        "security",
+        "fraud",
+        "casperid-api"
+    ],
+    "options": {
+        "notify_audit": true,
+        "locked": false,
+        "timeout_h": 0,
+        "include_tags": true,
+        "no_data_timeframe": 10,
+        "require_full_window": false,
+        "new_host_delay": 300,
+        "notify_no_data": false,
+        "renotify_interval": 30,
+        "escalation_message": "Fraud attempts continuing. Escalating to @security-lead",
+        "thresholds": {
+            "critical": 10,
+            "warning": 5
+        }
+    },
+    "priority": 1
+}

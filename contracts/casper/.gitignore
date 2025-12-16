@@ -1,0 +1,25 @@
+# Rust build artifacts
+/target/
+**/*.rs.bk
+*.pdb
+
+# WASM build output
+*.wasm
+
+# Cargo.lock (for libraries, include for binaries)
+# Cargo.lock
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Build directory (keep README)
+/build/*.wasm
+/build/*.wat

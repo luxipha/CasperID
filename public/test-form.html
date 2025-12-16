@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Demo Checkout - CasperID Test</title>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f3f4f6;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+        }
+
+        .card {
+            background: white;
+            padding: 2rem;
+            border-radius: 1rem;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+            width: 100%;
+            max-width: 500px;
+        }
+
+        h1 {
+            color: #111827;
+            margin-bottom: 1.5rem;
+            font-size: 1.5rem;
+        }
+
+        .form-group {
+            margin-bottom: 1rem;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 0.5rem;
+            color: #374151;
+            font-size: 0.875rem;
+            font-weight: 500;
+        }
+
+        input {
+            width: 100%;
+            padding: 0.75rem;
+            border: 1px solid #d1d5db;
+            border-radius: 0.5rem;
+            box-sizing: border-box;
+            /* Important for padding */
+            font-size: 1rem;
+        }
+
+        input:focus {
+            outline: none;
+            border-color: #6366f1;
+            ring: 2px solid #6366f1;
+        }
+
+        button {
+            width: 100%;
+            background-color: #4f46e5;
+            color: white;
+            padding: 0.75rem;
+            border: none;
+            border-radius: 0.5rem;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            margin-top: 1rem;
+        }
+
+        button:hover {
+            background-color: #4338ca;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="card">
+        <h1>Checkout (Demo)</h1>
+        <form id="checkout-form">
+            <div class="form-group">
+                <label for="fullName">Full Name</label>
+                <input type="text" id="fullName" name="name" autocomplete="name" placeholder="John Doe">
+            </div>
+
+            <div class="form-group">
+                <label for="email">Email Address</label>
+                <input type="email" id="email" name="email" autocomplete="email" placeholder="john@example.com">
+            </div>
+
+            <div class="form-group">
+                <label for="phone">Phone Number</label>
+                <input type="tel" id="phone" name="phone" autocomplete="tel" placeholder="+1 (555) 000-0000">
+            </div>
+
+            <div class="form-group">
+                <label for="address">Shipping Address</label>
+                <input type="text" id="address" name="address" autocomplete="street-address"
+                    placeholder="123 Web3 Lane">
+            </div>
+
+            <div class="form-group">
+                <label for="city">City</label>
+                <input type="text" id="city" name="city" autocomplete="address-level2" placeholder="Crypto City">
+            </div>
+
+            <button type="submit">Complete Purchase</button>
+        </form>
+    </div>
+</body>
+
+</html>

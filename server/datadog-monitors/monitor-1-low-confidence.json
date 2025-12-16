@@ -1,0 +1,31 @@
+{
+    "name": "[CasperID] Low AI Confidence Detected",
+    "type": "metric alert",
+    "query": "avg(last_5m):avg:casperid.gemini.confidence{*} < 0.7",
+    "message": "⚠️ AI Verification Confidence Below Threshold\n\n**Current Confidence:** {{value}}\n**Threshold:** 70%\n**Endpoint:** {{endpoint.name}}\n\n**Possible Causes:**\n- Poor quality document uploads\n- Model performance degradation\n- Adversarial attacks\n- API version mismatch\n\n**Action Required:**\n1. Check recent verification requests\n2. Review document quality scores\n3. Validate AI model version\n4. Consider retraining if persistent\n\nDashboard: https://app.datadoghq.com/dashboard/casperid-llm-health\n\n@slack-casperid-alerts",
+    "tags": [
+        "ai",
+        "gemini",
+        "confidence",
+        "casperid-api"
+    ],
+    "options": {
+        "notify_audit": false,
+        "locked": false,
+        "timeout_h": 0,
+        "include_tags": true,
+        "no_data_timeframe": 10,
+        "require_full_window": false,
+        "new_host_delay": 300,
+        "notify_no_data": false,
+        "renotify_interval": 0,
+        "escalation_message": "",
+        "thresholds": {
+            "critical": 0.7,
+            "warning": 0.75,
+            "critical_recovery": 0.8
+        },
+        "evaluation_delay": 60
+    },
+    "priority": 3
+}

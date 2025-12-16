@@ -1,0 +1,44 @@
+
+> casper-id@0.1.0 dev
+> next dev
+
+   ▲ Next.js 14.0.4
+   - Local:        http://localhost:3000
+   - Environments: .env.local
+
+/bin/sh: yarn: command not found
+ ✓ Ready in 3.6s
+ ○ Compiling / ...
+Browserslist: caniuse-lite is outdated. Please run:
+  npx update-browserslist-db@latest
+  Why you should do it regularly: https://github.com/browserslist/update-db#readme
+ ✓ Compiled / in 8.6s (493 modules)
+ ✓ Compiled in 851ms (239 modules)
+ ○ Compiling /favicon.ico ...
+ ✓ Compiled /favicon.ico in 8.7s (282 modules)
+ ○ Compiling /me ...
+ ✓ Compiled /me in 8.5s (6090 modules)
+ ✓ Compiled /favicon.ico in 490ms (2960 modules)
+ ○ Compiling /not-found ...
+ ✓ Compiled /not-found in 1823ms (6122 modules)
+ ⚠ Fast Refresh had to perform a full reload. Read more: https://nextjs.org/docs/messages/fast-refresh-reload
+ ⚠ Fast Refresh had to perform a full reload. Read more: https://nextjs.org/docs/messages/fast-refresh-reload
+ ✓ Compiled in 5.1s (6090 modules)
+ ○ Compiling /not-found ...
+ ✓ Compiled /favicon.ico in 1258ms (6095 modules)
+ ✓ Compiled (6122 modules)
+ ✓ Compiled in 655ms (6122 modules)
+ ⚠ Fast Refresh had to perform a full reload. Read more: https://nextjs.org/docs/messages/fast-refresh-reload
+ ○ Compiling /dashboard ...
+ ✓ Compiled /dashboard in 11.4s (7236 modules)
+ ○ Compiling /favicon.ico ...
+ ✓ Compiled /admin in 2.5s (3567 modules)
+ ✓ Compiled in 3.1s (3701 modules)
+ ○ Compiling /not-found ...
+ ✓ Compiled /not-found in 967ms (7280 modules)
+ ✓ Compiled in 7.8s (7294 modules)
+ ✓ Compiled in 1993ms (7294 modules)
+ ✓ Compiled in 8s (7262 modules)
+ ○ Compiling /not-found ...
+ ✓ Compiled /favicon.ico in 5.7s (7280 modules)
+[?25h

@@ -1,0 +1,90 @@
+
+> casper-id@0.1.0 dev
+> next dev
+
+   ▲ Next.js 14.0.4
+   - Local:        http://localhost:3000
+   - Environments: .env.local
+
+/bin/sh: yarn: command not found
+ ✓ Ready in 2.7s
+ ○ Compiling / ...
+Browserslist: caniuse-lite is outdated. Please run:
+  npx update-browserslist-db@latest
+  Why you should do it regularly: https://github.com/browserslist/update-db#readme
+ ✓ Compiled / in 3.6s (493 modules)
+ ✓ Compiled in 580ms (239 modules)
+ ○ Compiling /favicon.ico ...
+ ✓ Compiled /favicon.ico in 559ms (282 modules)
+ ○ Compiling /me ...
+ ✓ Compiled /me in 6.6s (6117 modules)
+ ○ Compiling /not-found ...
+ ✓ Compiled /not-found in 718ms (6122 modules)
+ ○ Compiling /admin ...
+ ✓ Compiled /admin in 2.1s (6134 modules)
+ ○ Compiling /verify ...
+ ✓ Compiled /verify in 1803ms (6112 modules)
+ ✓ Compiled in 1167ms (6126 modules)
+ ○ Compiling /favicon.ico ...
+ ✓ Compiled /favicon.ico in 1840ms (2973 modules)
+ ○ Compiling /not-found ...
+ ✓ Compiled /favicon.ico in 10.2s (6117 modules)
+ ✓ Compiled (6144 modules)
+ ○ Compiling /onboard ...
+ ✓ Compiled /onboard in 7s (6514 modules)
+ ✓ Compiled in 5s (6528 modules)
+ ○ Compiling /favicon.ico ...
+ ✓ Compiled /favicon.ico in 1087ms (3208 modules)
+ ✓ Compiled in 4.3s (6555 modules)
+ ✓ Compiled in 5.4s (6555 modules)
+ ○ Compiling /not-found ...
+ ✓ Compiled /not-found in 5.6s (6546 modules)
+ ✓ Compiled in 8.1s (6560 modules)
+ ✓ Compiled in 1654ms (6560 modules)
+ ⨯ ./app/me/request-verification-modal.tsx
+Error: 
+  [31mx[0m Unexpected token `div`. Expected jsx identifier
+    ,-[[36;1;4m/Users/abisoye/Projects/casperId/app/me/request-verification-modal.tsx[0m:90:1]
+ [2m90[0m |     };
+ [2m91[0m | 
+ [2m92[0m |     return (
+ [2m93[0m |         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50 overflow-y-auto">
+    : [31;1m         ^^^[0m
+ [2m94[0m |             <Card className="max-w-md w-full bg-slate-800 border-slate-700 p-6 my-8">
+ [2m95[0m |                 {/* Header */}
+ [2m96[0m |                 <div className="flex items-center justify-between mb-6">
+    `----
+
+Caused by:
+    Syntax Error
+
+Import trace for requested module:
+./app/me/request-verification-modal.tsx
+./app/me/dashboard.tsx
+./app/me/page.tsx
+ ✓ Compiled in 3.2s (6560 modules)
+ ✓ Compiled in 1754ms (6560 modules)
+ ✓ Compiled in 6.3s (6528 modules)
+ ○ Compiling /dashboard ...
+ ✓ Compiled /dashboard in 5.4s (7279 modules)
+ ✓ Compiled in 5.5s (7260 modules)
+ ✓ Compiled in 5.5s (3721 modules)
+ ✓ Compiled in 625ms (3721 modules)
+ ✓ Compiled in 551ms (3721 modules)
+ ✓ Compiled in 667ms (3721 modules)
+ ✓ Compiled in 1019ms (3721 modules)
+ ✓ Compiled in 621ms (3721 modules)
+ ⚠ Fast Refresh had to perform a full reload due to a runtime error.
+ ⚠ Fast Refresh had to perform a full reload due to a runtime error.
+ ✓ Compiled in 12.6s (7298 modules)
+ ⚠ Fast Refresh had to perform a full reload due to a runtime error.
+ ○ Compiling /not-found ...
+ ✓ Compiled /not-found in 2.1s (7289 modules)
+ ○ Compiling /favicon.ico ...
+ ✓ Compiled /favicon.ico in 981ms (3595 modules)
+ ✓ Compiled in 5s (7284 modules)
+ ✓ Compiled in 1203ms (7298 modules)
+ ✓ Compiled in 3.6s (7298 modules)
+ ○ Compiling /not-found ...
+ ✓ Compiled /favicon.ico in 3.7s (7289 modules)
+ ✓ Compiled (7316 modules)

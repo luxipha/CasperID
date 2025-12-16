@@ -1,0 +1,38 @@
+{
+    "name": "casper-id-server",
+    "version": "1.0.0",
+    "description": "Backend API for CasperID - Decentralized Identity Verification",
+    "main": "src/index.js",
+    "scripts": {
+        "dev": "nodemon src/index.js",
+        "start": "node src/index.js",
+        "test": "jest"
+    },
+    "keywords": [
+        "casper",
+        "identity",
+        "verification",
+        "blockchain",
+        "did"
+    ],
+    "author": "",
+    "license": "MIT",
+    "dependencies": {
+        "@google/generative-ai": "^0.24.1",
+        "bcrypt": "^5.1.1",
+        "casper-js-sdk": "^2.15.3",
+        "cors": "^2.8.5",
+        "crypto": "^1.0.1",
+        "datadog-metrics": "^0.12.1",
+        "dd-trace": "^5.80.0",
+        "dotenv": "^16.3.1",
+        "express": "^4.18.2",
+        "jsonwebtoken": "^9.0.2",
+        "mongoose": "^8.0.3",
+        "multer": "^2.0.2"
+    },
+    "devDependencies": {
+        "jest": "^29.7.0",
+        "nodemon": "^3.0.2"
+    }
+}

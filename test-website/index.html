@@ -1,0 +1,450 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CasperID Login Test Site</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            line-height: 1.6;
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            min-height: 100vh;
+            color: white;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 40px 20px;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            background: linear-gradient(45deg, #fff, #a8edea);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .header p {
+            font-size: 1.1rem;
+            opacity: 0.9;
+        }
+
+        .demo-section {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 16px;
+            padding: 30px;
+            margin-bottom: 30px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .demo-section h2 {
+            margin-bottom: 20px;
+            color: #a8edea;
+        }
+
+        .login-area {
+            background: rgba(0, 0, 0, 0.2);
+            padding: 20px;
+            border-radius: 12px;
+            text-align: center;
+            margin: 20px 0;
+        }
+
+        .user-info {
+            background: rgba(16, 185, 129, 0.1);
+            border: 1px solid rgba(16, 185, 129, 0.3);
+            padding: 20px;
+            border-radius: 12px;
+            margin: 20px 0;
+            display: none;
+        }
+
+        .user-info.show {
+            display: block;
+        }
+
+        .user-info h3 {
+            color: #10b981;
+            margin-bottom: 15px;
+        }
+
+        .user-detail {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .user-detail:last-child {
+            border-bottom: none;
+        }
+
+        .user-detail strong {
+            color: #a8edea;
+        }
+
+        .btn {
+            display: inline-block;
+            padding: 12px 24px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            text-decoration: none;
+            border-radius: 8px;
+            border: none;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 600;
+            transition: all 0.3s;
+            margin: 10px;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-secondary {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+        }
+
+        .btn-danger {
+            background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+        }
+
+        .form-demo {
+            background: rgba(0, 0, 0, 0.2);
+            padding: 20px;
+            border-radius: 12px;
+            margin: 20px 0;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            color: #a8edea;
+            font-weight: 500;
+        }
+
+        .form-group input {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 8px;
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+            font-size: 16px;
+        }
+
+        .form-group input::placeholder {
+            color: rgba(255, 255, 255, 0.6);
+        }
+
+        .form-group input:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.2);
+        }
+
+        .status {
+            padding: 15px;
+            border-radius: 8px;
+            margin: 20px 0;
+            font-weight: 500;
+        }
+
+        .status.success {
+            background: rgba(16, 185, 129, 0.2);
+            border: 1px solid rgba(16, 185, 129, 0.4);
+            color: #10b981;
+        }
+
+        .status.error {
+            background: rgba(239, 68, 68, 0.2);
+            border: 1px solid rgba(239, 68, 68, 0.4);
+            color: #ef4444;
+        }
+
+        .features {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin: 30px 0;
+        }
+
+        .feature {
+            background: rgba(255, 255, 255, 0.05);
+            padding: 20px;
+            border-radius: 12px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .feature h4 {
+            color: #a8edea;
+            margin-bottom: 10px;
+        }
+
+        .feature p {
+            font-size: 14px;
+            opacity: 0.9;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 20px 15px;
+            }
+
+            .header h1 {
+                font-size: 2rem;
+            }
+
+            .user-detail {
+                flex-direction: column;
+                gap: 5px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🔐 CasperID Test Site</h1>
+            <p>Test the CasperID login functionality with your browser extension</p>
+        </div>
+
+        <div class="demo-section">
+            <h2>📋 Instructions</h2>
+            <div class="features">
+                <div class="feature">
+                    <h4>1. Install Extension</h4>
+                    <p>Load the CasperID extension from the extension folder in Developer Mode</p>
+                </div>
+                <div class="feature">
+                    <h4>2. Connect Wallet</h4>
+                    <p>Make sure you have Casper Signer installed and click the extension icon to connect</p>
+                </div>
+                <div class="feature">
+                    <h4>3. Test Login</h4>
+                    <p>Look for the "Sign in with CasperID" button that should appear on this page</p>
+                </div>
+                <div class="feature">
+                    <h4>4. Manage Permissions</h4>
+                    <p>Check the extension popup to see and manage your login permissions</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="demo-section">
+            <h2>🚪 Login Demo</h2>
+            <div class="login-area">
+                <p>The CasperID extension should inject a "Sign in with CasperID" button here automatically.</p>
+                <p style="margin-top: 15px; font-size: 14px; opacity: 0.8;">
+                    If you don't see it, make sure the extension is loaded and the content script is running.
+                </p>
+            </div>
+
+            <div id="login-status" class="status" style="display: none;"></div>
+
+            <div id="user-info" class="user-info">
+                <h3>✅ Logged in with CasperID</h3>
+                <div id="user-details"></div>
+                <button class="btn btn-danger" onclick="logout()">Logout</button>
+            </div>
+        </div>
+
+        <div class="demo-section">
+            <h2>📝 Form Autofill Test</h2>
+            <p>Test the autofill functionality by clicking the CasperID icons next to form fields:</p>
+            
+            <div class="form-demo">
+                <div class="form-group">
+                    <label for="firstName">First Name</label>
+                    <input type="text" id="firstName" name="first_name" placeholder="Enter your first name">
+                </div>
+                
+                <div class="form-group">
+                    <label for="lastName">Last Name</label>
+                    <input type="text" id="lastName" name="last_name" placeholder="Enter your last name">
+                </div>
+                
+                <div class="form-group">
+                    <label for="email">Email Address</label>
+                    <input type="email" id="email" name="email" placeholder="Enter your email">
+                </div>
+                
+                <div class="form-group">
+                    <label for="phone">Phone Number</label>
+                    <input type="tel" id="phone" name="phone_number" placeholder="Enter your phone">
+                </div>
+                
+                <div class="form-group">
+                    <label for="company">Company</label>
+                    <input type="text" id="company" name="company" placeholder="Enter your company">
+                </div>
+            </div>
+        </div>
+
+        <div class="demo-section">
+            <h2>🔍 Test Results</h2>
+            <div id="test-results">
+                <p>Login test results will appear here...</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Listen for CasperID login events
+        window.addEventListener('casperid-login', function(event) {
+            console.log('CasperID login successful:', event.detail);
+            showLoginSuccess(event.detail);
+        });
+
+        // Listen for CasperID logout events
+        window.addEventListener('casperid-logout', function(event) {
+            console.log('CasperID logout:', event.detail);
+            handleLogoutEvent(event.detail);
+        });
+
+        function showLoginSuccess(userData) {
+            // Hide status messages
+            const status = document.getElementById('login-status');
+            status.style.display = 'none';
+
+            // Show user info
+            const userInfo = document.getElementById('user-info');
+            userInfo.classList.add('show');
+
+            // Populate user details
+            const userDetails = document.getElementById('user-details');
+            userDetails.innerHTML = `
+                <div class="user-detail">
+                    <span><strong>Wallet:</strong></span>
+                    <span>${userData.wallet || 'N/A'}</span>
+                </div>
+                <div class="user-detail">
+                    <span><strong>Human ID:</strong></span>
+                    <span>${userData.humanId || 'N/A'}</span>
+                </div>
+                <div class="user-detail">
+                    <span><strong>CNS Name:</strong></span>
+                    <span>${userData.cnsName || 'N/A'}</span>
+                </div>
+                <div class="user-detail">
+                    <span><strong>Verified:</strong></span>
+                    <span>${userData.verified ? 'Yes' : 'No'}</span>
+                </div>
+                <div class="user-detail">
+                    <span><strong>Tier:</strong></span>
+                    <span>${userData.tier || 'N/A'}</span>
+                </div>
+                ${userData.requestedData ? `
+                <div class="user-detail">
+                    <span><strong>Shared Data:</strong></span>
+                    <span>${userData.requestedData.join(', ')}</span>
+                </div>
+                ` : ''}
+            `;
+
+            // Update test results
+            updateTestResults('Login successful!', userData);
+        }
+
+        function showLoginError(error) {
+            const status = document.getElementById('login-status');
+            status.className = 'status error';
+            status.textContent = `Login failed: ${error}`;
+            status.style.display = 'block';
+
+            updateTestResults('Login failed!', { error });
+        }
+
+        function handleLogoutEvent(data) {
+            logout();
+            
+            // Show specific message for access revocation
+            const status = document.getElementById('login-status');
+            status.className = 'status error';
+            status.textContent = `Access was revoked by user from extension - logged out from ${data.domain}`;
+            status.style.display = 'block';
+
+            updateTestResults('Access Revoked', data);
+        }
+
+        function logout() {
+            // Clear any stored login data
+            localStorage.removeItem('casperid_user');
+            localStorage.removeItem('casperid_wallet');
+
+            // Hide user info
+            const userInfo = document.getElementById('user-info');
+            userInfo.classList.remove('show');
+
+            // Show logout message
+            const status = document.getElementById('login-status');
+            if (status.className !== 'status error') { // Don't override revocation message
+                status.className = 'status success';
+                status.textContent = 'Logged out successfully';
+                status.style.display = 'block';
+                updateTestResults('Logged out', null);
+            }
+        }
+
+        function updateTestResults(action, data) {
+            const results = document.getElementById('test-results');
+            const timestamp = new Date().toLocaleTimeString();
+            
+            results.innerHTML = `
+                <h4>Last Action: ${action} (${timestamp})</h4>
+                ${data ? `<pre style="background: rgba(0,0,0,0.3); padding: 15px; border-radius: 8px; margin-top: 10px; font-size: 12px; overflow-x: auto;">${JSON.stringify(data, null, 2)}</pre>` : ''}
+            `;
+        }
+
+        // Check for existing login on page load
+        window.addEventListener('load', function() {
+            const storedUser = localStorage.getItem('casperid_user');
+            if (storedUser) {
+                try {
+                    const userData = JSON.parse(storedUser);
+                    showLoginSuccess(userData);
+                } catch (e) {
+                    console.error('Failed to parse stored user data:', e);
+                }
+            }
+        });
+
+        // Test extension installation
+        function checkExtensionStatus() {
+            const hasExtension = document.getElementById('casperid-login-btn');
+            const results = document.getElementById('test-results');
+            
+            if (hasExtension) {
+                results.innerHTML = '<h4 style="color: #10b981;">✅ Extension detected and login button injected!</h4>';
+            } else {
+                results.innerHTML = '<h4 style="color: #ef4444;">❌ Extension not detected or login button not injected</h4>';
+            }
+        }
+
+        // Check extension status after page loads
+        setTimeout(checkExtensionStatus, 2000);
+    </script>
+</body>
+</html>

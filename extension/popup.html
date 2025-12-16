@@ -1,0 +1,447 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CasperID Connect</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            width: 360px;
+            min-height: 500px;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .container {
+            padding: 20px;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 24px;
+        }
+
+        .logo {
+            width: 64px;
+            height: 64px;
+            background: white;
+            border-radius: 50%;
+            margin: 0 auto 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 32px;
+        }
+
+        h1 {
+            font-size: 24px;
+            margin-bottom: 8px;
+        }
+
+        .subtitle {
+            opacity: 0.9;
+            font-size: 14px;
+        }
+
+        .card {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 16px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .status {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 12px;
+        }
+
+        .status-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.2);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+        }
+
+        .status-icon.verified {
+            background: #10b981;
+        }
+
+        .status-text h3 {
+            font-size: 16px;
+            margin-bottom: 4px;
+        }
+
+        .status-text p {
+            font-size: 12px;
+            opacity: 0.8;
+        }
+
+        .wallet-info {
+            background: rgba(0, 0, 0, 0.2);
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 12px;
+        }
+
+        .wallet-label {
+            font-size: 11px;
+            opacity: 0.7;
+            text-transform: uppercase;
+            margin-bottom: 4px;
+        }
+
+        .wallet-address {
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            word-break: break-all;
+        }
+
+        .verification-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 12px;
+            background: rgba(16, 185, 129, 0.2);
+            border: 1px solid rgba(16, 185, 129, 0.3);
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .btn {
+            width: 100%;
+            padding: 14px;
+            border: none;
+            border-radius: 8px;
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            margin-bottom: 8px;
+        }
+
+        .btn-primary {
+            background: white;
+            color: #667eea;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        }
+
+        .btn-secondary {
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .btn-secondary:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        .permissions {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease;
+        }
+
+        .permissions.show {
+            max-height: 300px;
+        }
+
+        .permission-item {
+            padding: 10px;
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 6px;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .checkbox {
+            width: 20px;
+            height: 20px;
+            accent-color: #10b981;
+        }
+
+        .permission-label {
+            font-size: 13px;
+            flex: 1;
+        }
+
+        .footer {
+            text-align: center;
+            font-size: 11px;
+            opacity: 0.7;
+            margin-top: 16px;
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px 0;
+        }
+
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 3px solid rgba(255, 255, 255, 0.3);
+            border-top-color: white;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 16px;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        .tab-bar {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 16px;
+            background: rgba(0, 0, 0, 0.2);
+            padding: 4px;
+            border-radius: 8px;
+        }
+
+        .tab {
+            flex: 1;
+            padding: 8px;
+            border: none;
+            background: transparent;
+            color: rgba(255, 255, 255, 0.6);
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            border-radius: 6px;
+            transition: all 0.2s;
+        }
+
+        .tab.active {
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .copy-btn {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 4px;
+            padding: 4px;
+            cursor: pointer;
+            color: rgba(255, 255, 255, 0.7);
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .copy-btn:hover {
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+            transform: scale(1.1);
+        }
+
+        .copy-btn:active {
+            transform: scale(0.95);
+        }
+
+        .copy-success {
+            background: rgba(16, 185, 129, 0.3) !important;
+            color: #10b981 !important;
+            border-color: rgba(16, 185, 129, 0.5) !important;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="logo">🔐</div>
+            <h1>CasperID Connect</h1>
+            <p class="subtitle">Your verified identity on the blockchain</p>
+        </div>
+
+        <div class="tab-bar">
+            <button class="tab active" data-tab="wallet">Wallet</button>
+            <button class="tab" data-tab="permissions">Permissions</button>
+            <button class="tab" data-tab="settings">Settings</button>
+        </div>
+
+        <!-- Wallet Tab -->
+        <div id="wallet-tab" class="tab-content active">
+            <div id="loading" class="loading hidden">
+                <div class="spinner"></div>
+                <p>Connecting to wallet...</p>
+            </div>
+
+            <div id="connected-view" class="hidden">
+                <div class="card">
+                    <div class="status">
+                        <div class="status-icon verified">✓</div>
+                        <div class="status-text">
+                            <h3>Verified Identity</h3>
+                            <p id="verification-tier">Tier 2 - Full KYC</p>
+                        </div>
+                    </div>
+
+                    <div class="wallet-info">
+                        <div class="wallet-label">ID</div>
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <div class="wallet-address" id="human-id">user-id</div>
+                            <button id="copy-id" class="copy-btn" title="Copy ID">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                                    <path d="m5 15-4-4v8h13"></path>
+                                </svg>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="wallet-info">
+                        <div class="wallet-label">CNS Domain</div>
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <div class="wallet-address" id="cns-name">user.cid</div>
+                            <button id="copy-cns" class="copy-btn" title="Copy CNS Domain">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                                    <path d="m5 15-4-4v8h13"></path>
+                                </svg>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div style="margin-top: 12px;">
+                        <span class="verification-badge">
+                            <span>✓</span>
+                            <span>Verified on Casper</span>
+                        </span>
+                    </div>
+                </div>
+
+                <!-- Earnings Card -->
+                <div class="card"
+                    style="background: linear-gradient(135deg, rgba(16, 185, 129, 0.2) 0%, rgba(5, 150, 105, 0.2) 100%); border-color: rgba(16, 185, 129, 0.3);">
+                    <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px;">
+                        <div style="font-size: 28px;">💰</div>
+                        <div style="flex: 1;">
+                            <div style="font-size: 11px; opacity: 0.8; margin-bottom: 2px;">LIFETIME EARNINGS</div>
+                            <div style="font-size: 24px; font-weight: 700; letter-spacing: -0.5px;" id="total-earned">0
+                                tokens</div>
+                            <div style="font-size: 12px; opacity: 0.9;" id="total-earned-usd">$0.00</div>
+                        </div>
+                    </div>
+                    <div
+                        style="display: flex; justify-content: space-between; align-items: center; padding: 8px 12px; background: rgba(0, 0, 0, 0.2); border-radius: 6px;">
+                        <span style="font-size: 12px; opacity: 0.9;">This Month</span>
+                        <span style="font-size: 14px; font-weight: 600;" id="monthly-earned">+0 tokens</span>
+                    </div>
+                </div>
+
+                <button class="btn btn-primary" id="share-identity-btn">
+                    Share Identity with Website
+                </button>
+
+                <button class="btn btn-secondary" id="view-dashboard-btn">
+                    View Full Dashboard
+                </button>
+            </div>
+
+            <div id="not-connected-view">
+                <div class="card">
+                    <h3 style="margin-bottom: 8px;">Connect Your Wallet</h3>
+                    <p style="font-size: 13px; opacity: 0.9; margin-bottom: 16px;">
+                        Connect your Casper wallet to use your verified identity across the web.
+                    </p>
+                    <button class="btn btn-primary" id="connect-btn">
+                        Connect Casper Wallet
+                    </button>
+                </div>
+
+                <div class="footer">
+                    Don't have a verified identity? <br>
+                    <a href="#" id="get-verified-link" style="color: white; font-weight: 600;">Get Verified →</a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Permissions Tab -->
+        <div id="permissions-tab" class="tab-content">
+            <div class="card">
+                <h3 style="margin-bottom: 8px;">Active Permissions</h3>
+                <p style="font-size: 12px; opacity: 0.8; margin-bottom: 16px;">
+                    Websites you've granted access to your identity
+                </p>
+
+                <div id="permissions-list">
+                    <!-- Populated dynamically -->
+                </div>
+            </div>
+        </div>
+
+        <!-- Settings Tab -->
+        <div id="settings-tab" class="tab-content">
+            <div class="card">
+                <h3 style="margin-bottom: 12px;">Settings</h3>
+
+                <div style="padding: 10px 0; border-bottom: 1px solid rgba(255,255,255,0.1);">
+                    <label style="display: flex; justify-content: space-between; align-items: center; cursor: pointer;">
+                        <span style="font-size: 13px;">Auto-approve trusted sites</span>
+                        <input type="checkbox" class="checkbox" id="auto-approve">
+                    </label>
+                </div>
+
+                <div style="padding: 10px 0;">
+                    <label style="display: flex; justify-content: space-between; align-items: center; cursor: pointer;">
+                        <span style="font-size: 13px;">Show notifications</span>
+                        <input type="checkbox" class="checkbox" id="notifications" checked>
+                    </label>
+                </div>
+            </div>
+
+            <button class="btn btn-secondary" id="disconnect-btn">
+                Disconnect Wallet
+            </button>
+
+            <div class="footer" style="margin-top: 16px;">
+                Version 1.0.0 (Hackathon Demo)<br>
+                <a href="#" style="color: rgba(255,255,255,0.8);">Learn More</a>
+            </div>
+        </div>
+    </div>
+
+    <script src="popup.js"></script>
+</body>
+
+</html>

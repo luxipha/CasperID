@@ -1,0 +1,24 @@
+
+> casper-id@0.1.0 dev
+> next dev
+
+   ▲ Next.js 14.0.4
+   - Local:        http://localhost:3000
+   - Environments: .env.local
+
+/bin/sh: yarn: command not found
+ ✓ Ready in 3.2s
+ ○ Compiling /me ...
+Browserslist: caniuse-lite is outdated. Please run:
+  npx update-browserslist-db@latest
+  Why you should do it regularly: https://github.com/browserslist/update-db#readme
+ ✓ Compiled / in 18.6s (6095 modules)
+ ○ Compiling /favicon.ico ...
+ ✓ Compiled /favicon.ico in 686ms (2963 modules)
+ ✓ Compiled in 4.7s (6090 modules)
+ ⚠ Fast Refresh had to perform a full reload. Read more: https://nextjs.org/docs/messages/fast-refresh-reload
+ ⚠ Fast Refresh had to perform a full reload. Read more: https://nextjs.org/docs/messages/fast-refresh-reload
+ ⚠ Fast Refresh had to perform a full reload. Read more: https://nextjs.org/docs/messages/fast-refresh-reload
+ ○ Compiling /favicon.ico ...
+ ✓ Compiled /favicon.ico in 1124ms (6122 modules)
+[?25h

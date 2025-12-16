@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Job Application - CasperID</title>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f3f4f6;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+        }
+
+        .card {
+            background: white;
+            padding: 2rem;
+            border-radius: 1rem;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+            width: 100%;
+            max-width: 520px;
+        }
+
+        h1 {
+            color: #111827;
+            margin-bottom: 1.5rem;
+            font-size: 1.5rem;
+        }
+
+        .form-group {
+            margin-bottom: 1rem;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 0.5rem;
+            color: #374151;
+            font-size: 0.875rem;
+            font-weight: 500;
+        }
+
+        input,
+        select,
+        textarea {
+            width: 100%;
+            padding: 0.75rem;
+            border: 1px solid #d1d5db;
+            border-radius: 0.5rem;
+            box-sizing: border-box;
+            font-size: 1rem;
+        }
+
+        input:focus,
+        select:focus,
+        textarea:focus {
+            outline: none;
+            border-color: #6366f1;
+        }
+
+        button {
+            width: 100%;
+            background-color: #4f46e5;
+            color: white;
+            padding: 0.75rem;
+            border: none;
+            border-radius: 0.5rem;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            margin-top: 0.5rem;
+        }
+
+        button:hover {
+            background-color: #4338ca;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="card">
+        <h1>💼 Job Application</h1>
+        <form id="job-application-form" enctype="multipart/form-data">
+            <div class="form-group">
+                <label for="fullName">Full Name</label>
+                <input type="text" id="fullName" name="fullName" autocomplete="name" placeholder="Taylor Applicant">
+            </div>
+
+            <div class="form-group">
+                <label for="email">Email Address</label>
+                <input type="email" id="email" name="email" autocomplete="email" placeholder="taylor@example.com">
+            </div>
+
+            <div class="form-group">
+                <label for="phone">Phone Number</label>
+                <input type="tel" id="phone" name="phone" autocomplete="tel" placeholder="+1 (555) 000-0000">
+            </div>
+
+            <div class="form-group">
+                <label for="role">Role Applying For</label>
+                <input type="text" id="role" name="role" placeholder="e.g., Frontend Engineer">
+            </div>
+
+            <div class="form-group">
+                <label for="experience">Years of Experience</label>
+                <input type="number" id="experience" name="experience" min="0" placeholder="5">
+            </div>
+
+            <div class="form-group">
+                <label for="education">Highest Education</label>
+                <input type="text" id="education" name="education" placeholder="B.Sc. Computer Science">
+            </div>
+
+            <div class="form-group">
+                <label for="certifications">Certifications</label>
+                <input type="text" id="certifications" name="certifications" placeholder="AWS, PMP, etc.">
+            </div>
+
+            <div class="form-group">
+                <label for="linkedin">LinkedIn Profile</label>
+                <input type="url" id="linkedin" name="linkedin" placeholder="https://www.linkedin.com/in/username">
+            </div>
+
+            <div class="form-group">
+                <label for="portfolio">Portfolio or GitHub</label>
+                <input type="url" id="portfolio" name="portfolio" placeholder="https://github.com/username">
+            </div>
+
+            <div class="form-group">
+                <label for="resume">Resume / CV</label>
+                <input type="file" id="resume" name="resume" accept=".pdf,.doc,.docx">
+            </div>
+
+            <div class="form-group">
+                <label for="coverLetter">Cover Letter</label>
+                <textarea id="coverLetter" name="coverLetter" rows="4"
+                    placeholder="Briefly describe why you're a fit"></textarea>
+            </div>
+
+            <button type="submit">Submit Application</button>
+        </form>
+    </div>
+</body>
+
+</html>
