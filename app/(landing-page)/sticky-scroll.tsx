@@ -51,51 +51,25 @@ gsap.registerPlugin(ScrollTrigger);
 
 const StickyScrollSection = () => {
   const containerRef = useRef<HTMLDivElement | null>(null);
-  const leftSideRef = useRef<HTMLDivElement | null>(null);
-  const rightSideRef = useRef<HTMLDivElement | null>(null);
   const [activeStep, setActiveStep] = useState(0);
-  const [isInSection, setIsInSection] = useState(false);
 
   useLayoutEffect(() => {
     if (!containerRef.current) return;
 
     const ctx = gsap.context(() => {
-      // Create ScrollTrigger for the entire section - only when section is actually visible
-      ScrollTrigger.create({
-        trigger: containerRef.current,
-        start: "top bottom",
-        end: "bottom top",
-        onEnter: () => setIsInSection(true),
-        onLeave: () => setIsInSection(false),
-        onEnterBack: () => setIsInSection(true),
-        onLeaveBack: () => setIsInSection(false),
-      });
+      const getTop = () =>
+        containerRef.current
+          ? containerRef.current.getBoundingClientRect().top + window.scrollY
+          : 0;
 
-      // Create ScrollTriggers for each section - smooth progressive transitions
-      steps.forEach((step, i) => {
+      steps.forEach((_, i) => {
         ScrollTrigger.create({
-          trigger: `.trigger-section-${i}`,
-          start: "top center",
-          end: "bottom center", 
-          onEnter: () => {
-            setActiveStep(i);
-            // Smooth background color change
-            gsap.to(leftSideRef.current, {
-              backgroundColor: step.bgColor,
-              duration: 0.6,
-              ease: "none",
-              overwrite: true,
-            });
-          },
-          onEnterBack: () => {
-            setActiveStep(i);
-            gsap.to(leftSideRef.current, {
-              backgroundColor: step.bgColor,
-              duration: 0.6,
-              ease: "none",
-              overwrite: true,
-            });
-          },
+          trigger: containerRef.current,
+          start: () => getTop() + i * window.innerHeight,
+          end: () => getTop() + (i + 1) * window.innerHeight,
+          onEnter: () => setActiveStep(i),
+          onEnterBack: () => setActiveStep(i),
+          invalidateOnRefresh: true,
         });
       });
     }, containerRef);
@@ -104,73 +78,55 @@ const StickyScrollSection = () => {
   }, []);
 
   return (
-    <section ref={containerRef} className="relative py-24">
-      {isInSection && (
-        <div className="fixed inset-0 z-30 pointer-events-none bg-gradient-to-br from-white via-slate-50 to-white" />
-      )}
-      {/* Fixed Left Side - Text Content */}
-      {isInSection && (
-        <div 
-          ref={leftSideRef}
-          className="fixed left-0 top-0 w-1/2 h-screen z-40 flex items-center justify-center p-8 pointer-events-none"
-          style={{ backgroundColor: steps[0].bgColor }}
-        >
-        <div className="max-w-lg space-y-6">
-          <div className="text-sm text-slate-400 uppercase tracking-[0.18em]">
-            Step {activeStep + 1}
-          </div>
-          <h3 className="text-3xl md:text-4xl font-bold text-slate-900">
-            {steps[activeStep].title}
-          </h3>
-          <p className="text-lg text-slate-600">
-            {steps[activeStep].copy}
-          </p>
-          <ul className="space-y-3 text-slate-600">
-            {steps[activeStep].bullets.map((bullet) => (
-              <li key={bullet} className="flex gap-3 items-start">
-                <span className="h-2 w-2 rounded-full bg-slate-400 mt-2 flex-shrink-0" />
-                <span>{bullet}</span>
-              </li>
-            ))}
-          </ul>
+    <section ref={containerRef} className="relative w-full bg-white" style={{ height: "500vh" }}>
+      <div className="sticky top-0 h-screen grid md:grid-cols-2 gap-8 md:gap-14 items-center px-6 md:px-12">
+        <div className="relative h-[340px] md:h-[380px]">
+          {steps.map((step, idx) => (
+            <div
+              key={step.title}
+              className={`absolute inset-0 flex flex-col justify-center space-y-4 rounded-2xl p-6 bg-white/80 backdrop-blur border border-slate-200 shadow-sm transition-all duration-500 ${
+                activeStep === idx ? "opacity-100 translate-y-0" : "opacity-0 translate-y-5"
+              }`}
+            >
+              <div className="text-sm text-slate-400 uppercase tracking-[0.18em]">
+                Step {idx + 1}
+              </div>
+              <h3 className="text-3xl md:text-4xl font-bold text-slate-900">{step.title}</h3>
+              <p className="text-lg text-slate-600">{step.copy}</p>
+              <ul className="space-y-3 text-slate-600">
+                {step.bullets.map((bullet) => (
+                  <li key={bullet} className="flex gap-3 items-start">
+                    <span className="h-2 w-2 rounded-full bg-slate-400 mt-2 flex-shrink-0" />
+                    <span>{bullet}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ))}
         </div>
-        </div>
-      )}
 
-      {/* Fixed Right Side - Image Placeholder */}
-      {isInSection && (
-        <div 
-          ref={rightSideRef}
-          className="fixed right-0 top-0 w-1/2 h-screen z-40 flex items-center justify-center p-8 pointer-events-none"
-          style={{ opacity: 1 }}
-        >
-        <div className="w-full h-[600px] rounded-3xl overflow-hidden border border-slate-200 shadow-xl bg-white flex items-center justify-center">
-          <div className="text-center space-y-4">
-            <div className="text-xs uppercase tracking-[0.2em] text-slate-400">
-              Image {activeStep + 1}
+        <div className="relative h-[420px] md:h-[520px]">
+          {steps.map((step, idx) => (
+            <div
+              key={step.title}
+              className={`absolute inset-0 flex items-center justify-center transition-all duration-500 ${
+                activeStep === idx ? "opacity-100 scale-100" : "opacity-0 scale-95"
+              }`}
+            >
+              <div className="w-full h-full rounded-3xl overflow-hidden border border-slate-200 shadow-xl bg-white relative flex items-center justify-center">
+                <div className="absolute inset-0 bg-gradient-to-br from-slate-100 to-slate-200" />
+                <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_20%,rgba(99,102,241,0.08),transparent),radial-gradient(circle_at_80%_30%,rgba(59,130,246,0.08),transparent)]" />
+                <div className="relative flex flex-col items-center justify-center gap-3 text-center">
+                  <div className="text-xs uppercase tracking-[0.2em] text-slate-400">
+                    Image {idx + 1}
+                  </div>
+                  <div className="text-2xl font-semibold text-slate-700">{step.title}</div>
+                  <div className="text-sm text-slate-500 max-w-md">{step.copy}</div>
+                </div>
+              </div>
             </div>
-            <div className="text-2xl font-semibold text-slate-700">
-              {steps[activeStep].title}
-            </div>
-            <div className="text-sm text-slate-500 max-w-md">
-              {steps[activeStep].copy}
-            </div>
-          </div>
+          ))}
         </div>
-        </div>
-      )}
-
-      {/* Scrollable Trigger Sections - Behind fixed content */}
-      <div className="ml-[50%] w-1/2 relative z-0">
-        {steps.map((_, i) => (
-          <section
-            key={i}
-            className={`trigger-section-${i} h-screen`}
-            style={{ backgroundColor: 'transparent' }}
-          >
-            {/* Invisible trigger area */}
-          </section>
-        ))}
       </div>
     </section>
   );
