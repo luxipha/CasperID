@@ -84,7 +84,7 @@ const StickyScrollSection = () => {
           {steps.map((step, idx) => (
             <div
               key={step.title}
-              className={`absolute inset-0 flex flex-col justify-center space-y-4 rounded-2xl p-6 bg-white/80 backdrop-blur border border-slate-200 shadow-sm transition-all duration-500 ${
+              className={`absolute inset-0 flex flex-col justify-center space-y-4 rounded-2xl p-6 bg-white/80 backdrop-blur shadow-sm transition-all duration-500 ${
                 activeStep === idx ? "opacity-100 translate-y-0" : "opacity-0 translate-y-5"
               }`}
             >
@@ -105,7 +105,7 @@ const StickyScrollSection = () => {
           ))}
         </div>
 
-        <div className="relative h-[420px] md:h-[520px]">
+        <div className="relative h-[520px] md:h-[800px]">
           {steps.map((step, idx) => (
             <div
               key={step.title}

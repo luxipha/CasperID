@@ -230,37 +230,41 @@ export default function LandingPage() {
         </div>
       </section>
 
-      <section className="w-full py-16 min-h-[900px] bg-white">
-        <div className="max-w-6xl mx-auto px-6 flex items-center justify-between">
-          <h2 className="text-4xl font-bold text-slate-900">Latest Blogs</h2>
-          <button className="px-5 py-2 rounded-full bg-slate-100 text-sm font-semibold text-slate-800 border border-slate-200">
-            View blog
-          </button>
-        </div>
+      <section className="w-full py-16 min-h-[827px] bg-white">
+        <div className="w-full px-6 md:px-12">
+          <div className="w-full flex items-center justify-between">
+            <h2 className="text-4xl font-bold text-slate-900">Latest Blogs</h2>
+            <button className="px-5 py-2 rounded-full bg-slate-100 text-sm font-semibold text-slate-800 border border-slate-200">
+              View blog
+            </button>
+          </div>
 
-        <div className="max-w-6xl mx-auto px-6 mt-10 grid md:grid-cols-2 gap-8">
-          {[1, 2].map((idx) => (
-            <div key={idx} className="space-y-4">
-              <div className="w-full aspect-square rounded-2xl overflow-hidden border border-slate-200 shadow-sm bg-slate-900 flex items-center justify-center text-white text-lg font-semibold">
-                <span>Blog cover {idx}</span>
-              </div>
-              <div className="space-y-2">
-                <div className="text-xl font-semibold text-slate-900">
-                  {idx === 1 ? "Nano Banana Pro in CasperID" : "Introducing CasperID"}
+          <div className="w-full mt-10">
+            <div className="grid grid-cols-1 md:grid-cols-[max-content_max-content] gap-6 lg:gap-8 justify-start items-start">
+              {[1, 2].map((idx) => (
+                <div key={idx} className="space-y-4 w-[384px]">
+                  <div className="w-[384px] h-[384px] rounded-2xl overflow-hidden border border-slate-200 shadow-sm bg-slate-900 flex items-center justify-center text-white text-lg font-semibold">
+                    <span>Blog cover {idx}</span>
+                  </div>
+                  <div className="space-y-2">
+                    <div className="text-xl font-semibold text-slate-900">
+                      {idx === 1 ? "Nano Banana Pro in CasperID" : "Introducing CasperID"}
+                    </div>
+                    <div className="text-sm text-slate-500 flex gap-4">
+                      <span>Nov {idx === 1 ? "21" : "19"}, 2025</span>
+                      <span>Product</span>
+                    </div>
+                    <button className="text-sm text-slate-900 font-semibold inline-flex items-center gap-1 hover:underline">
+                      Read blog <span className="text-lg leading-none">›</span>
+                    </button>
+                  </div>
                 </div>
-                <div className="text-sm text-slate-500 flex gap-4">
-                  <span>Nov {idx === 1 ? "21" : "19"}, 2025</span>
-                  <span>Product</span>
-                </div>
-                <button className="text-sm text-slate-900 font-semibold inline-flex items-center gap-1 hover:underline">
-                  Read blog <span className="text-lg leading-none">›</span>
-                </button>
-              </div>
+              ))}
             </div>
-          ))}
+          </div>
         </div>
 
-        <div className="max-w-6xl mx-auto px-6 mt-8 flex gap-3">
+        <div className="w-full px-6 md:px-12 mt-8 flex gap-3">
           <button className="h-10 w-10 rounded-full border border-slate-200 bg-white text-slate-700 flex items-center justify-center shadow-sm">
             ‹
           </button>
@@ -270,10 +274,10 @@ export default function LandingPage() {
         </div>
       </section>
 
-      <section className="w-full py-10">
-        <div className="w-full h-[900px] rounded-3xl overflow-hidden bg-black relative">
+      <section className="w-full py-10 px-6 md:px-12">
+        <div className="w-full mx-auto h-[900px] rounded-3xl overflow-hidden bg-black relative px-8 md:px-12">
           <div className="absolute inset-0 bg-[radial-gradient(1px_1px_at_20%_20%,rgba(99,102,241,0.3),transparent),radial-gradient(1px_1px_at_70%_60%,rgba(79,70,229,0.25),transparent),radial-gradient(1px_1px_at_40%_80%,rgba(59,130,246,0.2),transparent)] opacity-60" />
-          <div className="relative z-10 h-full flex items-center px-10">
+          <div className="relative z-10 h-full flex items-center">
             <div className="max-w-2xl text-left space-y-6">
               <h2 className="text-5xl md:text-6xl font-bold text-white leading-tight">
                 Download CasperID for macOS
