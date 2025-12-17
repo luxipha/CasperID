@@ -1,28 +1,29 @@
 import Link from "next/link";
+import Logo from "./logo";
 
-export function FooterMarketing() {
+export function FooterMarketing({ className }: { className?: string }) {
   const productLinks = [
-    { label: "Download", href: "/download" },
-    { label: "Product", href: "/verify" },
+    { label: "Download", href: "#download" },
+    { label: "Product", href: "#product" },
     { label: "Docs", href: "/docs" },
     { label: "Changelog", href: "/changelog" },
   ];
 
   const resourceLinks = [
-    { label: "Blog", href: "/blog" },
-    { label: "Pricing", href: "/verify-identity" },
-    { label: "Use Cases", href: "/verify" },
+    { label: "Blog", href: "#blogs" },
+    { label: "Pricing", href: "#developers" },
+    { label: "Use Cases", href: "#use-cases" },
   ];
 
   const footerLinks = [
-    { label: "About CasperID", href: "/" },
-    { label: "Products", href: "/verify" },
+    { label: "About CasperID", href: "#top" },
+    { label: "Products", href: "#product" },
     { label: "Privacy", href: "/privacy" },
     { label: "Terms", href: "/terms" },
   ];
 
   return (
-    <footer className="w-full min-h-[900px] bg-white text-slate-900 flex flex-col justify-between py-12 px-10">
+    <footer className={`w-full min-h-[900px] bg-white text-slate-900 flex flex-col justify-between py-12 px-10 ${className ?? ""}`}>
       <div className="flex items-start justify-between">
         <div className="text-lg font-semibold">Experience liftoff</div>
         <div className="flex items-start gap-16 text-sm">
@@ -56,7 +57,7 @@ export function FooterMarketing() {
       </div>
 
       <div className="flex items-center justify-between text-sm text-slate-700">
-        <span className="font-semibold">CasperID</span>
+        <Logo showName />
         <div className="flex items-center gap-6">
           {footerLinks.map((link) => (
             <Link key={link.label} href={link.href} className="hover:text-slate-500">

@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import ActionButtons from "./_components/action-buttons";
-import Logo from "./_components/logo";
+import Logo from "../logo";
 import { Menu } from "./_components/menu";
 
 const Navbar = () => {

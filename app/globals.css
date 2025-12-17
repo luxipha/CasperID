@@ -206,3 +206,97 @@ body,
 .animate-pulse-soft {
   animation: pulse 14s ease-in-out infinite;
 }
+
+.site-header {
+  background-color: transparent;
+  border-bottom: 1px solid transparent;
+  box-shadow: none;
+  transition: background-color 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease, backdrop-filter 0.3s ease, opacity 0.3s ease;
+}
+
+.site-header.scrolled {
+  background: rgba(255, 255, 255, 0.98);
+  backdrop-filter: blur(20px) saturate(160%);
+  border-bottom: 1px solid rgba(15, 23, 42, 0.08);
+  box-shadow: 0 18px 50px rgba(15, 23, 42, 0.16);
+}
+
+/* Houdini ring particles for hero */
+@supports (background: paint(something)) {
+  #hero-ring {
+    --ring-radius: 150;
+    --ring-thickness: 600;
+    --particle-count: 80;
+    --particle-rows: 25;
+    --particle-size: 2;
+    --particle-color: #6366f1;
+    --particle-min-alpha: 0.1;
+    --particle-max-alpha: 1.0;
+    --seed: 240;
+    --ring-x: 50;
+    --ring-y: 50;
+    --ring-interactive: 0;
+    background-image: paint(ring-particles);
+    animation: ripple 6s linear infinite, ring 6s ease-in-out infinite alternate;
+  }
+
+  @property --animation-tick {
+    syntax: "<number>";
+    inherits: false;
+    initial-value: 0;
+  }
+  @property --ring-radius {
+    syntax: "<number> | auto";
+    inherits: false;
+    initial-value: auto;
+  }
+  @property --ring-x {
+    syntax: "<number>";
+    inherits: false;
+    initial-value: 50;
+  }
+  @property --ring-y {
+    syntax: "<number>";
+    inherits: false;
+    initial-value: 50;
+  }
+  @property --ring-interactive {
+    syntax: "<number>";
+    inherits: false;
+    initial-value: 0;
+  }
+
+  @keyframes ripple {
+    0% {
+      --animation-tick: 0;
+    }
+    100% {
+      --animation-tick: 1;
+    }
+  }
+  @keyframes ring {
+    0% {
+      --ring-radius: 150;
+    }
+    100% {
+      --ring-radius: 250;
+    }
+  }
+
+  #download-ring {
+    --ring-radius: 130;
+    --ring-thickness: 500;
+    --particle-count: 70;
+    --particle-rows: 22;
+    --particle-size: 2;
+    --particle-color: #38bdf8;
+    --particle-min-alpha: 0.08;
+    --particle-max-alpha: 0.8;
+    --seed: 320;
+    --ring-x: 50;
+    --ring-y: 50;
+    --ring-interactive: 0;
+    background-image: paint(ring-particles);
+    animation: ripple 8s linear infinite, ring 7s ease-in-out infinite alternate;
+  }
+}

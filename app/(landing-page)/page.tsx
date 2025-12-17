@@ -1,19 +1,40 @@
 import Link from "next/link";
 import Script from "next/script";
-import { Raleway } from "next/font/google";
 import { FooterMarketing } from "@/components/footer-marketing";
 import StickyScrollSection from "./sticky-scroll";
-
-const raleway = Raleway({ subsets: ["latin"], variable: "--font-raleway" });
+import Logo from "@/components/logo";
+import ScanShowcase from "@/components/scan-showcase";
 
 export default function LandingPage() {
   return (
-    <div className={`${raleway.variable} font-sans relative min-h-screen bg-white text-slate-900 w-full`}>
+    <div id="top" className="font-sans relative min-h-screen bg-white text-slate-900 w-full">
       <Script
         src="https://unpkg.com/@lottiefiles/lottie-player@latest/dist/lottie-player.js"
         strategy="afterInteractive"
       />
       <Script src="https://cdn.jsdelivr.net/npm/tsparticles@2/tsparticles.bundle.min.js" strategy="afterInteractive" />
+      <Script id="hero-ring-worklet" strategy="afterInteractive">
+        {`
+          if ('paintWorklet' in CSS) {
+            CSS.paintWorklet.addModule('https://unpkg.com/css-houdini-ringparticles/dist/ringparticles.js').catch(() => {});
+            const applyRing = (el) => {
+              if (!el) return;
+              const setPos = (x, y, interactive) => {
+                el.style.setProperty('--ring-x', x);
+                el.style.setProperty('--ring-y', y);
+                el.style.setProperty('--ring-interactive', interactive ? 1 : 0);
+              };
+              setPos(50, 50, 0);
+              el.addEventListener('pointermove', (e) => {
+                setPos((e.clientX / window.innerWidth) * 100, (e.clientY / window.innerHeight) * 100, true);
+              });
+              el.addEventListener('pointerleave', () => setPos(50, 50, false));
+            };
+
+            document.querySelectorAll('[data-ring="true"]').forEach(applyRing);
+          }
+        `}
+      </Script>
       <Script id="tsparticles-init" strategy="afterInteractive">
         {`
           const loadParticles = () => {
@@ -76,54 +97,70 @@ export default function LandingPage() {
           }
         `}
       </Script>
+      <Script id="header-scroll" strategy="afterInteractive">
+        {`
+          const header = document.getElementById('site-header');
+          if (header) {
+            const toggle = () => {
+              if (window.scrollY > 10) {
+                header.classList.add('scrolled');
+              } else {
+                header.classList.remove('scrolled');
+              }
+            };
+            toggle();
+            window.addEventListener('scroll', toggle, { passive: true });
+          }
+        `}
+      </Script>
       {/* <div id="tsparticles" className="fixed inset-0 w-screen h-screen pointer-events-none z-10" /> */}
       <div className="absolute inset-0 pointer-events-none z-0">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_10%_10%,rgba(99,102,241,0.12),transparent_25%),radial-gradient(circle_at_90%_15%,rgba(59,130,246,0.08),transparent_25%),radial-gradient(circle_at_30%_90%,rgba(147,51,234,0.06),transparent_25%)]" />
         <div className="absolute inset-0 bg-[radial-gradient(1px_1px_at_10%_20%,rgba(0,0,0,0.12),transparent),radial-gradient(1px_1px_at_40%_80%,rgba(0,0,0,0.08),transparent)] opacity-30" />
       </div>
 
-      <main className="relative z-20 w-full max-w-[1905px] mx-auto px-10 pb-24">
-        <header className="flex items-center justify-between py-6">
-          <div className="flex items-center gap-6">
-            <div className="flex items-center gap-2">
-              <div className="h-8 w-8 rounded-full bg-gradient-to-br from-indigo-500 to-blue-500" />
-              <div className="text-sm font-semibold">CasperID</div>
-            </div>
+      <main className="relative z-20 w-full max-w-[1905px] mx-auto px-10 pt-24 pb-24">
+        <header id="site-header" className="site-header fixed top-0 left-0 right-0 z-50 transition-all duration-300">
+          <div className="w-full max-w-[1905px] mx-auto px-10 flex items-center justify-between py-6">
+            <div className="flex items-center gap-6">
+              <Logo />
             <nav className="hidden md:flex items-center gap-4 text-sm text-slate-600">
-              <Link href="/verify" className="hover:text-slate-900">
+              <Link href="#product" className="hover:text-slate-900">
                 Product
               </Link>
-              <div className="flex items-center gap-1 hover:text-slate-900 cursor-pointer">
+              <Link href="#use-cases" className="flex items-center gap-1 hover:text-slate-900 cursor-pointer">
                 <span>Use Cases</span>
-              </div>
-              <Link href="/verify-identity" className="hover:text-slate-900">
+              </Link>
+              <Link href="#developers" className="hover:text-slate-900">
                 Pricing
               </Link>
-              <Link href="/blog" className="hover:text-slate-900">
+              <Link href="#blogs" className="hover:text-slate-900">
                 Blog
               </Link>
-              <div className="flex items-center gap-1 hover:text-slate-900 cursor-pointer">
+              <Link href="#download" className="flex items-center gap-1 hover:text-slate-900 cursor-pointer">
                 <span>Resources</span>
-              </div>
+              </Link>
             </nav>
-          </div>
-          <div className="flex items-center gap-3">
-            <button className="hidden md:inline-flex items-center gap-2 rounded-full bg-indigo-100 px-4 py-2 text-xs font-semibold text-indigo-700 shadow-sm shadow-indigo-200">
-              <span className="h-2 w-2 rounded-full bg-indigo-500" />
-              Verify with CasperID
-            </button>
-            <button className="inline-flex items-center gap-2 rounded-full bg-slate-900 px-4 py-2 text-xs font-semibold text-white shadow-sm hover:-translate-y-0.5 transition">
-              Download
-            </button>
+            </div>
+            <div className="flex items-center gap-3">
+              <button className="hidden md:inline-flex items-center gap-2 rounded-full bg-indigo-100 px-4 py-2 text-xs font-semibold text-indigo-700 shadow-sm shadow-indigo-200">
+                <span className="h-2 w-2 rounded-full bg-indigo-500" />
+                Get CasperID
+              </button>
+              <button className="inline-flex items-center gap-2 rounded-full bg-slate-900 px-4 py-2 text-xs font-semibold text-white shadow-sm hover:-translate-y-0.5 transition">
+                Download
+              </button>
+            </div>
           </div>
         </header>
 
-        <section className="relative overflow-hidden flex flex-col items-center text-center min-h-[70vh] justify-center bg-transparent">
+        <section
+          id="hero-ring"
+          data-ring="true"
+          className="relative overflow-hidden flex flex-col items-center text-center min-h-[70vh] justify-center bg-transparent"
+        >
           <div className="relative z-10 flex flex-col items-center">
-            <div className="flex items-center gap-2 text-sm text-slate-600 mb-6">
-              <div className="h-6 w-6 rounded-full bg-gradient-to-br from-indigo-500 to-blue-500" />
-              <span className="font-semibold">CasperID</span>
-            </div>
+            <Logo className="mb-6" />
             <h1 className="text-[52px] md:text-[80px] font-black tracking-tight mb-4 leading-[1.05]">
               Experience lift-off
             </h1>
@@ -150,7 +187,7 @@ export default function LandingPage() {
           </div>
         </section>
 
-        <section className="w-full flex justify-center pb-16 pt-32">
+        <section id="product" className="w-full flex justify-center pb-16 pt-32">
           <div className="w-[1585px] max-w-full border border-slate-200 rounded-2xl overflow-hidden shadow-lg shadow-slate-200">
             <div className="bg-slate-100 text-slate-500 text-sm px-4 py-2 border-b border-slate-200">
               Product video
@@ -168,8 +205,8 @@ export default function LandingPage() {
           </div>
         </section>
 
-        <section className="w-full py-24">
-          <div className="max-w-6xl mx-auto px-6 grid md:grid-cols-[1.1fr_0.9fr] items-center gap-6">
+        <section className="w-full py-24" id="identity">
+          <div className="max-w-6xl mx-auto px-6 grid md:grid-cols-[1.1fr_0.9fr] items-start gap-6">
             <div className="max-w-xl text-left space-y-4">
               <h2 className="text-5xl font-bold leading-tight">
                 CasperID is your agent-first identity layer for the web.
@@ -178,24 +215,19 @@ export default function LandingPage() {
                 A verified profile that logs you in, autofills everything, and keeps you in control of what you share.
               </p>
             </div>
-            <div className="w-[320px] h-[320px] md:w-[600px] md:h-[600px] flex items-center justify-center justify-self-end">
-              <lottie-player
-                src="/images/5cb0bc04.json"
-                background="transparent"
-                speed="1"
-                loop
-                autoplay
-                style={{ width: "100%", height: "100%" }}
-              />
+            <div className="w-full">
+              <ScanShowcase />
             </div>
           </div>
         </section>
 
       </main>
 
-      <StickyScrollSection />
+      <div id="use-cases">
+        <StickyScrollSection />
+      </div>
 
-      <section className="relative w-full h-[900px] overflow-hidden bg-white">
+      <section className="relative w-full h-[900px] overflow-hidden bg-white" id="developers">
         <div className="absolute inset-0 bg-[radial-gradient(1px_1px_at_10%_10%,rgba(0,0,0,0.16),transparent),radial-gradient(1px_1px_at_50%_50%,rgba(0,0,0,0.12),transparent),radial-gradient(1px_1px_at_90%_80%,rgba(0,0,0,0.1),transparent)] opacity-40" />
         <div className="absolute inset-0 bg-[radial-gradient(1px_1px_at_20%_30%,rgba(99,102,241,0.2),transparent),radial-gradient(1px_1px_at_80%_20%,rgba(79,70,229,0.15),transparent)] opacity-30" />
         <div className="relative z-10 h-full max-w-6xl mx-auto px-6 flex flex-col md:flex-row items-center justify-center gap-12">
@@ -230,7 +262,7 @@ export default function LandingPage() {
         </div>
       </section>
 
-      <section className="w-full py-16 min-h-[827px] bg-white">
+      <section className="w-full py-16 min-h-[827px] bg-white" id="blogs">
         <div className="w-full px-6 md:px-12">
           <div className="w-full flex items-center justify-between">
             <h2 className="text-4xl font-bold text-slate-900">Latest Blogs</h2>
@@ -274,13 +306,17 @@ export default function LandingPage() {
         </div>
       </section>
 
-      <section className="w-full py-10 px-6 md:px-12">
-        <div className="w-full mx-auto h-[900px] rounded-3xl overflow-hidden bg-black relative px-8 md:px-12">
+      <section className="w-full py-10 px-6 md:px-12" id="download">
+        <div
+          id="download-ring"
+          data-ring="true"
+          className="w-full mx-auto h-[900px] rounded-3xl overflow-hidden bg-black relative px-8 md:px-12"
+        >
           <div className="absolute inset-0 bg-[radial-gradient(1px_1px_at_20%_20%,rgba(99,102,241,0.3),transparent),radial-gradient(1px_1px_at_70%_60%,rgba(79,70,229,0.25),transparent),radial-gradient(1px_1px_at_40%_80%,rgba(59,130,246,0.2),transparent)] opacity-60" />
           <div className="relative z-10 h-full flex items-center">
             <div className="max-w-2xl text-left space-y-6">
               <h2 className="text-5xl md:text-6xl font-bold text-white leading-tight">
-                Download CasperID for macOS
+                Download CasperID  <br />for macOS
               </h2>
               <div className="flex flex-wrap gap-4 pt-2">
                 <button className="px-6 py-3 rounded-full bg-white text-slate-900 text-sm font-semibold shadow-lg shadow-slate-800/30">
@@ -294,7 +330,16 @@ export default function LandingPage() {
           </div>
         </div>
       </section>
-      <FooterMarketing />
+
+      <section className="w-full px-6 md:px-12 py-8 flex justify-end">
+        <Link
+          href="#top"
+          className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-slate-200 bg-white text-sm font-semibold text-slate-800 shadow-sm hover:-translate-y-0.5 transition"
+        >
+          ↑ Back to top
+        </Link>
+      </section>
+      <FooterMarketing className="scroll-mt-24" />
     </div>
   );
 }
