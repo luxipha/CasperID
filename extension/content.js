@@ -223,24 +223,76 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     if (message.type === 'CASPERID_AUTH_SUCCESS') {
         handleLoginSuccess(message.data);
     }
-    
+
     if (message.type === 'CASPERID_ACCESS_REVOKED') {
         handleAccessRevoked(message.domain);
     }
+
+    if (message.type === 'GET_JOB_DETAILS') {
+        sendResponse(scrapeJobDetails());
+    }
+
+    if (message.type === 'FILL_COVER_LETTER') {
+        fillForms({ cover_letter: message.content });
+    }
 });
+
+function scrapeJobDetails() {
+    console.log('[CasperID] Scraping job details...');
+
+    // Look for common job description containers
+    const selectors = [
+        '.job-description',
+        '#job-details',
+        '.description__text',
+        '[data-job-description]',
+        'section.description',
+        '.jobs-description__content' // LinkedIn
+    ];
+
+    let description = '';
+    for (const selector of selectors) {
+        const el = document.querySelector(selector);
+        if (el) {
+            description = el.innerText;
+            break;
+        }
+    }
+
+    // Fallback: search for long text blocks if nothing specific found
+    if (!description || description.length < 200) {
+        const elements = Array.from(document.querySelectorAll('p, li, div'))
+            .filter(el => {
+                const text = el.innerText || '';
+                return text.length > 200 && text.length < 5000;
+            });
+
+        // Pick the longest one as the primary description
+        const longest = elements.sort((a, b) => b.innerText.length - a.innerText.length)[0];
+        if (longest) description = longest.innerText;
+    }
+
+    const title = document.querySelector('h1')?.innerText || document.title;
+
+    return {
+        title: title,
+        description: description.slice(0, 10000), // Cap for LLM
+        url: window.location.href
+    };
+}
 
 function handleAccessRevoked(domain) {
     console.log(`[CasperID] Access revoked for ${domain}`);
-    
+
     // Clear any stored login data
     localStorage.removeItem('casperid_user');
     localStorage.removeItem('casperid_wallet');
-    
+
     // Dispatch logout event for websites to handle
     window.dispatchEvent(new CustomEvent('casperid-logout', {
         detail: { domain, reason: 'access_revoked' }
     }));
-    
+
     // Show logout notification
     showLogoutMessage(domain);
 }
@@ -307,9 +359,11 @@ function showLogoutMessage(domain) {
         degree: ['degree', 'major'],
         linkedin: ['linkedin'],
         website: ['website', 'portfolio', 'url'],
+        cover_letter: ['cover letter', 'coverletter', 'personal statement', 'message to hiring manager', 'cover_letter'],
     };
 
     function matchesField(input, key) {
+        const tagName = input.tagName.toLowerCase();
         const name = (input.name || '').toLowerCase();
         const id = (input.id || '').toLowerCase();
         const placeholder = (input.placeholder || '').toLowerCase();
@@ -339,7 +393,7 @@ function showLogoutMessage(domain) {
     }
 
     function detectForms() {
-        const inputs = document.querySelectorAll('input:not([type="hidden"]):not([type="submit"]):not([data-casper-id])');
+        const inputs = document.querySelectorAll('input:not([type="hidden"]):not([type="submit"]):not([data-casper-id]), textarea:not([data-casper-id])');
         inputs.forEach((input) => {
             const fillable =
                 matchesField(input, 'first_name') ||
@@ -360,7 +414,8 @@ function showLogoutMessage(domain) {
                 matchesField(input, 'school_name') ||
                 matchesField(input, 'degree') ||
                 matchesField(input, 'linkedin') ||
-                matchesField(input, 'website');
+                matchesField(input, 'website') ||
+                matchesField(input, 'cover_letter');
 
             if (fillable) {
                 injectAutofillIcon(input);
@@ -472,13 +527,15 @@ function showLogoutMessage(domain) {
                 return data.profile?.socials?.linkedin || data.socials?.linkedin || null;
             case 'website':
                 return data.profile?.website || data.website || null;
+            case 'cover_letter':
+                return data.cover_letter || null;
             default:
                 return null;
         }
     }
 
     function fillForms(data) {
-        const inputs = document.querySelectorAll('input');
+        const inputs = document.querySelectorAll('input, textarea');
         let filledCount = 0;
 
         inputs.forEach((input) => {

@@ -151,7 +151,7 @@ async function handlePendingRequest(request) {
         const result = await chrome.storage.local.get(['userData', 'permissions']);
         const userData = result.userData;
         const permissions = result.permissions || [];
-        
+
         // Save permission for this domain
         const newPermission = {
             domain: request.domain,
@@ -159,15 +159,15 @@ async function handlePendingRequest(request) {
             date: new Date().toISOString().split('T')[0],
             timestamp: Date.now()
         };
-        
+
         // Update permissions array (remove existing for same domain, add new)
         const updatedPermissions = permissions.filter(p => p.domain !== request.domain);
         updatedPermissions.push(newPermission);
-        
+
         // Store updated permissions
         await chrome.storage.local.set({ permissions: updatedPermissions });
         console.log(`[CasperID] Saved permission for ${request.domain}:`, newPermission);
-        
+
         // Grant & Notify Tab
         chrome.tabs.sendMessage(request.tabId, {
             type: 'CASPERID_AUTH_SUCCESS',
@@ -265,6 +265,91 @@ function setupEventListeners() {
         copyCnsBtn.addEventListener('click', () => {
             const cnsName = document.getElementById('cns-name').textContent;
             copyToClipboard(cnsName, copyCnsBtn);
+        });
+    }
+
+    // Job Assistant
+    setupJobAssistant();
+}
+
+// Job Assistant Logic
+let currentJob = null;
+let generatedCoverLetter = null;
+
+function setupJobAssistant() {
+    const scrapeBtn = document.getElementById('scrape-job-btn');
+    const generateBtn = document.getElementById('generate-cover-letter-btn');
+    const fillBtn = document.getElementById('fill-cover-letter-btn');
+
+    if (scrapeBtn) {
+        scrapeBtn.addEventListener('click', async () => {
+            const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+            if (!tab) return;
+
+            chrome.tabs.sendMessage(tab.id, { type: 'GET_JOB_DETAILS' }, (response) => {
+                if (response && response.description) {
+                    currentJob = response;
+                    document.getElementById('job-details-card').classList.remove('hidden');
+                    document.getElementById('no-job-detected').classList.add('hidden');
+                    document.getElementById('job-title-display').textContent = response.title || 'Found Job';
+                    document.getElementById('job-desc-preview').textContent = response.description.slice(0, 150) + '...';
+                    generateBtn.disabled = false;
+                } else {
+                    alert('Could not find a clear job description on this page. Try scrolling down or clicking on the job details.');
+                }
+            });
+        });
+    }
+
+    if (generateBtn) {
+        generateBtn.addEventListener('click', async () => {
+            if (!currentJob) return;
+
+            const loading = document.getElementById('job-loading');
+            loading.classList.remove('hidden');
+            generateBtn.disabled = true;
+
+            const result = await chrome.storage.local.get(['userData']);
+            const userData = result.userData;
+
+            try {
+                const response = await fetch('http://localhost:3001/api/ai/generate-cover-letter', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        profileData: userData,
+                        jobDescription: currentJob.description
+                    })
+                });
+
+                const data = await response.json();
+                if (data.error) throw new Error(data.error);
+
+                generatedCoverLetter = data.content || data.cover_letter;
+
+                document.getElementById('cover-letter-text').value = generatedCoverLetter;
+                document.getElementById('cover-letter-preview-card').classList.remove('hidden');
+            } catch (error) {
+                console.error('Failed to generate cover letter', error);
+                alert('Generation failed: ' + error.message);
+            } finally {
+                loading.classList.add('hidden');
+                generateBtn.disabled = false;
+            }
+        });
+    }
+
+    if (fillBtn) {
+        fillBtn.addEventListener('click', async () => {
+            const content = document.getElementById('cover-letter-text').value;
+            const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+
+            chrome.tabs.sendMessage(tab.id, {
+                type: 'FILL_COVER_LETTER',
+                content: content
+            });
+
+            alert('Cover letter injected into form!');
         });
     }
 }
@@ -861,7 +946,7 @@ async function revokePermissionForDomain(domain) {
         const permissions = result.permissions || [];
         const updatedPermissions = permissions.filter(p => p.domain !== domain);
         await chrome.storage.local.set({ permissions: updatedPermissions });
-        
+
         // Find all tabs with this domain and notify them of revocation
         const tabs = await chrome.tabs.query({});
         const matchingTabs = tabs.filter(tab => {
@@ -872,7 +957,7 @@ async function revokePermissionForDomain(domain) {
                 return false;
             }
         });
-        
+
         // Send revocation message to all matching tabs
         for (const tab of matchingTabs) {
             try {
@@ -884,9 +969,9 @@ async function revokePermissionForDomain(domain) {
                 console.warn(`Failed to notify tab ${tab.id} of revocation:`, error);
             }
         }
-        
+
         console.log(`[CasperID] Revoked access for ${domain}`);
-        
+
         // Show success feedback
         const permissionsList = document.getElementById('permissions-list');
         const successMsg = document.createElement('div');
@@ -900,16 +985,16 @@ async function revokePermissionForDomain(domain) {
             margin-bottom: 10px;
         `;
         successMsg.textContent = `Access revoked for ${domain}`;
-        
+
         permissionsList.insertBefore(successMsg, permissionsList.firstChild);
-        
+
         // Remove success message after 3 seconds
         setTimeout(() => {
             if (successMsg.parentNode) {
                 successMsg.remove();
             }
         }, 3000);
-        
+
     } catch (error) {
         console.error('[CasperID] Failed to revoke permission:', error);
         alert(`Failed to revoke access for ${domain}. Please try again.`);

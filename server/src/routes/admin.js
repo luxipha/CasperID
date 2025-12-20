@@ -1,17 +1,15 @@
 const express = require('express');
 const router = express.Router();
-const crypto = require('crypto');
-const jwt = require('jsonwebtoken');
-const { adminAuth } = require('../middleware/auth');
+const { adminAuthWithRateLimit } = require('../middleware/auth');
 const { VerificationRequest, Credential, UserProfile } = require('../database/models');
-const casperService = require('../services/casper');
 const { walletToHuman } = require('../utils/wallet-to-human');
+const { mintCredential } = require('../utils/credential-minter');
 
 /**
  * GET /api/admin/verification-requests
  * Get all verification requests (admin only)
  */
-router.get('/verification-requests', adminAuth, async (req, res) => {
+router.get('/verification-requests', adminAuthWithRateLimit, async (req, res) => {
     try {
         const { status } = req.query;
         const filter = status ? { status } : {};
@@ -58,7 +56,7 @@ router.get('/verification-requests', adminAuth, async (req, res) => {
  * POST /api/admin/issue-credential
  * Issue credentials (approve verification)
  */
-router.post('/issue-credential', adminAuth, async (req, res) => {
+router.post('/issue-credential', adminAuthWithRateLimit, async (req, res) => {
     try {
         const { request_id, approve } = req.body;
 
@@ -92,116 +90,8 @@ router.post('/issue-credential', adminAuth, async (req, res) => {
             });
         }
 
-        // Handle approval
-        const now = Math.floor(Date.now() / 1000); // Unix timestamp
-
-        // Create credential JSON
-        const credentialData = {
-            subject_wallet: request.wallet,
-            tier: request.tier,
-            last_kyc_at: now,
-            last_liveness_at: request.tier === 'full_kyc' ? now : null,
-            issuer: process.env.ISSUER_ID || 'CasperID-Demo',
-            issued_at: now,
-            expires_at: 0 // No expiration for now
-        };
-
-        // Sign credential (JWT)
-        const credential_json = jwt.sign(
-            credentialData,
-            process.env.JWT_SECRET,
-            { expiresIn: '10y' }
-        );
-
-        // Compute credential hash
-        const credential_hash = crypto
-            .createHash('sha256')
-            .update(credential_json)
-            .digest('hex');
-
-        // Call Casper contract to set verification
-        const tx_hash = await casperService.setVerification(
-            request.wallet,
-            request.tier,
-            now,
-            now,
-            process.env.ISSUER_ID || 'CasperID-Demo',
-            credential_hash,
-            true
-        );
-
-        // Generate human-friendly ID
-        const { humanId } = walletToHuman(request.wallet);
-        
-        // Save credential to database
-        const credential = new Credential({
-            wallet: request.wallet,
-            human_id: humanId,
-            tier: request.tier,
-            last_kyc_at: now,
-            last_liveness_at: request.tier === 'full_kyc' ? now : null,
-            issuer_id: process.env.ISSUER_ID || 'CasperID-Demo',
-            credential_json,
-            credential_hash,
-            onchain_tx_hash: tx_hash
-        });
-
-        await credential.save();
-
-        // Update request status
-        request.status = 'approved';
-        await request.save();
-
-        // ========================================
-        // SYNC VERIFIED DATA TO USER PROFILE
-        // ========================================
-        try {
-            console.log(`Syncing verified data to user profile for wallet: ${request.wallet}`);
-            
-            // Prepare verified data from the verification request
-            const verifiedProfileData = {
-                first_name: request.first_name,
-                last_name: request.last_name,
-                email: request.email,
-                phone_number: request.phone_number,
-                
-                // Format address properly if it's an object
-                ...(request.home_address && typeof request.home_address === 'object' ? {
-                    city: request.home_address.city,
-                    country: request.home_address.country,
-                } : {}),
-                
-                // Add human_id for consistency
-                human_id: humanId,
-                
-                // Mark profile as verified in metadata
-                verified_at: new Date(),
-                verification_source: 'kyc_approval'
-            };
-
-            // Update or create user profile with verified data
-            const updatedProfile = await UserProfile.findOneAndUpdate(
-                { wallet: request.wallet },
-                { 
-                    $set: verifiedProfileData,
-                    $setOnInsert: { 
-                        wallet: request.wallet,
-                        created_at: new Date()
-                    }
-                },
-                { 
-                    new: true, 
-                    upsert: true, 
-                    runValidators: true 
-                }
-            );
-
-            console.log(`✅ Profile updated with verified data for ${request.first_name} ${request.last_name}`);
-            
-        } catch (profileUpdateError) {
-            console.error('❌ Error syncing verified data to profile:', profileUpdateError);
-            // Don't fail the entire verification process if profile sync fails
-        }
+        // Use the shared credential minting utility
+        const { credential } = await mintCredential(request);
 
         res.json({
             message: 'Credential issued successfully',
@@ -224,7 +114,7 @@ router.post('/issue-credential', adminAuth, async (req, res) => {
  * POST /api/admin/revoke
  * Revoke a credential
  */
-router.post('/revoke', adminAuth, async (req, res) => {
+router.post('/revoke', adminAuthWithRateLimit, async (req, res) => {
     try {
         const { wallet, reason } = req.body;
 
@@ -265,7 +155,7 @@ router.post('/revoke', adminAuth, async (req, res) => {
  * POST /api/admin/sync-verified-profiles
  * Manually sync all existing verified users' data to their profiles
  */
-router.post('/sync-verified-profiles', adminAuth, async (req, res) => {
+router.post('/sync-verified-profiles', adminAuthWithRateLimit, async (req, res) => {
     try {
         console.log('🔄 Starting manual sync of verified profiles...');
         

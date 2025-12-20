@@ -1,24 +1,49 @@
 const { verifyToken } = require('../utils/jwt-manager');
-const { LoginSession } = require('../database/models');
+const { LoginSession, AdminUser } = require('../database/models');
+const { authenticateAdmin } = require('../utils/admin-auth');
+const { rateLimitMiddleware } = require('../utils/rate-limiter');
 
 /**
- * Simple admin authentication middleware
- * Checks for admin password in request headers
+ * Admin authentication middleware
+ * Validates admin JWT tokens with rate limiting
  */
 const adminAuth = async (req, res, next) => {
     try {
         const { authorization } = req.headers;
 
-        if (!authorization) {
-            return res.status(401).json({ error: 'No authorization header provided' });
+        if (!authorization || !authorization.startsWith('Bearer ')) {
+            return res.status(401).json({ error: 'Admin token required' });
         }
 
-        // Extract password from "Bearer <password>" format
-        const password = authorization.replace('Bearer ', '');
+        // Extract token from "Bearer <token>" format
+        const token = authorization.replace('Bearer ', '');
 
-        if (password !== process.env.ADMIN_PASSWORD) {
-            return res.status(403).json({ error: 'Invalid admin credentials' });
+        // Verify JWT token
+        const decoded = verifyToken(token);
+        if (!decoded || !decoded.isAdmin) {
+            return res.status(401).json({ error: 'Invalid admin token' });
         }
+
+        // Verify admin still exists and is active
+        const admin = await AdminUser.findById(decoded.adminId);
+        if (!admin || !admin.active) {
+            return res.status(401).json({ error: 'Admin account not found or disabled' });
+        }
+
+        // Check if admin account is locked
+        if (admin.locked_until && admin.locked_until > new Date()) {
+            return res.status(423).json({ 
+                error: 'Admin account temporarily locked',
+                lockedUntil: admin.locked_until
+            });
+        }
+
+        // Attach admin to request
+        req.admin = {
+            id: admin._id,
+            username: admin.username,
+            role: admin.role
+        };
 
         next();
     } catch (error) {
@@ -85,8 +110,25 @@ const extractViewer = async (req, res, next) => {
     }
 };
 
+/**
+ * Rate limited admin authentication middleware
+ * Combines admin auth with rate limiting
+ */
+const adminAuthWithRateLimit = [
+    rateLimitMiddleware('admin_endpoints'),
+    adminAuth
+];
+
+/**
+ * Admin login rate limiting middleware
+ * For admin login endpoints
+ */
+const adminLoginRateLimit = rateLimitMiddleware('admin_login');
+
 module.exports = {
     adminAuth,
+    adminAuthWithRateLimit,
+    adminLoginRateLimit,
     requireAuth,
     extractViewer,
     jwtAuth: requireAuth // Alias for backward compatibility if needed

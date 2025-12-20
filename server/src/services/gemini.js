@@ -230,21 +230,21 @@ async function verifyLivenessSequence(frameBuffers, expectedSteps) {
         // Analyze a sampling of frames (first, middle, last few) to reduce API cost
         const sampleFrames = [];
         const totalFrames = frameBuffers.length;
-        
+
         // Always include first frame
         sampleFrames.push({ index: 0, buffer: frameBuffers[0] });
-        
+
         // Include middle frame
         if (totalFrames > 2) {
             const midIndex = Math.floor(totalFrames / 2);
             sampleFrames.push({ index: midIndex, buffer: frameBuffers[midIndex] });
         }
-        
+
         // Include last frame
         if (totalFrames > 1) {
             sampleFrames.push({ index: totalFrames - 1, buffer: frameBuffers[totalFrames - 1] });
         }
-        
+
         // Include a couple more frames for better analysis
         if (totalFrames > 6) {
             const quarterIndex = Math.floor(totalFrames / 4);
@@ -308,17 +308,17 @@ Only mark as passed if you're confident this is a live human performing natural 
         const jsonMatch = text.match(/\{[\s\S]*\}/);
         if (jsonMatch) {
             const analysis = JSON.parse(jsonMatch[0]);
-            
+
             // Additional validation logic
             const minConfidence = 70;
             const requiresMovement = analysis.movementDetected || analysis.blinkingObserved || analysis.headMovementObserved;
             const antiSpoofingPass = analysis.antiSpoofingScore >= 60;
-            
-            const finalPassed = analysis.passed && 
-                               analysis.confidence >= minConfidence && 
-                               requiresMovement && 
-                               antiSpoofingPass &&
-                               analysis.faceDetectedInAllFrames;
+
+            const finalPassed = analysis.passed &&
+                analysis.confidence >= minConfidence &&
+                requiresMovement &&
+                antiSpoofingPass &&
+                analysis.faceDetectedInAllFrames;
 
             return {
                 ...analysis,
@@ -346,10 +346,201 @@ Only mark as passed if you're confident this is a live human performing natural 
     }
 }
 
+/**
+ * Parse a resume and extract structured profile data
+ * @param {Buffer} fileBuffer - PDF, Image, or Word doc buffer
+ * @param {string} mimeType - MIME type of the file
+ * @returns {Promise<Object>} Extracted profile data
+ */
+async function parseResume(fileBuffer, mimeType) {
+    try {
+        const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
+
+        const prompt = `Analyze this resume and extract the person's professional profile into a structured JSON format. 
+Return ONLY the JSON.
+
+IMPORTANT PARSING GUIDELINES:
+- For dates: Convert ALL date formats to YYYY-MM-DD:
+  * "Jan 2020" → "2020-01-01"
+  * "January 2020" → "2020-01-01" 
+  * "Feb 2021" → "2021-02-01"
+  * "Sept 2019" → "2019-09-01"
+  * "December 2022" → "2022-12-01"
+  * If "Present", "Current", "Now" → use exactly "Present"
+- Extract ALL skills mentioned anywhere in resume, including:
+  * Technical skills (programming languages, frameworks, tools)
+  * Soft skills (leadership, communication, teamwork)
+  * Certifications and specializations
+  * Software and platforms used
+- Extract personal contact information from headers, contact sections, or anywhere on resume
+- Look for social media links in contact sections, headers, or signature areas
+- For names: Extract from header or contact section, split into first_name and last_name
+
+Expected JSON structure:
+{
+  "first_name": "string",
+  "last_name": "string",
+  "email": "string",
+  "phone_number": "string",
+  "home_address": "string",
+  "bio": "A short professional summary",
+  "skills": ["JavaScript", "Python", "React", "Node.js", "Project Management"],
+  "experiences": [
+    {
+      "company_name": "Google Inc",
+      "job_title": "Software Engineer",
+      "start_date": "2020-01-01",
+      "end_date": "2022-06-01",
+      "description": "Developed web applications using React and Node.js",
+      "location": "San Francisco, CA"
+    }
+  ],
+  "education": [
+    {
+      "school_name": "string",
+      "degree": "string",
+      "field_of_study": "string",
+      "start_date": "YYYY-MM-DD",
+      "end_date": "YYYY-MM-DD",
+      "location": "string"
+    }
+  ],
+  "certifications": [
+    {
+      "name": "string",
+      "issuing_organization": "string",
+      "issue_date": "YYYY-MM-DD",
+      "expiry_date": "YYYY-MM-DD or null",
+      "credential_id": "string",
+      "credential_url": "url"
+    }
+  ],
+  "projects": [
+    {
+      "name": "string",
+      "description": "string",
+      "start_date": "YYYY-MM-DD",
+      "end_date": "YYYY-MM-DD or 'Present'",
+      "url": "url",
+      "technologies": ["tech1", "tech2"]
+    }
+  ],
+  "awards": [
+    {
+      "title": "string",
+      "issuer": "string",
+      "date": "YYYY-MM-DD",
+      "description": "string"
+    }
+  ],
+  "languages": [
+    {
+      "language": "string",
+      "proficiency": "Native/Fluent/Conversational/Basic"
+    }
+  ],
+  "volunteer": [
+    {
+      "organization": "string",
+      "role": "string",
+      "start_date": "YYYY-MM-DD",
+      "end_date": "YYYY-MM-DD or 'Present'",
+      "description": "string",
+      "location": "string"
+    }
+  ],
+  "socials": {
+    "linkedin": "url",
+    "github": "url",
+    "twitter": "url",
+    "website": "url"
+  }
+}
+
+If a field is not found, use null or an empty array/object as appropriate.
+
+CRITICAL: Ensure you extract EVERY piece of information visible on the resume. Look carefully at:
+- Header sections for personal details
+- Skills sections, technical competencies, or any mentions of technologies/tools
+- All work experience with exact dates, company names, and job titles
+- Education details with schools, degrees, and graduation dates
+- Contact information including phone, email, and social media profiles
+
+Return the complete JSON with all available information filled in.`;
+
+        const filePart = {
+            inlineData: {
+                data: fileBuffer.toString('base64'),
+                mimeType: mimeType
+            }
+        };
+
+        const result = await model.generateContent([prompt, filePart]);
+        const response = await result.response;
+        const text = response.text();
+
+        // Extract JSON from the response
+        const jsonMatch = text.match(/\{[\s\S]*\}/);
+        if (jsonMatch) {
+            return JSON.parse(jsonMatch[0]);
+        }
+
+        throw new Error('Failed to parse AI response');
+    } catch (error) {
+        console.error('[Gemini] Resume parsing error:', error);
+        throw new Error('Failed to parse resume');
+    }
+}
+
+/**
+ * Generate a personalized cover letter based on user profile and job description
+ * @param {Object} profileData - User's CasperID profile data
+ * @param {string} jobDescription - Scraped job description or page content
+ * @returns {Promise<Object>} Generated cover letter
+ */
+async function generateCoverLetter(profileData, jobDescription) {
+    try {
+        const model = genAI.getGenerativeModel({ model: 'gemini-1.5-pro' });
+
+        const prompt = `You are an expert career coach. Write a highly personalized, compelling cover letter for the user.
+
+User Profile:
+${JSON.stringify(profileData, null, 2)}
+
+Job Details/Description:
+${jobDescription}
+
+Return ONLY a JSON response:
+{
+  "subject": "Subject line for application",
+  "content": "The full cover letter body",
+  "keyHighlights": ["Highlight 1", "Highlight 2"],
+  "tone": "Professional/Enthusiastic"
+}`;
+
+        const result = await model.generateContent([prompt]);
+        const response = await result.response;
+        const text = response.text();
+
+        // Extract JSON from the response
+        const jsonMatch = text.match(/\{[\s\S]*\}/);
+        if (jsonMatch) {
+            return JSON.parse(jsonMatch[0]);
+        }
+
+        throw new Error('Failed to parse AI response');
+    } catch (error) {
+        console.error('[Gemini] Cover letter generation error:', error);
+        throw new Error('Failed to generate cover letter');
+    }
+}
+
 module.exports = {
     analyzeIDDocument,
     compareFaceWithID,
     verifyLivenessGesture,
     verifyLivenessSequence,
-    performKYCVerification
+    performKYCVerification,
+    parseResume,
+    generateCoverLetter
 };

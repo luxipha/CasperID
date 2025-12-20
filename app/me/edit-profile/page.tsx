@@ -10,7 +10,8 @@ import { Textarea } from '@/components/ui/textarea';
 import {
     User, Briefcase, GraduationCap, Award as AwardIcon, Code,
     Trophy, Languages, Heart, Eye, EyeOff, Camera,
-    Plus, Edit2, Trash2, X, Save, ChevronRight, ArrowLeft, RefreshCw, Loader2
+    Plus, Edit2, Trash2, X, Save, ChevronRight, ArrowLeft, RefreshCw, Loader2,
+    Sparkles, FileText, Upload
 } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -218,7 +219,27 @@ export default function EditProfilePage() {
                 {/* Main Content */}
                 <div className="flex-1">
                     {activeTab === 'profile' && (
-                        <ProfileSection profile={profile} setProfile={setProfile} wallet={account} />
+                        <ProfileSection
+                            profile={profile}
+                            setProfile={setProfile}
+                            wallet={account}
+                            experiences={experiences}
+                            setExperiences={setExperiences}
+                            educationList={educationList}
+                            setEducationList={setEducationList}
+                            certifications={certifications}
+                            setCertifications={setCertifications}
+                            skills={skills}
+                            setSkills={setSkills}
+                            projects={projects}
+                            setProjects={setProjects}
+                            awards={awards}
+                            setAwards={setAwards}
+                            languages={languages}
+                            setLanguages={setLanguages}
+                            volunteers={volunteers}
+                            setVolunteers={setVolunteers}
+                        />
                     )}
                     {activeTab === 'experience' && (
                         <ExperienceSection
@@ -293,18 +314,337 @@ export default function EditProfilePage() {
 function ProfileSection({
     profile,
     setProfile,
-    wallet
+    wallet,
+    experiences,
+    setExperiences,
+    educationList,
+    setEducationList,
+    certifications,
+    setCertifications,
+    skills,
+    setSkills,
+    projects,
+    setProjects,
+    awards,
+    setAwards,
+    languages,
+    setLanguages,
+    volunteers,
+    setVolunteers
 }: {
     profile: Partial<UserProfile>;
     setProfile: (p: Partial<UserProfile>) => void;
     wallet: string;
+    experiences: Experience[];
+    setExperiences: (e: Experience[]) => void;
+    educationList: Education[];
+    setEducationList: (e: Education[]) => void;
+    certifications: Certification[];
+    setCertifications: (c: Certification[]) => void;
+    skills: Skill[];
+    setSkills: (s: Skill[]) => void;
+    projects: Project[];
+    setProjects: (p: Project[]) => void;
+    awards: Award[];
+    setAwards: (a: Award[]) => void;
+    languages: Language[];
+    setLanguages: (l: Language[]) => void;
+    volunteers: Volunteer[];
+    setVolunteers: (v: Volunteer[]) => void;
 }) {
     const fileInputRef = useRef<HTMLInputElement>(null);
+    const resumeInputRef = useRef<HTMLInputElement>(null);
     const [uploading, setUploading] = useState(false);
     const [randomizing, setRandomizing] = useState(false);
+    const [parsingResume, setParsingResume] = useState(false);
 
     const updateField = (field: keyof UserProfile, value: any) => {
         setProfile({ ...profile, [field]: value });
+    };
+
+    // Utility function to parse various date formats into {month, year} structure
+    const parseDateString = (dateStr: string) => {
+        if (!dateStr || dateStr.toLowerCase() === 'present') return undefined;
+
+        const monthNames = [
+            'january', 'february', 'march', 'april', 'may', 'june',
+            'july', 'august', 'september', 'october', 'november', 'december'
+        ];
+        const monthAbbrevs = [
+            'jan', 'feb', 'mar', 'apr', 'may', 'jun',
+            'jul', 'aug', 'sep', 'oct', 'nov', 'dec'
+        ];
+
+        // Handle different date formats
+        const str = dateStr.toLowerCase().trim();
+
+        // Format: "2024-09-01" or "2024-09"
+        const isoMatch = str.match(/^(\d{4})-(\d{1,2})(?:-\d{1,2})?$/);
+        if (isoMatch) {
+            return {
+                year: parseInt(isoMatch[1]),
+                month: parseInt(isoMatch[2])
+            };
+        }
+
+        // Format: "Jan 2023", "January 2023", "Sept 2025"
+        const monthYearMatch = str.match(/^(jan|january|feb|february|mar|march|apr|april|may|jun|june|jul|july|aug|august|sep|sept|september|oct|october|nov|november|dec|december)\s+(\d{4})$/);
+        if (monthYearMatch) {
+            const monthStr = monthYearMatch[1];
+            const year = parseInt(monthYearMatch[2]);
+
+            // Find month number (1-12)
+            let month = monthNames.findIndex(name => name.startsWith(monthStr.substring(0, 3))) + 1;
+            if (month === 0) {
+                month = monthAbbrevs.findIndex(abbrev => abbrev === monthStr.substring(0, 3)) + 1;
+            }
+
+            if (month > 0) {
+                return { year, month };
+            }
+        }
+
+        // Format: "2023" (year only)
+        const yearMatch = str.match(/^(\d{4})$/);
+        if (yearMatch) {
+            return {
+                year: parseInt(yearMatch[1]),
+                month: undefined
+            };
+        }
+
+        console.warn('Could not parse date string:', dateStr);
+        return undefined;
+    };
+
+    const handleResumeUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        setParsingResume(true);
+        try {
+            const data = await apiClient.parseResume(file);
+
+            // Auto-fill basic profile fields
+            let updatedProfile = {
+                ...profile,
+                first_name: data.first_name || profile.first_name,
+                last_name: data.last_name || profile.last_name,
+                email: data.email || profile.email,
+                phone_number: data.phone_number || profile.phone_number,
+                about: data.bio || profile.about,
+                website: data.socials?.website || profile.website,
+                city: data.city || data.location?.split(',')[0]?.trim() || profile.city,
+                country: data.country || data.location?.split(',')[1]?.trim() || profile.country,
+                headline: data.job_title || profile.headline,
+            };
+
+            // Auto-fill social links
+            if (data.socials) {
+                updatedProfile = {
+                    ...updatedProfile,
+                    socials: {
+                        ...updatedProfile.socials,
+                        linkedin: data.socials.linkedin || updatedProfile.socials?.linkedin,
+                        github: data.socials.github || updatedProfile.socials?.github,
+                        twitter: data.socials.twitter || updatedProfile.socials?.twitter,
+                        website: data.socials.website || updatedProfile.socials?.website
+                    }
+                };
+            }
+
+            // Update profile in state
+            setProfile(updatedProfile);
+
+            // ============================================
+            // AUTO-SAVE ALL PARSED ITEMS TO DATABASE
+            // ============================================
+
+            const savePromises: Promise<any>[] = [];
+
+            // Prepare experiences for saving
+            let experiencesToSave: any[] = [];
+            if (data.experiences && Array.isArray(data.experiences) && data.experiences.length > 0) {
+                experiencesToSave = data.experiences.map((exp: any) => {
+                    const startDate = parseDateString(exp.start_date);
+                    const isCurrentPosition = exp.end_date === 'Present' || exp.end_date === 'present';
+                    const endDate = isCurrentPosition ? undefined : parseDateString(exp.end_date);
+
+                    return {
+                        company_name: exp.company_name || '',
+                        job_title: exp.job_title || '',
+                        employment_type: exp.employment_type || 'full-time',
+                        start_date: startDate || { month: undefined, year: undefined },
+                        end_date: endDate || { month: undefined, year: undefined, is_current: isCurrentPosition },
+                        description: exp.description || '',
+                        location: exp.location || ''
+                    };
+                });
+            }
+
+            // Prepare education for saving
+            let educationToSave: any[] = [];
+            if (data.education && Array.isArray(data.education) && data.education.length > 0) {
+                educationToSave = data.education.map((edu: any) => {
+                    const startDate = parseDateString(edu.start_date);
+                    const endDate = parseDateString(edu.end_date);
+
+                    return {
+                        school_name: edu.school_name || '',
+                        degree: edu.degree || '',
+                        field_of_study: edu.field_of_study || '',
+                        start_date: startDate || { month: undefined, year: undefined },
+                        end_date: endDate || { month: undefined, year: undefined }
+                    };
+                });
+            }
+
+            // Prepare certifications for saving
+            let certificationsToSave: any[] = [];
+            if (data.certifications && Array.isArray(data.certifications) && data.certifications.length > 0) {
+                certificationsToSave = data.certifications
+                    .filter((cert: any) => cert.name && cert.name.trim() && cert.issuing_organization && cert.issuing_organization.trim())
+                    .map((cert: any) => {
+                        const issueDate = parseDateString(cert.issue_date);
+                        const expirationDate = parseDateString(cert.expiry_date || cert.expiration_date);
+
+                        return {
+                            name: cert.name.trim(),
+                            issuing_organization: cert.issuing_organization.trim(),
+                            issue_date: issueDate || { month: undefined, year: undefined },
+                            expiration_date: expirationDate || { month: undefined, year: undefined },
+                            credential_id: cert.credential_id?.trim() || '',
+                            credential_url: cert.credential_url?.trim() || ''
+                        };
+                    });
+            }
+
+            // Prepare skills for saving
+            let skillsToSave: any[] = [];
+            if (data.skills && Array.isArray(data.skills) && data.skills.length > 0) {
+                const processedSkills = data.skills
+                    .map((skill: any) => typeof skill === 'string' ? skill.trim() : skill.name?.trim())
+                    .filter((skill: string) => skill && skill.length > 0)
+                    .slice(0, 30);
+
+                skillsToSave = processedSkills.map((skillName: string) => ({
+                    skill_name: skillName,
+                    is_top_skill: false
+                }));
+            }
+
+            // Prepare projects for saving
+            let projectsToSave: any[] = [];
+            if (data.projects && Array.isArray(data.projects) && data.projects.length > 0) {
+                projectsToSave = data.projects.map((project: any) => {
+                    const startDate = parseDateString(project.start_date);
+                    const endDate = parseDateString(project.end_date);
+
+                    return {
+                        project_name: project.name || '',
+                        description: project.description || '',
+                        start_date: startDate || { month: undefined, year: undefined },
+                        end_date: endDate || { month: undefined, year: undefined },
+                        project_url: project.url || ''
+                    };
+                });
+            }
+
+            // Prepare awards for saving
+            let awardsToSave: any[] = [];
+            if (data.awards && Array.isArray(data.awards) && data.awards.length > 0) {
+                awardsToSave = data.awards.map((award: any) => {
+                    const issueDate = parseDateString(award.date || award.issue_date);
+
+                    return {
+                        title: award.title || '',
+                        issuing_organization: award.issuer || award.issuing_organization || '',
+                        issue_date: issueDate || { month: undefined, year: undefined },
+                        description: award.description || ''
+                    };
+                });
+            }
+
+            // Prepare languages for saving
+            let languagesToSave: any[] = [];
+            if (data.languages && Array.isArray(data.languages) && data.languages.length > 0) {
+                languagesToSave = data.languages.map((lang: any) => ({
+                    language_name: lang.language || '',
+                    proficiency: lang.proficiency?.toLowerCase() || 'elementary'
+                }));
+            }
+
+            // Prepare volunteer for saving
+            let volunteerToSave: any[] = [];
+            if (data.volunteer && Array.isArray(data.volunteer) && data.volunteer.length > 0) {
+                volunteerToSave = data.volunteer.map((vol: any) => {
+                    const startDate = parseDateString(vol.start_date);
+                    const isCurrentPosition = vol.end_date === 'Present' || vol.end_date === 'present';
+                    const endDate = isCurrentPosition ? undefined : parseDateString(vol.end_date);
+
+                    return {
+                        organization: vol.organization || '',
+                        role: vol.role || '',
+                        start_date: startDate || { month: undefined, year: undefined },
+                        end_date: endDate || { month: undefined, year: undefined, is_current: isCurrentPosition },
+                        description: vol.description || ''
+                    };
+                });
+            }
+
+            // Save all items to database in parallel
+            const [savedExperiences, savedEducation, savedCertifications, savedSkills, savedProjects, savedAwards, savedLanguages, savedVolunteer] = await Promise.all([
+                // Experiences
+                experiencesToSave.length > 0
+                    ? Promise.all(experiencesToSave.map(exp => apiClient.addExperience(wallet, exp)))
+                    : Promise.resolve([]),
+                // Education
+                educationToSave.length > 0
+                    ? Promise.all(educationToSave.map(edu => apiClient.addEducation(wallet, edu)))
+                    : Promise.resolve([]),
+                // Certifications
+                certificationsToSave.length > 0
+                    ? Promise.all(certificationsToSave.map(cert => apiClient.addCertification(wallet, cert)))
+                    : Promise.resolve([]),
+                // Skills
+                skillsToSave.length > 0
+                    ? Promise.all(skillsToSave.map(skill => apiClient.addSkill(wallet, skill)))
+                    : Promise.resolve([]),
+                // Projects
+                projectsToSave.length > 0
+                    ? Promise.all(projectsToSave.map(project => apiClient.addProject(wallet, project)))
+                    : Promise.resolve([]),
+                // Awards
+                awardsToSave.length > 0
+                    ? Promise.all(awardsToSave.map(award => apiClient.addAward(wallet, award)))
+                    : Promise.resolve([]),
+                // Languages
+                languagesToSave.length > 0
+                    ? Promise.all(languagesToSave.map(lang => apiClient.addLanguage(wallet, lang)))
+                    : Promise.resolve([]),
+                // Volunteer
+                volunteerToSave.length > 0
+                    ? Promise.all(volunteerToSave.map(vol => apiClient.addVolunteer(wallet, vol)))
+                    : Promise.resolve([])
+            ]);
+
+            // Update state with saved items (they now have _id from MongoDB)
+            setExperiences(savedExperiences);
+            setEducationList(savedEducation);
+            setCertifications(savedCertifications);
+            setSkills(savedSkills);
+            setProjects(savedProjects);
+            setAwards(savedAwards);
+            setLanguages(savedLanguages);
+            setVolunteers(savedVolunteer);
+
+            alert('✅ Resume parsed and saved! All data has been saved to database. You can edit or delete any items.');
+        } catch (error: any) {
+            alert('Failed to parse resume: ' + error.message);
+        } finally {
+            setParsingResume(false);
+            if (resumeInputRef.current) resumeInputRef.current.value = '';
+        }
     };
 
     const handleBannerRandomize = async () => {
@@ -419,6 +759,49 @@ function ProfileSection({
                             </p>
                         </div>
                     </div>
+                </div>
+            </Card>
+
+            {/* AI Import Sync */}
+            <Card className="bg-gradient-to-r from-purple-900/40 to-blue-900/40 border-purple-500/30 p-6 flex items-center justify-between">
+                <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 bg-purple-600/20 rounded-full flex items-center justify-center border border-purple-500/50">
+                        <Sparkles className="w-6 h-6 text-purple-400" />
+                    </div>
+                    <div>
+                        <h3 className="text-lg font-bold text-white flex items-center gap-2">
+                            AI Magic Import
+                        </h3>
+                        <p className="text-sm text-gray-400">
+                            Upload your resume to auto-fill your profile in seconds
+                        </p>
+                    </div>
+                </div>
+                <div className="flex gap-3">
+                    <input
+                        type="file"
+                        ref={resumeInputRef}
+                        className="hidden"
+                        accept=".pdf,.doc,.docx,image/*"
+                        onChange={handleResumeUpload}
+                    />
+                    <Button
+                        onClick={() => resumeInputRef.current?.click()}
+                        disabled={parsingResume}
+                        className="bg-white text-purple-900 hover:bg-gray-100 font-bold px-6"
+                    >
+                        {parsingResume ? (
+                            <>
+                                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                                Parsing...
+                            </>
+                        ) : (
+                            <>
+                                <FileText className="w-4 h-4 mr-2" />
+                                Upload Resume
+                            </>
+                        )}
+                    </Button>
                 </div>
             </Card>
 

@@ -92,7 +92,15 @@ router.get('/public-profile/:identifier', async (req, res) => {
             });
         }
 
-        // Wallet is the identifier (no separate human_id needed)
+        // Ensure profile has human_id for SEO-friendly URLs
+        try {
+            const result = await ensureHumanIdInProfile(profile.wallet, { UserProfile, Credential });
+            profile = result.profile;
+            console.log(`Ensured human_id for public profile: ${result.humanId}`);
+        } catch (error) {
+            console.error('Error ensuring human_id for public profile:', error);
+            // Continue with profile without human_id if generation fails
+        }
 
         // Fetch related public-safe sections using the same wallet
         const wallet = profile.wallet;
@@ -106,19 +114,20 @@ router.get('/public-profile/:identifier', async (req, res) => {
             languages,
             volunteers
         ] = await Promise.all([
-            Experience.find({ wallet }).sort({ display_order: 1, created_at: -1 }),
-            Education.find({ wallet }).sort({ display_order: 1, created_at: -1 }),
-            Certification.find({ wallet }).sort({ display_order: 1, created_at: -1 }),
-            Skill.find({ wallet }).sort({ display_order: 1, created_at: -1 }),
-            Project.find({ wallet }).sort({ display_order: 1, created_at: -1 }),
-            Award.find({ wallet }).sort({ display_order: 1, created_at: -1 }),
+            Experience.find({ wallet }).sort({ 'start_date.year': -1, 'start_date.month': -1, created_at: -1 }),
+            Education.find({ wallet }).sort({ 'start_date.year': -1, 'start_date.month': -1, created_at: -1 }),
+            Certification.find({ wallet }).sort({ 'issue_date.year': -1, 'issue_date.month': -1, created_at: -1 }),
+            Skill.find({ wallet }).sort({ is_top_skill: -1, display_order: 1, created_at: -1 }),
+            Project.find({ wallet }).sort({ 'start_date.year': -1, 'start_date.month': -1, created_at: -1 }),
+            Award.find({ wallet }).sort({ 'issue_date.year': -1, 'issue_date.month': -1, created_at: -1 }),
             Language.find({ wallet }).sort({ display_order: 1, created_at: -1 }),
-            Volunteer.find({ wallet }).sort({ display_order: 1, created_at: -1 })
+            Volunteer.find({ wallet }).sort({ 'start_date.year': -1, 'start_date.month': -1, created_at: -1 })
         ]);
 
         // Return public profile (include contact fields for public display)
         const publicProfile = {
-            wallet: profile.wallet, // wallet is the human-readable identifier
+            wallet: profile.wallet,
+            human_id: profile.human_id, // Include human_id for SEO-friendly URLs
             cns_name: profile.cns_name,
             first_name: profile.first_name,
             last_name: profile.last_name,

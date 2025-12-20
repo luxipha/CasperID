@@ -25,7 +25,7 @@ export function FooterMarketing({ className }: { className?: string }) {
   return (
     <footer className={`w-full min-h-[900px] bg-white text-slate-900 flex flex-col justify-between py-12 px-10 ${className ?? ""}`}>
       <div className="flex items-start justify-between">
-        <div className="text-lg font-semibold">Experience liftoff</div>
+        <div className="text-lg font-semibold">Verify once, use everywhere</div>
         <div className="flex items-start gap-16 text-sm">
           <div className="space-y-3">
             <div className="font-semibold text-slate-800">Product</div>
@@ -52,7 +52,7 @@ export function FooterMarketing({ className }: { className?: string }) {
 
       <div className="flex-1 flex items-center">
         <div className="text-[120px] md:text-[200px] font-black leading-none tracking-tight text-slate-900">
-          CasperID
+          Casper<span style={{ color: "#9333EA" }}>ID</span>
         </div>
       </div>
 

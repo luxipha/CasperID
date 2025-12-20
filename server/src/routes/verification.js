@@ -5,12 +5,14 @@ const {
     Experience, Education, Certification, Skill, Project, Award, Language, Volunteer
 } = require('../database/models');
 const { walletToHuman, findWalletByHumanId, isFullWallet, isAccountHash, isHumanId, getHumanIdForWallet } = require('../utils/wallet-to-human');
+const { mintCredential, canAutoMint } = require('../utils/credential-minter');
+const { rateLimitMiddleware } = require('../utils/rate-limiter');
 
 /**
  * POST /api/request-verification
  * User requests identity verification
  */
-router.post('/request-verification', async (req, res) => {
+router.post('/request-verification', rateLimitMiddleware('verification_requests'), async (req, res) => {
     try {
         const {
             wallet, tier, email,
@@ -60,8 +62,48 @@ router.post('/request-verification', async (req, res) => {
 
         await request.save();
 
+        // Check if this is a basic tier request that can be auto-minted
+        if (await canAutoMint(wallet, tier)) {
+            try {
+                console.log(`Auto-minting basic credential for wallet: ${wallet}`);
+                
+                // Automatically mint the credential for basic tier
+                const { credential } = await mintCredential(request);
+                
+                console.log(`✅ Auto-minted credential for ${wallet}`);
+                
+                res.status(201).json({
+                    message: 'Basic verification completed automatically',
+                    auto_minted: true,
+                    request: {
+                        id: request._id,
+                        wallet: request.wallet,
+                        tier: request.tier,
+                        status: 'approved',
+                        created_at: request.created_at
+                    },
+                    credential: {
+                        wallet: credential.wallet,
+                        human_id: credential.human_id,
+                        tier: credential.tier,
+                        credential_hash: credential.credential_hash,
+                        onchain_tx_hash: credential.onchain_tx_hash
+                    }
+                });
+                
+                return;
+            } catch (autoMintError) {
+                console.error('Auto-minting failed, falling back to manual process:', autoMintError);
+                // Fall through to manual process if auto-minting fails
+            }
+        }
+
+        // For full_kyc tier or if auto-minting failed, return pending status
         res.status(201).json({
-            message: 'Verification request submitted successfully',
+            message: tier === 'full_kyc' 
+                ? 'Full KYC verification request submitted - admin review required'
+                : 'Verification request submitted successfully',
+            auto_minted: false,
             request: {
                 id: request._id,
                 wallet: request.wallet,
@@ -73,6 +115,74 @@ router.post('/request-verification', async (req, res) => {
     } catch (error) {
         console.error('Request verification error:', error);
         res.status(500).json({ error: error.message || 'Failed to create verification request' });
+    }
+});
+
+/**
+ * POST /api/mint-basic-id
+ * Directly mint a basic tier credential (automatic approval)
+ */
+router.post('/mint-basic-id', rateLimitMiddleware('credential_minting'), async (req, res) => {
+    try {
+        const {
+            wallet, email, name, age, location,
+            first_name, last_name, date_of_birth, phone_number, home_address,
+            metadata
+        } = req.body;
+
+        // Validation
+        if (!wallet) {
+            return res.status(400).json({ error: 'Wallet address is required' });
+        }
+
+        // Check if automatic minting is allowed
+        if (!(await canAutoMint(wallet, 'basic'))) {
+            return res.status(400).json({
+                error: 'Automatic minting not available - wallet may already have a credential or pending request'
+            });
+        }
+
+        // Create verification request for basic tier
+        const request = new VerificationRequest({
+            wallet,
+            tier: 'basic',
+            email,
+            name,
+            age,
+            location,
+            first_name,
+            last_name,
+            date_of_birth,
+            phone_number,
+            home_address,
+            metadata: metadata || {},
+            status: 'pending'
+        });
+
+        await request.save();
+
+        // Automatically mint the credential
+        console.log(`Direct basic ID minting for wallet: ${wallet}`);
+        const { credential } = await mintCredential(request);
+        
+        console.log(`✅ Basic ID minted directly for ${wallet}`);
+
+        res.status(201).json({
+            message: 'Basic ID minted successfully',
+            credential: {
+                wallet: credential.wallet,
+                human_id: credential.human_id,
+                tier: credential.tier,
+                last_kyc_at: credential.last_kyc_at,
+                credential_hash: credential.credential_hash,
+                onchain_tx_hash: credential.onchain_tx_hash,
+                created_at: credential.created_at
+            }
+        });
+
+    } catch (error) {
+        console.error('Mint basic ID error:', error);
+        res.status(500).json({ error: error.message || 'Failed to mint basic ID' });
     }
 });
 

@@ -470,6 +470,47 @@ class APIClient {
         return response.json();
     }
 
+    async getPublicProfile(identifier: string): Promise<{
+        wallet: string;
+        human_id?: string;
+        cns_name?: string;
+        first_name?: string;
+        last_name?: string;
+        email?: string;
+        phone_number?: string;
+        headline?: string;
+        profile_image_url?: string;
+        cover_image_url?: string;
+        city?: string;
+        country?: string;
+        website?: string;
+        portfolio_links?: string[];
+        about?: string;
+        socials?: any;
+        open_to_work?: any;
+        industry?: string;
+        seniority_level?: string;
+        profile_completeness?: number;
+        pronouns?: string;
+        created_at?: Date;
+        updated_at?: Date;
+        experiences: Experience[];
+        education: Education[];
+        certifications: Certification[];
+        skills: Skill[];
+        projects: Project[];
+        awards: Award[];
+        languages: Language[];
+        volunteers: Volunteer[];
+    }> {
+        const response = await fetch(`${this.baseURL}/api/public-profile/${identifier}`);
+        if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.error || 'Failed to get public profile');
+        }
+        return response.json();
+    }
+
     async updateProfile(wallet: string, data: Partial<UserProfile>): Promise<UserProfile> {
         const response = await fetch(`${this.baseURL}/api/profile/${wallet}`, {
             method: 'PUT',
@@ -746,6 +787,29 @@ class APIClient {
         const response = await fetch(`${this.baseURL}/api/profile/${wallet}/volunteer/${id}`, {
             method: 'DELETE',
         });
+        return handleResponse(response);
+    }
+
+    // AI Helpers
+    async parseResume(file: File): Promise<any> {
+        const formData = new FormData();
+        formData.append('resume', file);
+
+        const response = await fetch(`${this.baseURL}/api/ai/parse-resume`, {
+            method: 'POST',
+            body: formData,
+        });
+
+        return handleResponse(response);
+    }
+
+    async generateCoverLetter(profileData: any, jobDescription: string): Promise<any> {
+        const response = await fetch(`${this.baseURL}/api/ai/generate-cover-letter`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ profileData, jobDescription }),
+        });
+
         return handleResponse(response);
     }
 }

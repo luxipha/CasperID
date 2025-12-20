@@ -532,6 +532,82 @@ const loginSessionSchema = new mongoose.Schema({
     }
 });
 
+// ============================================
+// ADMIN AUTHENTICATION
+// ============================================
+
+const adminUserSchema = new mongoose.Schema({
+    username: {
+        type: String,
+        required: true,
+        unique: true,
+        minlength: 3,
+        maxlength: 50
+    },
+    password_hash: {
+        type: String,
+        required: true
+    },
+    salt: {
+        type: String,
+        required: true
+    },
+    role: {
+        type: String,
+        enum: ['admin', 'super_admin'],
+        default: 'admin'
+    },
+    last_login: {
+        type: Date
+    },
+    failed_login_attempts: {
+        type: Number,
+        default: 0
+    },
+    locked_until: {
+        type: Date
+    },
+    created_at: {
+        type: Date,
+        default: Date.now
+    },
+    updated_at: {
+        type: Date,
+        default: Date.now
+    },
+    active: {
+        type: Boolean,
+        default: true
+    }
+});
+
+// ============================================
+// RATE LIMITING
+// ============================================
+
+const rateLimitSchema = new mongoose.Schema({
+    ip: {
+        type: String,
+        required: true,
+        index: true
+    },
+    endpoint: {
+        type: String,
+        required: true
+    },
+    requests: {
+        type: Number,
+        default: 1
+    },
+    windowStart: {
+        type: Date,
+        default: Date.now,
+        index: true
+    },
+    blocked_until: {
+        type: Date
+    }
+});
 
 
 // ============================================
@@ -542,6 +618,9 @@ const VerificationRequest = mongoose.model('VerificationRequest', verificationRe
 const Credential = mongoose.model('Credential', credentialSchema);
 const Issuer = mongoose.model('Issuer', issuerSchema);
 const LoginSession = mongoose.model('LoginSession', loginSessionSchema);
+
+const AdminUser = mongoose.model('AdminUser', adminUserSchema);
+const RateLimit = mongoose.model('RateLimit', rateLimitSchema);
 
 const UserProfile = mongoose.model('UserProfile', userProfileSchema);
 const Experience = mongoose.model('Experience', experienceSchema);
@@ -562,6 +641,10 @@ module.exports = {
     Credential,
     Issuer,
     LoginSession,
+
+    // Admin & Security
+    AdminUser,
+    RateLimit,
 
     // Profile & Professional Data
     UserProfile,

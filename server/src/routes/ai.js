@@ -1,7 +1,13 @@
 const express = require('express');
 const router = express.Router();
 const multer = require('multer');
-const { performKYCVerification, verifyLivenessGesture, verifyLivenessSequence } = require('../services/gemini');
+const {
+    performKYCVerification,
+    verifyLivenessGesture,
+    verifyLivenessSequence,
+    parseResume,
+    generateCoverLetter
+} = require('../services/gemini');
 const { getCNSInfo, checkNameAvailability, estimateClaimCost, claimName } = require('../services/cns');
 const {
     trackGeminiCall,
@@ -366,6 +372,54 @@ router.post('/cns/claim', async (req, res) => {
         console.error('[CNS] Claim name error:', error);
         res.status(500).json({
             error: 'Failed to claim name',
+            details: error.message
+        });
+    }
+});
+
+/**
+ * POST /api/ai/parse-resume
+ * Parse a resume and extract profile data
+ */
+router.post('/ai/parse-resume', upload.single('resume'), async (req, res) => {
+    try {
+        if (!req.file) {
+            return res.status(400).json({ error: 'Resume file is required' });
+        }
+
+        console.log(`[AI] Parsing resume: ${req.file.originalname} (${req.file.mimetype})`);
+        const result = await parseResume(req.file.buffer, req.file.mimetype);
+        res.json(result);
+    } catch (error) {
+        console.error('[AI] Resume parse error:', error);
+        res.status(500).json({
+            error: 'Failed to parse resume',
+            details: error.message
+        });
+    }
+});
+
+/**
+ * POST /api/ai/generate-cover-letter
+ * Generate a tailored cover letter
+ */
+router.post('/api/ai/generate-cover-letter', async (req, res) => {
+    try {
+        const { profileData, jobDescription } = req.body;
+
+        if (!profileData || !jobDescription) {
+            return res.status(400).json({
+                error: 'Profile data and job description are required'
+            });
+        }
+
+        console.log('[AI] Generating cover letter...');
+        const result = await generateCoverLetter(profileData, jobDescription);
+        res.json(result);
+    } catch (error) {
+        console.error('[AI] Cover letter generation error:', error);
+        res.status(500).json({
+            error: 'Failed to generate cover letter',
             details: error.message
         });
     }

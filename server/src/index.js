@@ -34,7 +34,21 @@ mongoose.connect(process.env.MONGODB_URI, {
     useNewUrlParser: true,
     useUnifiedTopology: true
 })
-    .then(() => console.log('✅ MongoDB connected successfully'))
+    .then(async () => {
+        console.log('✅ MongoDB connected successfully');
+        
+        // Initialize admin system
+        const { initializeDefaultAdmin } = require('./utils/admin-auth');
+        await initializeDefaultAdmin();
+        
+        // Initialize JWT secret rotation with database backing
+        const { initializeJWTRotation } = require('./utils/jwt-rotation-db');
+        await initializeJWTRotation();
+        
+        // Schedule rate limit cleanup
+        const { cleanupOldRecords } = require('./utils/rate-limiter');
+        setInterval(cleanupOldRecords, 60 * 60 * 1000); // Cleanup every hour
+    })
     .catch((err) => console.error('❌ MongoDB connection error:', err));
 
 // Routes
@@ -49,18 +63,22 @@ app.get('/health', (req, res) => {
 // Import routes
 const verificationRoutes = require('./routes/verification');
 const adminRoutes = require('./routes/admin');
+const adminAuthRoutes = require('./routes/admin-auth');
 const authRoutes = require('./routes/auth');
 const aiRoutes = require('./routes/ai');
 const casperidAuthRoutes = require('./routes/casperid-auth');
 const profileRoutes = require('./routes/profile');
+const verifiedProfilesRoutes = require('./routes/verified-profiles');
 
 // Use routes
 app.use('/api', verificationRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/admin', adminAuthRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api', aiRoutes);
 app.use('/api/casperid', casperidAuthRoutes);
 app.use('/api', profileRoutes); // Profile routes (GET /api/profile/:wallet, etc.)
+app.use('/api', verifiedProfilesRoutes); // Verified profiles for sitemap
 app.use('/api/notifications', require('./routes/notifications'));
 
 // Error handling middleware

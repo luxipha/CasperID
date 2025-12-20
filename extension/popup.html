@@ -295,6 +295,7 @@
 
         <div class="tab-bar">
             <button class="tab active" data-tab="wallet">Wallet</button>
+            <button class="tab" data-tab="job">Job Assistant</button>
             <button class="tab" data-tab="permissions">Permissions</button>
             <button class="tab" data-tab="settings">Settings</button>
         </div>
@@ -321,7 +322,8 @@
                         <div style="display: flex; align-items: center; gap: 8px;">
                             <div class="wallet-address" id="human-id">user-id</div>
                             <button id="copy-id" class="copy-btn" title="Copy ID">
-                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                    stroke-width="2">
                                     <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
                                     <path d="m5 15-4-4v8h13"></path>
                                 </svg>
@@ -334,7 +336,8 @@
                         <div style="display: flex; align-items: center; gap: 8px;">
                             <div class="wallet-address" id="cns-name">user.cid</div>
                             <button id="copy-cns" class="copy-btn" title="Copy CNS Domain">
-                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                    stroke-width="2">
                                     <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
                                     <path d="m5 15-4-4v8h13"></path>
                                 </svg>
@@ -393,6 +396,55 @@
                     Don't have a verified identity? <br>
                     <a href="#" id="get-verified-link" style="color: white; font-weight: 600;">Get Verified →</a>
                 </div>
+            </div>
+        </div>
+
+        <!-- Job Assistant Tab -->
+        <div id="job-tab" class="tab-content">
+            <div class="card">
+                <h3 style="margin-bottom: 8px; display: flex; align-items: center; gap: 8px;">
+                    <span>🚀</span> Job App Helper
+                </h3>
+                <p style="font-size: 12px; opacity: 0.8; margin-bottom: 16px;">
+                    Apply to 17 jobs faster with AI
+                </p>
+
+                <div id="job-details-card" class="wallet-info hidden" style="margin-bottom: 16px;">
+                    <div class="wallet-label">Detected Job</div>
+                    <div id="job-title-display" style="font-weight: 600; margin-bottom: 4px; font-size: 14px;">Software
+                        Engineer</div>
+                    <div id="job-desc-preview"
+                        style="font-size: 11px; opacity: 0.7; max-height: 44px; overflow: hidden; text-overflow: ellipsis;">
+                        Scanning page...</div>
+                </div>
+
+                <div id="no-job-detected" class="wallet-info" style="text-align: center; padding: 20px;">
+                    <p style="font-size: 12px; opacity: 0.7;">No job description found on this page.</p>
+                </div>
+
+                <div id="job-loading" class="hidden" style="text-align: center; padding: 10px;">
+                    <div class="spinner" style="width: 24px; height: 24px;"></div>
+                    <p style="font-size: 11px;">AI is thinking...</p>
+                </div>
+
+                <button class="btn btn-primary" id="generate-cover-letter-btn" disabled>
+                    ✨ Generate Cover Letter
+                </button>
+
+                <button class="btn btn-secondary" id="scrape-job-btn">
+                    🔍 Scan for Job Details
+                </button>
+            </div>
+
+            <div id="cover-letter-preview-card" class="card hidden" style="margin-top: -8px;">
+                <h4
+                    style="font-size: 13px; margin-bottom: 8px; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 4px;">
+                    Preview</h4>
+                <textarea id="cover-letter-text"
+                    style="width: 100%; min-height: 120px; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.1); color: white; padding: 8px; font-size: 11px; border-radius: 4px; margin-bottom: 12px; outline: none; resize: vertical;"></textarea>
+                <button class="btn btn-primary" id="fill-cover-letter-btn" style="background: #10b981; color: white;">
+                    📥 Autofill Cover Letter
+                </button>
             </div>
         </div>
 

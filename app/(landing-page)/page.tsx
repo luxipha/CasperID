@@ -162,10 +162,10 @@ export default function LandingPage() {
           <div className="relative z-10 flex flex-col items-center">
             <Logo className="mb-6" />
             <h1 className="text-[52px] md:text-[80px] font-black tracking-tight mb-4 leading-[1.05]">
-              Experience lift-off
+              Verify once
             </h1>
             <p className="text-[32px] md:text-[56px] text-slate-600 font-semibold mb-4 leading-[1.1]">
-              with a trusted identity
+              Reuse everywhere
             </p>
             <p className="text-2xl text-slate-600 font-semibold mb-10 max-w-3xl">
               One-tap login, verified, and ready to autofill anywhere.
@@ -175,7 +175,7 @@ export default function LandingPage() {
                 href="/onboard"
                 className="inline-flex items-center gap-2 rounded-full bg-slate-900 px-5 py-3 text-sm font-semibold text-white shadow-md shadow-slate-300/40"
               >
-                Download for Chrome
+                Add for Chrome
               </Link>
               <Link
                 href="/verify"
@@ -209,11 +209,10 @@ export default function LandingPage() {
           <div className="max-w-6xl mx-auto px-6 grid md:grid-cols-[1.1fr_0.9fr] items-start gap-6">
             <div className="max-w-xl text-left space-y-4">
               <h2 className="text-5xl font-bold leading-tight">
-                CasperID is your agent-first identity layer for the web.
+CasperID is a reusable digital identity layer
               </h2>
               <p className="text-xl text-slate-600">
-                A verified profile that logs you in, autofills everything, and keeps you in control of what you share.
-              </p>
+                that lets you complete KYC once and log in across platforms without resubmitting documents or losing control of your data.</p>
             </div>
             <div className="w-full">
               <ScanShowcase />
@@ -239,10 +238,10 @@ export default function LandingPage() {
               For developers
             </div>
             <div className="text-3xl md:text-4xl font-semibold text-slate-600">
-              Achieve new heights
+              A verified identity you can reuse everywhere
             </div>
             <button className="mt-4 px-6 py-3 rounded-full bg-slate-900 text-white text-sm font-semibold shadow-lg shadow-slate-300/40">
-              Download
+              Download for Chrome
             </button>
           </div>
           <div className="flex-1 flex flex-col items-center text-center space-y-4">
@@ -253,7 +252,7 @@ export default function LandingPage() {
               For organizations
             </div>
             <div className="text-3xl md:text-4xl font-semibold text-slate-600">
-              Level up your entire team
+              Identity infrastructure for real teams
             </div>
             <button className="mt-4 px-6 py-3 rounded-full bg-white text-slate-800 text-sm font-semibold border border-slate-200 shadow-sm">
               Notify me
@@ -316,14 +315,14 @@ export default function LandingPage() {
           <div className="relative z-10 h-full flex items-center">
             <div className="max-w-2xl text-left space-y-6">
               <h2 className="text-5xl md:text-6xl font-bold text-white leading-tight">
-                Download CasperID  <br />for macOS
+                Stop re-verifying, <br />Start reusing
               </h2>
               <div className="flex flex-wrap gap-4 pt-2">
                 <button className="px-6 py-3 rounded-full bg-white text-slate-900 text-sm font-semibold shadow-lg shadow-slate-800/30">
-                  Download for Apple Silicon
+                  Add To Chrome
                 </button>
                 <button className="px-6 py-3 rounded-full bg-slate-800 text-white text-sm font-semibold shadow-lg shadow-slate-900/40">
-                  Download for Intel
+                  Create CasperID
                 </button>
               </div>
             </div>

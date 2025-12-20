@@ -4,9 +4,9 @@
  */
 
 const jwt = require('jsonwebtoken');
+const { getCurrentSecret, verifyTokenWithRotation } = require('./jwt-rotation-db');
 
 // Token configuration
-const JWT_SECRET = process.env.JWT_SECRET || 'casper-id-secret-change-in-production';
 const TOKEN_EXPIRATION = process.env.TOKEN_EXPIRATION || '24h';
 const ISSUER = 'casperid.com';
 
@@ -36,7 +36,7 @@ function generateToken(userData, platform) {
         expiresIn: TOKEN_EXPIRATION
     };
 
-    return jwt.sign(payload, JWT_SECRET, options);
+    return jwt.sign(payload, getCurrentSecret(), options);
 }
 
 /**
@@ -46,9 +46,15 @@ function generateToken(userData, platform) {
  */
 function verifyToken(token) {
     try {
-        const decoded = jwt.verify(token, JWT_SECRET, {
-            issuer: ISSUER
-        });
+        // Use rotation-aware verification
+        const decoded = verifyTokenWithRotation(token, jwt);
+        
+        // Additional issuer check
+        if (decoded && decoded.iss !== ISSUER) {
+            console.error('[JWT] Invalid issuer:', decoded.iss);
+            return null;
+        }
+        
         return decoded;
     } catch (error) {
         console.error('[JWT] Token verification failed:', error.message);
