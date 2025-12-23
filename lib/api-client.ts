@@ -373,14 +373,33 @@ class APIClient {
     }
 
     // Admin: Get verification requests
-    async getVerificationRequests(adminPassword: string, status?: string) {
+    // Admin: Login
+    async loginAdmin(username: string, password: string): Promise<{ token: string; admin: any }> {
+        const response = await fetch(`${this.baseURL}/api/admin/login`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ username, password }),
+        });
+
+        if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.error || 'Login failed');
+        }
+
+        return response.json();
+    }
+
+    // Admin: Get verification requests
+    async getVerificationRequests(token: string, status?: string) {
         const url = status
             ? `${this.baseURL}/api/admin/verification-requests?status=${status}`
             : `${this.baseURL}/api/admin/verification-requests`;
 
         const response = await fetch(url, {
             headers: {
-                Authorization: `Bearer ${adminPassword}`,
+                Authorization: `Bearer ${token}`,
             },
         });
 
@@ -394,7 +413,7 @@ class APIClient {
 
     // Admin: Issue credential
     async issueCredential(
-        adminPassword: string,
+        token: string,
         requestId: string,
         approve: boolean
     ) {
@@ -402,7 +421,7 @@ class APIClient {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                Authorization: `Bearer ${adminPassword}`,
+                Authorization: `Bearer ${token}`,
             },
             body: JSON.stringify({ request_id: requestId, approve }),
         });
@@ -417,7 +436,7 @@ class APIClient {
 
     // Admin: Revoke credential
     async revokeCredential(
-        adminPassword: string,
+        token: string,
         wallet: string,
         reason: string
     ) {
@@ -425,7 +444,7 @@ class APIClient {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                Authorization: `Bearer ${adminPassword}`,
+                Authorization: `Bearer ${token}`,
             },
             body: JSON.stringify({ wallet, reason }),
         });
@@ -439,12 +458,12 @@ class APIClient {
     }
 
     // Admin: Sync verified profiles
-    async syncVerifiedProfiles(adminPassword: string) {
+    async syncVerifiedProfiles(token: string) {
         const response = await fetch(`${this.baseURL}/api/admin/sync-verified-profiles`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                Authorization: `Bearer ${adminPassword}`,
+                Authorization: `Bearer ${token}`,
             },
         });
 

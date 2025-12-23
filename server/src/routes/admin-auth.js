@@ -19,17 +19,17 @@ router.post('/login', adminLoginRateLimit, async (req, res) => {
         const { username, password } = req.body;
 
         if (!username || !password) {
-            return res.status(400).json({ 
-                error: 'Username and password are required' 
+            return res.status(400).json({
+                error: 'Username and password are required'
             });
         }
 
         // Authenticate admin
         const admin = await authenticateAdmin(username, password);
-        
+
         if (!admin) {
-            return res.status(401).json({ 
-                error: 'Invalid credentials' 
+            return res.status(401).json({
+                error: 'Invalid credentials'
             });
         }
 
@@ -42,7 +42,10 @@ router.post('/login', adminLoginRateLimit, async (req, res) => {
                 isAdmin: true
             },
             getCurrentSecret(),
-            { expiresIn: '8h' } // Admin sessions expire in 8 hours
+            {
+                expiresIn: '8h',
+                issuer: 'casperid.com'
+            } // Admin sessions expire in 8 hours
         );
 
         res.json({
@@ -58,11 +61,11 @@ router.post('/login', adminLoginRateLimit, async (req, res) => {
 
     } catch (error) {
         console.error('Admin login error:', error);
-        
+
         if (error.message.includes('locked')) {
             return res.status(423).json({ error: error.message });
         }
-        
+
         res.status(500).json({ error: 'Login failed' });
     }
 });
@@ -96,11 +99,11 @@ router.post('/change-password', adminAuth, async (req, res) => {
 
     } catch (error) {
         console.error('Change password error:', error);
-        
+
         if (error.message.includes('incorrect')) {
             return res.status(400).json({ error: error.message });
         }
-        
+
         res.status(500).json({ error: 'Failed to change password' });
     }
 });
@@ -148,11 +151,11 @@ router.post('/create-user', adminAuth, async (req, res) => {
 
     } catch (error) {
         console.error('Create admin error:', error);
-        
+
         if (error.message.includes('already exists')) {
             return res.status(409).json({ error: error.message });
         }
-        
+
         res.status(500).json({ error: 'Failed to create admin user' });
     }
 });
@@ -207,7 +210,7 @@ router.post('/rotate-jwt-secret', adminAuth, async (req, res) => {
         }
 
         const result = forceRotation();
-        
+
         res.json({
             message: 'JWT secret rotated successfully',
             rotationTime: result.rotationTime,
@@ -227,7 +230,7 @@ router.post('/rotate-jwt-secret', adminAuth, async (req, res) => {
 router.get('/jwt-status', adminAuth, async (req, res) => {
     try {
         const status = getRotationStatus();
-        
+
         res.json({
             rotationStatus: status,
             currentTime: new Date()

@@ -27,7 +27,9 @@ interface VerificationRequest {
 }
 
 export default function AdminDashboard() {
+    const [username, setUsername] = useState('admin');
     const [password, setPassword] = useState('');
+    const [token, setToken] = useState('');
     const [isAuthenticated, setIsAuthenticated] = useState(false);
     const [requests, setRequests] = useState<VerificationRequest[]>([]);
     const [selectedRequest, setSelectedRequest] = useState<VerificationRequest | null>(null);
@@ -35,20 +37,29 @@ export default function AdminDashboard() {
     const [error, setError] = useState('');
     const [filter, setFilter] = useState<'all' | 'pending' | 'approved' | 'rejected'>('pending');
 
-    const handleLogin = () => {
-        if (password) {
-            setIsAuthenticated(true);
-            fetchRequests(password);
+    const handleLogin = async () => {
+        if (username && password) {
+            try {
+                setLoading(true);
+                const { token } = await apiClient.loginAdmin(username, password);
+                setToken(token);
+                setIsAuthenticated(true);
+                fetchRequests(token);
+            } catch (err: any) {
+                console.error('Login error:', err);
+                setError(err.message || 'Login failed');
+                setLoading(false);
+            }
         }
     };
 
-    const fetchRequests = async (adminPassword: string) => {
+    const fetchRequests = async (authToken: string) => {
         setLoading(true);
         setError('');
 
         try {
             const statusFilter = filter === 'all' ? undefined : filter;
-            const data = await apiClient.getVerificationRequests(adminPassword, statusFilter);
+            const data = await apiClient.getVerificationRequests(authToken, statusFilter);
             setRequests(data.requests || []);
         } catch (err: any) {
             console.error('Admin fetch requests error:', err);
@@ -62,20 +73,20 @@ export default function AdminDashboard() {
     };
 
     const handleAction = async (requestId: string, approve: boolean) => {
-        if (!password) return;
+        if (!token) return;
 
         try {
-            await apiClient.issueCredential(password, requestId, approve);
+            await apiClient.issueCredential(token, requestId, approve);
             alert(`Request ${approve ? 'approved' : 'rejected'} successfully!`);
-            fetchRequests(password);
+            fetchRequests(token);
         } catch (err: any) {
             alert(err.message || 'Failed to process request');
         }
     };
 
     useEffect(() => {
-        if (isAuthenticated && password) {
-            fetchRequests(password);
+        if (isAuthenticated && token) {
+            fetchRequests(token);
         }
     }, [filter]);
 
@@ -86,8 +97,15 @@ export default function AdminDashboard() {
                     <div className="text-center space-y-4">
                         <h2 className="text-2xl font-bold text-white">Admin Login</h2>
                         <p className="text-gray-300">
-                            Enter the admin password to access the verification console.
+                            Enter admin credentials to access the verification console.
                         </p>
+                        <Input
+                            type="text"
+                            value={username}
+                            onChange={(e) => setUsername(e.target.value)}
+                            placeholder="Username"
+                            className="bg-slate-700 border-slate-600 text-white placeholder:text-gray-500 mb-3"
+                        />
                         <Input
                             type="password"
                             value={password}
@@ -144,7 +162,7 @@ export default function AdminDashboard() {
                             </Button>
                         ))}
                         <Button
-                            onClick={() => fetchRequests(password)}
+                            onClick={() => fetchRequests(token)}
                             variant="outline"
                             className="ml-auto bg-transparent border-white/20 text-white hover:bg-white/10"
                         >
