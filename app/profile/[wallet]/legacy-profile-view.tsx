@@ -232,22 +232,6 @@ export default function LegacyProfileView({
                                     <p className="max-w-2xl text-sm text-slate-600">
                                         {formData.headline || headline}
                                     </p>
-                                    {formData.verified && (
-                                        <div className="flex flex-wrap gap-2">
-                                            {verifications.map((item) => (
-                                                <span
-                                                    key={item.label}
-                                                    className="inline-flex items-center gap-2 rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-700"
-                                                >
-                                                    <item.icon
-                                                        size={16}
-                                                        className={toneClass[item.tone] || "text-slate-600"}
-                                                    />
-                                                    {item.label}: {item.status}
-                                                </span>
-                                            ))}
-                                        </div>
-                                    )}
                                 </div>
                             </div>
 

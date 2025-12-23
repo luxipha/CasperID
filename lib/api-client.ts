@@ -153,6 +153,11 @@ export interface UserProfile {
     industry?: string;
     seniority_level?: 'entry' | 'mid' | 'senior' | 'executive' | 'director';
 
+    // Verification status
+    is_verified?: boolean;
+    verification_tier?: 'basic' | 'full_kyc' | null;
+    last_verification_date?: string | null;
+
     created_at?: Date;
     updated_at?: Date;
 }

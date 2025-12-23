@@ -102,7 +102,7 @@ router.get('/public-profile/:identifier', async (req, res) => {
             // Continue with profile without human_id if generation fails
         }
 
-        // Fetch related public-safe sections using the same wallet
+        // Fetch related public-safe sections and verification status using the same wallet
         const wallet = profile.wallet;
         const [
             experiences,
@@ -112,7 +112,8 @@ router.get('/public-profile/:identifier', async (req, res) => {
             projects,
             awards,
             languages,
-            volunteers
+            volunteers,
+            credential
         ] = await Promise.all([
             Experience.find({ wallet }).sort({ 'start_date.year': -1, 'start_date.month': -1, created_at: -1 }),
             Education.find({ wallet }).sort({ 'start_date.year': -1, 'start_date.month': -1, created_at: -1 }),
@@ -121,7 +122,8 @@ router.get('/public-profile/:identifier', async (req, res) => {
             Project.find({ wallet }).sort({ 'start_date.year': -1, 'start_date.month': -1, created_at: -1 }),
             Award.find({ wallet }).sort({ 'issue_date.year': -1, 'issue_date.month': -1, created_at: -1 }),
             Language.find({ wallet }).sort({ display_order: 1, created_at: -1 }),
-            Volunteer.find({ wallet }).sort({ 'start_date.year': -1, 'start_date.month': -1, created_at: -1 })
+            Volunteer.find({ wallet }).sort({ 'start_date.year': -1, 'start_date.month': -1, created_at: -1 }),
+            Credential.findOne({ wallet, revoked: false })
         ]);
 
         // Return public profile (include contact fields for public display)
@@ -149,6 +151,10 @@ router.get('/public-profile/:identifier', async (req, res) => {
             pronouns: profile.pronouns,
             created_at: profile.created_at,
             updated_at: profile.updated_at,
+            // Verification status fields
+            is_verified: !!credential,
+            verification_tier: credential ? credential.tier : null,
+            last_verification_date: credential ? new Date(credential.last_kyc_at * 1000).toISOString() : null,
             experiences,
             education,
             certifications,

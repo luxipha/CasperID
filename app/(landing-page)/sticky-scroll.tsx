@@ -1,6 +1,7 @@
 "use client";
 
 import { useLayoutEffect, useRef, useState } from "react";
+import Image from "next/image";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 
@@ -9,35 +10,35 @@ const steps = [
     title: "Verify once",
     copy: "You complete identity verification a single time — no more re-uploading documents on every new platform..",
     bullets: [],
-    image: "/images/step-1.png",
+    image: "/images/1.webp",
     bgColor: "#f1f5f9",
   },
   {
     title: "Stop repeating face scans",
     copy: "Your liveness check can be reused and revalidated when needed, without turning on your camera over and over again.",
     bullets: [],
-    image: "/images/step-2.png",
+    image: "/images/2.webp",
     bgColor: "#e0f2fe",
   },
   {
-    title: "Fill forms instantly",
-    copy: "Fill forms are automatically with verified information — only with your approval.",
+    title: "Have a verified identity profile",
+    copy: "You get a single, reusable profile that shows your verified details and credentials — without becoming a social network.",
     bullets: [],
-    image: "/images/step-3.png",
+    image: "/images/3.webp",
     bgColor: "#f0fdf4",
   },
   {
     title: "Log in - log out cleanly",
     copy: "Sign in anywhere with one tap, like “Login with Google,”, control what you share, revoke access anytime and take your identity with you.",
     bullets: [""],
-    image: "/images/step-4.png",
+    image: "/images/4.webp",
     bgColor: "#fef7ed",
   },
   {
     title: "Fill forms instantly",
     copy: "Fill forms are automatically with verified information — only with your approval.",
     bullets: [""],
-    image: "/images/step-5.png",
+    image: "/images/5.webp",
     bgColor: "#fdf2f8",
   },
 ];
@@ -79,9 +80,8 @@ const StickyScrollSection = () => {
           {steps.map((step, idx) => (
             <div
               key={step.title}
-              className={`absolute inset-0 flex flex-col justify-center space-y-4 rounded-2xl p-6 bg-white/80 backdrop-blur shadow-sm transition-all duration-500 ${
-                activeStep === idx ? "opacity-100 translate-y-0" : "opacity-0 translate-y-5"
-              }`}
+              className={`absolute inset-0 flex flex-col justify-center space-y-4 rounded-2xl p-6 bg-white/80 backdrop-blur shadow-sm transition-all duration-500 ${activeStep === idx ? "opacity-100 translate-y-0" : "opacity-0 translate-y-5"
+                }`}
             >
               <div className="text-sm text-slate-400 uppercase tracking-[0.18em]">
                 Step {idx + 1}
@@ -104,19 +104,31 @@ const StickyScrollSection = () => {
           {steps.map((step, idx) => (
             <div
               key={step.title}
-              className={`absolute inset-0 flex items-center justify-center transition-all duration-500 ${
-                activeStep === idx ? "opacity-100 scale-100" : "opacity-0 scale-95"
-              }`}
+              className={`absolute inset-0 flex items-center justify-center transition-all duration-500 ${activeStep === idx ? "opacity-100 scale-100" : "opacity-0 scale-95"
+                }`}
             >
-              <div className="w-full h-full rounded-3xl overflow-hidden border border-slate-200 shadow-xl bg-white relative flex items-center justify-center">
-                <div className="absolute inset-0 bg-gradient-to-br from-slate-100 to-slate-200" />
-                <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_20%,rgba(99,102,241,0.08),transparent),radial-gradient(circle_at_80%_30%,rgba(59,130,246,0.08),transparent)]" />
-                <div className="relative flex flex-col items-center justify-center gap-3 text-center">
-                  <div className="text-xs uppercase tracking-[0.2em] text-slate-400">
-                    Image {idx + 1}
-                  </div>
-                  <div className="text-2xl font-semibold text-slate-700">{step.title}</div>
-                  <div className="text-sm text-slate-500 max-w-md">{step.copy}</div>
+              <div className="w-full h-full rounded-3xl overflow-hidden border border-slate-200 shadow-xl bg-slate-100 relative flex items-center justify-center">
+
+                {/* Blurred Background Layer */}
+                <div className="absolute inset-0">
+                  <Image
+                    src={step.image}
+                    alt=""
+                    fill
+                    className="object-cover opacity-50 blur-2xl scale-110"
+                    priority={idx === 0}
+                  />
+                </div>
+
+                {/* Sharp Foreground Layer */}
+                <div className="relative w-full h-full z-10 p-4 md:p-8">
+                  <Image
+                    src={step.image}
+                    alt={step.title}
+                    fill
+                    className="object-contain drop-shadow-2xl"
+                    priority={idx === 0}
+                  />
                 </div>
               </div>
             </div>
