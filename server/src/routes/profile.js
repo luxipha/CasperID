@@ -17,6 +17,7 @@ const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
 const { ensureHumanIdInProfile, getHumanIdForWallet } = require('../utils/wallet-to-human');
+const { logViewEvent } = require('../utils/view-logger');
 
 // Configure File Upload
 const storage = multer.diskStorage({
@@ -165,6 +166,15 @@ router.get('/public-profile/:identifier', async (req, res) => {
             volunteers
             // Note: wallet address is NOT included for privacy
         };
+
+        // Log view event for analytics (async, don't block response)
+        logViewEvent(
+            null, // viewer wallet (anonymous for public profiles)
+            profile.wallet, // profile owner
+            req.originalUrl, // endpoint accessed
+            Object.keys(publicProfile), // accessed fields
+            req
+        ).catch(console.error);
 
         res.json(publicProfile);
     } catch (error) {

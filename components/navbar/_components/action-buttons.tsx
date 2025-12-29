@@ -71,7 +71,7 @@ const ActionButtons = () => {
           {authenticated && UserInfo !== "User does not exist." ? (
             <>
               <Link
-                href={"/dashboard"}
+                href={"/me/analytics"}
                 className="
             lg:flex
             items-center
@@ -79,7 +79,7 @@ const ActionButtons = () => {
             
             "
               >
-                <div className="">Dashboard</div>
+                <div className="">Analytics</div>
               </Link>
               <div
                 className="font-thin     

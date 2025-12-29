@@ -79,7 +79,7 @@ export default function RequestVerificationModal({
         // Basic tier - simple self-attested data submission
         setLoading(true);
         try {
-            await apiClient.requestVerification({
+            const response = await apiClient.requestVerification({
                 wallet,
                 tier: 'basic',
                 name: name || undefined,
@@ -88,7 +88,11 @@ export default function RequestVerificationModal({
                 location: location || undefined,
             });
 
-            alert('Verification request submitted successfully!');
+            if (response.auto_minted) {
+                alert('Basic verification completed automatically! Your credential has been minted.');
+            } else {
+                alert('Verification request submitted successfully! It will be reviewed shortly.');
+            }
             onSuccess();
         } catch (err: any) {
             setError(err.message || 'Failed to submit verification request');

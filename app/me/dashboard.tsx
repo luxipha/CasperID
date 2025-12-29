@@ -43,21 +43,11 @@ export default function UserDashboard() {
     // State to track if extension sync was already done
     const [extensionSynced, setExtensionSynced] = useState(false);
 
-    // Only sync once when status is first loaded, then remove after delay
+    // Only sync once when status is first loaded
     useEffect(() => {
         if (status && !extensionSynced) {
             setExtensionSynced(true);
-            
-            // Remove extension sync elements after 3 seconds to prevent loops
-            setTimeout(() => {
-                const syncElement = document.getElementById('casperid-extension-sync');
-                const dataElement = document.getElementById('casperid-extension-full-data');
-                
-                if (syncElement) syncElement.remove();
-                if (dataElement) dataElement.remove();
-                
-                console.log('[Dashboard] Extension sync elements removed to prevent loops');
-            }, 3000);
+            console.log('[Dashboard] Extension sync data updated');
         }
     }, [status, extensionSynced]);
 
@@ -105,6 +95,11 @@ export default function UserDashboard() {
                         <Link href={status?.human_id ? `/profile/${status.human_id}` : `/profile/${account}`}>
                             <Button variant="outline" className="border-purple-500 text-purple-400 hover:bg-purple-500/10 hover:text-purple-300 bg-transparent">
                                 View Public Profile
+                            </Button>
+                        </Link>
+                        <Link href="/me/analytics">
+                            <Button variant="outline" className="border-blue-500 text-blue-400 hover:bg-blue-500/10 hover:text-blue-300 bg-transparent">
+                                📊 Analytics
                             </Button>
                         </Link>
                         <Link href="/me/edit-profile">
@@ -155,7 +150,7 @@ export default function UserDashboard() {
                                         <CheckCircle2 className="w-8 h-8 text-green-400" />
                                         <div>
                                             <Badge className="bg-green-500/20 text-green-300 border-green-500/30">
-                                                ✓ Verified
+                                                ✓ {status.tier === 'basic' ? 'Verified Basic' : status.tier === 'full_kyc' ? 'Verified Full' : 'Verified'}
                                             </Badge>
                                         </div>
                                     </>
@@ -217,8 +212,16 @@ export default function UserDashboard() {
                                     <div className="p-4 bg-slate-800/50 rounded-lg border border-slate-700">
                                         <div className="flex items-center justify-between mb-2">
                                             <p className="text-sm text-gray-400">Liveness Check</p>
-                                            {status.last_liveness_at ? (() => {
-                                                const daysSince = Math.floor((Date.now() / 1000 - status.last_liveness_at) / 86400);
+                                            {status.last_liveness_at || status.liveness_completed_at ? (() => {
+                                                const timestamp = status.last_liveness_at || (status.liveness_completed_at! / 1000);
+                                                const daysSince = Math.floor((Date.now() / 1000 - timestamp) / 86400);
+                                                if (status.pending_upgrade_tier === 'full_kyc' && status.status === 'pending') {
+                                                    return (
+                                                        <Badge className="bg-yellow-500/20 text-yellow-300 border-yellow-500/30">
+                                                            ⏳ Pending Approval
+                                                        </Badge>
+                                                    );
+                                                }
                                                 return daysSince > 30 ? (
                                                     <Badge className="bg-red-500/20 text-red-300 border-red-500/30">
                                                         ⚠️ Expired
@@ -232,17 +235,31 @@ export default function UserDashboard() {
                                                         ✓ Fresh
                                                     </Badge>
                                                 );
-                                            })() : (
+                                            })() : (status.pending_upgrade_tier === 'full_kyc' && status.status === 'pending') ? (
+                                                <Badge className="bg-yellow-500/20 text-yellow-300 border-yellow-500/30">
+                                                    ⏳ Pending Approval
+                                                </Badge>
+                                            ) : (
                                                 <Badge className="bg-gray-500/20 text-gray-300 border-gray-500/30">
                                                     Not Performed
                                                 </Badge>
                                             )}
                                         </div>
-                                        <p className="text-white font-semibold">{status.last_liveness_at ? formatTimestamp(status.last_liveness_at) : 'No liveness check performed'}</p>
-                                        {status.last_liveness_at ? (() => {
-                                            const daysSince = Math.floor((Date.now() / 1000 - status.last_liveness_at) / 86400);
+                                        <p className="text-white font-semibold">
+                                            {status.last_liveness_at || status.liveness_completed_at ? 
+                                                formatTimestamp(status.last_liveness_at || (status.liveness_completed_at! / 1000)) : 
+                                                (status.pending_upgrade_tier === 'full_kyc' && status.status === 'pending') ? 
+                                                    'Liveness completed, awaiting approval' : 
+                                                    'No liveness check performed'
+                                            }
+                                        </p>
+                                        {status.last_liveness_at || status.liveness_completed_at ? (() => {
+                                            const timestamp = status.last_liveness_at || (status.liveness_completed_at! / 1000);
+                                            const daysSince = Math.floor((Date.now() / 1000 - timestamp) / 86400);
                                             return <p className="text-xs text-gray-400 mt-1">{daysSince} days ago</p>;
-                                        })() : (
+                                        })() : (status.pending_upgrade_tier === 'full_kyc' && status.status === 'pending') ? (
+                                            <p className="text-xs text-gray-400 mt-1">Your liveness verification is complete and pending final approval</p>
+                                        ) : (
                                             <p className="text-xs text-gray-400 mt-1">Request full KYC to enable liveness verification</p>
                                         )}
                                         {status.last_liveness_at && Math.floor((Date.now() / 1000 - status.last_liveness_at) / 86400) > 21 && (
@@ -254,7 +271,7 @@ export default function UserDashboard() {
                                                 🔄 Refresh Liveness Check
                                             </Button>
                                         )}
-                                        {!status.last_liveness_at && status.tier === 'basic' && (
+                                        {status.tier === 'basic' && !status.pending_request && (
                                             <Button
                                                 size="sm"
                                                 className="w-full mt-3 bg-blue-600 hover:bg-blue-700 text-sm"
@@ -290,6 +307,19 @@ export default function UserDashboard() {
                                 </div>
                             )}
 
+                            {/* Full KYC Upgrade Pending Notice */}
+                            {status.pending_upgrade_tier === 'full_kyc' && status.status === 'pending' && (
+                                <div className="w-full mt-4 p-4 bg-blue-500/20 border border-blue-500/30 rounded-lg">
+                                    <div className="flex items-center gap-2 text-blue-300">
+                                        <Clock className="w-5 h-5" />
+                                        <span className="font-semibold">Full KYC Pending Final Approval</span>
+                                    </div>
+                                    <p className="text-sm text-blue-200 mt-1">
+                                        Your full KYC and liveness verification are complete. Awaiting admin approval.
+                                    </p>
+                                </div>
+                            )}
+
                             {status.verified && (
                                 <Button
                                     onClick={fetchStatus}
@@ -306,18 +336,17 @@ export default function UserDashboard() {
                 {/* Pending Request Notice */}
                 {/* This would show if user has pending request - we'll add this logic later */}
 
-                {/* [EXTENSION SYNC DATA] Hidden element for content.js to scrape - only render once */}
+                {/* [EXTENSION SYNC DATA] Hidden element for content.js to scrape */}
                 {status && extensionSynced && (
                     <>
                         <div
                             id="casperid-extension-sync"
                             data-wallet={account}
-                            data-cns={status.human_id}
-                            data-verified={status.verified}
-                            data-tier={status.tier}
-                            data-kyc-date={status.last_kyc_at}
-                            data-liveness-date={status.last_liveness_at}
-                            key={`sync-${account}-${status.verified}`} // Stable key
+                            data-cns={status.human_id || ''}
+                            data-verified={status.verified || false}
+                            data-tier={status.tier || ''}
+                            data-kyc-date={status.last_kyc_at || ''}
+                            data-liveness-date={status.last_liveness_at || ''}
                             style={{ display: 'none' }}
                         ></div>
 
@@ -326,7 +355,6 @@ export default function UserDashboard() {
                             <div
                                 id="casperid-extension-full-data"
                                 data-json={JSON.stringify(status.extended_profile)}
-                                key={`profile-${account}`} // Stable key
                                 style={{ display: 'none' }}
                             ></div>
                         )}

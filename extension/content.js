@@ -591,6 +591,8 @@ function showLogoutMessage(domain) {
 })();
 
 // [SYNC LOGIC] Scrape dashboard for identity status
+let lastSyncedData = null;
+
 function syncIdentityStatus() {
     const syncElement = document.getElementById('casperid-extension-sync');
     if (syncElement) {
@@ -607,24 +609,28 @@ function syncIdentityStatus() {
         if (fullDataElement && fullDataElement.dataset.json) {
             try {
                 const extended = JSON.parse(fullDataElement.dataset.json);
-                console.log('[CasperID Sync] Found extended profile data', extended);
                 data = { ...data, ...extended };
             } catch (e) {
                 console.error('[CasperID Sync] Failed to parse full data JSON', e);
             }
         }
 
-        console.log('[CasperID Sync] Found identity data:', data);
+        // Only log and sync if data has changed
+        const dataString = JSON.stringify(data);
+        if (dataString !== lastSyncedData) {
+            console.log('[CasperID Sync] Identity data updated:', data);
+            lastSyncedData = dataString;
 
-        // Send to background to save
-        chrome.runtime.sendMessage({
-            type: 'SYNC_IDENTITY_DATA',
-            data: data
-        });
+            // Send to background to save
+            chrome.runtime.sendMessage({
+                type: 'SYNC_IDENTITY_DATA',
+                data: data
+            });
+        }
     }
 }
 
 // Check periodically if on dashboard
 if (window.location.href.includes('/me') || window.location.href.includes('/dashboard')) {
-    setInterval(syncIdentityStatus, 1000);
+    setInterval(syncIdentityStatus, 5000); // Check every 5 seconds instead of 1
 }

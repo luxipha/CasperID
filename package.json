@@ -47,6 +47,7 @@
     "react-select": "^5.8.0",
     "react-slick": "^0.29.0",
     "react-webcam": "^7.2.0",
+    "recharts": "^3.6.0",
     "simplex-noise": "^4.0.1",
     "slick-carousel": "^1.8.1",
     "tailwind-merge": "^2.3.0",

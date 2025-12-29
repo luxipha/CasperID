@@ -46,9 +46,13 @@ export interface IdentityStatus {
     tier: string | null;
     last_kyc_at: number | null;
     last_liveness_at: number | null;
+    liveness_completed_at?: number;
+    liveness_verified?: boolean;
     issuer: string | null;
     pending_request?: boolean;
     request_status?: string | null;
+    status?: string;
+    pending_upgrade_tier?: string | null;
     profile?: Partial<VerificationRequest>;
     extended_profile?: {
         basic: UserProfile;
@@ -810,6 +814,25 @@ class APIClient {
     async deleteVolunteer(wallet: string, id: string): Promise<void> {
         const response = await fetch(`${this.baseURL}/api/profile/${wallet}/volunteer/${id}`, {
             method: 'DELETE',
+        });
+        return handleResponse(response);
+    }
+
+    // Analytics & Notifications
+    async getAccessLogs(): Promise<any> {
+        const response = await fetch(`${this.baseURL}/api/notifications/access-logs`);
+        return handleResponse(response);
+    }
+
+    async getNotifications(): Promise<any> {
+        const response = await fetch(`${this.baseURL}/api/notifications`);
+        return handleResponse(response);
+    }
+
+    async markNotificationRead(id: string): Promise<any> {
+        const response = await fetch(`${this.baseURL}/api/notifications/${id}/read`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' }
         });
         return handleResponse(response);
     }

@@ -12,7 +12,9 @@ const { mintCredential } = require('../utils/credential-minter');
 router.get('/verification-requests', adminAuthWithRateLimit, async (req, res) => {
     try {
         const { status } = req.query;
-        const filter = status ? { status } : {};
+        
+        // Default to showing only pending requests (exclude auto-minted basic tier)
+        const filter = status ? { status } : { status: 'pending' };
 
         const requests = await VerificationRequest.find(filter).sort({ created_at: -1 });
 

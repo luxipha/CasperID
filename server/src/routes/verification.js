@@ -43,6 +43,11 @@ router.post('/request-verification', rateLimitMiddleware('verification_requests'
             });
         }
 
+        // Check if this is a basic tier request that can be auto-minted BEFORE creating the request
+        console.log(`[DEBUG] Checking canAutoMint for wallet: ${wallet}, tier: ${tier}`);
+        const canMint = await canAutoMint(wallet, tier);
+        console.log(`[DEBUG] canAutoMint result: ${canMint}`);
+
         // Create verification request
         const request = new VerificationRequest({
             wallet,
@@ -61,11 +66,10 @@ router.post('/request-verification', rateLimitMiddleware('verification_requests'
         });
 
         await request.save();
-
-        // Check if this is a basic tier request that can be auto-minted
-        if (await canAutoMint(wallet, tier)) {
+        
+        if (canMint) {
             try {
-                console.log(`Auto-minting basic credential for wallet: ${wallet}`);
+                console.log(`[DEBUG] Starting auto-mint process for wallet: ${wallet}`);
                 
                 // Automatically mint the credential for basic tier
                 const { credential } = await mintCredential(request);
@@ -233,13 +237,13 @@ router.get('/identity-status', async (req, res) => {
             }
         }
 
-        if (!credential) {
-            // Check for pending verification requests
-            const pendingRequest = await VerificationRequest.findOne({
-                wallet: searchWallet,
-                status: 'pending'
-            });
+        // Check for pending verification requests (for both new users and upgrades)
+        const pendingRequest = await VerificationRequest.findOne({
+            wallet: searchWallet,
+            status: 'pending'
+        }).sort({ created_at: -1 }); // Get the most recent pending request
 
+        if (!credential) {
             // Even unverified users should get human_id
             let humanId;
             try {
@@ -254,9 +258,11 @@ router.get('/identity-status', async (req, res) => {
                 wallet,
                 human_id: humanId,
                 verified: false,
-                tier: null,
+                tier: pendingRequest ? pendingRequest.tier : null,
+                status: pendingRequest ? pendingRequest.status : null,
                 last_kyc_at: null,
                 last_liveness_at: null,
+                liveness_completed_at: pendingRequest && pendingRequest.metadata?.liveness_completed_at ? pendingRequest.metadata.liveness_completed_at : null,
                 issuer: null,
                 pending_request: !!pendingRequest,
                 request_status: pendingRequest ? pendingRequest.status : null
@@ -320,9 +326,14 @@ router.get('/identity-status', async (req, res) => {
             human_id: humanId,
             verified: !!credential,
             tier: credential ? credential.tier : null,
+            status: pendingRequest ? pendingRequest.status : (credential ? 'approved' : null),
+            pending_upgrade_tier: pendingRequest ? pendingRequest.tier : null,
             last_kyc_at: credential ? credential.last_kyc_at : null,
             last_liveness_at: credential ? credential.last_liveness_at : null,
+            liveness_completed_at: pendingRequest && pendingRequest.metadata?.liveness_completed_at ? pendingRequest.metadata.liveness_completed_at : null,
             issuer: credential ? credential.issuer_id : null,
+            pending_request: !!pendingRequest,
+            request_status: pendingRequest ? pendingRequest.status : null,
             // Profile Preview
             profile: {
                 name: latestRequest ? latestRequest.name : null,

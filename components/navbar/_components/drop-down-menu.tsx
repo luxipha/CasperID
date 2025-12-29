@@ -98,7 +98,7 @@ const DropdownMenu: React.FC<DropDownMenuProps> = ({ onClose }) => {
       <div className="pt-12">
         <div className="  space-y-4 flex flex-col px-4">
           {authenticated && UserInfo !== "User does not exist." ? (
-            <Link href={"/dashboard"}>
+            <Link href={"/me"}>
               <Button
                 className="
               w-full
