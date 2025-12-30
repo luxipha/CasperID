@@ -55,6 +55,8 @@ secrets/
 /server/.env
 *.md
 /server/*.md
-/extensions/
+/extension/
 /secrets.json
 /scripts
+/keys
+github-actions-key.json

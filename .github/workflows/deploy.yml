@@ -1,0 +1,76 @@
+name: Deploy to Cloud Run
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'server/**'
+  pull_request:
+    branches: [ main ]
+    paths:
+      - 'server/**'
+
+env:
+  PROJECT_ID: ile-africa
+  GAR_LOCATION: us-central1
+  SERVICE: casper-id-server
+  REGION: us-central1
+
+jobs:
+  deploy:
+    permissions:
+      contents: read
+      id-token: write
+
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Google Auth
+        id: auth
+        uses: 'google-github-actions/auth@v2'
+        with:
+          credentials_json: '${{ secrets.GCP_SA_KEY }}'
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Authorize Docker push
+        run: gcloud auth configure-docker
+
+      - name: Build and Push Container
+        run: |-
+          docker build -t gcr.io/${{ env.PROJECT_ID }}/${{ env.SERVICE }}:${{  github.sha }} ./server
+          docker push gcr.io/${{ env.PROJECT_ID }}/${{ env.SERVICE }}:${{  github.sha }}
+
+      - name: Deploy to Cloud Run
+        id: deploy
+        uses: google-github-actions/deploy-cloudrun@v2
+        with:
+          service: ${{ env.SERVICE }}
+          region: ${{ env.REGION }}
+          image: gcr.io/${{ env.PROJECT_ID }}/${{ env.SERVICE }}:${{  github.sha }}
+          env_vars: |
+            PORT=8080
+            NODE_ENV=production
+            FRONTEND_URL=https://casperid.vercel.app
+            MONGODB_URI=${{ secrets.MONGODB_URI }}
+            MONGODB_DATABASE_NAME=${{ secrets.MONGODB_DATABASE_NAME }}
+            JWT_SECRET=${{ secrets.JWT_SECRET }}
+            JWT_EXPIRES_IN=${{ secrets.JWT_EXPIRES_IN }}
+            GEMINI_API_KEY=${{ secrets.GEMINI_API_KEY }}
+            CASPER_NETWORK=${{ secrets.CASPER_NETWORK }}
+            CASPER_NODE_URL=${{ secrets.CASPER_NODE_URL }}
+            CONTRACT_HASH=${{ secrets.CONTRACT_HASH }}
+            ISSUER_PRIVATE_KEY=${{ secrets.ISSUER_PRIVATE_KEY }}
+            ISSUER_PUBLIC_KEY=${{ secrets.ISSUER_PUBLIC_KEY }}
+            ISSUER_ID=${{ secrets.ISSUER_ID }}
+            DD_API_KEY=${{ secrets.DD_API_KEY }}
+            DD_SITE=${{ secrets.DD_SITE }}
+            APPLICATION_ID=${{ secrets.APPLICATION_ID }}
+            ACCESS_KEY=${{ secrets.ACCESS_KEY }}
+            SECRET_KEY=${{ secrets.SECRET_KEY }}
+
+      - name: Show Output
+        run: echo ${{ steps.deploy.outputs.url }}
