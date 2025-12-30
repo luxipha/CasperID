@@ -54,7 +54,6 @@ jobs:
           region: ${{ env.REGION }}
           image: ${{ env.GAR_LOCATION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.SERVICE }}/${{ env.SERVICE }}:${{  github.sha }}
           env_vars: |
-            PORT=8080
             NODE_ENV=production
             FRONTEND_URL=https://casperid.vercel.app
             MONGODB_URI=${{ secrets.MONGODB_URI }}
