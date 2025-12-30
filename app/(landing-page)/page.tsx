@@ -177,7 +177,7 @@ export default function LandingPage() {
                 Get Started
               </Link>
               <Link
-                href="/verify"
+                href="#use-cases"
                 className="inline-flex items-center gap-2 rounded-full bg-slate-100 px-5 py-3 text-sm font-semibold text-slate-800 border border-slate-200"
               >
                 Explore use cases
@@ -238,7 +238,7 @@ CasperID is a reusable digital identity layer
             <div className="text-3xl md:text-4xl font-semibold text-slate-600">
               A verified identity you can reuse everywhere
             </div>
-            <button className="mt-4 px-6 py-3 rounded-full bg-slate-900 text-white text-sm font-semibold shadow-lg shadow-slate-300/40">
+            <button className="mt-4 px-6 py-3 rounded-full bg-slate-300 text-slate-500 text-sm font-semibold shadow-lg shadow-slate-300/40 cursor-not-allowed" disabled>
               Download for Chrome
             </button>
           </div>
@@ -316,12 +316,12 @@ CasperID is a reusable digital identity layer
                 Stop re-verifying, <br />Start reusing
               </h2>
               <div className="flex flex-wrap gap-4 pt-2">
-                <button className="px-6 py-3 rounded-full bg-white text-slate-900 text-sm font-semibold shadow-lg shadow-slate-800/30">
+                <button className="px-6 py-3 rounded-full bg-slate-300 text-slate-500 text-sm font-semibold shadow-lg shadow-slate-800/30 cursor-not-allowed" disabled>
                   Add To Chrome
                 </button>
-                <button className="px-6 py-3 rounded-full bg-slate-800 text-white text-sm font-semibold shadow-lg shadow-slate-900/40">
+                <Link href="/me" className="px-6 py-3 rounded-full bg-slate-800 text-white text-sm font-semibold shadow-lg shadow-slate-900/40">
                   Create CasperID
-                </button>
+                </Link>
               </div>
             </div>
           </div>
