@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { Outfit } from 'next/font/google';
 import './globals.css';
 import { CasperProvider } from '@/lib/casper-context';
+import AssetPreloader from '@/components/asset-preloader';
 
 const font = Outfit({ subsets: ['latin'] });
 
@@ -19,6 +20,7 @@ export default function RootLayout({
     <html lang="en">
       <body className={font.className}>
         <CasperProvider>{children}</CasperProvider>
+        <AssetPreloader />
       </body>
     </html>
   );

@@ -1,7 +1,7 @@
 [build]
   base = "."
-  command = "npm ci --ignore-optional && npm run build"
-  publish = ".next"
+  command = "npm run build"
+  publish = "."
 
 [build.environment]
   NODE_VERSION = "18"
@@ -10,6 +10,12 @@
 
 [[plugins]]
   package = "@netlify/plugin-nextjs"
+  
+# Ensure public assets are included
+[[headers]]
+  for = "/logos/*"
+  [headers.values]
+    cache-control = "public, max-age=31536000"
 
 [context.production]
   command = "npm run build"
