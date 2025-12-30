@@ -1,7 +1,17 @@
 import { useState } from 'react';
+import dynamic from 'next/dynamic';
 import { Button } from '@/components/ui/button';
-import LivenessCheck from '@/components/liveness-check';
 import { VerificationRequest } from '@/lib/api-client';
+
+// Dynamically import LivenessCheck to prevent SSR issues with MediaPipe/navigator
+const LivenessCheck = dynamic(() => import('@/components/liveness-check'), {
+    ssr: false,
+    loading: () => (
+        <div className="flex items-center justify-center p-8">
+            <div className="text-sm text-gray-500">Loading camera...</div>
+        </div>
+    )
+});
 
 interface StepLivenessProps {
     data: Partial<VerificationRequest>;
