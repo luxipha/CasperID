@@ -228,7 +228,3 @@ Make executable and run:
 chmod +x import-monitors.sh
 ./import-monitors.sh
 ```
-
----
-
-
