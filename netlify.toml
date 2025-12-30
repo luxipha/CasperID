@@ -25,8 +25,5 @@
 [context.branch-deploy]
   command = "npm run build"
 
-# Redirects for Next.js App Router
-[[redirects]]
-  from = "/*"
-  to = "/404"
-  status = 404
+# Redirects for Next.js App Router - removed problematic catch-all redirect
+# The Next.js plugin will handle 404s automatically
