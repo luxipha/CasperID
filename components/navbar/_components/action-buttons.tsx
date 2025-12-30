@@ -94,7 +94,7 @@ const ActionButtons = () => {
           ) : authenticated && UserInfo == "User does not exist." ? (
             <>
               <Link
-                href={"/onboard"}
+                href={"/me"}
                 className="
           lg:flex
           items-center

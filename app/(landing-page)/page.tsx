@@ -172,10 +172,10 @@ export default function LandingPage() {
             </p>
             <div className="flex flex-wrap items-center justify-center gap-3">
               <Link
-                href="/onboard"
+                href="/me"
                 className="inline-flex items-center gap-2 rounded-full bg-slate-900 px-5 py-3 text-sm font-semibold text-white shadow-md shadow-slate-300/40"
               >
-                Add for Chrome
+                Get Started
               </Link>
               <Link
                 href="/verify"
@@ -197,7 +197,7 @@ export default function LandingPage() {
                 className="w-full h-[900px]"
                 height={900}
                 controls
-                poster="/images/avatar.jpeg"
+                poster="/logos/logo.png"
               >
                 <source src="" type="video/mp4" />
               </video>

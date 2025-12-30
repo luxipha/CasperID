@@ -213,7 +213,7 @@ export default function LegacyProfileView({
                                     <div className="absolute inset-0 rounded-2xl bg-gradient-to-br from-white to-slate-100 shadow-inner" />
                                     <img
                                         className="relative h-28 w-28 rounded-2xl border-4 border-white object-cover shadow-xl"
-                                        src={formData.imageUrl || "/images/avatar.jpeg"}
+                                        src={formData.imageUrl || "/logos/logo.png"}
                                         alt="Profile avatar"
                                     />
                                 </div>

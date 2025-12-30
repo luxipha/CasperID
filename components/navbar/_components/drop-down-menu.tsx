@@ -109,9 +109,9 @@ const DropdownMenu: React.FC<DropDownMenuProps> = ({ onClose }) => {
               </Button>
             </Link>
           ) : authenticated && UserInfo == "User does not exist." ? (
-            <Link href={"/onboard"}>
+            <Link href={"/me"}>
               <Button variant={"outline"} className="w-full">
-                Get DID
+                Get Started
               </Button>
             </Link>
           ) : (
