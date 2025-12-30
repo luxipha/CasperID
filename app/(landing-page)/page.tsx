@@ -8,10 +8,6 @@ import ScanShowcase from "@/components/scan-showcase";
 export default function LandingPage() {
   return (
     <div id="top" className="font-sans relative min-h-screen bg-white text-slate-900 w-full">
-      <Script
-        src="https://unpkg.com/@lottiefiles/lottie-player@latest/dist/lottie-player.js"
-        strategy="afterInteractive"
-      />
       <Script src="https://cdn.jsdelivr.net/npm/tsparticles@2/tsparticles.bundle.min.js" strategy="afterInteractive" />
       <Script id="hero-ring-worklet" strategy="afterInteractive">
         {`
@@ -143,10 +139,13 @@ export default function LandingPage() {
             </nav>
             </div>
             <div className="flex items-center gap-3">
-              <button className="hidden md:inline-flex items-center gap-2 rounded-full bg-indigo-100 px-4 py-2 text-xs font-semibold text-indigo-700 shadow-sm shadow-indigo-200">
+              <Link 
+                href="/me"
+                className="hidden md:inline-flex items-center gap-2 rounded-full bg-indigo-100 px-4 py-2 text-xs font-semibold text-indigo-700 shadow-sm shadow-indigo-200 hover:-translate-y-0.5 transition"
+              >
                 <span className="h-2 w-2 rounded-full bg-indigo-500" />
                 Get CasperID
-              </button>
+              </Link>
               <button className="inline-flex items-center gap-2 rounded-full bg-slate-900 px-4 py-2 text-xs font-semibold text-white shadow-sm hover:-translate-y-0.5 transition">
                 Download
               </button>
@@ -193,14 +192,13 @@ export default function LandingPage() {
               Product video
             </div>
             <div className="bg-black">
-              <video
-                className="w-full h-[900px]"
-                height={900}
-                controls
-                poster="/logos/logo.png"
-              >
-                <source src="" type="video/mp4" />
-              </video>
+              <iframe
+                className="w-full h-[900px] rounded-2xl"
+                src="https://www.youtube.com/embed/dQw4w9WgXcQ?si=placeholder"
+                title="CasperID Product Demo"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                allowFullScreen
+              />
             </div>
           </div>
         </section>

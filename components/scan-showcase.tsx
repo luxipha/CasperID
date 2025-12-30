@@ -6,7 +6,7 @@ import * as THREE from "three";
 const CARD_WIDTH = 400;
 const CARD_HEIGHT = 250;
 const CARD_GAP = 60;
-const CARD_SOURCES = ["/id-cards/id-1.png", "/id-cards/id-2.png", "/id-cards/id-3.png"];
+const CARD_SOURCES = ["/id-cards/id-1.webp", "/id-cards/id-2.webp", "/id-cards/id-3.webp"];
 const BEAM_OFFSET = 150;
 
 function createGradientFallback(width: number, height: number) {
@@ -202,8 +202,8 @@ export default function ScanShowcase() {
           p.y < fadeZone
             ? p.y / fadeZone
             : p.y > scanner.h - fadeZone
-            ? (scanner.h - p.y) / fadeZone
-            : 1;
+              ? (scanner.h - p.y) / fadeZone
+              : 1;
         sctx.globalAlpha = p.alpha * Math.max(0, Math.min(1, fadeAlpha)) * p.life;
         sctx.drawImage(spriteCanvas, p.x, p.y, 8, 8);
       });

@@ -1,8 +1,15 @@
+const withBundleAnalyzer = require('@next/bundle-analyzer')({
+  enabled: process.env.ANALYZE === 'true',
+})
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   experimental: {
-    optimizePackageImports: ["my-lib"],
+    optimizePackageImports: ["@radix-ui/react-accordion", "@radix-ui/react-dialog", "@radix-ui/react-select"],
   },
+  // Enable compression and minification
+  compress: true,
+  swcMinify: true,
   images: {
     remotePatterns: [
       {
@@ -36,4 +43,4 @@ const nextConfig = {
   },
 };
 
-module.exports = nextConfig;
+module.exports = withBundleAnalyzer(nextConfig);
