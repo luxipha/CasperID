@@ -39,21 +39,40 @@ export default function ProfileSharingTools({ profile, walletOrHumanId }: Profil
   const shareTextWithUrl = `${shareText} ${profileUrl}`;
 
   const handleCopyUrl = async () => {
+    // Check if we're on the client side
+    if (typeof window === 'undefined') return;
+    
     try {
-      await navigator.clipboard.writeText(profileUrl);
-      setCopySuccess(true);
-      setTimeout(() => setCopySuccess(false), 2000);
+      if (navigator?.clipboard) {
+        await navigator.clipboard.writeText(profileUrl);
+        setCopySuccess(true);
+        setTimeout(() => setCopySuccess(false), 2000);
+      } else {
+        // Fallback for older browsers
+        const textArea = document.createElement('textarea');
+        textArea.value = profileUrl;
+        document.body.appendChild(textArea);
+        textArea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textArea);
+        setCopySuccess(true);
+        setTimeout(() => setCopySuccess(false), 2000);
+      }
     } catch (error) {
       console.error('Failed to copy URL:', error);
-      // Fallback for older browsers
-      const textArea = document.createElement('textarea');
-      textArea.value = profileUrl;
-      document.body.appendChild(textArea);
-      textArea.select();
-      document.execCommand('copy');
-      document.body.removeChild(textArea);
-      setCopySuccess(true);
-      setTimeout(() => setCopySuccess(false), 2000);
+      // Additional fallback
+      try {
+        const textArea = document.createElement('textarea');
+        textArea.value = profileUrl;
+        document.body.appendChild(textArea);
+        textArea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textArea);
+        setCopySuccess(true);
+        setTimeout(() => setCopySuccess(false), 2000);
+      } catch (fallbackError) {
+        console.error('All copy methods failed:', fallbackError);
+      }
     }
   };
 
@@ -73,6 +92,12 @@ export default function ProfileSharingTools({ profile, walletOrHumanId }: Profil
   };
 
   const handleNativeShare = async () => {
+    // Check if we're on the client side and navigator is available
+    if (typeof window === 'undefined' || !navigator) {
+      setShowShareMenu(true);
+      return;
+    }
+    
     if (navigator.share) {
       try {
         await navigator.share({

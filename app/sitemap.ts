@@ -33,24 +33,28 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   // Fetch verified users for profile sitemaps
   let profileRoutes: MetadataRoute.Sitemap = [];
   
-  try {
-    const response = await fetch(`${SITE_URL}/api/verified-profiles-sitemap`, {
-      next: { revalidate: 3600 } // Cache for 1 hour
-    });
-    
-    if (response.ok) {
-      const profiles = await response.json();
+  // Only fetch profiles if we're in production and backend is available
+  if (process.env.NODE_ENV === 'production' && process.env.NEXT_PUBLIC_API_URL) {
+    try {
+      const response = await fetch(`${SITE_URL}/api/verified-profiles-sitemap`, {
+        next: { revalidate: 3600 } // Cache for 1 hour
+      });
       
-      profileRoutes = profiles.map((profile: any) => ({
-        url: `${SITE_URL}${profile.url}`,
-        lastModified: new Date(profile.lastModified),
-        changeFrequency: profile.changeFrequency as 'monthly',
-        priority: profile.priority,
-      }));
+      if (response.ok) {
+        const profiles = await response.json();
+        
+        profileRoutes = profiles.map((profile: any) => ({
+          url: `${SITE_URL}${profile.url}`,
+          lastModified: new Date(profile.lastModified),
+          changeFrequency: profile.changeFrequency as 'monthly',
+          priority: profile.priority,
+        }));
+      }
+      
+    } catch (error) {
+      console.error('Failed to fetch profiles for sitemap:', error);
+      // Gracefully continue with static routes only
     }
-    
-  } catch (error) {
-    console.error('Failed to fetch profiles for sitemap:', error);
   }
 
   return [

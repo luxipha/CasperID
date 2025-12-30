@@ -9,6 +9,12 @@ const API_BASE_URL = process.env.API_URL || 'http://localhost:3001';
 
 export async function GET(request: NextRequest) {
   try {
+    // Return empty array if backend is not available (during build)
+    if (!process.env.API_URL && process.env.NODE_ENV !== 'production') {
+      console.log('Backend not available during build, returning empty sitemap');
+      return NextResponse.json([]);
+    }
+
     // In production, you might want to cache this and update periodically
     const response = await fetch(`${API_BASE_URL}/api/verified-profiles`, {
       headers: {
