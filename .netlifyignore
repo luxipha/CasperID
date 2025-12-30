@@ -1,0 +1,29 @@
+# Server backend files
+server/
+
+# Development files
+.env*
+github-actions-key.json
+
+# Build artifacts
+.next/
+node_modules/
+
+# Logs
+*.log
+
+# Contract and blockchain files
+contracts/
+casper_ref/
+
+# Scripts
+scripts/
+
+# Test files
+test/
+
+# Other
+hardhat.config.js
+ignition/
+keys/
+verify-db.js
