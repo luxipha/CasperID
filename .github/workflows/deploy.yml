@@ -5,10 +5,12 @@ on:
     branches: [ main ]
     paths:
       - 'server/**'
+      - '.github/workflows/deploy.yml'
   pull_request:
     branches: [ main ]
     paths:
       - 'server/**'
+      - '.github/workflows/deploy.yml'
 
 env:
   PROJECT_ID: ile-africa
