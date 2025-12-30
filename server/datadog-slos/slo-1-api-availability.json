@@ -1,0 +1,33 @@
+{
+  "name": "CasperID API Availability",
+  "description": "Measures the percentage of time the CasperID API is available and responding successfully",
+  "type": "metric",
+  "type_id": 0,
+  "sli_specification": {
+    "time_slice": {
+      "query": {
+        "numerator": "sum:trace.express.request.hits{service:casperid-api,http.status_code:(200 OR 201)}.as_count()",
+        "denominator": "sum:trace.express.request.hits{service:casperid-api}.as_count()"
+      },
+      "comparator": ">",
+      "threshold": 0.99
+    }
+  },
+  "thresholds": [
+    {
+      "timeframe": "7d",
+      "target": 99.5,
+      "warning": 99.8
+    },
+    {
+      "timeframe": "30d", 
+      "target": 99.0,
+      "warning": 99.5
+    }
+  ],
+  "tags": [
+    "team:ai-engineering",
+    "service:casperid-api",
+    "slo:availability"
+  ]
+}

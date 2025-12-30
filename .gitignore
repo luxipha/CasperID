@@ -52,3 +52,9 @@ COMPETITIVE_INTEL.md
 *.key
 keys/
 secrets/
+/server/.env
+*.md
+/server/*.md
+/extensions/
+/secrets.json
+/scripts

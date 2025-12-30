@@ -1,7 +1,7 @@
 {
     "name": "[CasperID] High Gemini API Latency",
     "type": "metric alert",
-    "query": "avg(last_10m):p95:casperid.gemini.latency{*} > 5000",
+    "query": "avg(last_10m):p95:trace.express.request.duration{service:undefined} > 5000",
     "message": "⏱️ PERFORMANCE: Gemini API Latency Spike\n\n**P95 Latency:** {{value}}ms\n**Normal P95:** 1500-2500ms\n**Affected Endpoint:** {{endpoint.name}}\n\n**Impact:**\n- Slow user experience\n- Increased timeout risk\n- Higher infrastructure costs\n\n**Quick Checks:**\n1. Verify Gemini API status\n2. Check network connectivity\n3. Review recent traffic patterns\n4. Monitor concurrent request count\n\n**Performance Metrics:**\n- P95: {{value}}ms\n- Check dashboard for P50 and P99\n\nRunbook: https://docs.casperid.com/runbooks/high-latency\n\n@slack-casperid-performance",
     "tags": [
         "performance",

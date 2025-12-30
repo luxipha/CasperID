@@ -1,7 +1,7 @@
 {
     "name": "[CasperID] Gemini API Cost Spike",
     "type": "query alert",
-    "query": "avg(last_15m):anomalies(sum:casperid.gemini.cost.estimated{*}, 'agile', 3, direction='above') >= 1",
+    "query": "avg(last_15m):anomalies(sum:trace.express.request.hits{service:undefined}.as_rate(), 'agile', 2, direction='above') >= 1",
     "message": "💰 COST ALERT: Gemini API Usage Anomaly\n\n**Current Cost Rate:** ${{value}}/hour\n**Spike Detected:** Anomaly threshold exceeded\n\n**Potential Causes:**\n- DoS attack (automated verification requests)\n- Infinite retry loop\n- Traffic spike from viral content\n- Bot activity\n\n**Immediate Actions:**\n1. Enable rate limiting immediately\n2. Check for suspicious IP addresses\n3. Review request patterns in logs\n4. Consider temporarily disabling public endpoints\n\n@slack-casperid-critical @pagerduty",
     "tags": [
         "cost",

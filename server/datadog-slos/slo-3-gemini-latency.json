@@ -1,0 +1,35 @@
+{
+  "name": "CasperID Gemini API Latency",
+  "description": "95% of Gemini API calls should complete within acceptable latency thresholds",
+  "type": "metric", 
+  "type_id": 0,
+  "sli_specification": {
+    "time_slice": {
+      "query": {
+        "numerator": "count:casperid.gemini.latency{*} - count:casperid.gemini.latency{*}.above(30000)",
+        "denominator": "count:casperid.gemini.latency{*}"
+      },
+      "comparator": ">",
+      "threshold": 0.95
+    }
+  },
+  "thresholds": [
+    {
+      "timeframe": "7d",
+      "target": 95.0,
+      "warning": 98.0
+    },
+    {
+      "timeframe": "30d",
+      "target": 90.0,
+      "warning": 95.0
+    }
+  ],
+  "tags": [
+    "team:ai-engineering",
+    "service:casperid-api",
+    "slo:latency", 
+    "component:gemini",
+    "model:gemini-2.5-flash"
+  ]
+}

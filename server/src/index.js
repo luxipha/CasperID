@@ -1,12 +1,22 @@
-// Datadog APM - Must be imported and initialized FIRST
+// Datadog APM + LLM Observability - Must be imported and initialized FIRST
 const tracer = require('dd-trace').init({
     service: 'casperid-api',
-    env: process.env.NODE_ENV || 'development',
+    env: 'development',
     version: '1.0.0',
     logInjection: true,
     analytics: true,
     runtimeMetrics: false, // Disabled - requires agent
-    profiling: false // Disabled - requires agent
+    profiling: false, // Disabled - requires agent
+    // LLM Observability Configuration
+    experimental: {
+        llmobs: {
+            enabled: true,
+            mlApp: 'casperid-llm-app',
+            agentlessEnabled: true, // Force agentless for immediate data
+            apiKey: process.env.DD_API_KEY,
+            site: process.env.DD_SITE || 'us5.datadoghq.com'
+        }
+    }
 });
 
 require('dotenv').config();

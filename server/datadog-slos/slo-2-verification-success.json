@@ -1,0 +1,34 @@
+{
+  "name": "CasperID Verification Success Rate", 
+  "description": "Percentage of verification requests that complete successfully without errors",
+  "type": "metric",
+  "type_id": 0,
+  "sli_specification": {
+    "time_slice": {
+      "query": {
+        "numerator": "sum:casperid.verification.result{outcome:success}.as_count()",
+        "denominator": "sum:casperid.verification.result{*}.as_count()"
+      },
+      "comparator": ">",
+      "threshold": 0.85
+    }
+  },
+  "thresholds": [
+    {
+      "timeframe": "7d",
+      "target": 90.0,
+      "warning": 95.0
+    },
+    {
+      "timeframe": "30d",
+      "target": 85.0, 
+      "warning": 90.0
+    }
+  ],
+  "tags": [
+    "team:ai-engineering",
+    "service:casperid-api", 
+    "slo:success-rate",
+    "component:verification"
+  ]
+}

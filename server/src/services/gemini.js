@@ -4,6 +4,10 @@
  */
 
 const { GoogleGenerativeAI } = require('@google/generative-ai');
+const { trackDocumentVerification, trackResumeParsingLLM, trackLivenessDetection } = require('../utils/manual-llm-trace');
+
+// Get the tracer instance
+const tracer = require('dd-trace');
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
 
@@ -13,6 +17,10 @@ const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
  * @returns {Promise<Object>} Extracted information
  */
 async function analyzeIDDocument(imageBuffer) {
+    const startTime = Date.now();
+    let result;
+    let error;
+    
     try {
         const model = genAI.getGenerativeModel({ model: 'gemini-1.5-pro' });
 
@@ -36,19 +44,43 @@ If you cannot extract certain information, use null for that field. Be very care
             }
         };
 
-        const result = await model.generateContent([prompt, imagePart]);
-        const response = await result.response;
+        const aiResult = await model.generateContent([prompt, imagePart]);
+        const response = await aiResult.response;
         const text = response.text();
 
         // Extract JSON from the response
         const jsonMatch = text.match(/\{[\s\S]*\}/);
         if (jsonMatch) {
-            return JSON.parse(jsonMatch[0]);
+            result = JSON.parse(jsonMatch[0]);
+        } else {
+            throw new Error('Failed to parse AI response');
         }
 
-        throw new Error('Failed to parse AI response');
-    } catch (error) {
-        console.error('[Gemini] ID analysis error:', error);
+        // Send LLM trace to Datadog
+        const latency = Date.now() - startTime;
+        await trackDocumentVerification({
+            extractedData: result,
+            confidence: result.confidence / 100,
+            verified: result.isValid,
+            latency,
+            inputTokens: Math.ceil(prompt.length / 4) + Math.ceil(imageBuffer.length / 1000), // Estimate
+            outputTokens: Math.ceil(text.length / 4)
+        });
+
+        return result;
+    } catch (err) {
+        error = err;
+        console.error('[Gemini] ID analysis error:', err);
+        
+        // Send error trace to Datadog
+        const latency = Date.now() - startTime;
+        await trackDocumentVerification({
+            confidence: 0,
+            verified: false,
+            latency,
+            error: err.message
+        });
+        
         throw new Error('Failed to analyze ID document');
     }
 }
@@ -224,6 +256,9 @@ async function performKYCVerification(idImageBuffer, selfieBuffer, livenessImage
  * @returns {Promise<Object>} Verification result
  */
 async function verifyLivenessSequence(frameBuffers, expectedSteps) {
+    const startTime = Date.now();
+    let result;
+    
     try {
         const model = genAI.getGenerativeModel({ model: 'gemini-1.5-pro' });
 
@@ -298,8 +333,8 @@ Only mark as passed if you're confident this is a live human performing natural 
             }
         }));
 
-        const result = await model.generateContent([prompt, ...imageParts]);
-        const response = await result.response;
+        const aiResult = await model.generateContent([prompt, ...imageParts]);
+        const response = await aiResult.response;
         const text = response.text();
 
         console.log('[Gemini] Liveness sequence analysis response:', text);
@@ -320,7 +355,7 @@ Only mark as passed if you're confident this is a live human performing natural 
                 antiSpoofingPass &&
                 analysis.faceDetectedInAllFrames;
 
-            return {
+            result = {
                 ...analysis,
                 passed: finalPassed,
                 totalFramesAnalyzed: totalFrames,
@@ -332,16 +367,42 @@ Only mark as passed if you're confident this is a live human performing natural 
                     faceDetectionPass: analysis.faceDetectedInAllFrames
                 }
             };
+        } else {
+            throw new Error('Failed to parse AI response');
         }
 
-        throw new Error('Failed to parse AI response');
-    } catch (error) {
-        console.error('[Gemini] Liveness sequence verification error:', error);
+        // Send LLM trace to Datadog
+        const latency = Date.now() - startTime;
+        await trackLivenessDetection({
+            frameCount: totalFrames,
+            isLive: result.passed,
+            confidence: result.confidence / 100,
+            gestures: expectedSteps,
+            latency,
+            inputTokens: Math.ceil(prompt.length / 4) + (sampleFrames.length * 1000), // Estimate
+            outputTokens: Math.ceil(text.length / 4)
+        });
+
+        return result;
+    } catch (err) {
+        console.error('[Gemini] Liveness sequence verification error:', err);
+        
+        // Send error trace to Datadog
+        const latency = Date.now() - startTime;
+        await trackLivenessDetection({
+            frameCount: frameBuffers.length,
+            isLive: false,
+            confidence: 0,
+            gestures: expectedSteps,
+            latency,
+            error: err.message
+        });
+        
         return {
             passed: false,
             confidence: 0,
             reasoning: 'Technical error during verification',
-            error: error.message
+            error: err.message
         };
     }
 }
@@ -353,6 +414,10 @@ Only mark as passed if you're confident this is a live human performing natural 
  * @returns {Promise<Object>} Extracted profile data
  */
 async function parseResume(fileBuffer, mimeType) {
+    const startTime = Date.now();
+    let result;
+    let error;
+    
     try {
         const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
 
@@ -475,19 +540,41 @@ Return the complete JSON with all available information filled in.`;
             }
         };
 
-        const result = await model.generateContent([prompt, filePart]);
-        const response = await result.response;
+        const aiResult = await model.generateContent([prompt, filePart]);
+        const response = await aiResult.response;
         const text = response.text();
 
         // Extract JSON from the response
         const jsonMatch = text.match(/\{[\s\S]*\}/);
         if (jsonMatch) {
-            return JSON.parse(jsonMatch[0]);
+            result = JSON.parse(jsonMatch[0]);
+        } else {
+            throw new Error('Failed to parse AI response');
         }
 
-        throw new Error('Failed to parse AI response');
-    } catch (error) {
-        console.error('[Gemini] Resume parsing error:', error);
+        // Send LLM trace to Datadog
+        const latency = Date.now() - startTime;
+        await trackResumeParsingLLM({
+            filename: 'resume.pdf', // Could get this from request
+            parsedData: result,
+            latency,
+            inputTokens: Math.ceil(prompt.length / 4) + Math.ceil(fileBuffer.length / 1000), // Estimate
+            outputTokens: Math.ceil(text.length / 4)
+        });
+
+        return result;
+    } catch (err) {
+        error = err;
+        console.error('[Gemini] Resume parsing error:', err);
+        
+        // Send error trace to Datadog
+        const latency = Date.now() - startTime;
+        await trackResumeParsingLLM({
+            filename: 'resume.pdf',
+            latency,
+            error: err.message
+        });
+        
         throw new Error('Failed to parse resume');
     }
 }

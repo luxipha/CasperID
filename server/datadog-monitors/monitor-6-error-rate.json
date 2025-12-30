@@ -1,7 +1,7 @@
 {
     "name": "[CasperID] API Error Rate Spike",
     "type": "metric alert",
-    "query": "avg(last_5m):sum:casperid.gemini.calls.total{result:error}.as_rate() > 0.1",
+    "query": "avg(last_5m):sum:trace.express.request.errors{service:undefined}.as_rate() > 0.1",
     "message": "❌ Error Rate Above Threshold\n\n**Error Rate:** {{value}} errors/second\n**Normal Rate:** < 0.01/sec\n**Affected Service:** casperid-api\n\n**Common Error Types:**\n- Gemini API quota exceeded\n- Invalid image format\n- Missing required parameters\n- Database connection timeout\n- Network issues\n\n**Debugging:**\n1. Check error logs in dashboard\n2. Review error distribution by type\n3. Verify API credentials valid\n4. Check third-party service status\n\n**View Errors:** [Link to logs dashboard]\n\n@devops-oncall @slack-casperid-alerts",
     "tags": [
         "errors",
