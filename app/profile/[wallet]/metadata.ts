@@ -84,9 +84,10 @@ export async function generateProfileMetadata(walletOrHumanId: string): Promise<
   const seoSlug = generateProfileSlug(profile);
   const profileUrl = `${SITE_URL}/profile/${seoSlug}`;
 
-  // Profile image URL (use OG image generation if no custom image)
-  const ogImageUrl = `${SITE_URL}/api/og-image?name=${encodeURIComponent(displayName)}&id=${encodeURIComponent(profile.human_id || '')}&title=${encodeURIComponent(jobTitle + company)}&verified=${profile.verification_status === 'verified'}`;
-  const profileImageUrl = profile.profile_image_url || ogImageUrl;
+  // Profile image URL (use static fallback for now)
+  // const ogImageUrl = `${SITE_URL}/api/og-image?name=${encodeURIComponent(displayName)}&id=${encodeURIComponent(profile.human_id || '')}&title=${encodeURIComponent(jobTitle + company)}&verified=${profile.verification_status === 'verified'}`;
+  const fallbackImageUrl = `${SITE_URL}/logos/logo.png`;
+  const profileImageUrl = profile.profile_image_url || fallbackImageUrl;
 
   return {
     title: `${displayName} - CasperID Profile`,
@@ -165,8 +166,9 @@ export function generateProfileStructuredData(profile: UserProfile, walletOrHuma
   // Use SEO-friendly URL for structured data
   const seoSlug = generateProfileSlug(profile);
   const profileUrl = `${SITE_URL}/profile/${seoSlug}`;
-  const ogImageUrl = `${SITE_URL}/api/og-image?name=${encodeURIComponent(displayName)}&id=${encodeURIComponent(profile.human_id || '')}&verified=${profile.verification_status === 'verified'}`;
-  const profileImageUrl = profile.profile_image_url || ogImageUrl;
+  // const ogImageUrl = `${SITE_URL}/api/og-image?name=${encodeURIComponent(displayName)}&id=${encodeURIComponent(profile.human_id || '')}&verified=${profile.verification_status === 'verified'}`;
+  const fallbackImageUrl = `${SITE_URL}/logos/logo.png`;
+  const profileImageUrl = profile.profile_image_url || fallbackImageUrl;
 
   const structuredData = {
     "@context": "https://schema.org",

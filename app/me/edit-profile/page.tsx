@@ -1,5 +1,7 @@
 'use client';
 
+import dynamic from 'next/dynamic';
+import { CasperProvider } from '@/lib/casper-context';
 import { useRouter } from 'next/navigation';
 import { useState, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
@@ -29,7 +31,7 @@ import VolunteerForm from './volunteer-form';
 
 type Tab = 'profile' | 'experience' | 'education' | 'skills' | 'certifications' | 'projects' | 'awards' | 'languages' | 'volunteer';
 
-export default function EditProfilePage() {
+function EditProfilePageContent() {
     const { account } = useCasper();
     const router = useRouter();
     const [activeTab, setActiveTab] = useState<Tab>('profile');
@@ -1612,5 +1614,11 @@ function VolunteerSection({ volunteers, setVolunteers, wallet }: { volunteers: V
     );
 }
 
-// End of file
+export default function EditProfilePage() {
+    return (
+        <CasperProvider>
+            <EditProfilePageContent />
+        </CasperProvider>
+    );
+}
 
