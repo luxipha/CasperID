@@ -33,8 +33,8 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   // Fetch verified users for profile sitemaps
   let profileRoutes: MetadataRoute.Sitemap = [];
   
-  // Only fetch profiles if we're in production and backend is available
-  if (process.env.NODE_ENV === 'production' && process.env.NEXT_PUBLIC_API_URL) {
+  // Only fetch profiles if API_URL is configured (not during build without backend)
+  if (process.env.API_URL) {
     try {
       const response = await fetch(`${SITE_URL}/api/verified-profiles-sitemap`, {
         next: { revalidate: 3600 } // Cache for 1 hour

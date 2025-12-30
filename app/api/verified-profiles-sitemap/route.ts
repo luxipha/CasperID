@@ -9,9 +9,9 @@ const API_BASE_URL = process.env.API_URL || 'http://localhost:3001';
 
 export async function GET(request: NextRequest) {
   try {
-    // Return empty array if backend is not available (during build)
-    if (!process.env.API_URL && process.env.NODE_ENV !== 'production') {
-      console.log('Backend not available during build, returning empty sitemap');
+    // Return empty array if backend is not available (during build or when API_URL not set)
+    if (!process.env.API_URL) {
+      console.log('API_URL not configured, returning empty sitemap');
       return NextResponse.json([]);
     }
 
