@@ -370,10 +370,10 @@ class EnvioIndexerService {
                 case 'VerificationCompleted':
                     if (eventData.success) {
                         // Upgrade user's layer status
-                        if (userAccount.layer_status === 'layer_1') {
-                            userAccount.layer_status = 'layer_2';
-                        } else if (userAccount.layer_status === 'layer_2') {
-                            userAccount.layer_status = 'layer_3';
+                        if (userAccount.tier === 'layer_1') {
+                            userAccount.tier = 'layer_2';
+                        } else if (userAccount.tier === 'layer_2') {
+                            userAccount.tier = 'layer_3';
                         }
                         userAccount.verification_completed_at = new Date();
                     }

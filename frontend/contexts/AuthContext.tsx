@@ -37,7 +37,7 @@ export interface User {
   email: string;
   display_name: string;
   human_id?: string;
-  layer_status: 'layer_0' | 'layer_1' | 'layer_2' | 'layer_3';
+  tier: 'layer_0' | 'layer_1' | 'layer_2' | 'layer_3';
   wallet?: string;
   metamask_address?: string;
   metamask_connected: boolean;
@@ -140,7 +140,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           email: userAccount.recovery_email,
           display_name: humanId || userAccount.recovery_email.split('@')[0],
           human_id: humanId,
-          layer_status: userAccount.layer_status,
+          tier: userAccount.tier,
           wallet: userAccount.wallet,
           metamask_connected: userAccount.metamask_connected || false,
           created_at: new Date().toISOString(), // Backend doesn't return this

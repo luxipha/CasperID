@@ -5,7 +5,7 @@
 
 const crypto = require('crypto');
 const jwt = require('jsonwebtoken');
-const { Credential, UserProfile, VerificationRequest } = require('../database/models');
+const { Credential, UserProfile, VerificationRequest, UserAccount } = require('../database/models');
 const casperService = require('../services/casper');
 const { walletToHuman } = require('./wallet-to-human');
 
@@ -22,7 +22,7 @@ async function mintCredential(request) {
         subject_wallet: request.wallet,
         tier: request.tier,
         last_kyc_at: now,
-        last_liveness_at: request.tier === 'full_kyc' ? now : null,
+        last_liveness_at: (request.tier === 'layer_3' || request.tier === 'layer_3') ? now : null,
         issuer: process.env.ISSUER_ID || 'CasperID-Demo',
         issued_at: now,
         expires_at: 0 // No expiration for now
@@ -54,47 +54,57 @@ async function mintCredential(request) {
 
     // Generate human-friendly ID
     const { humanId } = walletToHuman(request.wallet);
-    
+
     // Check if this is an upgrade scenario (existing credential exists)
-    const existingCredential = await Credential.findOne({ 
+    const existingCredential = await Credential.findOne({
         wallet: request.wallet,
-        revoked: false 
+        revoked: false
     });
 
     let credential;
     if (existingCredential) {
         // This is an upgrade - update existing credential
         console.log(`[DEBUG] Upgrading existing credential for wallet: ${request.wallet}, from ${existingCredential.tier} to ${request.tier}`);
-        
+
         credential = await Credential.findOneAndUpdate(
             { wallet: request.wallet, revoked: false },
             {
                 tier: request.tier,
                 last_kyc_at: now,
-                last_liveness_at: request.tier === 'full_kyc' ? now : null,
+                last_liveness_at: (request.tier === 'layer_3' || request.tier === 'layer_3') ? now : null,
                 credential_json,
                 credential_hash,
                 onchain_tx_hash: tx_hash,
-                updated_at: new Date()
+                updated_at: new Date(),
+                // Copy metadata
+                ip: request.ip,
+                userAgent: request.userAgent,
+                location: request.location,
+                coordinates: request.coordinates
             },
             { new: true }
         );
-        
+
         console.log(`[DEBUG] Successfully upgraded credential for wallet: ${request.wallet}`);
     } else {
         // This is a new credential - create new record
         console.log(`[DEBUG] Creating new credential for wallet: ${request.wallet}, tier: ${request.tier}`);
-        
+
         credential = new Credential({
             wallet: request.wallet,
             human_id: humanId,
             tier: request.tier,
             last_kyc_at: now,
-            last_liveness_at: request.tier === 'full_kyc' ? now : null,
+            last_liveness_at: (request.tier === 'layer_3' || request.tier === 'layer_3') ? now : null,
             issuer_id: process.env.ISSUER_ID || 'CasperID-Demo',
             credential_json,
             credential_hash,
-            onchain_tx_hash: tx_hash
+            onchain_tx_hash: tx_hash,
+            // Copy metadata
+            ip: request.ip,
+            userAgent: request.userAgent,
+            location: request.location,
+            coordinates: request.coordinates
         });
 
         await credential.save();
@@ -110,14 +120,14 @@ async function mintCredential(request) {
     // ========================================
     try {
         console.log(`Syncing verified data to user profile for wallet: ${request.wallet}`);
-        
+
         // Prepare verified data from the verification request
         const verifiedProfileData = {
             first_name: request.first_name,
             last_name: request.last_name,
             email: request.email,
             phone_number: request.phone_number,
-            
+
             // Format address properly if it's an object
             ...(request.home_address && typeof request.home_address === 'object' ? {
                 address: {
@@ -145,7 +155,7 @@ async function mintCredential(request) {
 
         // Update or create user profile with verified data
         const existingProfile = await UserProfile.findOne({ wallet: request.wallet });
-        
+
         if (existingProfile) {
             // Update existing profile with verified data
             Object.assign(existingProfile, verifiedProfileData);
@@ -161,10 +171,27 @@ async function mintCredential(request) {
             await newProfile.save();
             console.log(`Created new profile for wallet: ${request.wallet}`);
         }
-        
+
     } catch (profileError) {
         console.error('Failed to sync verified data to user profile:', profileError);
         // Don't fail the whole process if profile sync fails
+    }
+
+
+    // Sync tier to UserAccount using the centralized utility
+    // This ensures tier is always consistent with credential tier
+    try {
+        const { syncTierToUserAccount } = require('./tier-sync');
+        const syncResult = await syncTierToUserAccount(request.wallet);
+
+        if (syncResult.success) {
+            console.log(`[CREDENTIAL-MINTER] ✅ Synced tier for ${request.wallet}: ${syncResult.tier}`);
+        } else {
+            console.warn(`[CREDENTIAL-MINTER] Failed to sync tier for ${request.wallet}`);
+        }
+    } catch (syncError) {
+        console.error('[CREDENTIAL-MINTER] Error syncing tier:', syncError);
+        // Don't fail the credential creation if sync fails
     }
 
     return {
@@ -182,17 +209,17 @@ async function mintCredential(request) {
  */
 async function canAutoMint(wallet, tier) {
     console.log(`[DEBUG] canAutoMint - wallet: ${wallet}, tier: ${tier}`);
-    
+
     // Only basic tier can be auto-minted
-    if (tier !== 'basic') {
+    if (tier !== 'layer_1') {
         console.log(`[DEBUG] canAutoMint - tier is not basic: ${tier}`);
         return false;
     }
 
     // Check if wallet already has a credential
-    const existingCredential = await Credential.findOne({ 
-        wallet, 
-        revoked: false 
+    const existingCredential = await Credential.findOne({
+        wallet,
+        revoked: false
     });
 
     if (existingCredential) {

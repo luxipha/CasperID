@@ -9,8 +9,9 @@ interface ExperienceFormProps {
 
 export const ExperienceForm: React.FC<ExperienceFormProps> = ({ initialData, onSave, onCancel }) => {
     const [formData, setFormData] = useState<Partial<Experience>>({
-        company_name: initialData?.company_name || initialData?.company || '',
-        job_title: initialData?.job_title || initialData?.title || '',
+        _id: initialData?._id,
+        company_name: initialData?.company_name || '',
+        job_title: initialData?.job_title || '',
         employment_type: initialData?.employment_type || 'full-time',
         location: initialData?.location || '',
         start_date: initialData?.start_date || { month: '', year: '' },
@@ -27,16 +28,25 @@ export const ExperienceForm: React.FC<ExperienceFormProps> = ({ initialData, onS
     const years = Array.from({ length: 50 }, (_, i) => (currentYear - i).toString());
 
     const updateStartDate = (field: 'month' | 'year', value: string) => {
+        const numValue = value === '' ? '' : parseInt(value);
         setFormData(prev => ({
             ...prev,
-            start_date: { ...prev.start_date!, [field]: value }
+            start_date: { ...prev.start_date!, [field]: numValue }
         }));
     };
 
     const updateEndDate = (field: 'month' | 'year' | 'is_current', value: string | boolean) => {
+        if (field === 'is_current') {
+            setFormData(prev => ({
+                ...prev,
+                end_date: { ...prev.end_date!, is_current: value as boolean }
+            }));
+            return;
+        }
+        const numValue = (value === '' || value === undefined) ? '' : parseInt(value as string);
         setFormData(prev => ({
             ...prev,
-            end_date: { ...prev.end_date!, [field]: value }
+            end_date: { ...prev.end_date!, [field]: numValue }
         }));
     };
 

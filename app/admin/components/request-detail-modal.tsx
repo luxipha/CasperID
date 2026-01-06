@@ -42,7 +42,7 @@ export default function RequestDetailsModal({ isOpen, onClose, request, onAction
                                 </Badge>
                             </DialogTitle>
                             <DialogDescription className="text-slate-400">
-                                Requested {request.tier === 'full_kyc' ? "Full KYC" : "Basic"} verification on {new Date(request.created_at).toLocaleDateString()}
+                                Requested {request.tier === 'layer_3' ? "Full KYC" : "Basic"} verification on {new Date(request.created_at).toLocaleDateString()}
                             </DialogDescription>
                         </div>
                         <Badge className={`${request.status === 'approved' ? 'bg-green-500/20 text-green-300' :

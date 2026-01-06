@@ -9,8 +9,9 @@ interface AwardFormProps {
 
 export const AwardForm: React.FC<AwardFormProps> = ({ initialData, onSave, onCancel }) => {
     const [formData, setFormData] = useState<Partial<Award>>({
+        _id: initialData?._id,
         title: initialData?.title || '',
-        issuing_organization: initialData?.issuing_organization || initialData?.issuer || '',
+        issuing_organization: initialData?.issuing_organization || '',
         issue_date: initialData?.issue_date || { month: '', year: '' },
         description: initialData?.description || '',
     });
@@ -51,14 +52,13 @@ export const AwardForm: React.FC<AwardFormProps> = ({ initialData, onSave, onCan
                         />
                     </div>
                     <div className="space-y-2">
-                        <label className="text-xs font-bold text-text-main">Issuer *</label>
+                        <label className="text-xs font-bold text-text-main">Issuing Organization</label>
                         <input
-                            required
                             type="text"
                             value={formData.issuing_organization}
                             onChange={(e) => setFormData({ ...formData, issuing_organization: e.target.value })}
-                            placeholder="e.g. Company Inc."
-                            className="w-full h-12 px-4 rounded-xl bg-white border border-gray-200 focus:ring-2 focus:ring-primary/20 focus:border-primary text-sm font-bold max-w-full"
+                            placeholder="e.g. Casper Network"
+                            className="w-full h-12 px-4 rounded-xl bg-white border border-gray-200 focus:ring-2 focus:ring-primary/20 focus:border-primary text-sm font-bold"
                         />
                     </div>
                 </div>

@@ -158,7 +158,7 @@ class WebAuthnService {
                     email_verified: false,
                     user_salt: userSalt,
                     active_passkey_id: Buffer.from(credentialID).toString('base64url'),
-                    layer_status: 'layer_0',
+                    tier: 'layer_0',
                 });
             } else {
                 userAccount.active_passkey_id = Buffer.from(credentialID).toString('base64url');
@@ -224,7 +224,7 @@ class WebAuthnService {
                 userAccount: {
                     user_id: userAccount.user_id,
                     recovery_email: userAccount.recovery_email,
-                    layer_status: userAccount.layer_status,
+                    tier: userAccount.tier,
                     email_verified: userAccount.email_verified,
                 }
             };
@@ -618,7 +618,7 @@ class WebAuthnService {
                 userAccount: {
                     user_id: userAccount.user_id,
                     recovery_email: userAccount.recovery_email,
-                    layer_status: userAccount.layer_status,
+                    tier: userAccount.tier,
                     email_verified: userAccount.email_verified,
                     wallet: userAccount.wallet,
                     metamask_connected: userAccount.metamask_connected,
@@ -700,7 +700,7 @@ class WebAuthnService {
                     { user_id: verification.user_id },
                     {
                         email_verified: true,
-                        layer_status: 'layer_1' // Auto-upgrade to Layer 1 after email verification
+                        tier: 'layer_1' // Auto-upgrade to Layer 1 after email verification
                     }
                 );
             }

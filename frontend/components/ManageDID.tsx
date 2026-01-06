@@ -10,7 +10,7 @@ interface UserData {
   did_address?: string;
   wallet?: string;
   email?: string;
-  layer_status?: string;
+  tier?: string;
   created_at?: string;
   metamask_connected?: boolean;
   metamask_address?: string;
@@ -150,22 +150,22 @@ export const ManageDID: React.FC<ViewDIDProps> = ({ onBack }) => {
           <div>
             <p className="text-[10px] font-extrabold text-text-sub uppercase tracking-widest mb-2 opacity-60">Verification Level</p>
             <div className="flex items-center gap-2">
-              {userData?.layer_status === 'layer_3' && (
+              {userData?.tier === 'layer_3' && (
                 <span className="px-3 py-1 rounded-full bg-green-50 text-green-700 text-[11px] font-black border border-green-200">
                   Layer 3 - Fully Verified
                 </span>
               )}
-              {userData?.layer_status === 'layer_2' && (
+              {userData?.tier === 'layer_2' && (
                 <span className="px-3 py-1 rounded-full bg-blue-50 text-blue-700 text-[11px] font-black border border-blue-200">
                   Layer 2 - Liveness Verified
                 </span>
               )}
-              {userData?.layer_status === 'layer_1' && (
+              {userData?.tier === 'layer_1' && (
                 <span className="px-3 py-1 rounded-full bg-yellow-50 text-yellow-700 text-[11px] font-black border border-yellow-200">
                   Layer 1 - Email Verified
                 </span>
               )}
-              {!userData?.layer_status && (
+              {!userData?.tier && (
                 <span className="px-3 py-1 rounded-full bg-gray-50 text-gray-700 text-[11px] font-black border border-gray-200">
                   Not Verified
                 </span>

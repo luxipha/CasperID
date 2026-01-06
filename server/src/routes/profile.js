@@ -111,7 +111,7 @@ router.get('/user/profile', requireAuth, async (req, res) => {
         const enrichedProfile = {
             ...profile.toObject(),
             did_address: userAccount?.did_address || null,
-            layer_status: userAccount?.layer_status || 'layer_0',
+            tier: userAccount?.tier || 'layer_0',
             email_verified: userAccount?.email_verified || false,
             account_created_at: userAccount?.created_at || null,
             passkey_count: passkeyCount
@@ -132,7 +132,7 @@ router.put('/user/profile', requireAuth, async (req, res) => {
     try {
         const { wallet } = req.user;
         const updates = req.body;
-        console.log(`PUT /user/profile for ${wallet}`, updates);
+        console.log(`PUT /user/profile for ${wallet}`, JSON.stringify(updates, null, 2));
 
         // Security: Remove wallet/id from updates to avoid overwriting
         delete updates.wallet;
@@ -514,10 +514,16 @@ router.post('/profile/:wallet/experience', async (req, res) => {
 router.put('/profile/:wallet/experience/:id', async (req, res) => {
     try {
         const { wallet, id } = req.params;
+        console.log(`PUT /experience/${id} for wallet ${wallet}`);
+        console.log('Update payload:', JSON.stringify(req.body, null, 2));
+
+        const updates = { ...req.body };
+        delete updates._id;
+        delete updates.wallet;
 
         const experience = await Experience.findOneAndUpdate(
             { _id: id, wallet },
-            { $set: req.body },
+            { $set: updates },
             { new: true, runValidators: true }
         );
 
@@ -586,10 +592,14 @@ router.post('/profile/:wallet/education', async (req, res) => {
 router.put('/profile/:wallet/education/:id', async (req, res) => {
     try {
         const { wallet, id } = req.params;
+        console.log(`PUT /education/${id} for wallet ${wallet}`);
+        const updates = { ...req.body };
+        delete updates._id;
+        delete updates.wallet;
 
         const education = await Education.findOneAndUpdate(
             { _id: id, wallet },
-            { $set: req.body },
+            { $set: updates },
             { new: true, runValidators: true }
         );
 
@@ -655,9 +665,14 @@ router.put('/profile/:wallet/certifications/:id', async (req, res) => {
     try {
         const { wallet, id } = req.params;
 
+        const updates = { ...req.body };
+        delete updates._id;
+        delete updates.wallet;
+        delete updates.wallet;
+
         const certification = await Certification.findOneAndUpdate(
             { _id: id, wallet },
-            { $set: req.body },
+            { $set: updates },
             { new: true, runValidators: true }
         );
 
@@ -706,15 +721,30 @@ router.get('/profile/:wallet/skills', async (req, res) => {
 
 router.post('/profile/:wallet/skills', async (req, res) => {
     try {
+        console.log('🚀 POST /profile/:wallet/skills called');
+        console.log('📍 Wallet param:', req.params.wallet);
+        console.log('📦 Request body:', req.body);
+
         const { wallet } = req.params;
         const skillData = { ...req.body, wallet };
 
+        console.log('💾 Final skill data to save:', skillData);
+
         const skill = new Skill(skillData);
+        console.log('🔨 Skill instance created:', skill);
+
         await skill.save();
+        console.log('✅ Skill saved to database successfully:', skill);
 
         res.status(201).json(skill);
+        console.log('📤 Response sent with skill data');
     } catch (error) {
-        console.error('Add skill error:', error);
+        console.error('❌ Add skill error:', error);
+        console.error('❌ Error details:', {
+            message: error.message,
+            stack: error.stack,
+            name: error.name
+        });
         res.status(500).json({ error: error.message || 'Failed to add skill' });
     }
 });
@@ -722,10 +752,13 @@ router.post('/profile/:wallet/skills', async (req, res) => {
 router.put('/profile/:wallet/skills/:id', async (req, res) => {
     try {
         const { wallet, id } = req.params;
+        const updates = { ...req.body };
+        delete updates._id;
+        delete updates.wallet;
 
         const skill = await Skill.findOneAndUpdate(
             { _id: id, wallet },
-            { $set: req.body },
+            { $set: updates },
             { new: true, runValidators: true }
         );
 
@@ -790,10 +823,13 @@ router.post('/profile/:wallet/projects', async (req, res) => {
 router.put('/profile/:wallet/projects/:id', async (req, res) => {
     try {
         const { wallet, id } = req.params;
+        const updates = { ...req.body };
+        delete updates._id;
+        delete updates.wallet;
 
         const project = await Project.findOneAndUpdate(
             { _id: id, wallet },
-            { $set: req.body },
+            { $set: updates },
             { new: true, runValidators: true }
         );
 
@@ -858,10 +894,13 @@ router.post('/profile/:wallet/awards', async (req, res) => {
 router.put('/profile/:wallet/awards/:id', async (req, res) => {
     try {
         const { wallet, id } = req.params;
+        const updates = { ...req.body };
+        delete updates._id;
+        delete updates.wallet;
 
         const award = await Award.findOneAndUpdate(
             { _id: id, wallet },
-            { $set: req.body },
+            { $set: updates },
             { new: true, runValidators: true }
         );
 
@@ -926,10 +965,13 @@ router.post('/profile/:wallet/languages', async (req, res) => {
 router.put('/profile/:wallet/languages/:id', async (req, res) => {
     try {
         const { wallet, id } = req.params;
+        const updates = { ...req.body };
+        delete updates._id;
+        delete updates.wallet;
 
         const language = await Language.findOneAndUpdate(
             { _id: id, wallet },
-            { $set: req.body },
+            { $set: updates },
             { new: true, runValidators: true }
         );
 
@@ -994,10 +1036,13 @@ router.post('/profile/:wallet/volunteer', async (req, res) => {
 router.put('/profile/:wallet/volunteer/:id', async (req, res) => {
     try {
         const { wallet, id } = req.params;
+        const updates = { ...req.body };
+        delete updates._id;
+        delete updates.wallet;
 
         const volunteer = await Volunteer.findOneAndUpdate(
             { _id: id, wallet },
-            { $set: req.body },
+            { $set: updates },
             { new: true, runValidators: true }
         );
 
@@ -1059,6 +1104,26 @@ router.get('/profile/human-id/:walletAddress', async (req, res) => {
             success: false,
             error: error.message || 'Failed to generate human ID'
         });
+    }
+});
+
+// ============================================
+// DEBUG - TIER COMPARISON
+// ============================================
+
+/**
+ * GET /api/debug/tier-status/:wallet
+ * Compare tier status between UserAccount and IdentityCredentials
+ * Useful for debugging tier synchronization issues
+ */
+router.get('/debug/tier-status/:wallet', async (req, res) => {
+    try {
+        const { getTierComparison } = require('../utils/tier-sync');
+        const comparison = await getTierComparison(req.params.wallet);
+        res.json(comparison);
+    } catch (error) {
+        console.error('Tier comparison error:', error);
+        res.status(500).json({ error: error.message });
     }
 });
 

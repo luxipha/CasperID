@@ -36,14 +36,14 @@ class VerificationServiceV2 {
             const { userAccount } = sessionData;
 
             // Check if user is eligible for Layer 2
-            if (userAccount.layer_status !== 'layer_1') {
+            if (userAccount.tier !== 'layer_1') {
                 throw new Error('User must complete Layer 1 before Layer 2 verification');
             }
 
             // Check if already verified at Layer 2 or higher
             const existingCredential = await Credential.findOne({
                 wallet: userAccount.wallet,
-                tier: { $in: ['basic', 'full_kyc'] },
+                tier: { $in: ['layer_1', 'layer_3'] },
                 revoked: false
             });
 
@@ -102,7 +102,7 @@ class VerificationServiceV2 {
             const { userAccount } = sessionData;
 
             // Check if user is eligible for Layer 3 (must have Layer 1 minimum)
-            if (userAccount.layer_status === 'layer_0') {
+            if (userAccount.tier === 'layer_0') {
                 throw new Error('User must complete email verification before Layer 3');
             }
 
@@ -310,7 +310,7 @@ class VerificationServiceV2 {
             // Create credential
             const credentialData = await this.createVerificationCredential(
                 userAccount,
-                'basic', // Layer 2 maps to 'basic' tier
+                'layer_1', // Layer 2 maps to 'layer_1' tier
                 proofData
             );
 
@@ -322,7 +322,7 @@ class VerificationServiceV2 {
             await verificationRequest.save();
 
             // Update user account status
-            userAccount.layer_status = 'layer_2';
+            userAccount.tier = 'layer_2';
             userAccount.updated_at = new Date();
             await userAccount.save();
 
@@ -334,7 +334,7 @@ class VerificationServiceV2 {
                 proofData,
                 userAccount: {
                     user_id: userAccount.user_id,
-                    layer_status: userAccount.layer_status,
+                    tier: userAccount.tier,
                     wallet: userAccount.wallet
                 }
             };
@@ -372,7 +372,7 @@ class VerificationServiceV2 {
             // Create credential
             const credentialData = await this.createVerificationCredential(
                 userAccount,
-                'full_kyc', // Layer 3 maps to 'full_kyc' tier
+                'layer_3', // Layer 3 maps to 'layer_3' tier
                 proofData
             );
 
@@ -384,7 +384,7 @@ class VerificationServiceV2 {
             await verificationRequest.save();
 
             // Update user account status
-            userAccount.layer_status = 'layer_3';
+            userAccount.tier = 'layer_3';
             userAccount.updated_at = new Date();
             await userAccount.save();
 
@@ -396,7 +396,7 @@ class VerificationServiceV2 {
                 proofData,
                 userAccount: {
                     user_id: userAccount.user_id,
-                    layer_status: userAccount.layer_status,
+                    tier: userAccount.tier,
                     wallet: userAccount.wallet
                 }
             };

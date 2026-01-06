@@ -90,7 +90,7 @@ class WalletGeneratorService {
             }
 
             userAccount.wallet = walletInfo.walletAddress;
-            userAccount.layer_status = 'layer_1'; // Upgrade to Layer 1
+            userAccount.tier = 'layer_1'; // Upgrade to Layer 1
             userAccount.updated_at = new Date();
 
             await userAccount.save();

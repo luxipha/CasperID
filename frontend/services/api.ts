@@ -1,4 +1,5 @@
 import axios, { AxiosInstance, AxiosResponse } from 'axios';
+import { UserProfile } from '../types';
 
 /**
  * API Service for CasperID Backend Integration
@@ -488,7 +489,7 @@ class ApiService {
   // USER PROFILE
   // ============================================
 
-  async getUserProfile(): Promise<ApiResponse> {
+  async getUserProfile(): Promise<UserProfile> {
     try {
       const response = await this.client.get('/api/user/profile');
       return response.data;
@@ -497,11 +498,43 @@ class ApiService {
     }
   }
 
-  async updateUserProfile(profileData: any): Promise<ApiResponse> {
+
+  async updateUserProfile(profileData: Partial<UserProfile>): Promise<UserProfile> {
     try {
       const response = await this.client.put('/api/user/profile', profileData);
       return response.data;
     } catch (error) {
+      throw this.handleError(error);
+    }
+  }
+
+  async getRandomBanner(): Promise<{ imageUrl: string }> {
+    try {
+      const response = await this.client.get('/api/random-banner');
+      return response.data;
+    } catch (error) {
+      console.error('Failed to fetch random banner:', error);
+      // Minimal Fallback
+      return { imageUrl: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&q=80&w=1200' };
+    }
+  }
+
+  async uploadProfilePicture(file: File, wallet?: string): Promise<{ profile: UserProfile; imageUrl: string }> {
+    try {
+      const targetWallet = await this.getWalletForRequest(wallet);
+      console.log(`[API] Uploading avatar for ${targetWallet}`);
+
+      const formData = new FormData();
+      formData.append('avatar', file);
+
+      const response = await this.client.post(`/api/profile/${targetWallet}/upload-avatar`, formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
+      return response.data;
+    } catch (error) {
+      console.error('[API] uploadProfilePicture error:', error);
       throw this.handleError(error);
     }
   }
@@ -520,11 +553,6 @@ class ApiService {
       // Handle direct profile object (normal case)
       if (profile && profile.wallet) {
         return profile.wallet;
-      }
-
-      // Handle wrapped response structure (fallback)
-      if (profile && profile.data && profile.data.wallet) {
-        return profile.data.wallet;
       }
 
       // If we get here, profile exists but no wallet
@@ -1070,6 +1098,46 @@ class ApiService {
     } catch (error) {
       console.error('API connection test failed:', error);
       return false;
+    }
+  }
+
+  // ============================================
+  // ACTIVITY LOG
+  // ============================================
+
+  async getActivityLog(params?: {
+    page?: number;
+    limit?: number;
+    type?: string;
+    status?: string;
+    search?: string;
+    startDate?: string;
+    endDate?: string;
+  }): Promise<{
+    activities: any[];
+    pagination: {
+      total: number;
+      page: number;
+      limit: number;
+      pages: number;
+    };
+  }> {
+    try {
+      const response = await this.client.get('/api/activity-log', { params });
+      return response.data;
+    } catch (error) {
+      console.error('[API] getActivityLog error:', error);
+      throw this.handleError(error);
+    }
+  }
+
+  async getActivityDetail(id: string): Promise<any> {
+    try {
+      const response = await this.client.get(`/api/activity-log/${id}`);
+      return response.data;
+    } catch (error) {
+      console.error('[API] getActivityDetail error:', error);
+      throw this.handleError(error);
     }
   }
 }

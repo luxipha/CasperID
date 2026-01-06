@@ -9,6 +9,7 @@ interface EducationFormProps {
 
 export const EducationForm: React.FC<EducationFormProps> = ({ initialData, onSave, onCancel }) => {
     const [formData, setFormData] = useState<Partial<Education>>({
+        _id: initialData?._id,
         school_name: initialData?.school_name || initialData?.school || '',
         degree: initialData?.degree || '',
         field_of_study: initialData?.field_of_study || '',

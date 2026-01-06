@@ -187,10 +187,10 @@ router.post('/layer3/documents/upload', upload.fields([
         const userAccount = sessionData.userAccount;
 
         // Validate user is eligible for Layer 3
-        if (userAccount.layer_status !== 'layer_2') {
+        if (userAccount.tier !== 'layer_2') {
             return res.status(403).json({
                 error: 'Layer 2 verification required before Layer 3',
-                current_status: userAccount.layer_status
+                current_status: userAccount.tier
             });
         }
 
@@ -388,8 +388,16 @@ router.post('/layer3/submit', async (req, res) => {
 
         const userAccount = sessionData.userAccount;
 
+        // Session may not include email, fetch from database
+        const { UserAccount } = require('../database/models');
+        const fullUserAccount = await UserAccount.findOne({ wallet: userAccount.wallet });
+
+        if (!fullUserAccount) {
+            return res.status(404).json({ error: 'User account not found' });
+        }
+
         // Validate Layer 2 complete
-        if (userAccount.layer_status !== 'layer_2') {
+        if (fullUserAccount.tier !== 'layer_2') {
             return res.status(403).json({
                 error: 'Layer 2 verification required'
             });
@@ -405,21 +413,24 @@ router.post('/layer3/submit', async (req, res) => {
 
         // Check for existing pending request
         const existingRequest = await VerificationRequest.findOne({
-            wallet: userAccount.wallet,
+            wallet: fullUserAccount.wallet,
             tier: 'layer_3',
             status: 'pending'
         });
 
         if (existingRequest) {
             return res.status(400).json({
-                error: 'You already have a pending Layer 3 verification request',
+                error: 'You already have a pending Full KYC verification request',
                 request_id: existingRequest._id
             });
         }
 
+        console.log('[FullKYC] UserAccount email:', fullUserAccount.recovery_email, 'wallet:', fullUserAccount.wallet);
+
         // Create verification request
         const verificationRequest = new VerificationRequest({
-            wallet: userAccount.wallet,
+            wallet: fullUserAccount.wallet,
+            email: fullUserAccount.recovery_email, // Using recovery_email field
             tier: 'layer_3',
             status: 'pending',
             verification_method: 'document',
@@ -432,7 +443,8 @@ router.post('/layer3/submit', async (req, res) => {
                 gender: document_data.gender,
                 nationality: document_data.nationality || 'Nigerian',
                 address: document_data.address,
-                phone_number: document_data.phone_number
+                phone_number: document_data.phone_number,
+                nin: document_data.nin // Include NIN if provided
             },
             liveness_verified: liveness_verified || false,
             upload_id,
@@ -441,7 +453,7 @@ router.post('/layer3/submit', async (req, res) => {
 
         await verificationRequest.save();
 
-        console.log(`[Layer3] Verification request submitted for ${userAccount.wallet}`);
+        console.log(`[Layer3] Verification request submitted for ${fullUserAccount.wallet}`);
 
         res.json({
             success: true,
@@ -610,7 +622,7 @@ router.get('/history', async (req, res) => {
                 credentialHash: cred.credential_hash
             })),
             currentStatus: {
-                layerStatus: sessionData.userAccount.layer_status,
+                layerStatus: sessionData.userAccount.tier,
                 walletAddress: sessionData.userAccount.wallet,
                 emailVerified: sessionData.userAccount.email_verified,
                 metamaskConnected: sessionData.userAccount.metamask_connected

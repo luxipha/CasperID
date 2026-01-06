@@ -291,12 +291,12 @@ router.post('/issue-missing-credentials', adminAuthWithRateLimit, async (req, re
                 const newCredential = new Credential({
                     wallet: user.wallet,
                     human_id: humanId,
-                    tier: user.layer_status || 'basic',
+                    tier: user.tier || 'layer_1',
                     last_kyc_at: Math.floor(Date.now() / 1000),
                     issuer_id: 'CasperID-System-Migration',
                     credential_json: JSON.stringify({
                         subject_wallet: user.wallet,
-                        tier: user.layer_status || 'basic',
+                        tier: user.tier || 'layer_1',
                         issued_at: Date.now(),
                         migration: true
                     }),

@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { LivenessCheck } from './LivenessCheck';
 import { L3LivenessCheck } from './L3LivenessCheck';
@@ -46,10 +46,47 @@ export const KYCHome: React.FC = () => {
   const [selectedDocType, setSelectedDocType] = useState<string>('passport');
   const [isSubmittingToReview, setIsSubmittingToReview] = useState(false);
   const [kycSubmitted, setKycSubmitted] = useState(false);
+  const [layer3Status, setLayer3Status] = useState<'none' | 'pending' | 'approved'>('none');
   const [extractedData, setExtractedData] = useState<any>(null);
   const [uploadId, setUploadId] = useState<string>('');
   const [isLayer3Flow, setIsLayer3Flow] = useState<boolean>(false); // Track if we're in Layer 3 flow
   const { user } = useAuth();
+
+  // Check for pending Layer 3 verification on mount
+  useEffect(() => {
+    const checkLayer3Status = async () => {
+      if (!user?.wallet) return;
+
+      if (user.tier === 'layer_3') {
+        setLayer3Status('approved');
+      } else if (user.tier === 'layer_2') {
+        // Check API for pending Layer 3 upgrade
+        try {
+          const response = await fetch(`/api/identity-status?wallet=${encodeURIComponent(user.wallet)}`);
+
+          if (response.ok) {
+            const data = await response.json();
+            console.log('[KYCHome] Identity status:', data);
+
+            // Check if user has pending Layer 3 upgrade
+            if (data.pending_upgrade_tier === 'layer_3' && data.status === 'pending') {
+              console.log('[KYCHome] Found pending Layer 3 upgrade');
+              setLayer3Status('pending');
+              setKycSubmitted(true);
+            }
+            // Check if user is ALREADY layer_3 or full_kyc but local state is stale
+            else if (data.tier === 'layer_3' || data.tier === 'layer_3') {
+              console.log('[KYCHome] confirmed layer_3/full_kyc from API');
+              setLayer3Status('approved');
+            }
+          }
+        } catch (error) {
+          console.error('[KYCHome] Failed to check Layer 3 status:', error);
+        }
+      }
+    };
+    checkLayer3Status();
+  }, [user]);
 
   // Helper for dashboard navigation back
   const goToDashboard = () => setActiveStep('dashboard');
@@ -74,30 +111,25 @@ export const KYCHome: React.FC = () => {
   const isLayerCompleted = (layer: number) => {
     if (!user) return false;
 
-    switch (layer) {
-      case 1:
-        // Layer 1 is complete if user has email verified or wallet
-        return user.email_verified || user.wallet;
-      case 2:
-        // Layer 2 is complete if user is at layer_2 or higher
-        return ['layer_2', 'layer_3'].includes(user.layer_status);
-      case 3:
-        // Layer 3 is complete if user is at layer_3
-        return user.layer_status === 'layer_3';
-      default:
-        return false;
-    }
+    const tier = user.tier as string;
+
+    if (layer === 1) return user.email_verified || user.wallet;
+    if (layer === 2) return tier === 'layer_2' || tier === 'layer_3' || tier === 'layer_3';
+    if (layer === 3) return tier === 'layer_3' || tier === 'layer_3' || layer3Status === 'approved';
+    return false;
   };
 
   // Get current user layer as number
   const getCurrentLayerNumber = () => {
+    if (layer3Status === 'approved') return 3;
     if (!user) return 1;
-    switch (user.layer_status) {
+    switch (user.tier) {
       case 'layer_0':
       case 'layer_1':
         return 1;
       case 'layer_2':
         return 2;
+      case 'layer_3':
       case 'layer_3':
         return 3;
       default:
@@ -123,12 +155,14 @@ export const KYCHome: React.FC = () => {
   if (activeStep === 'liveness') {
     // Use the tracked flow state instead of user status
     const livenessLayer = isLayer3Flow ? 3 : 2;
+    console.log('[KYCHome] Liveness step - isLayer3Flow:', isLayer3Flow, 'livenessLayer:', livenessLayer);
 
     // Layer 3 uses stripped-down component (no sidebar/header)
     if (isLayer3Flow) {
       return (
         <L3LivenessCheck
           onComplete={() => {
+            console.log('[KYCHome] L3LivenessCheck onComplete called - routing to layer3_review_submit');
             setActiveStep('layer3_review_submit');
           }}
         />
@@ -379,7 +413,7 @@ export const KYCHome: React.FC = () => {
           <div className="flex-1">
             <p className="text-[10px] font-black text-text-sub uppercase tracking-widest opacity-60">Current Status</p>
             <h4 className="text-lg font-black text-text-main">
-              Layer {getCurrentLayerNumber()} - {getVerificationLevel(user?.layer_status || 'layer_1')} Verified
+              {getVerificationLevel(layer3Status === 'approved' ? 'layer_3' : user?.tier || 'layer_1')} - Verified
             </h4>
           </div>
           <div className={`size-8 rounded-full flex items-center justify-center text-white ${kycSubmitted ? 'bg-primary animate-pulse' : 'bg-green-500'}`}>
@@ -525,19 +559,44 @@ export const KYCHome: React.FC = () => {
             Highest Trust
           </div>
           <div className="mb-8">
-            <span className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest border w-fit ${kycSubmitted ? 'bg-primary/10 text-primary border-primary/20' : 'bg-primary/10 text-primary border-primary/10'}`}>
-              {kycSubmitted ? 'Under Review' : 'Available'}
+            <span className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest border w-fit flex items-center gap-2 ${isLayerCompleted(3)
+              ? 'bg-green-50 text-green-600 border-green-100' // Green for completed
+              : kycSubmitted || layer3Status === 'pending'
+                ? 'bg-yellow-50 text-yellow-600 border-yellow-100' // Yellow for pending
+                : 'bg-primary/10 text-primary border-primary/10' // Purple for available
+              }`}>
+              {isLayerCompleted(3) ? (
+                <>
+                  <span className="material-symbols-outlined text-sm font-bold">check</span>
+                  Verified
+                </>
+              ) : kycSubmitted || layer3Status === 'pending' ? 'Under Review' : 'Available'}
             </span>
           </div>
           <h3 className="text-2xl font-black text-text-main mb-4 tracking-tight">Layer 3: Full KYC</h3>
           <p className="text-text-sub text-[15px] font-medium leading-relaxed mb-10">
             The highest level of trust. Unlock higher transaction limits and access regulated services.
           </p>
-          {kycSubmitted ? (
-            <div className="mt-auto p-4 bg-primary/5 border border-primary/10 rounded-2xl flex items-center gap-4">
-              <span className="material-symbols-outlined text-primary animate-pulse">hourglass_empty</span>
-              <span className="text-sm font-bold text-primary">Verification in progress...</span>
+          {isLayerCompleted(3) ? (
+            <div className="mt-auto p-4 bg-green-50 border border-green-100 rounded-2xl flex items-center gap-4">
+              <span className="material-symbols-outlined text-green-600">verified</span>
+              <div>
+                <p className="text-sm font-bold text-green-700">Full KYC Verified</p>
+                <p className="text-xs text-green-600/80 font-medium">You have the highest level of trust.</p>
+              </div>
             </div>
+          ) : layer3Status === 'pending' ? (
+            <>
+              <div className="text-center py-6 space-y-3">
+                <div className="size-16 rounded-full bg-yellow-50 flex items-center justify-center mx-auto mb-4 border border-yellow-100">
+                  <span className="material-symbols-outlined text-3xl text-yellow-600 animate-pulse">pending</span>
+                </div>
+                <p className="text-sm font-bold text-text-sub">Your Layer 3 verification is under review by our team.</p>
+              </div>
+              <button onClick={() => setActiveStep('layer3_submission_received')} className="mt-auto w-full h-14 bg-white text-primary border-2 border-primary rounded-[18px] font-black text-sm flex items-center justify-center gap-3 hover:bg-primary/5 transition-all">
+                View Progress
+              </button>
+            </>
           ) : (
             <button onClick={() => setActiveStep('layer3_method')} className="mt-auto w-full h-14 bg-primary text-white rounded-[18px] font-black text-sm flex items-center justify-center gap-3 shadow-lg hover:bg-primary/90 transition-all">
               Complete Full KYC (Layer 3)

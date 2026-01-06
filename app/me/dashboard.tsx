@@ -150,7 +150,7 @@ export default function UserDashboard() {
                                         <CheckCircle2 className="w-8 h-8 text-green-400" />
                                         <div>
                                             <Badge className="bg-green-500/20 text-green-300 border-green-500/30">
-                                                ✓ {status.tier === 'basic' ? 'Verified Basic' : status.tier === 'full_kyc' ? 'Verified Full' : 'Verified'}
+                                                ✓ {status.tier === 'layer_1' ? 'Verified Basic' : status.tier === 'layer_3' ? 'Verified Full' : 'Verified'}
                                             </Badge>
                                         </div>
                                     </>
@@ -215,7 +215,7 @@ export default function UserDashboard() {
                                             {status.last_liveness_at || status.liveness_completed_at ? (() => {
                                                 const timestamp = status.last_liveness_at || (status.liveness_completed_at! / 1000);
                                                 const daysSince = Math.floor((Date.now() / 1000 - timestamp) / 86400);
-                                                if (status.pending_upgrade_tier === 'full_kyc' && status.status === 'pending') {
+                                                if (status.pending_upgrade_tier === 'layer_3' && status.status === 'pending') {
                                                     return (
                                                         <Badge className="bg-yellow-500/20 text-yellow-300 border-yellow-500/30">
                                                             ⏳ Pending Approval
@@ -235,7 +235,7 @@ export default function UserDashboard() {
                                                         ✓ Fresh
                                                     </Badge>
                                                 );
-                                            })() : (status.pending_upgrade_tier === 'full_kyc' && status.status === 'pending') ? (
+                                            })() : (status.pending_upgrade_tier === 'layer_3' && status.status === 'pending') ? (
                                                 <Badge className="bg-yellow-500/20 text-yellow-300 border-yellow-500/30">
                                                     ⏳ Pending Approval
                                                 </Badge>
@@ -248,7 +248,7 @@ export default function UserDashboard() {
                                         <p className="text-white font-semibold">
                                             {status.last_liveness_at || status.liveness_completed_at ? 
                                                 formatTimestamp(status.last_liveness_at || (status.liveness_completed_at! / 1000)) : 
-                                                (status.pending_upgrade_tier === 'full_kyc' && status.status === 'pending') ? 
+                                                (status.pending_upgrade_tier === 'layer_3' && status.status === 'pending') ? 
                                                     'Liveness completed, awaiting approval' : 
                                                     'No liveness check performed'
                                             }
@@ -257,7 +257,7 @@ export default function UserDashboard() {
                                             const timestamp = status.last_liveness_at || (status.liveness_completed_at! / 1000);
                                             const daysSince = Math.floor((Date.now() / 1000 - timestamp) / 86400);
                                             return <p className="text-xs text-gray-400 mt-1">{daysSince} days ago</p>;
-                                        })() : (status.pending_upgrade_tier === 'full_kyc' && status.status === 'pending') ? (
+                                        })() : (status.pending_upgrade_tier === 'layer_3' && status.status === 'pending') ? (
                                             <p className="text-xs text-gray-400 mt-1">Your liveness verification is complete and pending final approval</p>
                                         ) : (
                                             <p className="text-xs text-gray-400 mt-1">Request full KYC to enable liveness verification</p>
@@ -271,7 +271,7 @@ export default function UserDashboard() {
                                                 🔄 Refresh Liveness Check
                                             </Button>
                                         )}
-                                        {status.tier === 'basic' && !status.pending_request && (
+                                        {status.tier === 'layer_1' && !status.pending_request && (
                                             <Button
                                                 size="sm"
                                                 className="w-full mt-3 bg-blue-600 hover:bg-blue-700 text-sm"
@@ -308,7 +308,7 @@ export default function UserDashboard() {
                             )}
 
                             {/* Full KYC Upgrade Pending Notice */}
-                            {status.pending_upgrade_tier === 'full_kyc' && status.status === 'pending' && (
+                            {status.pending_upgrade_tier === 'layer_3' && status.status === 'pending' && (
                                 <div className="w-full mt-4 p-4 bg-blue-500/20 border border-blue-500/30 rounded-lg">
                                     <div className="flex items-center gap-2 text-blue-300">
                                         <Clock className="w-5 h-5" />
@@ -378,7 +378,7 @@ export default function UserDashboard() {
                         setShowWizard(true);
                     }}
                     isUpgrade={false}
-                    currentTier={status?.tier || 'basic'}
+                    currentTier={status?.tier || 'layer_1'}
                 />
             )}
 

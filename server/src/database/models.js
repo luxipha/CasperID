@@ -10,7 +10,7 @@ const verificationRequestSchema = new mongoose.Schema({
         required: true,
         index: true
     },
-    email: { type: String, required: true },
+    email: { type: String }, // Optional for WebAuthn users
     // Extended Basic
     first_name: { type: String },
     last_name: { type: String },
@@ -25,8 +25,8 @@ const verificationRequestSchema = new mongoose.Schema({
     cns_name: { type: String },
     tier: {
         type: String,
-        enum: ['basic', 'full_kyc', 'layer_1', 'layer_2', 'layer_3'],
-        default: 'basic',
+        enum: ['layer_1', 'layer_3', 'layer_1', 'layer_2', 'layer_3'],
+        default: 'layer_1',
         required: true
     },
     status: {
@@ -42,6 +42,13 @@ const verificationRequestSchema = new mongoose.Schema({
         type: Date,
         default: Date.now
     },
+    coordinates: {
+        lat: Number,
+        long: Number
+    },
+    ip: String,
+    userAgent: String,
+    location: String,
     updated_at: {
         type: Date,
         default: Date.now
@@ -57,18 +64,17 @@ const credentialSchema = new mongoose.Schema({
     wallet: {
         type: String,
         required: true,
-        unique: true,
+        distinct: true,
         index: true
     },
     human_id: {
         type: String,
         index: true,
-        unique: true,
         sparse: true
     },
     tier: {
         type: String,
-        enum: ['basic', 'full_kyc', 'layer_1', 'layer_2', 'layer_3'],
+        enum: require('../constants/tier-levels').TIER_ENUM,
         required: true
     },
     last_kyc_at: {
@@ -105,7 +111,14 @@ const credentialSchema = new mongoose.Schema({
     },
     revocation_reason: {
         type: String
-    }
+    },
+    coordinates: {
+        lat: Number,
+        long: Number
+    },
+    ip: String,
+    userAgent: String,
+    location: String
 });
 
 const issuerSchema = new mongoose.Schema({
@@ -354,6 +367,11 @@ const skillSchema = new mongoose.Schema({
     wallet: { type: String, required: true, index: true },
 
     skill_name: { type: String, required: true },
+    proficiency: {
+        type: String,
+        enum: ['Beginner', 'Intermediate', 'Advanced', 'Expert'],
+        default: 'Intermediate'
+    },
     endorsements_count: { type: Number, default: 0 },
 
     endorsed_by: [{
@@ -627,10 +645,12 @@ const userAccountSchema = new mongoose.Schema({
         created_at: Date,
         revoked: { type: Boolean, default: false }
     }],
-    layer_status: {
+    // Verification tier (single source of truth)
+    tier: {
         type: String,
-        enum: ['layer_0', 'layer_1', 'layer_2', 'layer_3'],
-        default: 'layer_0'
+        enum: require('../constants/tier-levels').TIER_ENUM,
+        default: 'layer_0',
+        required: true
     },
     metamask_connected: {
         type: Boolean,

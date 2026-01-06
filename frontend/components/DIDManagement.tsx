@@ -12,7 +12,7 @@ interface DIDManagementProps {
 interface UserData {
   did_address?: string;
   wallet?: string;
-  layer_status?: string;
+  tier?: string;
   account_created_at?: string;
   passkey_count?: number;
 }

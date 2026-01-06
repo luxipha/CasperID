@@ -190,7 +190,14 @@ const App: React.FC = () => {
       case 'activity':
         return <ActivityLog onViewDetail={handleViewActivityDetail} />;
       case 'activity-detail':
-        return <ActivityDetails onBack={() => setCurrentView('activity')} />;
+        return selectedActivityId ? (
+          <ActivityDetails
+            activityId={selectedActivityId}
+            onBack={() => setCurrentView('activity')}
+          />
+        ) : (
+          <div>Loading...</div>
+        );
       case 'settings':
         return <Settings />;
       case 'credentials':
@@ -241,9 +248,9 @@ const App: React.FC = () => {
             )}
 
             {/* Verification Level Banner */}
-            {user && user.layer_status && (
+            {user && user.tier && (
               <VerificationLevelBanner
-                userLevel={user.layer_status}
+                userLevel={user.tier}
                 onUpgrade={handleVerificationUpgrade}
               />
             )}
@@ -255,16 +262,16 @@ const App: React.FC = () => {
                   <h2 className="text-[32px] font-extrabold text-text-main tracking-tight leading-none">
                     Welcome back, {user?.display_name || 'User'}
                   </h2>
-                  <span className={`px-3 py-1.5 rounded-full text-[10px] font-extrabold uppercase tracking-widest flex items-center gap-1.5 border ${user?.layer_status === 'layer_3'
+                  <span className={`px-3 py-1.5 rounded-full text-[10px] font-extrabold uppercase tracking-widest flex items-center gap-1.5 border ${user?.tier === 'layer_3'
                     ? 'bg-green-50 text-green-700 border-green-200'
-                    : user?.layer_status === 'layer_2'
+                    : user?.tier === 'layer_2'
                       ? 'bg-purple-50 text-purple-700 border-purple-200'
                       : 'bg-blue-50 text-blue-700 border-blue-200'
                     }`}>
                     <span className="material-symbols-outlined text-sm icon-filled">shield</span>
-                    {user?.layer_status === 'layer_3'
+                    {user?.tier === 'layer_3'
                       ? 'Full KYC'
-                      : user?.layer_status === 'layer_2'
+                      : user?.tier === 'layer_2'
                         ? 'Liveness Verified'
                         : 'Basic Verified'}
                   </span>

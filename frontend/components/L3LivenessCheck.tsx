@@ -126,6 +126,7 @@ export const L3LivenessCheck: React.FC<L3LivenessCheckProps> = ({ onComplete }) 
 
                             if (canvasRef.current && st.frames.length < 15) {
                                 st.frames.push(canvasRef.current.toDataURL('image/jpeg', 0.6));
+                                console.log(`[L3Liveness] Captured frame ${st.frames.length} after blink ${st.blinkCount}`);
                             }
 
                             setProgress((st.blinkCount / 3) * 100);
@@ -149,12 +150,15 @@ export const L3LivenessCheck: React.FC<L3LivenessCheckProps> = ({ onComplete }) 
                     if (now - st.lastFrameTime > 300 && st.frames.length < 15) {
                         st.frames.push(canvasRef.current?.toDataURL('image/jpeg', 0.6) || "");
                         st.lastFrameTime = now;
+                        console.log(`[L3Liveness] Captured frame ${st.frames.length} during head turn (nosePos: ${nosePos.toFixed(2)})`);
                     }
 
                     if (nosePos < 0.3) {
                         if (canvasRef.current && st.frames.length < 15) {
                             st.frames.push(canvasRef.current.toDataURL('image/jpeg', 0.6));
+                            console.log(`[L3Liveness] Captured final frame ${st.frames.length} at full left turn`);
                         }
+                        console.log(`[L3Liveness] Submitting ${st.frames.length} frames for verification`);
                         submitLiveness(st.frames);
                     }
                 }
@@ -210,6 +214,16 @@ export const L3LivenessCheck: React.FC<L3LivenessCheckProps> = ({ onComplete }) 
     const submitLiveness = async (frames: string[]) => {
         if (state === "VERIFYING") return; // Prevent double submission
 
+        console.log(`[L3Liveness] submitLiveness called with ${frames.length} frames`);
+
+        // Validate frame count
+        if (frames.length < 10) {
+            console.error(`[L3Liveness] Insufficient frames: ${frames.length}/10 minimum`);
+            setGuidance("Not enough frames captured. Please try again.");
+            setState("POSITIONING");
+            return;
+        }
+
         try {
             setState("VERIFYING");
             setGuidance("Verifying liveness...");
@@ -228,28 +242,30 @@ export const L3LivenessCheck: React.FC<L3LivenessCheckProps> = ({ onComplete }) 
             formData.append('totalFrames', frames.length.toString());
             formData.append('stepSequence', JSON.stringify(['blink', 'turn_left']));
 
+            console.log(`[L3Liveness] Submitting ${frames.length} frames to API`);
+
             const response = await fetch('/api/ai/verify-liveness-sequence', {
                 method: 'POST',
                 credentials: 'include',
                 body: formData,
             });
 
-            if (response.ok) {
-                const result = await response.json();
-                if (result.passed) {
-                    await refreshUser();
-                    setState("SUCCESS");
-                    setGuidance("Verification complete!");
-                    // Wait briefly then proceed
-                    setTimeout(() => {
-                        if (onComplete) onComplete();
-                    }, 1500);
-                } else {
-                    setGuidance("Verification failed. Please try again.");
-                    setState("POSITIONING");
-                }
+            const result = await response.json();
+            console.log('[L3Liveness] API response:', result);
+
+            if (response.ok && result.passed) {
+                // Layer 3 doesn't change user status, so no need to refresh
+                // Call onComplete immediately to prevent App.tsx from routing to dashboard
+                setState("SUCCESS");
+                setGuidance("Verification complete!");
+                setTimeout(() => {
+                    console.log('[L3Liveness] Calling onComplete callback');
+                    if (onComplete) onComplete();
+                }, 1500);
             } else {
-                throw new Error('Verification failed');
+                console.error('[L3Liveness] Verification failed:', result);
+                setGuidance(result.error || "Verification failed. Please try again.");
+                setState("POSITIONING");
             }
         } catch (error) {
             console.error('Liveness error:', error);
@@ -301,8 +317,8 @@ export const L3LivenessCheck: React.FC<L3LivenessCheckProps> = ({ onComplete }) 
 
                         <div className="absolute top-8 inset-x-0 text-center px-4">
                             <span className={`inline-block px-4 py-2 rounded-full font-bold text-lg backdrop-blur-md shadow-lg transition-colors duration-300 ${ovalColor === 'green' ? 'bg-green-500/20 text-green-300 border border-green-500/50' :
-                                    ovalColor === 'red' ? 'bg-red-500/20 text-red-300 border border-red-500/50' :
-                                        'bg-slate-900/60 text-white border border-white/20'
+                                ovalColor === 'red' ? 'bg-red-500/20 text-red-300 border border-red-500/50' :
+                                    'bg-slate-900/60 text-white border border-white/20'
                                 }`}>
                                 {guidance}
                             </span>

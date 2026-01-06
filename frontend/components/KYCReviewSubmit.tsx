@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 interface DocumentData {
   document_type: string;
   document_number: string;
+  nin?: string; // National ID Number
   first_name: string;
   last_name: string;
   date_of_birth: string;
@@ -159,6 +160,12 @@ export const KYCReviewSubmit: React.FC<KYCReviewSubmitProps> = ({
                 <p className="text-[10px] font-black text-text-sub uppercase tracking-widest opacity-60">Date of Birth</p>
                 <p className="text-base font-bold text-text-main">{documentData.date_of_birth || 'Not provided'}</p>
               </div>
+              {documentData.nin && (
+                <div className="space-y-1">
+                  <p className="text-[10px] font-black text-text-sub uppercase tracking-widest opacity-60">National ID Number (NIN)</p>
+                  <p className="text-base font-bold text-text-main">{documentData.nin}</p>
+                </div>
+              )}
               <div className="space-y-1">
                 <p className="text-[10px] font-black text-text-sub uppercase tracking-widest opacity-60">Nationality</p>
                 <p className="text-base font-bold text-text-main">{documentData.nationality}</p>

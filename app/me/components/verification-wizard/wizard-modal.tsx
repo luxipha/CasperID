@@ -22,7 +22,7 @@ export default function WizardModal({ wallet, existingData, initialStep = 1, onC
     const [loading, setLoading] = useState(false);
     const [data, setData] = useState<Partial<VerificationRequest>>({
         wallet,
-        tier: 'full_kyc',
+        tier: 'layer_3',
         ...existingData, // Pre-fill with existing data
         socials: existingData?.socials || {}
     });

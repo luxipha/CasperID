@@ -117,9 +117,9 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate }) => 
               {user?.display_name || user?.email?.split('@')[0] || 'User'}
             </p>
             <div className="flex items-center gap-1">
-              <span className={`w-2 h-2 rounded-full ${getVerificationColor(user?.layer_status || 'layer_0')}`}></span>
+              <span className={`w-2 h-2 rounded-full ${getVerificationColor(user?.tier || 'layer_0')}`}></span>
               <p className="text-[10px] text-text-sub truncate font-medium">
-                {getVerificationLevel(user?.layer_status || 'layer_0')} Verified
+                {getVerificationLevel(user?.tier || 'layer_0')} Verified
               </p>
             </div>
           </div>

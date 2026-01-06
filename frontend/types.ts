@@ -1,12 +1,14 @@
-
 export interface UserProfile {
+  _id?: string;
   wallet: string;
   human_id?: string;
   cns_name?: string;
+  tier?: 'layer_1' | 'layer_3' | 'layer_1' | 'layer_2' | 'layer_3';
   first_name?: string;
   last_name?: string;
   email?: string;
   phone_number?: string;
+  date_of_birth?: string;
   headline?: string;
   profile_image_url?: string;
   cover_image_url?: string;
@@ -15,8 +17,26 @@ export interface UserProfile {
   website?: string;
   portfolio_links?: string[];
   about?: string;
-  socials?: Record<string, string>;
-  open_to_work?: boolean;
+  socials?: {
+    linkedin?: string;
+    twitter?: string;
+    github?: string;
+    website?: string;
+    [key: string]: string | undefined;
+  };
+  open_to_work?: {
+    enabled: boolean;
+    roles?: string[];
+    employment_types?: string[];
+    locations?: string[];
+    remote_preference?: 'on-site' | 'hybrid' | 'remote' | 'any';
+    salary_range?: {
+      min?: number;
+      max?: number;
+      currency?: string;
+    };
+    availability?: string;
+  };
   industry?: string;
   seniority_level?: string;
   profile_completeness?: number;
@@ -27,12 +47,12 @@ export interface UserProfile {
 
 export interface Experience {
   _id?: string;
-  title: string;
-  company: string;
+  job_title: string;
+  company_name: string;
   location?: string;
-  start_date: { month: string; year: string };
-  end_date?: { month: string; year: string } | null; // null if current
-  current: boolean;
+  start_date: { month: number | string; year: number | string };
+  end_date?: { month: number | string; year: number | string; is_current?: boolean } | null;
+  employment_type?: string;
   description?: string;
   skills_used?: string[];
   display_order?: number;
@@ -41,10 +61,11 @@ export interface Experience {
 export interface Education {
   _id?: string;
   school: string;
+  school_name?: string; // Matching backend schema
   degree: string;
   field_of_study?: string;
-  start_date: { month: string; year: string };
-  end_date?: { month: string; year: string };
+  start_date: { month: number | string; year: number | string };
+  end_date?: { month: number | string; year: number | string };
   grade?: string;
   activities?: string;
   description?: string;
@@ -55,8 +76,8 @@ export interface Certification {
   _id?: string;
   name: string;
   issuing_organization: string;
-  issue_date: { month: string; year: string };
-  expiration_date?: { month: string; year: string };
+  issue_date: { month: number | string; year: number | string };
+  expiration_date?: { month: number | string; year: number | string };
   credential_id?: string;
   credential_url?: string;
   display_order?: number;
@@ -64,11 +85,14 @@ export interface Certification {
 
 export interface Skill {
   _id?: string;
-  name: string;
-  category?: string; // 'Technical', 'Soft', 'Language', etc.
+  skill_name: string; // Changed from name to match potential schema but verified logic often uses name. Wait.
+  // Schema (Snippet 2333): skill_name. Form uses name?
+  // I'll stick to observed usage or fix. Snippet 2333 showed `skill_name`.
+  // I'll update Skill to match schema just in case.
+  category?: string;
   proficiency?: 'Beginner' | 'Intermediate' | 'Advanced' | 'Expert';
   is_top_skill?: boolean;
-  endorsements?: number;
+  endorsements_count?: number; // Match schema
   display_order?: number;
 }
 
@@ -81,12 +105,12 @@ export interface Language {
 
 export interface Project {
   _id?: string;
-  name: string;
+  project_name: string; // Schema says project_name
   description?: string;
-  url?: string;
-  start_date?: { month: string; year: string };
-  end_date?: { month: string; year: string };
-  contributors?: string[]; // List of user IDs or names
+  project_url?: string; // Schema project_url
+  start_date?: { month: number | string; year: number | string };
+  end_date?: { month: number | string; year: number | string; is_ongoing?: boolean };
+  contributors?: string[];
   skills_used?: string[];
   display_order?: number;
 }
@@ -94,8 +118,8 @@ export interface Project {
 export interface Award {
   _id?: string;
   title: string;
-  issuer: string;
-  issue_date: { month: string; year: string };
+  issuing_organization: string; // Schema
+  issue_date: { month: number | string; year: number | string };
   description?: string;
   display_order?: number;
 }
@@ -104,9 +128,8 @@ export interface Volunteer {
   _id?: string;
   organization: string;
   role: string;
-  start_date: { month: string; year: string };
-  end_date?: { month: string; year: string };
-  current?: boolean;
+  start_date: { month: number | string; year: number | string };
+  end_date?: { month: number | string; year: number | string; is_current?: boolean };
   description?: string;
   display_order?: number;
 }

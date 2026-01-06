@@ -9,9 +9,10 @@ interface ProjectFormProps {
 
 export const ProjectForm: React.FC<ProjectFormProps> = ({ initialData, onSave, onCancel }) => {
     const [formData, setFormData] = useState<Partial<Project>>({
-        project_name: initialData?.project_name || initialData?.name || '',
+        _id: initialData?._id,
+        project_name: initialData?.project_name || '',
         description: initialData?.description || '',
-        project_url: initialData?.project_url || initialData?.url || '',
+        project_url: initialData?.project_url || '',
         start_date: initialData?.start_date || { month: '', year: '' },
         end_date: initialData?.end_date || { month: '', year: '' },
     });
@@ -47,14 +48,13 @@ export const ProjectForm: React.FC<ProjectFormProps> = ({ initialData, onSave, o
         <form onSubmit={handleSubmit} className="bg-gray-50 rounded-[24px] p-6 border border-gray-100 animate-in fade-in slide-in-from-top-4 duration-300">
             <div className="space-y-6">
                 <div className="space-y-2">
-                    <label className="text-xs font-bold text-text-main">Project Name *</label>
+                    <label className="text-xs font-bold text-text-main">Project Name</label>
                     <input
-                        required
                         type="text"
                         value={formData.project_name}
                         onChange={(e) => setFormData({ ...formData, project_name: e.target.value })}
-                        placeholder="e.g. CasperID"
-                        className="w-full h-12 px-4 rounded-xl bg-white border border-gray-200 focus:ring-2 focus:ring-primary/20 focus:border-primary text-sm font-bold max-w-full"
+                        placeholder="e.g. Casper Wallet Integration"
+                        className="w-full h-12 px-4 rounded-xl bg-white border border-gray-200 focus:ring-2 focus:ring-primary/20 focus:border-primary text-sm font-bold"
                     />
                 </div>
 

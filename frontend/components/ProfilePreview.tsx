@@ -23,8 +23,8 @@ export const ProfilePreview: React.FC<ProfilePreviewProps> = ({ onBack, data }) 
   const headline = profile?.headline || 'Blockchain Enthusiast';
   const location = profile?.city && profile?.country ? `${profile.city}, ${profile.country}` : 'Global';
   const about = profile?.about || 'No bio provided yet.';
-  const jobTitle = experiences[0]?.title || 'Member';
-  const company = experiences[0]?.company || 'Casper Ecosystem';
+  const jobTitle = experiences[0]?.job_title || 'Member';
+  const company = experiences[0]?.company_name || 'Casper Ecosystem';
 
   return (
     <div className="w-full space-y-10 animate-in fade-in slide-in-from-right-12 duration-700 pb-20">
@@ -58,12 +58,23 @@ export const ProfilePreview: React.FC<ProfilePreviewProps> = ({ onBack, data }) 
 
       {/* Hero Header Section - High Fidelity */}
       <div className="bg-white rounded-[48px] border border-gray-100 shadow-[0_40px_80px_-20px_rgba(134,82,226,0.08)] overflow-hidden">
-        <div className="h-56 md:h-80 bg-gradient-to-br from-[#8652E2] via-[#6D36D6] to-[#1A1A2E] relative">
-          <div className="absolute inset-0 opacity-15 bg-[url('https://grainy-gradients.vercel.app/noise.svg')]"></div>
+        <div
+          className="h-56 md:h-80 bg-gradient-to-br from-[#8652E2] via-[#6D36D6] to-[#1A1A2E] relative bg-cover bg-center"
+          style={profile?.cover_image_url ? {
+            backgroundImage: `url(${profile.cover_image_url})`,
+            backgroundSize: 'cover',
+            backgroundPosition: 'center'
+          } : undefined}
+        >
+          {!profile?.cover_image_url && (
+            <>
+              <div className="absolute inset-0 opacity-15 bg-[url('https://grainy-gradients.vercel.app/noise.svg')]"></div>
 
-          {/* Abstract Decorations */}
-          <div className="absolute top-[-50px] left-[-50px] size-[300px] rounded-full bg-secondary/10 blur-[100px]"></div>
-          <div className="absolute bottom-[-100px] right-[-100px] size-[400px] rounded-full bg-primary/20 blur-[120px]"></div>
+              {/* Abstract Decorations */}
+              <div className="absolute top-[-50px] left-[-50px] size-[300px] rounded-full bg-secondary/10 blur-[100px]"></div>
+              <div className="absolute bottom-[-100px] right-[-100px] size-[400px] rounded-full bg-primary/20 blur-[120px]"></div>
+            </>
+          )}
 
           <div className="absolute bottom-8 right-8 flex items-center gap-3">
             <div className="px-4 py-2 rounded-full bg-black/20 backdrop-blur-md border border-white/10 text-white text-[10px] font-black uppercase tracking-widest flex items-center gap-2">
@@ -76,19 +87,34 @@ export const ProfilePreview: React.FC<ProfilePreviewProps> = ({ onBack, data }) 
         <div className="px-8 md:px-16 pb-16 flex flex-col items-center text-center -mt-24 md:-mt-32 relative z-10">
           <div className="relative group">
             <div className="size-48 md:size-64 rounded-full border-[10px] border-white shadow-2xl bg-gray-100 overflow-hidden mb-8">
-              <img src={profile?.profile_image_url || "https://picsum.photos/id/64/600/600"} alt={fullName} className="w-full h-full object-cover" />
+              <img
+                src={profile?.profile_image_url
+                  ? (profile.profile_image_url.startsWith('http')
+                    ? profile.profile_image_url
+                    : `http://localhost:3001${profile.profile_image_url}`)
+                  : "https://picsum.photos/id/64/600/600"
+                }
+                alt={fullName}
+                className="w-full h-full object-cover"
+              />
             </div>
-            <div className="absolute bottom-6 right-6 size-12 rounded-full bg-green-500 border-4 border-white flex items-center justify-center text-white shadow-lg animate-bounce">
-              <span className="material-symbols-outlined text-[20px] font-bold">check</span>
-            </div>
+            {/* Green badge for liveness/basic tier */}
+            {profile?.tier === 'layer_1' && (
+              <div className="absolute bottom-6 right-6 size-12 rounded-full bg-green-500 border-4 border-white flex items-center justify-center text-white shadow-lg animate-bounce">
+                <span className="material-symbols-outlined text-[20px] font-bold">check</span>
+              </div>
+            )}
           </div>
 
           <div className="space-y-4">
             <div className="flex items-center justify-center gap-4">
               <h1 className="text-4xl md:text-6xl font-black text-text-main tracking-tighter">{fullName}</h1>
-              <div className="flex items-center justify-center size-10 md:size-12 rounded-full bg-primary text-white shadow-lg shadow-primary/30">
-                <span className="material-symbols-outlined text-[24px] md:text-[28px] icon-filled">verified</span>
-              </div>
+              {/* Purple verified badge for full_kyc and higher tiers */}
+              {profile?.tier && ['layer_3', 'layer_1', 'layer_2', 'layer_3'].includes(profile.tier) && (
+                <div className="flex items-center justify-center size-10 md:size-12 rounded-full bg-primary text-white shadow-lg shadow-primary/30">
+                  <span className="material-symbols-outlined text-[24px] md:text-[28px] icon-filled">verified</span>
+                </div>
+              )}
             </div>
 
             <p className="text-xl md:text-2xl font-bold text-text-sub max-w-3xl mx-auto leading-tight">
@@ -111,6 +137,56 @@ export const ProfilePreview: React.FC<ProfilePreviewProps> = ({ onBack, data }) 
                 {profile?.human_id || 'did:casper:unknown'}
               </span>
             </div>
+
+            {/* Social Links */}
+            {(profile?.socials?.linkedin || profile?.socials?.twitter || profile?.socials?.github || profile?.socials?.website) && (
+              <div className="flex items-center justify-center gap-3 pt-2">
+                {profile.socials.linkedin && (
+                  <a
+                    href={profile.socials.linkedin}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="size-10 rounded-full bg-blue-50 border border-blue-100 flex items-center justify-center text-blue-600 hover:bg-blue-100 transition-all"
+                    title="LinkedIn"
+                  >
+                    <span className="material-symbols-outlined text-[20px]">link</span>
+                  </a>
+                )}
+                {profile.socials.twitter && (
+                  <a
+                    href={profile.socials.twitter}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="size-10 rounded-full bg-sky-50 border border-sky-100 flex items-center justify-center text-sky-600 hover:bg-sky-100 transition-all"
+                    title="Twitter / X"
+                  >
+                    <span className="material-symbols-outlined text-[20px]">alternate_email</span>
+                  </a>
+                )}
+                {profile.socials.github && (
+                  <a
+                    href={profile.socials.github}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="size-10 rounded-full bg-gray-50 border border-gray-200 flex items-center justify-center text-gray-700 hover:bg-gray-100 transition-all"
+                    title="GitHub"
+                  >
+                    <span className="material-symbols-outlined text-[20px]">code</span>
+                  </a>
+                )}
+                {profile.socials.website && (
+                  <a
+                    href={profile.socials.website}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="size-10 rounded-full bg-purple-50 border border-purple-100 flex items-center justify-center text-purple-600 hover:bg-purple-100 transition-all"
+                    title="Website"
+                  >
+                    <span className="material-symbols-outlined text-[20px]">public</span>
+                  </a>
+                )}
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -153,16 +229,16 @@ export const ProfilePreview: React.FC<ProfilePreviewProps> = ({ onBack, data }) 
                 {experiences.map((exp, i) => (
                   <div key={i} className="flex gap-8 relative group">
                     <div className="hidden sm:flex size-12 rounded-2xl bg-gray-100 text-text-sub items-center justify-center font-black text-xl z-10 group-first:bg-primary group-first:text-white group-first:shadow-lg group-first:shadow-primary/20">
-                      {exp.company_name?.charAt(0) || exp.company?.charAt(0) || '?'}
+                      {exp.company_name?.charAt(0) || '?'}
                     </div>
                     <div className="flex-1 space-y-4">
                       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                        <h3 className="text-2xl font-black text-text-main tracking-tight">{exp.job_title || exp.title}</h3>
+                        <h3 className="text-2xl font-black text-text-main tracking-tight">{exp.job_title}</h3>
                         <span className="px-4 py-1 rounded-full bg-gray-50 text-text-sub text-[11px] font-black uppercase tracking-widest border border-gray-100">
                           {exp.start_date.year} — {exp.end_date ? exp.end_date.year : 'PRESENT'}
                         </span>
                       </div>
-                      <p className="text-sm font-black text-primary uppercase tracking-[0.2em]">{exp.company_name || exp.company} • {exp.location}</p>
+                      <p className="text-sm font-black text-primary uppercase tracking-[0.2em]">{exp.company_name} • {exp.location}</p>
                       <p className="text-lg text-text-sub font-medium leading-relaxed">
                         {exp.description}
                       </p>
@@ -192,7 +268,7 @@ export const ProfilePreview: React.FC<ProfilePreviewProps> = ({ onBack, data }) 
                     <div className={`h-48 rounded-[32px] bg-gradient-to-br from-purple-500 to-indigo-600 mb-6 relative overflow-hidden flex items-center justify-center text-white/20`}>
                       <span className="material-symbols-outlined text-[100px]">rocket_launch</span>
                     </div>
-                    <h4 className="text-xl font-black text-text-main mb-1 group-hover:text-primary transition-colors">{proj.name}</h4>
+                    <h4 className="text-xl font-black text-text-main mb-1 group-hover:text-primary transition-colors">{proj.project_name}</h4>
                     <p className="text-[11px] font-black text-text-sub uppercase tracking-widest line-clamp-2">{proj.description}</p>
                   </div>
                 ))}
@@ -217,16 +293,40 @@ export const ProfilePreview: React.FC<ProfilePreviewProps> = ({ onBack, data }) 
               ></div>
             </div>
             <div className="space-y-4">
-              <p className="text-xs font-bold text-text-sub text-center">Verified on Casper</p>
+              <p className="text-xs font-bold text-text-sub text-center">Profile Completeness</p>
               <div className="h-px bg-gray-50 w-full"></div>
-              <div className="grid grid-cols-2 gap-4 text-center">
+              <div className="grid grid-cols-2 gap-3 text-center">
                 <div>
-                  <p className="text-[10px] font-black text-text-sub uppercase tracking-widest mb-1">Verifications</p>
-                  <p className="text-lg font-black text-text-main">{certifications.length + 3}</p>
+                  <p className="text-[10px] font-black text-text-sub uppercase tracking-widest mb-1">Experience</p>
+                  <p className="text-lg font-black text-text-main">{data.experiences.length}</p>
+                </div>
+                <div>
+                  <p className="text-[10px] font-black text-text-sub uppercase tracking-widest mb-1">Education</p>
+                  <p className="text-lg font-black text-text-main">{data.education.length}</p>
                 </div>
                 <div>
                   <p className="text-[10px] font-black text-text-sub uppercase tracking-widest mb-1">Skills</p>
                   <p className="text-lg font-black text-text-main">{skills.length}</p>
+                </div>
+                <div>
+                  <p className="text-[10px] font-black text-text-sub uppercase tracking-widest mb-1">Projects</p>
+                  <p className="text-lg font-black text-text-main">{projects.length}</p>
+                </div>
+                <div>
+                  <p className="text-[10px] font-black text-text-sub uppercase tracking-widest mb-1">Certificates</p>
+                  <p className="text-lg font-black text-text-main">{certifications.length}</p>
+                </div>
+                <div>
+                  <p className="text-[10px] font-black text-text-sub uppercase tracking-widest mb-1">Awards</p>
+                  <p className="text-lg font-black text-text-main">{data.awards.length}</p>
+                </div>
+                <div>
+                  <p className="text-[10px] font-black text-text-sub uppercase tracking-widest mb-1">Volunteers</p>
+                  <p className="text-lg font-black text-text-main">{data.volunteers.length}</p>
+                </div>
+                <div>
+                  <p className="text-[10px] font-black text-text-sub uppercase tracking-widest mb-1">Languages</p>
+                  <p className="text-lg font-black text-text-main">{data.languages.length}</p>
                 </div>
               </div>
             </div>
@@ -238,8 +338,8 @@ export const ProfilePreview: React.FC<ProfilePreviewProps> = ({ onBack, data }) 
               <h3 className="text-sm font-black text-text-main uppercase tracking-widest">Expertise</h3>
               <div className="flex flex-wrap gap-2">
                 {skills.map(skill => (
-                  <span key={skill.name} className="px-4 py-2 rounded-2xl bg-gray-50 border border-gray-100 text-xs font-black text-text-main hover:bg-white hover:border-primary transition-all">
-                    {skill.name}
+                  <span key={skill._id || skill.skill_name} className="px-4 py-2 rounded-2xl bg-gray-50 border border-gray-100 text-xs font-black text-text-main hover:bg-white hover:border-primary transition-all">
+                    {skill.skill_name}
                   </span>
                 ))}
               </div>

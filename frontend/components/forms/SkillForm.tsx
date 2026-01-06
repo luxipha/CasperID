@@ -9,6 +9,7 @@ interface SkillFormProps {
 
 export const SkillForm: React.FC<SkillFormProps> = ({ initialData, onSave, onCancel }) => {
     const [formData, setFormData] = useState<Partial<Skill>>({
+        _id: initialData?._id,
         skill_name: initialData?.skill_name || initialData?.name || '',
         proficiency: initialData?.proficiency || 'Intermediate',
     });

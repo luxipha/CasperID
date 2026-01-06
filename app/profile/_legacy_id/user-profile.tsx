@@ -618,7 +618,7 @@ const UserProfile = (params: any) => {
                         <p className="text-xs text-slate-500">Verification tier</p>
                         <p className="text-sm font-medium text-slate-800">
                           {formData.verified && formData.tier 
-                            ? `${formData.tier === 'basic' ? 'Level 1' : 'Level 2'} · ${formData.tier === 'basic' ? 'Basic verification' : 'Photo ID & address'}`
+                            ? `${formData.tier === 'layer_1' ? 'Level 1' : 'Level 2'} · ${formData.tier === 'layer_1' ? 'Basic verification' : 'Photo ID & address'}`
                             : 'Not verified'}
                         </p>
                       </div>

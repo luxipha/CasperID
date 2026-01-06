@@ -153,7 +153,7 @@ class QRPairingService {
                 userId: userAccount.user_id,
                 userEmail: userAccount.recovery_email,
                 userHint: payload.userHint,
-                layerStatus: userAccount.layer_status,
+                layerStatus: userAccount.tier,
                 walletAddress: userAccount.wallet,
                 emailVerified: userAccount.email_verified,
                 expiresAt: new Date(payload.expiresAt)
@@ -263,7 +263,7 @@ class QRPairingService {
                 userAccount: {
                     user_id: userAccount.user_id,
                     recovery_email: userAccount.recovery_email,
-                    layer_status: userAccount.layer_status,
+                    tier: userAccount.tier,
                     email_verified: userAccount.email_verified,
                     wallet: userAccount.wallet,
                     metamask_connected: userAccount.metamask_connected,

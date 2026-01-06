@@ -2,7 +2,7 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 
 export interface VerificationRequest {
     wallet: string;
-    tier: 'basic' | 'full_kyc';
+    tier: 'layer_1' | 'layer_3';
     email?: string;
 
     // Extended Basic
@@ -159,7 +159,7 @@ export interface UserProfile {
 
     // Verification status
     is_verified?: boolean;
-    verification_tier?: 'basic' | 'full_kyc' | null;
+    verification_tier?: 'layer_1' | 'layer_3' | null;
     last_verification_date?: string | null;
 
     created_at?: Date;

@@ -170,7 +170,7 @@ export default function VerifyPage() {
                                 {`{
   "wallet": "account-hash-xxx",
   "verified": true,
-  "tier": "basic",
+  "tier": "layer_1",
   "last_kyc_at": 1732442400,
   "last_liveness_at": 1732442400,
   "issuer": "CasperID Demo"

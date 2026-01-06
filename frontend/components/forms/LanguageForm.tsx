@@ -9,6 +9,7 @@ interface LanguageFormProps {
 
 export const LanguageForm: React.FC<LanguageFormProps> = ({ initialData, onSave, onCancel }) => {
     const [formData, setFormData] = useState<Partial<Language>>({
+        _id: initialData?._id,
         language_name: initialData?.language_name || '',
         proficiency: initialData?.proficiency || 'elementary',
     });

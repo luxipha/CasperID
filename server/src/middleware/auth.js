@@ -94,7 +94,7 @@ const requireAuth = async (req, res, next) => {
                         email: userAccount.recovery_email,
                         verified: userAccount.email_verified,
                         humanId: null, // Endpoints should fetch if needed, or we can look up Credential here
-                        tier: userAccount.layer_status
+                        tier: userAccount.tier
                     };
                 }
             }

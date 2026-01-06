@@ -7,6 +7,7 @@ const {
 const { walletToHuman, findWalletByHumanId, isFullWallet, isAccountHash, isHumanId, getHumanIdForWallet } = require('../utils/wallet-to-human');
 const { mintCredential, canAutoMint } = require('../utils/credential-minter');
 const { rateLimitMiddleware } = require('../utils/rate-limiter');
+const geoip = require('geoip-lite');
 
 /**
  * POST /api/request-verification
@@ -16,7 +17,7 @@ router.post('/request-verification', rateLimitMiddleware('verification_requests'
     try {
         const {
             wallet, tier, email,
-            name, age, location,
+            name, age, location: providedLocation, // user provided
             first_name, last_name, date_of_birth, phone_number, home_address,
             metadata
         } = req.body;
@@ -26,7 +27,7 @@ router.post('/request-verification', rateLimitMiddleware('verification_requests'
             return res.status(400).json({ error: 'Wallet address and tier are required' });
         }
 
-        if (!['basic', 'full_kyc'].includes(tier)) {
+        if (!['layer_1', 'layer_3'].includes(tier)) {
             return res.status(400).json({ error: 'Invalid tier. Must be basic or full_kyc' });
         }
 
@@ -48,6 +49,22 @@ router.post('/request-verification', rateLimitMiddleware('verification_requests'
         const canMint = await canAutoMint(wallet, tier);
         console.log(`[DEBUG] canAutoMint result: ${canMint}`);
 
+        // Resolve Location and IP
+        const ip = req.ip || req.connection.remoteAddress;
+        const userAgent = req.headers['user-agent'];
+        let location = providedLocation;
+        let coordinates = null;
+
+        if (ip) {
+            const geo = geoip.lookup(ip);
+            if (geo) {
+                // If user didn't provide location, or we want to augment it, use GeoIP
+                // Prefer GeoIP for consistency in activity log map
+                location = location || `${geo.city}, ${geo.country}`;
+                coordinates = { lat: geo.ll[0], long: geo.ll[1] };
+            }
+        }
+
         // Create verification request
         const request = new VerificationRequest({
             wallet,
@@ -55,7 +72,10 @@ router.post('/request-verification', rateLimitMiddleware('verification_requests'
             email,
             name,
             age,
-            location,
+            location, // Captured or resolved
+            coordinates,
+            ip,
+            userAgent,
             first_name,
             last_name,
             date_of_birth,
@@ -66,16 +86,16 @@ router.post('/request-verification', rateLimitMiddleware('verification_requests'
         });
 
         await request.save();
-        
+
         if (canMint) {
             try {
                 console.log(`[DEBUG] Starting auto-mint process for wallet: ${wallet}`);
-                
+
                 // Automatically mint the credential for basic tier
                 const { credential } = await mintCredential(request);
-                
+
                 console.log(`✅ Auto-minted credential for ${wallet}`);
-                
+
                 res.status(201).json({
                     message: 'Basic verification completed automatically',
                     auto_minted: true,
@@ -94,7 +114,7 @@ router.post('/request-verification', rateLimitMiddleware('verification_requests'
                         onchain_tx_hash: credential.onchain_tx_hash
                     }
                 });
-                
+
                 return;
             } catch (autoMintError) {
                 console.error('Auto-minting failed, falling back to manual process:', autoMintError);
@@ -104,7 +124,7 @@ router.post('/request-verification', rateLimitMiddleware('verification_requests'
 
         // For full_kyc tier or if auto-minting failed, return pending status
         res.status(201).json({
-            message: tier === 'full_kyc' 
+            message: tier === 'layer_3'
                 ? 'Full KYC verification request submitted - admin review required'
                 : 'Verification request submitted successfully',
             auto_minted: false,
@@ -129,7 +149,7 @@ router.post('/request-verification', rateLimitMiddleware('verification_requests'
 router.post('/mint-basic-id', rateLimitMiddleware('credential_minting'), async (req, res) => {
     try {
         const {
-            wallet, email, name, age, location,
+            wallet, email, name, age, location: providedLocation,
             first_name, last_name, date_of_birth, phone_number, home_address,
             metadata
         } = req.body;
@@ -140,20 +160,37 @@ router.post('/mint-basic-id', rateLimitMiddleware('credential_minting'), async (
         }
 
         // Check if automatic minting is allowed
-        if (!(await canAutoMint(wallet, 'basic'))) {
+        if (!(await canAutoMint(wallet, 'layer_1'))) {
             return res.status(400).json({
                 error: 'Automatic minting not available - wallet may already have a credential or pending request'
             });
         }
 
+        // Resolve Location and IP
+        const ip = req.ip || req.connection.remoteAddress;
+        const userAgent = req.headers['user-agent'];
+        let location = providedLocation;
+        let coordinates = null;
+
+        if (ip) {
+            const geo = geoip.lookup(ip);
+            if (geo) {
+                location = location || `${geo.city}, ${geo.country}`;
+                coordinates = { lat: geo.ll[0], long: geo.ll[1] };
+            }
+        }
+
         // Create verification request for basic tier
         const request = new VerificationRequest({
             wallet,
-            tier: 'basic',
+            tier: 'layer_1',
             email,
             name,
             age,
             location,
+            coordinates,
+            ip,
+            userAgent,
             first_name,
             last_name,
             date_of_birth,
@@ -168,7 +205,7 @@ router.post('/mint-basic-id', rateLimitMiddleware('credential_minting'), async (
         // Automatically mint the credential
         console.log(`Direct basic ID minting for wallet: ${wallet}`);
         const { credential } = await mintCredential(request);
-        
+
         console.log(`✅ Basic ID minted directly for ${wallet}`);
 
         res.status(201).json({
@@ -460,7 +497,7 @@ router.post('/evaluate-requirements', async (req, res) => {
         let needsLivenessRefresh = false;
 
         // Check if KYC is required and if tier matches
-        if (requirements.kyc_full && credential.tier !== 'full_kyc') {
+        if (requirements.kyc_full && credential.tier !== 'layer_3') {
             meetsRequirements = false;
         }
 

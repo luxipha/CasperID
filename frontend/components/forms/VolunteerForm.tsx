@@ -9,6 +9,7 @@ interface VolunteerFormProps {
 
 export const VolunteerForm: React.FC<VolunteerFormProps> = ({ initialData, onSave, onCancel }) => {
     const [formData, setFormData] = useState<Partial<Volunteer>>({
+        _id: initialData?._id,
         organization: initialData?.organization || '',
         role: initialData?.role || '',
         start_date: initialData?.start_date || { month: '', year: '' },

@@ -244,7 +244,7 @@ async function pollNotifications() {
 
 function showSystemNotification(notification) {
     chrome.notifications.create({
-        type: 'basic',
+        type: 'layer_1',
         iconUrl: 'icons/icon128.png',
         title: 'CasperID Alert',
         message: notification.message,

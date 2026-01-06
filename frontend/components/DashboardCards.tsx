@@ -8,8 +8,8 @@ export const IdentityStatusCard: React.FC = () => {
   const [layerStatus, setLayerStatus] = useState<string>('unverified');
 
   useEffect(() => {
-    if (user?.layer_status) {
-      setLayerStatus(user.layer_status);
+    if (user?.tier) {
+      setLayerStatus(user.tier);
     }
   }, [user]);
 
@@ -83,6 +83,7 @@ export const IdentityStatusCard: React.FC = () => {
 };
 
 export const ReusableKYCCard: React.FC = () => {
+  const { user } = useAuth();
   const [loading, setLoading] = useState(true);
   const [verificationData, setVerificationData] = useState<any>(null);
 
@@ -93,8 +94,34 @@ export const ReusableKYCCard: React.FC = () => {
         const response = await apiService.getVerificationHistory();
         console.log('📊 [ReusableKYCCard] History response:', response);
 
-        if (response.success && response.history) {
-          setVerificationData(response.history);
+        let combinedData = response.history || {};
+
+        // Also fetch identity status to get pending_upgrade_tier
+        if (user?.wallet) {
+          try {
+            const identityResponse = await fetch(`/api/identity-status?wallet=${encodeURIComponent(user.wallet)}`);
+            if (identityResponse.ok) {
+              const identityData = await identityResponse.json();
+              console.log('🔍 [ReusableKYCCard] Identity status:', identityData);
+
+              // Merge identity status into verification data
+              combinedData = {
+                ...combinedData,
+                currentStatus: {
+                  ...combinedData.currentStatus,
+                  pending_upgrade_tier: identityData.pending_upgrade_tier,
+                  status: identityData.status
+                }
+              };
+            }
+          } catch (err) {
+            console.error('Failed to fetch identity status:', err);
+          }
+        }
+
+        if (response.success) {
+          console.log('✅ [ReusableKYCCard] Final combined data:', combinedData);
+          setVerificationData(combinedData);
         }
       } catch (err) {
         console.error('❌ [ReusableKYCCard] Failed to fetch verification:', err);
@@ -104,7 +131,7 @@ export const ReusableKYCCard: React.FC = () => {
     };
 
     fetchVerificationStatus();
-  }, []);
+  }, [user]);
 
   const getStatusInfo = (tier?: string, credentials?: any[]) => {
     // Check if credential exists for this tier
@@ -114,13 +141,18 @@ export const ReusableKYCCard: React.FC = () => {
       return { status: 'Verified', color: 'text-green-600', bg: 'bg-green-500' };
     }
 
-    // Check pending requests
+    // Check pending requests from verification history
     const hasPendingRequest = verificationData?.requests?.some(
       (r: any) => r.verificationType === tier && r.status === 'pending'
     );
 
-    if (hasPendingRequest) {
-      return { status: 'Pending', color: 'text-gray-600', bg: 'bg-gray-300' };
+    // Also check for pending Layer 3 upgrade from currentStatus
+    const hasPendingUpgrade = tier === 'layer_3' &&
+      verificationData?.currentStatus?.pending_upgrade_tier === 'layer_3' &&
+      verificationData?.currentStatus?.status === 'pending';
+
+    if (hasPendingRequest || hasPendingUpgrade) {
+      return { status: 'Pending', color: 'text-yellow-600', bg: 'bg-yellow-500' };
     }
 
     return { status: 'Not Started', color: 'text-gray-400', bg: 'bg-gray-200' };
@@ -207,9 +239,9 @@ export const TrustScoreCard: React.FC = () => {
   const [scoreLabel, setScoreLabel] = useState('No verification');
 
   useEffect(() => {
-    // Calculate trust score based on layer_status
+    // Calculate trust score based on tier
     const calculateScore = () => {
-      switch (user?.layer_status) {
+      switch (user?.tier) {
         case 'layer_3':
           return { score: 95, label: 'Fully verified identity' };
         case 'layer_2':

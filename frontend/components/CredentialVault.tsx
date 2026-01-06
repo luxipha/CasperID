@@ -76,9 +76,9 @@ export const CredentialVault: React.FC = () => {
   // full_kyc -> Full KYC (Purple)
 
   const getTierType = (tier: string): 'Basic ID' | 'Verified ID' | 'Full KYC' => {
-    if (tier === 'basic') return 'Basic ID';
+    if (tier === 'layer_1') return 'Basic ID';
     if (tier === 'layer_2') return 'Verified ID';
-    if (tier === 'full_kyc') return 'Full KYC';
+    if (tier === 'layer_3') return 'Full KYC';
 
     // Legacy Safety
     if (tier === 'layer_1') return 'Basic ID';

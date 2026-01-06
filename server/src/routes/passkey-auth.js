@@ -216,7 +216,7 @@ router.get('/register/:userId/status', async (req, res) => {
                 userAccount: {
                     user_id: userAccount.user_id,
                     recovery_email: userAccount.recovery_email,
-                    layer_status: userAccount.layer_status,
+                    tier: userAccount.tier,
                     email_verified: userAccount.email_verified,
                     wallet: userAccount.wallet,
                     metamask_connected: userAccount.metamask_connected
@@ -569,7 +569,7 @@ router.get('/session', async (req, res) => {
             userAccount: {
                 user_id: sessionData.userAccount.user_id,
                 recovery_email: sessionData.userAccount.recovery_email,
-                layer_status: sessionData.userAccount.layer_status,
+                tier: sessionData.userAccount.tier,
                 email_verified: sessionData.userAccount.email_verified,
                 wallet: sessionData.userAccount.wallet,
                 metamask_connected: sessionData.userAccount.metamask_connected
@@ -903,12 +903,12 @@ router.post('/wallet/generate', async (req, res) => {
             const newCredential = new Credential({
                 wallet: walletInfo.walletAddress,
                 human_id: walletInfo.humanId,
-                tier: 'basic', // Initial tier
+                tier: 'layer_1', // Initial tier
                 last_kyc_at: Math.floor(Date.now() / 1000),
                 issuer_id: 'CasperID-System',
                 credential_json: JSON.stringify({
                     subject_wallet: walletInfo.walletAddress,
-                    tier: 'basic',
+                    tier: 'layer_1',
                     issued_at: Date.now()
                 }),
                 credential_hash: crypto.createHash('sha256').update(userAccount.user_id).digest('hex'),
@@ -1049,7 +1049,7 @@ router.get('/did/export', async (req, res) => {
             wallet: userAccount.wallet,
             recovery_email: userAccount.recovery_email,
             email_verified: userAccount.email_verified,
-            layer_status: userAccount.layer_status,
+            tier: userAccount.tier,
             created_at: userAccount.created_at,
             export_date: new Date().toISOString(),
             metadata: {

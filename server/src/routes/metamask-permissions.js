@@ -466,7 +466,7 @@ router.post('/link-account', async (req, res) => {
                 user_id: userAccount.user_id,
                 metamask_address: userAccount.metamask_address,
                 metamask_connected: userAccount.metamask_connected,
-                layer_status: userAccount.layer_status
+                tier: userAccount.tier
             }
         });
 

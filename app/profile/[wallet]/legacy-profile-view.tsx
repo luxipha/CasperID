@@ -339,7 +339,7 @@ export default function LegacyProfileView({
                                                             : ""}
                                                     </p>
                                                     <p className="text-xs text-slate-500">
-                                                        {edu.school_name || "School not provided"}
+                                                        {edu.school_name || edu.school || "School not provided"}
                                                     </p>
                                                     <p className="text-xs text-slate-500">
                                                         {formatRange(edu.start_date, edu.end_date)}
@@ -362,7 +362,7 @@ export default function LegacyProfileView({
                                         <span className="text-xs text-slate-500">Curated by the user</span>
                                     </div>
                                     <div className="mt-4 flex flex-wrap gap-2">
-                                        {(formData.skills?.length ? formData.skills : ["UI/UX", "DevOps", "FrontEnd Dev"]).map(
+                                        {(formData.skills?.length ? formData.skills : []).map(
                                             (skill: string) => (
                                                 <span
                                                     key={skill}
@@ -371,6 +371,11 @@ export default function LegacyProfileView({
                                                     {skill}
                                                 </span>
                                             )
+                                        )}
+                                        {(!formData.skills || formData.skills.length === 0) && (
+                                            <p className="text-sm text-slate-500">
+                                                No skills shared yet.
+                                            </p>
                                         )}
                                     </div>
                                 </div>
@@ -448,7 +453,7 @@ export default function LegacyProfileView({
                                                 <p className="text-xs text-slate-500">Verification tier</p>
                                                 <p className="text-sm font-medium text-slate-800">
                                                     {formData.verified && formData.tier
-                                                        ? `${(formData.tier as string) === 'basic' ? 'Level 1' : 'Level 2'} · ${(formData.tier as string) === 'basic' ? 'Basic verification' : 'Photo ID & address'}`
+                                                        ? `${(formData.tier as string) === 'layer_1' ? 'Level 1' : 'Level 2'} · ${(formData.tier as string) === 'layer_1' ? 'Basic verification' : 'Photo ID & address'}`
                                                         : 'Not verified'}
                                                 </p>
                                             </div>

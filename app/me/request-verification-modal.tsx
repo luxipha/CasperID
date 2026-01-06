@@ -23,9 +23,9 @@ export default function RequestVerificationModal({
     onSuccess,
     onFullKycSelected,
     isUpgrade = false,
-    currentTier = 'basic',
+    currentTier = 'layer_1',
 }: RequestVerificationModalProps) {
-    const [tier, setTier] = useState<'basic' | 'full_kyc'>(isUpgrade ? 'full_kyc' : 'basic');
+    const [tier, setTier] = useState<'layer_1' | 'layer_3'>(isUpgrade ? 'layer_3' : 'layer_1');
 
     // Basic Tier (Self-Attested) - Simple fields
     const [name, setName] = useState('');
@@ -53,7 +53,7 @@ export default function RequestVerificationModal({
         setError('');
 
         // If Full KYC is selected, trigger the wizard with the collected data
-        if (tier === 'full_kyc') {
+        if (tier === 'layer_3') {
             if (onFullKycSelected) {
                 const fullKycData = {
                     first_name: firstName,
@@ -81,7 +81,7 @@ export default function RequestVerificationModal({
         try {
             const response = await apiClient.requestVerification({
                 wallet,
-                tier: 'basic',
+                tier: 'layer_1',
                 name: name || undefined,
                 age: age ? parseInt(age) : undefined,
                 email: basicEmail || undefined,
@@ -139,8 +139,8 @@ export default function RequestVerificationModal({
                             <div className="grid grid-cols-2 gap-3">
                                 <button
                                     type="button"
-                                    onClick={() => setTier('basic')}
-                                    className={`p-4 rounded-lg border-2 transition ${tier === 'basic'
+                                    onClick={() => setTier('layer_1')}
+                                    className={`p-4 rounded-lg border-2 transition ${tier === 'layer_1'
                                         ? 'border-purple-500 bg-purple-500/20 text-white'
                                         : 'border-slate-600 bg-slate-700 text-gray-300 hover:border-slate-500'
                                         }`}
@@ -150,8 +150,8 @@ export default function RequestVerificationModal({
                                 </button>
                                 <button
                                     type="button"
-                                    onClick={() => setTier('full_kyc')}
-                                    className={`p-4 rounded-lg border-2 transition ${tier === 'full_kyc'
+                                    onClick={() => setTier('layer_3')}
+                                    className={`p-4 rounded-lg border-2 transition ${tier === 'layer_3'
                                         ? 'border-purple-500 bg-purple-500/20 text-white'
                                         : 'border-slate-600 bg-slate-700 text-gray-300 hover:border-slate-500'
                                         }`}
@@ -172,7 +172,7 @@ export default function RequestVerificationModal({
                     )}
 
                     {/* BASIC TIER FORM - Simple Self-Attested */}
-                    {tier === 'basic' && (
+                    {tier === 'layer_1' && (
                         <div className="space-y-3">
                             <Label className="text-white font-semibold">Basic Information</Label>
                             <p className="text-xs text-gray-400">Self-attested information (not verified)</p>
@@ -211,7 +211,7 @@ export default function RequestVerificationModal({
                     )}
 
                     {/* FULL KYC FORM - Comprehensive Verified */}
-                    {tier === 'full_kyc' && (
+                    {tier === 'layer_3' && (
                         <>
                             {/* Personal Information */}
                             <div className="space-y-3">
@@ -337,7 +337,7 @@ export default function RequestVerificationModal({
                                 <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                                 Submitting...
                             </>
-                        ) : tier === 'full_kyc' ? (
+                        ) : tier === 'layer_3' ? (
                             'Next: ID Upload'
                         ) : (
                             'Submit Request'

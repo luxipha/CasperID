@@ -53,7 +53,11 @@ export const Profile: React.FC = () => {
   // UI State for modals/forms (Legacy toggles, likely removable if fully migrated)
 
   const [parsingResume, setParsingResume] = useState(false);
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
+  const [lastSaved, setLastSaved] = useState<Date | null>(null);
+
   const resumeInputRef = useRef<HTMLInputElement>(null);
+  const avatarInputRef = useRef<HTMLInputElement>(null);
 
   const handleDelete = async (section: string, id: string) => {
     try {
@@ -101,7 +105,7 @@ export const Profile: React.FC = () => {
           setLanguages(prev => prev.filter(i => i._id !== id));
           break;
       }
-    } catch (e) { 
+    } catch (e) {
       console.error("Delete error:", e);
       alert("Failed to delete item: " + e.message);
     }
@@ -119,6 +123,8 @@ export const Profile: React.FC = () => {
         // Backend returns raw profile object directly
         if (res && res.wallet) {
           setProfile(res);
+          // Sync local UI states with profile data
+          setOpenToWork(res.open_to_work?.enabled || false);
         } else {
           console.error("❌ Profile fetch failed or no wallet:", res);
         }
@@ -136,10 +142,12 @@ export const Profile: React.FC = () => {
   const handleSaveExperience = async (data: Experience) => {
     try {
       if (data._id) {
+        console.log(`[Profile] Updating Experience ${data._id}`, data);
         const res = await apiService.updateExperience(data._id, data);
-        if (res.success) {
-          setExperiences(prev => prev.map(item => item._id === data._id ? res.data : item));
+        if (res.success || res._id) {
+          setExperiences(prev => prev.map(item => item._id === data._id ? (res.menu ? res.data : res) : item));
           setEditingId(null);
+          await refreshAllData();
         }
       } else {
         const res = await apiService.addExperience(data);
@@ -156,8 +164,8 @@ export const Profile: React.FC = () => {
     try {
       if (data._id) {
         const res = await apiService.updateEducation(data._id, data);
-        if (res.success) {
-          setEducation(prev => prev.map(item => item._id === data._id ? res.data : item));
+        if (res.success || res._id) {
+          setEducation(prev => prev.map(item => item._id === data._id ? (res.success ? res.data : res) : item));
           setEditingId(null);
         }
       } else {
@@ -178,8 +186,8 @@ export const Profile: React.FC = () => {
         console.log('📝 Updating existing skill with ID:', data._id);
         const res = await apiService.updateSkill(data._id, data);
         console.log('📝 Update skill response:', res);
-        if (res.success) {
-          setSkills(prev => prev.map(item => item._id === data._id ? res.data : item));
+        if (res.success || res._id) {
+          setSkills(prev => prev.map(item => item._id === data._id ? (res.success ? res.data : res) : item));
           setEditingId(null);
           console.log('✅ Skill updated in state');
         }
@@ -187,11 +195,11 @@ export const Profile: React.FC = () => {
         console.log('✨ Creating new skill:', data);
         const res = await apiService.addSkill(data);
         console.log('✨ Add skill API response:', res);
-        
+
         // Handle both response formats - direct object or wrapped in success/data
         const newSkill = res.success ? res.data : res;
         console.log('✨ Processed new skill object:', newSkill);
-        
+
         console.log('📊 Current skills before update:', skills);
         setSkills(prev => {
           const updated = [...prev, newSkill];
@@ -200,15 +208,15 @@ export const Profile: React.FC = () => {
         });
         setAddingSection(null);
         console.log('✅ Skill added to state, form closed');
-        
+
         // Force refresh to ensure UI updates
         console.log('🔄 Refreshing all data...');
         await refreshAllData();
         console.log('🔄 Data refresh completed');
       }
-    } catch (e) { 
+    } catch (e) {
       console.error('❌ Error saving skill:', e);
-      alert("Failed to save skill: " + e.message); 
+      alert("Failed to save skill: " + e.message);
     }
   };
 
@@ -216,8 +224,8 @@ export const Profile: React.FC = () => {
     try {
       if (data._id) {
         const res = await apiService.updateCertification(data._id, data);
-        if (res.success) {
-          setCertifications(prev => prev.map(item => item._id === data._id ? res.data : item));
+        if (res.success || res._id) {
+          setCertifications(prev => prev.map(item => item._id === data._id ? (res.success ? res.data : res) : item));
           setEditingId(null);
         }
       } else {
@@ -235,8 +243,8 @@ export const Profile: React.FC = () => {
     try {
       if (data._id) {
         const res = await apiService.updateProject(data._id, data);
-        if (res.success) {
-          setProjects(prev => prev.map(item => item._id === data._id ? res.data : item));
+        if (res.success || res._id) {
+          setProjects(prev => prev.map(item => item._id === data._id ? (res.success ? res.data : res) : item));
           setEditingId(null);
         }
       } else {
@@ -254,8 +262,8 @@ export const Profile: React.FC = () => {
     try {
       if (data._id) {
         const res = await apiService.updateAward(data._id, data);
-        if (res.success) {
-          setAwards(prev => prev.map(item => item._id === data._id ? res.data : item));
+        if (res.success || res._id) {
+          setAwards(prev => prev.map(item => item._id === data._id ? (res.success ? res.data : res) : item));
           setEditingId(null);
         }
       } else {
@@ -273,8 +281,8 @@ export const Profile: React.FC = () => {
     try {
       if (data._id) {
         const res = await apiService.updateVolunteer(data._id, data);
-        if (res.success) {
-          setVolunteers(prev => prev.map(item => item._id === data._id ? res.data : item));
+        if (res.success || res._id) {
+          setVolunteers(prev => prev.map(item => item._id === data._id ? (res.success ? res.data : res) : item));
           setEditingId(null);
         }
       } else {
@@ -292,8 +300,8 @@ export const Profile: React.FC = () => {
     try {
       if (data._id) {
         const res = await apiService.updateLanguage(data._id, data);
-        if (res.success) {
-          setLanguages(prev => prev.map(item => item._id === data._id ? res.data : item));
+        if (res.success || res._id) {
+          setLanguages(prev => prev.map(item => item._id === data._id ? (res.success ? res.data : res) : item));
           setEditingId(null);
         }
       } else {
@@ -367,6 +375,20 @@ export const Profile: React.FC = () => {
     }
   };
 
+  // Helper function to format time since last save
+  const formatTimeSince = (date: Date): string => {
+    const seconds = Math.floor((new Date().getTime() - date.getTime()) / 1000);
+    if (seconds < 60) return 'just now';
+    const minutes = Math.floor(seconds / 60);
+    if (minutes < 60) return `${minutes}m ago`;
+    const hours = Math.floor(minutes / 60);
+    if (hours < 24) return `${hours}h ago`;
+    const days = Math.floor(hours / 24);
+    return `${days}d ago`;
+  };
+
+
+
   // Load all data on component mount
   useEffect(() => {
     refreshAllData();
@@ -426,13 +448,7 @@ export const Profile: React.FC = () => {
         </div>
       </div>
       <div className="flex gap-3">
-        <input
-          type="file"
-          ref={resumeInputRef}
-          className="hidden"
-          accept=".pdf,.doc,.docx,image/*"
-          onChange={handleResumeUpload}
-        />
+
         <button
           onClick={() => resumeInputRef.current?.click()}
           disabled={parsingResume}
@@ -453,15 +469,53 @@ export const Profile: React.FC = () => {
       </div>
     </div>
   );
+
+  const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setUploadingAvatar(true);
+    try {
+      console.log('Uploading avatar:', file.name);
+      const res = await apiService.uploadProfilePicture(file);
+      if (res && res.imageUrl) {
+        setProfile(prev => prev ? { ...prev, profile_image_url: res.imageUrl } : null);
+        alert("Profile picture updated!");
+
+        // Force refresh to update header profile image too
+        // Note: Header likely uses a separate fetch or context. For now updates active profile.
+        await apiService.getUserProfile();
+      }
+    } catch (error) {
+      console.error("Avatar upload failed:", error);
+      alert("Failed to upload profile picture. Please try again.");
+    } finally {
+      setUploadingAvatar(false);
+      if (avatarInputRef.current) avatarInputRef.current.value = '';
+    }
+  };
+
   const handleProfileChange = (field: keyof UserProfile, value: string) => {
     setProfile(prev => prev ? { ...prev, [field]: value } : null);
   };
 
   const handleSaveProfile = async () => {
     if (!profile) return;
+
+    // Merge local UI states into profile payload
+    const updatedProfile = {
+      ...profile,
+      open_to_work: {
+        ...profile.open_to_work,
+        enabled: openToWork
+      }
+    };
+
     try {
-      const res = await apiService.updateUserProfile(profile);
-      if (res.success) {
+      console.log('Saving profile with openToWork:', openToWork);
+      const res = await apiService.updateUserProfile(updatedProfile);
+      if (res && res.wallet) {
+        setLastSaved(new Date());
         alert("Profile saved successfully!"); // Replace with toast later
       }
     } catch (error) {
@@ -473,7 +527,7 @@ export const Profile: React.FC = () => {
   // Utility function to parse various date formats into {month, year} structure
   const parseDateString = (dateInput: any) => {
     if (!dateInput) return undefined;
-    
+
     // Handle object format {month: number, year: number}
     if (typeof dateInput === 'object' && dateInput.month && dateInput.year) {
       return {
@@ -481,7 +535,7 @@ export const Profile: React.FC = () => {
         year: dateInput.year
       };
     }
-    
+
     // Handle string format
     if (typeof dateInput !== 'string') return undefined;
     if (dateInput.toLowerCase() === 'present') return undefined;
@@ -712,7 +766,7 @@ export const Profile: React.FC = () => {
 
       // Refresh all data to show the newly imported resume data
       await refreshAllData();
-      
+
       alert('✅ Resume parsed and saved! All data has been added to your profile. You can now view it in the respective tabs.');
 
     } catch (error: any) {
@@ -838,6 +892,68 @@ export const Profile: React.FC = () => {
                     onChange={(e) => handleProfileChange('email', e.target.value)}
                   />
                 </div>
+
+                <div className="pt-4 border-t border-gray-100">
+                  <h4 className="text-xs font-bold text-text-sub uppercase tracking-wider mb-4">Social Links</h4>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="space-y-2">
+                      <label className="text-xs font-bold text-text-main flex items-center gap-2">
+                        <span className="material-symbols-outlined text-[16px]">link</span> LinkedIn
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="https://linkedin.com/in/..."
+                        className="w-full h-12 px-4 rounded-xl bg-gray-50 border-none focus:ring-2 focus:ring-primary/20 text-sm font-medium"
+                        value={profile?.socials?.linkedin || ''}
+                        onChange={(e) => {
+                          setProfile(prev => prev ? { ...prev, socials: { ...prev.socials, linkedin: e.target.value } } : null);
+                        }}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-xs font-bold text-text-main flex items-center gap-2">
+                        <span className="material-symbols-outlined text-[16px]">alternate_email</span> Twitter (X)
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="https://x.com/..."
+                        className="w-full h-12 px-4 rounded-xl bg-gray-50 border-none focus:ring-2 focus:ring-primary/20 text-sm font-medium"
+                        value={profile?.socials?.twitter || ''}
+                        onChange={(e) => {
+                          setProfile(prev => prev ? { ...prev, socials: { ...prev.socials, twitter: e.target.value } } : null);
+                        }}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-xs font-bold text-text-main flex items-center gap-2">
+                        <span className="material-symbols-outlined text-[16px]">code</span> GitHub
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="https://github.com/..."
+                        className="w-full h-12 px-4 rounded-xl bg-gray-50 border-none focus:ring-2 focus:ring-primary/20 text-sm font-medium"
+                        value={profile?.socials?.github || ''}
+                        onChange={(e) => {
+                          setProfile(prev => prev ? { ...prev, socials: { ...prev.socials, github: e.target.value } } : null);
+                        }}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-xs font-bold text-text-main flex items-center gap-2">
+                        <span className="material-symbols-outlined text-[16px]">public</span> Website
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="https://yoursite.com"
+                        className="w-full h-12 px-4 rounded-xl bg-gray-50 border-none focus:ring-2 focus:ring-primary/20 text-sm font-medium"
+                        value={profile?.socials?.website || ''}
+                        onChange={(e) => {
+                          setProfile(prev => prev ? { ...prev, socials: { ...prev.socials, website: e.target.value } } : null);
+                        }}
+                      />
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
           </>
@@ -873,41 +989,61 @@ export const Profile: React.FC = () => {
               ) : (
                 experiences.map((exp) => (
                   <div key={exp._id} className="p-8 rounded-[24px] bg-gray-50/50 border border-gray-100 space-y-6 relative group">
-                    <button
-                      onClick={async () => {
-                        if (exp._id) {
-                          await apiService.deleteExperience(exp._id);
-                          setExperiences(p => p.filter(e => e._id !== exp._id));
-                        }
-                      }}
-                      className="absolute top-6 right-6 text-text-sub hover:text-alerts transition-colors"
-                    >
-                      <span className="material-symbols-outlined text-[20px]">delete</span>
-                    </button>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      <div className="space-y-2">
-                        <label className="text-xs font-bold text-text-main">Job Title</label>
-                        <input type="text" className="w-full h-14 px-5 rounded-2xl bg-white border border-gray-100 focus:ring-2 focus:ring-primary/20 text-sm font-bold" defaultValue={exp.job_title} />
-                      </div>
-                      <div className="space-y-2">
-                        <label className="text-xs font-bold text-text-main">Company</label>
-                        <input type="text" className="w-full h-14 px-5 rounded-2xl bg-white border border-gray-100 focus:ring-2 focus:ring-primary/20 text-sm font-bold" defaultValue={exp.company_name} />
-                      </div>
-                    </div>
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                      <div className="space-y-2">
-                        <label className="text-xs font-bold text-text-main">Start Date</label>
-                        <input type="text" className="w-full h-14 px-5 rounded-2xl bg-white border border-gray-100 text-sm font-bold" defaultValue={`${exp.start_date.month}/${exp.start_date.year}`} />
-                      </div>
-                      <div className="space-y-2">
-                        <label className="text-xs font-bold text-text-main">End Date</label>
-                        <input type="text" className="w-full h-14 px-5 rounded-2xl bg-white border border-gray-100 text-sm font-bold" defaultValue={exp.current ? 'Present' : (exp.end_date ? `${exp.end_date.month}/${exp.end_date.year}` : '')} />
-                      </div>
-                    </div>
-                    <div className="space-y-2">
-                      <label className="text-xs font-bold text-text-main">Description</label>
-                      <textarea className="w-full h-32 p-5 rounded-2xl bg-white border border-gray-100 text-sm font-medium leading-relaxed resize-none" defaultValue={exp.description}></textarea>
-                    </div>
+                    {editingId === exp._id ? (
+                      <ExperienceForm
+                        initialData={exp}
+                        onSave={handleSaveExperience}
+                        onCancel={() => setEditingId(null)}
+                      />
+                    ) : (
+                      <>
+                        <div className="absolute top-6 right-6 flex gap-2">
+                          <button
+                            onClick={() => setEditingId(exp._id || null)}
+                            className="text-text-sub hover:text-primary transition-colors"
+                          >
+                            <span className="material-symbols-outlined text-[20px]">edit</span>
+                          </button>
+                          <button
+                            onClick={async () => {
+                              if (exp._id) {
+                                await apiService.deleteExperience(exp._id);
+                                setExperiences(p => p.filter(e => e._id !== exp._id));
+                              }
+                            }}
+                            className="text-text-sub hover:text-alerts transition-colors"
+                          >
+                            <span className="material-symbols-outlined text-[20px]">delete</span>
+                          </button>
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                          <div className="space-y-1">
+                            <label className="text-xs font-bold text-text-sub uppercase tracking-wider">Job Title</label>
+                            <div className="text-base font-bold text-text-main">{exp.job_title}</div>
+                          </div>
+                          <div className="space-y-1">
+                            <label className="text-xs font-bold text-text-sub uppercase tracking-wider">Company</label>
+                            <div className="text-base font-bold text-text-main">{exp.company_name}</div>
+                          </div>
+                        </div>
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                          <div className="space-y-1">
+                            <label className="text-xs font-bold text-text-sub uppercase tracking-wider">Start Date</label>
+                            <div className="text-sm font-semibold text-text-main">{exp.start_date.month}/{exp.start_date.year}</div>
+                          </div>
+                          <div className="space-y-1">
+                            <label className="text-xs font-bold text-text-sub uppercase tracking-wider">End Date</label>
+                            <div className="text-sm font-semibold text-text-main">
+                              {exp.end_date?.is_current ? 'Present' : (exp.end_date ? `${exp.end_date.month}/${exp.end_date.year}` : '-')}
+                            </div>
+                          </div>
+                        </div>
+                        <div className="space-y-2">
+                          <label className="text-xs font-bold text-text-sub uppercase tracking-wider">Description</label>
+                          <div className="text-sm text-text-main leading-relaxed whitespace-pre-wrap">{exp.description}</div>
+                        </div>
+                      </>
+                    )}
                   </div>
                 ))
               )}
@@ -953,31 +1089,77 @@ export const Profile: React.FC = () => {
               ) : (
                 education.map((edu) => (
                   <div key={edu._id} className="p-8 rounded-[24px] bg-gray-50/50 border border-gray-100 space-y-6 relative group">
-                    <button
-                      onClick={async () => {
-                        if (edu._id) {
-                          await apiService.deleteEducation(edu._id);
-                          setEducation(p => p.filter(e => e._id !== edu._id));
-                        }
-                      }}
-                      className="absolute top-6 right-6 text-text-sub hover:text-alerts transition-colors"
-                    >
-                      <span className="material-symbols-outlined text-[20px]">delete</span>
-                    </button>
-                    <div className="space-y-2">
-                      <label className="text-xs font-bold text-text-main">Institution</label>
-                      <input type="text" className="w-full h-14 px-5 rounded-2xl bg-white border border-gray-100 text-sm font-bold" defaultValue={edu.school} />
-                    </div>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      <div className="space-y-2">
-                        <label className="text-xs font-bold text-text-main">Degree</label>
-                        <input type="text" className="w-full h-14 px-5 rounded-2xl bg-white border border-gray-100 text-sm font-bold" defaultValue={edu.degree} />
-                      </div>
-                      <div className="space-y-2">
-                        <label className="text-xs font-bold text-text-main">Graduation Date</label>
-                        <input type="text" className="w-full h-14 px-5 rounded-2xl bg-white border border-gray-100 text-sm font-bold" defaultValue={edu.end_date ? `${edu.end_date.month} ${edu.end_date.year}` : ''} />
-                      </div>
-                    </div>
+                    {editingId === edu._id ? (
+                      <EducationForm
+                        initialData={edu}
+                        onSave={handleSaveEducation}
+                        onCancel={() => setEditingId(null)}
+                      />
+                    ) : (
+                      <>
+                        <div className="absolute top-6 right-6 flex gap-2">
+                          <button
+                            onClick={() => setEditingId(edu._id || null)}
+                            className="text-text-sub hover:text-primary transition-colors"
+                          >
+                            <span className="material-symbols-outlined text-[20px]">edit</span>
+                          </button>
+                          <button
+                            onClick={async () => {
+                              if (edu._id) {
+                                await apiService.deleteEducation(edu._id);
+                                setEducation(p => p.filter(e => e._id !== edu._id));
+                              }
+                            }}
+                            className="text-text-sub hover:text-alerts transition-colors"
+                          >
+                            <span className="material-symbols-outlined text-[20px]">delete</span>
+                          </button>
+                        </div>
+                        <div className="space-y-1">
+                          <label className="text-xs font-bold text-text-sub uppercase tracking-wider">Institution</label>
+                          <div className="text-base font-bold text-text-main">{edu.school_name || edu.school || 'Not specified'}</div>
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                          <div className="space-y-1">
+                            <label className="text-xs font-bold text-text-sub uppercase tracking-wider">Degree</label>
+                            <div className="text-base font-bold text-text-main">{edu.degree || 'Not specified'}</div>
+                          </div>
+                          <div className="space-y-1">
+                            <label className="text-xs font-bold text-text-sub uppercase tracking-wider">Field of Study</label>
+                            <div className="text-base font-bold text-text-main">{edu.field_of_study || 'Not specified'}</div>
+                          </div>
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                          <div className="space-y-1">
+                            <label className="text-xs font-bold text-text-sub uppercase tracking-wider">Start Date</label>
+                            <div className="text-sm font-semibold text-text-main">
+                              {edu.start_date && edu.start_date.year ?
+                                `${edu.start_date.month ? (edu.start_date.month + '/') : ''}${edu.start_date.year}` : '-'}
+                            </div>
+                          </div>
+                          <div className="space-y-1">
+                            <label className="text-xs font-bold text-text-sub uppercase tracking-wider">Graduation Date</label>
+                            <div className="text-sm font-semibold text-text-main">
+                              {edu.end_date && edu.end_date.year ?
+                                `${edu.end_date.month ? (edu.end_date.month + '/') : ''}${edu.end_date.year}` : '-'}
+                            </div>
+                          </div>
+                        </div>
+                        {edu.grade && (
+                          <div className="space-y-1">
+                            <label className="text-xs font-bold text-text-sub uppercase tracking-wider">Grade</label>
+                            <div className="text-sm font-semibold text-text-main">{edu.grade}</div>
+                          </div>
+                        )}
+                        {edu.description && (
+                          <div className="space-y-1">
+                            <label className="text-xs font-bold text-text-sub uppercase tracking-wider">Description</label>
+                            <div className="text-sm text-text-main leading-relaxed whitespace-pre-wrap">{edu.description}</div>
+                          </div>
+                        )}
+                      </>
+                    )}
                   </div>
                 ))
               )}
@@ -989,7 +1171,7 @@ export const Profile: React.FC = () => {
                   />
                 </div>
               )}
-              
+
               {!addingSection && (
                 <button
                   onClick={() => setAddingSection('Education')}
@@ -1060,7 +1242,7 @@ export const Profile: React.FC = () => {
                       ) : (
                         <div className="group relative pl-4 pr-12 py-3 rounded-xl bg-gray-50 border border-gray-100 text-text-main font-bold text-sm hover:border-primary/30 transition-all flex items-center justify-between">
                           <div className="flex items-center gap-2">
-                            <span>{skill.skill_name || skill.name}</span>
+                            <span>{skill.skill_name}</span>
                             {skill.proficiency && <span className="px-2 py-0.5 text-[10px] font-bold bg-blue-100 text-blue-700 rounded uppercase">{skill.proficiency}</span>}
                           </div>
                           <div className="absolute right-2 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -1122,7 +1304,7 @@ export const Profile: React.FC = () => {
                     </div>
                     <div className="flex-1">
                       <h4 className="text-base font-bold text-text-main">{cert.name}</h4>
-                      <p className="text-xs text-text-sub font-medium">{cert.issuing_organization} • Issued {cert.issue_date.month} {cert.issue_date.year}</p>
+                      <p className="text-xs text-text-sub font-medium">{cert.issuing_organization} • Issued {cert.issue_date?.month || ''} {cert.issue_date?.year || ''}</p>
                     </div>
                     <button
                       onClick={async () => {
@@ -1146,7 +1328,7 @@ export const Profile: React.FC = () => {
                   />
                 </div>
               )}
-              
+
               {!addingSection && (
                 <button
                   onClick={() => setAddingSection('Certifications')}
@@ -1174,10 +1356,10 @@ export const Profile: React.FC = () => {
                   <div key={proj._id} className="p-8 rounded-[24px] bg-gray-50/50 border border-gray-100 space-y-4">
                     <div className="flex justify-between items-start">
                       <div className="space-y-1">
-                        <h4 className="text-lg font-bold text-text-main">{proj.name}</h4>
-                        {proj.url && (
-                          <a href={proj.url} target="_blank" rel="noopener noreferrer" className="text-xs text-primary font-bold hover:underline flex items-center gap-1">
-                            {proj.url}
+                        <h4 className="text-lg font-bold text-text-main">{proj.project_name}</h4>
+                        {proj.project_url && (
+                          <a href={proj.project_url} target="_blank" rel="noopener noreferrer" className="text-xs text-primary font-bold hover:underline flex items-center gap-1">
+                            {proj.project_url}
                             <span className="material-symbols-outlined text-[14px]">open_in_new</span>
                           </a>
                         )}
@@ -1208,7 +1390,7 @@ export const Profile: React.FC = () => {
                   />
                 </div>
               )}
-              
+
               {!addingSection && (
                 <button
                   onClick={() => setAddingSection('Projects')}
@@ -1299,7 +1481,7 @@ export const Profile: React.FC = () => {
                         </div>
                         <div>
                           <h4 className="text-[15px] font-bold text-text-main">{award.title}</h4>
-                          <p className="text-[12px] text-text-sub font-medium leading-none mt-1">{award.issuer} • {award.issue_date.year}</p>
+                          <p className="text-[12px] text-text-sub font-medium leading-none mt-1">{award.issuing_organization} • {award.issue_date.year}</p>
                         </div>
                       </div>
                     )}
@@ -1467,7 +1649,7 @@ export const Profile: React.FC = () => {
                           </button>
                         </div>
                         <h4 className="text-base font-bold text-text-main">{vol.role}</h4>
-                        <p className="text-xs text-text-sub font-bold uppercase tracking-wider">{vol.organization} • {vol.start_date.year} - {vol.current ? 'Present' : (vol.end_date?.year || '')}</p>
+                        <p className="text-xs text-text-sub font-bold uppercase tracking-wider">{vol.organization} • {vol.start_date.year} - {vol.end_date?.is_current ? 'Present' : (vol.end_date?.year || '')}</p>
                         <p className="text-sm text-text-sub font-medium leading-relaxed">
                           {vol.description}
                         </p>
@@ -1487,6 +1669,20 @@ export const Profile: React.FC = () => {
 
   return (
     <div className="relative">
+      <input
+        type="file"
+        ref={avatarInputRef}
+        className="hidden"
+        accept="image/*"
+        onChange={handleAvatarUpload}
+      />
+      <input
+        type="file"
+        ref={resumeInputRef}
+        className="hidden"
+        accept=".pdf,.doc,.docx,image/*"
+        onChange={handleResumeUpload}
+      />
       <div className="space-y-8 animate-in fade-in duration-500 pb-32">
         {/* Breadcrumbs & Header */}
         <div className="flex flex-col gap-2">
@@ -1502,7 +1698,7 @@ export const Profile: React.FC = () => {
             </div>
             <div className="hidden sm:flex items-center gap-2 px-4 py-2 bg-white border border-gray-100 rounded-full shadow-sm text-xs font-bold text-text-sub">
               <span className="material-symbols-outlined text-green-500 text-sm icon-filled">cloud_done</span>
-              Last saved just now
+              {lastSaved ? `Last saved ${formatTimeSince(lastSaved)}` : 'No changes saved yet'}
             </div>
           </div>
         </div>
@@ -1512,24 +1708,74 @@ export const Profile: React.FC = () => {
           <div className="space-y-6">
 
             {/* User Banner Card - Always shown at top */}
-            <div className="bg-white rounded-[32px] border border-gray-100 shadow-soft overflow-hidden">
-              <div className="h-32 bg-gradient-to-br from-[#3b28cc] to-[#291f7a] relative">
-                <div className="absolute inset-0 opacity-10 bg-[url('https://grainy-gradients.vercel.app/noise.svg')]"></div>
+            <div className="bg-white rounded-[32px] border border-gray-100 shadow-soft overflow-hidden relative group">
+              <div
+                className="h-32 bg-cover bg-center relative transition-all duration-500"
+                style={{
+                  backgroundImage: profile?.cover_image_url ? `url(${profile.cover_image_url})` : 'linear-gradient(to bottom right, #3b28cc, #291f7a)'
+                }}
+              >
+                {!profile?.cover_image_url && (
+                  <div className="absolute inset-0 opacity-10 bg-[url('https://grainy-gradients.vercel.app/noise.svg')]"></div>
+                )}
+                <div className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <button
+                    onClick={async () => {
+                      // Use backend API with Unsplash integration
+                      try {
+                        const { imageUrl } = await apiService.getRandomBanner();
+
+                        if (imageUrl && profile) {
+                          const updated = { ...profile, cover_image_url: imageUrl };
+                          setProfile(updated);
+                          await apiService.updateUserProfile(updated);
+                        }
+                      } catch (e) {
+                        console.error(e);
+                        alert("Failed to save banner");
+                      }
+                    }}
+                    className="bg-white/90 backdrop-blur-sm text-text-main text-xs font-bold px-3 py-1.5 rounded-full shadow-sm hover:bg-white flex items-center gap-1"
+                  >
+                    <span className="material-symbols-outlined text-[16px]">shuffle</span>
+                    Shuffle Cover
+                  </button>
+                </div>
               </div>
               <div className="px-8 pb-8">
                 <div className="flex flex-col md:flex-row items-start md:items-end gap-6 -mt-12 relative z-10">
                   <div className="relative group">
-                    <div className="size-28 rounded-full border-4 border-white bg-gray-100 overflow-hidden shadow-lg">
-                      <img src="https://picsum.photos/id/64/200/200" alt="Avatar" className="w-full h-full object-cover" />
+                    <div className="size-28 rounded-full border-4 border-white bg-gray-100 overflow-hidden shadow-lg relative cursor-pointer" onClick={() => avatarInputRef.current?.click()}>
+                      <img
+                        src={profile?.profile_image_url ?
+                          (profile.profile_image_url.startsWith('http') ? profile.profile_image_url : `${apiService['baseURL'] || 'http://localhost:3001'}${profile.profile_image_url}`)
+                          : "https://picsum.photos/id/64/200/200"}
+                        alt="Avatar"
+                        className="w-full h-full object-cover"
+                      />
+                      <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                        {uploadingAvatar ? (
+                          <span className="material-symbols-outlined text-white animate-spin">refresh</span>
+                        ) : (
+                          <span className="material-symbols-outlined text-white text-3xl">photo_camera</span>
+                        )}
+                      </div>
                     </div>
-                    <button className="absolute bottom-1 right-1 size-8 rounded-full bg-primary text-white flex items-center justify-center shadow-lg border-2 border-white hover:scale-110 transition-transform">
-                      <span className="material-symbols-outlined text-[18px]">photo_camera</span>
+                    <button
+                      onClick={() => avatarInputRef.current?.click()}
+                      className="absolute bottom-1 right-1 size-8 rounded-full bg-primary text-white flex items-center justify-center shadow-lg border-2 border-white hover:scale-110 transition-transform"
+                    >
+                      <span className="material-symbols-outlined text-[18px]">edit</span>
                     </button>
                   </div>
 
                   <div className="flex-1 flex flex-col md:flex-row md:items-center justify-between gap-4 w-full">
                     <div>
-                      <h2 className="text-2xl font-black text-text-main tracking-tight">Jane Doe</h2>
+                      <h2 className="text-2xl font-black text-text-main tracking-tight">
+                        {profile?.first_name && profile?.last_name ?
+                          `${profile.first_name} ${profile.last_name}` :
+                          (profile?.cns_name || profile?.wallet || 'Unnamed User')}
+                      </h2>
                       <div className="flex items-center gap-3 mt-1">
                         <div className="flex items-center gap-2 bg-blue-50 px-3 py-1 rounded-full border border-blue-200">
                           <span className="material-symbols-outlined text-blue-600 text-[16px]">trending_up</span>
@@ -1545,9 +1791,22 @@ export const Profile: React.FC = () => {
                           type="checkbox"
                           className="sr-only peer"
                           checked={openToWork}
-                          onChange={() => setOpenToWork(!openToWork)}
+                          onChange={async () => {
+                            const newValue = !openToWork;
+                            setOpenToWork(newValue);
+                            // Auto-save logic
+                            if (profile) {
+                              try {
+                                await apiService.updateUserProfile({
+                                  ...profile,
+                                  open_to_work: { ...profile.open_to_work, enabled: newValue }
+                                });
+                                // Optional: toast success
+                              } catch (e) { console.error(e); }
+                            }
+                          }}
                         />
-                        <div className="w-10 h-5.5 bg-gray-200 rounded-full peer peer-checked:after:translate-x-[18px] after:content-[''] after:absolute after:top-[3px] after:left-[3px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-green-500"></div>
+                        <div className="w-11 h-6 bg-gray-400 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary/30 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
                       </label>
                     </div>
                   </div>
@@ -1567,13 +1826,32 @@ export const Profile: React.FC = () => {
                 <div>
                   <p className="text-sm font-black text-text-main">CasperID (DID)</p>
                   <div className="flex items-center gap-2">
-                    <code className="text-[11px] font-mono text-text-sub">did:casper:1234...890</code>
-                    <button className="text-primary hover:text-primary/80"><span className="material-symbols-outlined text-sm">content_copy</span></button>
+                    <code className="text-[11px] font-mono text-text-sub">
+                      {profile?.human_id || (profile?.wallet ? `did:casper:${profile.wallet.slice(0, 4)}...${profile.wallet.slice(-3)}` : 'did:casper:pending')}
+                    </code>
+                    <button
+                      onClick={() => {
+                        const didText = profile?.human_id || profile?.wallet || '';
+                        navigator.clipboard.writeText(didText);
+                      }}
+                      className="text-primary hover:text-primary/80"
+                    >
+                      <span className="material-symbols-outlined text-sm">content_copy</span>
+                    </button>
                   </div>
                 </div>
               </div>
               <div className="flex items-center gap-3 w-full md:w-auto">
-                <button className="flex-1 md:flex-none h-12 px-6 rounded-xl text-sm font-bold text-text-sub hover:bg-gray-50 transition-all">Discard</button>
+                <button
+                  onClick={async () => {
+                    if (confirm('Discard all unsaved changes?')) {
+                      await refreshAllData();
+                    }
+                  }}
+                  className="flex-1 md:flex-none h-12 px-6 rounded-xl text-sm font-bold text-text-sub hover:bg-gray-50 transition-all"
+                >
+                  Discard
+                </button>
                 <button
                   onClick={handleSaveProfile}
                   className="flex-1 md:flex-none h-12 px-8 bg-primary text-white rounded-xl text-sm font-black shadow-lg shadow-primary/20 hover:bg-primary/90 flex items-center justify-center gap-2 active:scale-95"

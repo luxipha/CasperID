@@ -9,6 +9,7 @@ interface CertificationFormProps {
 
 export const CertificationForm: React.FC<CertificationFormProps> = ({ initialData, onSave, onCancel }) => {
     const [formData, setFormData] = useState<Partial<Certification>>({
+        _id: initialData?._id,
         name: initialData?.name || '',
         issuing_organization: initialData?.issuing_organization || '',
         issue_date: initialData?.issue_date || { month: '', year: '' },

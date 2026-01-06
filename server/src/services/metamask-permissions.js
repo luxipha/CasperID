@@ -193,7 +193,7 @@ class MetaMaskPermissionsService {
                 redirectUrl,
                 userAccount: {
                     user_id: userAccount.user_id,
-                    layer_status: userAccount.layer_status,
+                    tier: userAccount.tier,
                     metamask_connected: true
                 }
             };

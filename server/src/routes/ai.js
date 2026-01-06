@@ -178,7 +178,7 @@ router.post('/ai/verify-liveness-sequence', upload.fields([
             const { walletToHuman } = require('../utils/wallet-to-human');
 
             // Check if this is Layer 3 flow (user already has Layer 2)
-            if (userAccount.layer_status === 'layer_2') {
+            if (userAccount.tier === 'layer_2') {
                 // Layer 3 flow - DON'T mint credential yet
                 // Just store liveness result for verification request
                 console.log(`[AI] Layer 3 liveness passed for ${userAccount.wallet}. Storing result for review.`);
@@ -277,10 +277,10 @@ router.post('/ai/verify-liveness-sequence', upload.fields([
             }
 
             // Update UserAccount status
-            if (userAccount.layer_status !== 'layer_2' && userAccount.layer_status !== 'layer_3') {
+            if (userAccount.tier !== 'layer_2' && userAccount.tier !== 'layer_3') {
                 await UserAccount.updateOne(
                     { _id: userAccount._id },
-                    { $set: { layer_status: 'layer_2', updated_at: new Date() } }
+                    { $set: { tier: 'layer_2', updated_at: new Date() } }
                 );
             }
         }
