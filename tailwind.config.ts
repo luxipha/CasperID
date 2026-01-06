@@ -2,6 +2,7 @@ import type { Config } from "tailwindcss";
 const colors = require("tailwindcss/colors");
 
 const config: Config = {
+  darkMode: "class",
   content: [
     "./pages/**/*.{ts,tsx}",
     "./components/**/*.{ts,tsx}",
@@ -31,6 +32,33 @@ const config: Config = {
       colors: {
         "light-blue": colors.lightBlue,
         cyan: colors.cyan,
+        // Brand Colors
+        brand: {
+          primary: "#8652E2", // Amethyst Purple
+          secondary: "#6DE8EC", // Electric Cyan
+          "primary-hover": "#6F3DD1",
+          "primary-active": "#5A2BB1",
+        },
+        // Light Mode Colors
+        light: {
+          surface: "#F8F9FF", // Ghost White
+          "surface-elevated": "#FFFFFF", // Pure White
+          "text-primary": "#1A1A2E", // Deep Midnight Blue
+          "text-secondary": "#626D85", // Slate Blue-Gray
+          "accent": "#00B5BD", // Deepened Cyan
+          "alert": "#E63946", // Crisp Red
+          disabled: "#E0E0E0",
+        },
+        // Dark Mode Colors
+        dark: {
+          surface: "#1A1A2E", // Deep Midnight Blue
+          "surface-elevated": "#252545", // Elevated Surface
+          "text-primary": "#FFFFFF", // Pure White
+          "text-secondary": "#A9ADC1", // Muted Lavender-Gray
+          "accent-glow": "#6DE8EC", // Electric Cyan with low opacity for glow
+          "alert": "#FF4D4D", // Coral Red
+          disabled: "#33334D",
+        },
       },
       keyframes: {
         drift: {

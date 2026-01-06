@@ -15,12 +15,6 @@ export function FooterMarketing({ className }: { className?: string }) {
     { label: "Use Cases", href: "#use-cases" },
   ];
 
-  const footerLinks = [
-    { label: "About CasperID", href: "#top" },
-    { label: "Products", href: "#product" },
-    { label: "Privacy", href: "/privacy" },
-    { label: "Terms", href: "/terms" },
-  ];
 
   return (
     <footer className={`w-full min-h-[900px] bg-white text-slate-900 flex flex-col justify-between py-12 px-10 ${className ?? ""}`}>
@@ -58,12 +52,13 @@ export function FooterMarketing({ className }: { className?: string }) {
 
       <div className="flex items-center justify-between text-sm text-slate-700">
         <Logo showName />
+        <div className="text-center">
+          © 2026 CasperID. Built with precision for the sovereign web.
+        </div>
         <div className="flex items-center gap-6">
-          {footerLinks.map((link) => (
-            <Link key={link.label} href={link.href} className="hover:text-slate-500">
-              {link.label}
-            </Link>
-          ))}
+          <Link href="#top" className="hover:text-slate-500">
+            About CasperID
+          </Link>
         </div>
       </div>
     </footer>

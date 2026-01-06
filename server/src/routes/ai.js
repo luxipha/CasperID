@@ -9,16 +9,6 @@ const {
     generateCoverLetter
 } = require('../services/gemini');
 const { getCNSInfo, checkNameAvailability, estimateClaimCost, claimName } = require('../services/cns');
-const {
-    trackGeminiCall,
-    trackVerification,
-    trackFraudAttempt,
-    trackCostPerVerification,
-    trackModelVersion,
-    trackGeographicPerformance,
-    detectAdversarialPatterns
-} = require('../utils/datadog-metrics');
-const tracer = require('dd-trace');
 
 // Configure multer for file uploads (memory storage)
 const upload = multer({
@@ -37,17 +27,10 @@ router.post('/ai/verify-kyc', upload.fields([
     { name: 'selfie', maxCount: 1 },
     { name: 'livenessPhoto', maxCount: 1 }
 ]), async (req, res) => {
-    const span = tracer.startSpan('gemini.verify_kyc');
-    const startTime = Date.now();
-    const requestStart = Date.now();
-
     try {
         const { expectedGesture, country, wallet } = req.body;
 
         if (!req.files || !req.files.idDocument || !req.files.selfie) {
-            span.setTag('error', true);
-            span.setTag('error.type', 'validation');
-            span.finish();
             return res.status(400).json({
                 error: 'ID document and selfie are required'
             });
@@ -66,75 +49,9 @@ router.post('/ai/verify-kyc', upload.fields([
             expectedGesture || null
         );
 
-        // Calculate metrics
-        const latency = Date.now() - startTime;
-        const confidence = result.confidence || 0;
-        const outcome = result.verified ? 'success' : 'failed';
-        const submissionTime = Date.now() - requestStart;
-
-        // Base metrics
-        trackGeminiCall('verify-kyc', latency, confidence, outcome);
-        trackVerification('full_kyc', result.verified, result.reason);
-
-        // DAY 5: Advanced metrics
-        const modelVersion = 'gemini-1.5-pro';
-        const estimatedCost = (latency / 1000) * 0.002; // Example cost model
-
-        // 1. Cost per verification
-        trackCostPerVerification(estimatedCost, result.verified, 'full_kyc');
-
-        // 2. Model version tracking
-        trackModelVersion(modelVersion, confidence, result.verified, latency);
-
-        // 3. Geographic performance
-        if (country) {
-            trackGeographicPerformance(country, result.verified, confidence, latency);
-        }
-
-        // 4. Adversarial attack detection
-        const adversarialCheck = detectAdversarialPatterns({
-            confidence,
-            previousAttempts: 0, // TODO: Track from database
-            submissionTime,
-            wallet
-        });
-
-        // Add tags to span
-        span.setTag('verification.result', result.verified);
-        span.setTag('confidence.score', confidence);
-        span.setTag('latency.ms', latency);
-        span.setTag('model.version', modelVersion);
-        span.setTag('cost.estimated', estimatedCost);
-        if (country) span.setTag('geo.country', country);
-        if (adversarialCheck.detected) {
-            span.setTag('security.risk_score', adversarialCheck.riskScore);
-        }
-        span.finish();
-
-        console.log(`[Datadog] KYC verification: ${outcome}, confidence: ${confidence}, latency: ${latency}ms, cost: $${estimatedCost.toFixed(4)}`);
-
-        // Include risk score in response for high-risk verifications
-        const response = {
-            ...result,
-            ...(adversarialCheck.riskScore > 5 && {
-                security: {
-                    riskScore: adversarialCheck.riskScore,
-                    flagged: true
-                }
-            })
-        };
-
-        res.json(response);
+        res.json(result);
     } catch (error) {
-        const latency = Date.now() - startTime;
-
         console.error('[AI] KYC verification error:', error);
-
-        trackGeminiCall('verify-kyc', latency, 0, 'error');
-
-        span.setTag('error', true);
-        span.setTag('error.message', error.message);
-        span.finish();
 
         res.status(500).json({
             error: 'Failed to perform KYC verification',
@@ -148,49 +65,22 @@ router.post('/ai/verify-kyc', upload.fields([
  * Standalone liveness check (legacy single frame)
  */
 router.post('/ai/verify-liveness', upload.single('photo'), async (req, res) => {
-    const span = tracer.startSpan('gemini.verify_liveness');
-    const startTime = Date.now();
-
     try {
         const { expectedGesture } = req.body;
 
         if (!req.file) {
-            span.setTag('error', true);
-            span.finish();
             return res.status(400).json({ error: 'Photo is required' });
         }
 
         if (!expectedGesture) {
-            span.setTag('error', true);
-            span.finish();
             return res.status(400).json({ error: 'Expected gesture is required' });
         }
 
         const result = await verifyLivenessGesture(req.file.buffer, expectedGesture);
 
-        // Track metrics
-        const latency = Date.now() - startTime;
-        const confidence = result.confidence || 0;
-        const outcome = result.passed ? 'success' : 'failed';
-
-        trackGeminiCall('verify-liveness', latency, confidence, outcome);
-
-        span.setTag('liveness.result', result.passed);
-        span.setTag('confidence.score', confidence);
-        span.setTag('gesture', expectedGesture);
-        span.finish();
-
         res.json(result);
     } catch (error) {
-        const latency = Date.now() - startTime;
-
         console.error('[AI] Liveness verification error:', error);
-
-        trackGeminiCall('verify-liveness', latency, 0, 'error');
-
-        span.setTag('error', true);
-        span.setTag('error.message', error.message);
-        span.finish();
 
         res.status(500).json({
             error: 'Failed to verify liveness',
@@ -239,6 +129,23 @@ router.post('/ai/verify-liveness-sequence', upload.fields([
     try {
         const { stepSequence, totalFrames } = req.body;
 
+        // 1. Validate Session & Identify User
+        const sessionToken = req.cookies.casperid_session ||
+            req.headers.authorization?.replace('Bearer ', '');
+
+        if (!sessionToken) {
+            return res.status(401).json({ error: 'Authentication required' });
+        }
+
+        const webauthnService = require('../services/webauthn');
+        const sessionData = await webauthnService.validateSession(sessionToken);
+
+        if (!sessionData) {
+            return res.status(401).json({ error: 'Invalid or expired session' });
+        }
+
+        const userAccount = sessionData.userAccount;
+
         if (!req.files || Object.keys(req.files).length === 0) {
             return res.status(400).json({ error: 'Video frames are required' });
         }
@@ -258,23 +165,125 @@ router.post('/ai/verify-liveness-sequence', upload.fields([
             return res.status(400).json({ error: 'Insufficient frames for liveness verification' });
         }
 
-        console.log(`[AI] Verifying liveness sequence with ${frames.length} frames`);
-
-        const span = tracer.startSpan('gemini.verify_liveness_sequence');
-        const startTime = Date.now();
+        console.log(`[AI] Verifying liveness sequence for user ${userAccount.user_id}`);
 
         const result = await verifyLivenessSequence(frames, JSON.parse(stepSequence || '[]'));
 
-        const latency = Date.now() - startTime;
-        const confidence = result.confidence || 0;
-        const outcome = result.passed ? 'success' : 'failed';
+        // 2. If Passed, Handle Based on Layer
+        if (result.passed) {
+            const { Credential, UserAccount } = require('../database/models');
+            const crypto = require('crypto');
+            const jwt = require('jsonwebtoken');
+            const casperService = require('../services/casper');
+            const { walletToHuman } = require('../utils/wallet-to-human');
 
-        trackGeminiCall('verify-liveness-sequence', latency, confidence, outcome);
+            // Check if this is Layer 3 flow (user already has Layer 2)
+            if (userAccount.layer_status === 'layer_2') {
+                // Layer 3 flow - DON'T mint credential yet
+                // Just store liveness result for verification request
+                console.log(`[AI] Layer 3 liveness passed for ${userAccount.wallet}. Storing result for review.`);
 
-        span.setTag('frames.count', frames.length);
-        span.setTag('liveness.result', result.passed);
-        span.setTag('confidence.score', confidence);
-        span.finish();
+                // In a production app, you'd store this in Redis or a LivenessSession model
+                // For now, we'll rely on the frontend to track this
+
+                return res.json({
+                    ...result,
+                    layer: 3,
+                    next_step: 'review_submit',
+                    message: 'Liveness verification complete. Please proceed to submit your verification request.'
+                });
+            }
+
+            // Layer 2 flow - Mint credential immediately
+            console.log(`[AI] Layer 2 liveness passed for ${userAccount.wallet}. Minting credential...`);
+
+            const now = Math.floor(Date.now() / 1000); // Unix timestamp
+
+            // Create credential JSON
+            const credentialData = {
+                subject_wallet: userAccount.wallet,
+                tier: 'layer_2',
+                last_kyc_at: now,
+                last_liveness_at: now,
+                issuer: process.env.ISSUER_ID || 'CasperID-Demo',
+                issued_at: now,
+                expires_at: 0
+            };
+
+            // Sign credential (JWT)
+            const credential_json = jwt.sign(
+                credentialData,
+                process.env.JWT_SECRET,
+                { expiresIn: '10y' }
+            );
+
+            // Compute credential hash
+            const credential_hash = crypto
+                .createHash('sha256')
+                .update(credential_json)
+                .digest('hex');
+
+            // Call Casper contract to set verification
+            const tx_hash = await casperService.setVerification(
+                userAccount.wallet,
+                'layer_2',
+                now,
+                now,
+                process.env.ISSUER_ID || 'CasperID-Demo',
+                credential_hash,
+                true
+            );
+
+            // Generate human-friendly ID
+            const { humanId } = walletToHuman(userAccount.wallet);
+
+            // Check if credential exists (upgrade scenario)
+            const existingCredential = await Credential.findOne({
+                wallet: userAccount.wallet,
+                revoked: false
+            });
+
+            if (existingCredential) {
+                // Upgrade existing credential
+                await Credential.findOneAndUpdate(
+                    { wallet: userAccount.wallet, revoked: false },
+                    {
+                        tier: 'layer_2',
+                        last_kyc_at: now,
+                        last_liveness_at: now,
+                        credential_json,
+                        credential_hash,
+                        onchain_tx_hash: tx_hash,
+                        updated_at: new Date()
+                    },
+                    { new: true }
+                );
+                console.log(`[AI] Upgraded credential for wallet: ${userAccount.wallet}`);
+            } else {
+                // Create new credential
+                const credential = new Credential({
+                    wallet: userAccount.wallet,
+                    human_id: humanId,
+                    tier: 'layer_2',
+                    last_kyc_at: now,
+                    last_liveness_at: now,
+                    issuer_id: process.env.ISSUER_ID || 'CasperID-Demo',
+                    credential_json,
+                    credential_hash,
+                    onchain_tx_hash: tx_hash
+                });
+                await credential.save();
+                console.log(`[AI] Created new Layer 2 credential for wallet: ${userAccount.wallet}`);
+            }
+
+            // Update UserAccount status
+            if (userAccount.layer_status !== 'layer_2' && userAccount.layer_status !== 'layer_3') {
+                await UserAccount.updateOne(
+                    { _id: userAccount._id },
+                    { $set: { layer_status: 'layer_2', updated_at: new Date() } }
+                );
+            }
+        }
 
         res.json(result);
     } catch (error) {
@@ -388,8 +397,23 @@ router.post('/ai/parse-resume', upload.single('resume'), async (req, res) => {
         }
 
         console.log(`[AI] Parsing resume: ${req.file.originalname} (${req.file.mimetype})`);
+
+        // Only accept PDF files
+        if (req.file.mimetype !== 'application/pdf') {
+            return res.status(400).json({
+                error: `Only PDF files are supported. You uploaded: ${req.file.mimetype}`,
+                details: 'Please convert your resume to PDF format and try again.'
+            });
+        }
+
         const result = await parseResume(req.file.buffer, req.file.mimetype);
-        res.json(result);
+        console.log('[AI] Resume parsing successful, sending response...');
+        console.log('[AI] Result keys:', Object.keys(result));
+        res.json({
+            success: true,
+            data: result,
+            message: 'Resume parsed successfully'
+        });
     } catch (error) {
         console.error('[AI] Resume parse error:', error);
         res.status(500).json({

@@ -4,6 +4,8 @@ import { FooterMarketing } from "@/components/footer-marketing";
 import StickyScrollSection from "./sticky-scroll";
 import Logo from "@/components/logo";
 import ScanShowcase from "@/components/scan-showcase";
+import RoadmapSection from "./RoadmapSection";
+import ChatAssistant from "./ChatAssistant";
 
 export default function LandingPage() {
   return (
@@ -303,6 +305,8 @@ CasperID is a reusable digital identity layer
         </div>
       </section>
 
+      <RoadmapSection />
+
       <section className="w-full py-10 px-6 md:px-12" id="download">
         <div
           id="download-ring"
@@ -337,6 +341,7 @@ CasperID is a reusable digital identity layer
         </Link>
       </section>
       <FooterMarketing className="scroll-mt-24" />
+      <ChatAssistant />
     </div>
   );
 }

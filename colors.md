@@ -15,7 +15,6 @@ Surface Elevated: #252545 — Use for cards, modals, and dropdowns.
 Primary Text: #FFFFFF — Pure White for maximum readability.
 Secondary Text: #A9ADC1 — Muted Lavender-Gray for metadata and captions.
 Accent Glow: #6DE8EC — Use with low opacity (15%) for "glow" effects behind avatars or buttons.
-Alert/Action: #FF4D4D — Coral Red for critical errors or "Delete" actions.
 
 B. Light Mode (The "Ghost White" System)
 Optimized for productivity, dashboards, and heavy reading.

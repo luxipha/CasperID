@@ -18,6 +18,7 @@ const path = require('path');
 const fs = require('fs');
 const { ensureHumanIdInProfile, getHumanIdForWallet } = require('../utils/wallet-to-human');
 const { logViewEvent } = require('../utils/view-logger');
+const { requireAuth } = require('../middleware/auth');
 
 // Configure File Upload
 const storage = multer.diskStorage({
@@ -42,6 +43,130 @@ const upload = multer({
             return cb(new Error('Only image files are allowed!'), false);
         }
         cb(null, true);
+    }
+});
+
+
+// ============================================
+// AUTHENTICATED USER PROFILE
+// ============================================
+
+/**
+ * GET /api/user/profile
+ * Get profile of the currently authenticated user
+ */
+router.get('/user/profile', requireAuth, async (req, res) => {
+    try {
+        const { wallet } = req.user;
+        console.log(`GET /user/profile for ${wallet}`);
+
+        if (!wallet) {
+            console.warn(`⚠️ User ${req.user.email} (ID: ${req.user.userId}) has no wallet - cannot fetch/create profile.`);
+            return res.status(400).json({
+                success: false,
+                error: 'Wallet not created. Please complete onboarding.',
+                code: 'NO_WALLET'
+            });
+        }
+
+        // Atomic Get-Or-Create to prevent race conditions
+        let profile = await UserProfile.findOneAndUpdate(
+            { wallet },
+            {
+                $setOnInsert: {
+                    wallet: wallet,
+                    email: req.user.email,
+                    created_at: new Date(),
+                    updated_at: new Date()
+                }
+            },
+            {
+                upsert: true,
+                new: true,
+                setDefaultsOnInsert: true
+            }
+        );
+
+        // Ensure profile has human_id
+        if (!profile.human_id) {
+            try {
+                const result = await ensureHumanIdInProfile(wallet, { UserProfile, Credential });
+                profile = result.profile;
+            } catch (error) {
+                console.error('Error ensuring human_id:', error);
+            }
+        }
+
+        // Fetch UserAccount to get DID and account metadata
+        const { UserAccount, PasskeyCredential } = require('../database/models');
+        const userAccount = await UserAccount.findOne({ user_id: req.user.userId });
+
+        // Count active passkeys for this user
+        const passkeyCount = await PasskeyCredential.countDocuments({
+            user_id: req.user.userId,
+            revoked: false
+        });
+
+        // Merge account-level data with profile
+        const enrichedProfile = {
+            ...profile.toObject(),
+            did_address: userAccount?.did_address || null,
+            layer_status: userAccount?.layer_status || 'layer_0',
+            email_verified: userAccount?.email_verified || false,
+            account_created_at: userAccount?.created_at || null,
+            passkey_count: passkeyCount
+        };
+
+        res.json(enrichedProfile);
+    } catch (error) {
+        console.error('Get user profile error:', error);
+        res.status(500).json({ error: error.message || 'Failed to fetch user profile' });
+    }
+});
+
+/**
+ * PUT /api/user/profile
+ * Update profile of the currently authenticated user
+ */
+router.put('/user/profile', requireAuth, async (req, res) => {
+    try {
+        const { wallet } = req.user;
+        const updates = req.body;
+        console.log(`PUT /user/profile for ${wallet}`, updates);
+
+        // Security: Remove wallet/id from updates to avoid overwriting
+        delete updates.wallet;
+        delete updates._id;
+        delete updates.human_id; // Prevent manual human_id updates
+
+        // First ensure the profile has a human_id
+        let profile;
+        try {
+            const result = await ensureHumanIdInProfile(wallet, { UserProfile, Credential });
+
+            // Now update with the provided data
+            profile = await UserProfile.findOneAndUpdate(
+                { wallet },
+                { $set: updates },
+                { new: true, runValidators: true }
+            );
+        } catch (humanIdError) {
+            console.error('Error ensuring human_id:', humanIdError);
+            // Fallback: update without human_id generation
+            profile = await UserProfile.findOneAndUpdate(
+                { wallet },
+                {
+                    $set: updates,
+                    $setOnInsert: { wallet }
+                },
+                { new: true, upsert: true, runValidators: true }
+            );
+        }
+
+        res.json(profile);
+    } catch (error) {
+        console.error('Update user profile error:', error);
+        res.status(500).json({ error: error.message || 'Failed to update user profile' });
     }
 });
 
@@ -901,6 +1026,39 @@ router.delete('/profile/:wallet/volunteer/:id', async (req, res) => {
     } catch (error) {
         console.error('Delete volunteer error:', error);
         res.status(500).json({ error: error.message || 'Failed to delete volunteer experience' });
+    }
+});
+
+// ============================================
+// HUMAN ID GENERATION
+// ============================================
+
+/**
+ * GET /api/profile/human-id/:walletAddress
+ * Get human-readable ID for a wallet address
+ */
+router.get('/profile/human-id/:walletAddress', async (req, res) => {
+    try {
+        const { walletAddress } = req.params;
+        console.log(`GET /human-id/${walletAddress}`);
+
+        if (!walletAddress) {
+            return res.status(400).json({ error: 'Wallet address is required' });
+        }
+
+        const humanId = await getHumanIdForWallet(walletAddress, { UserProfile, Credential });
+
+        res.json({
+            success: true,
+            humanId,
+            walletAddress
+        });
+    } catch (error) {
+        console.error('Get human ID error:', error);
+        res.status(500).json({
+            success: false,
+            error: error.message || 'Failed to generate human ID'
+        });
     }
 });
 

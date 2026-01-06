@@ -1,5 +1,5 @@
 const { verifyToken } = require('../utils/jwt-manager');
-const { LoginSession, AdminUser } = require('../database/models');
+const { LoginSession, AdminUser, DeviceSession, UserAccount } = require('../database/models');
 const { authenticateAdmin } = require('../utils/admin-auth');
 const { rateLimitMiddleware } = require('../utils/rate-limiter');
 
@@ -32,7 +32,7 @@ const adminAuth = async (req, res, next) => {
 
         // Check if admin account is locked
         if (admin.locked_until && admin.locked_until > new Date()) {
-            return res.status(423).json({ 
+            return res.status(423).json({
                 error: 'Admin account temporarily locked',
                 lockedUntil: admin.locked_until
             });
@@ -53,7 +53,7 @@ const adminAuth = async (req, res, next) => {
 };
 
 /**
- * Middleware to require a valid JWT token
+ * Middleware to require a valid token (JWT or Passkey Session)
  */
 const requireAuth = async (req, res, next) => {
     try {
@@ -64,20 +64,48 @@ const requireAuth = async (req, res, next) => {
         }
 
         const token = authHeader.split(' ')[1];
-        const decoded = verifyToken(token);
+        let user = null;
 
-        if (!decoded) {
+        // Strategy 1: Try verifying as JWT
+        const decoded = verifyToken(token);
+        if (decoded) {
+            // Check if session is revoked in DB (LoginSession for JWTs)
+            const session = await LoginSession.findOne({ token, revoked: false });
+            if (session) {
+                user = decoded;
+            }
+        }
+
+        // Strategy 2: If no valid JWT user, try looking up as opaque Passkey/Device session
+        if (!user) {
+            const deviceSession = await DeviceSession.findOne({
+                session_token: token,
+                revoked: false,
+                expires_at: { $gt: new Date() }
+            });
+
+            if (deviceSession) {
+                const userAccount = await UserAccount.findOne({ user_id: deviceSession.user_id });
+                if (userAccount) {
+                    // normalize user object to match what endpoints expect (mainly wallet)
+                    user = {
+                        wallet: userAccount.wallet,
+                        userId: userAccount.user_id,
+                        email: userAccount.recovery_email,
+                        verified: userAccount.email_verified,
+                        humanId: null, // Endpoints should fetch if needed, or we can look up Credential here
+                        tier: userAccount.layer_status
+                    };
+                }
+            }
+        }
+
+        if (!user) {
             return res.status(401).json({ error: 'Invalid or expired token' });
         }
 
-        // Check if session is revoked in DB
-        const session = await LoginSession.findOne({ token, revoked: false });
-        if (!session) {
-            return res.status(401).json({ error: 'Session revoked or expired' });
-        }
-
         // Attach user to request
-        req.user = decoded;
+        req.user = user;
         req.token = token;
 
         next();

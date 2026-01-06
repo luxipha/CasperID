@@ -1,0 +1,7 @@
+{
+  "name": "CasperID Dashboard",
+  "description": "A reusable identity layer dashboard for managing Web3 credentials and liveness verification.",
+  "requestFramePermissions": [
+    "camera"
+  ]
+}

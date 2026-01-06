@@ -12,11 +12,12 @@ const { mintCredential } = require('../utils/credential-minter');
 router.get('/verification-requests', adminAuthWithRateLimit, async (req, res) => {
     try {
         const { status } = req.query;
-        
+
         // Default to showing only pending requests (exclude auto-minted basic tier)
         const filter = status ? { status } : { status: 'pending' };
 
         const requests = await VerificationRequest.find(filter).sort({ created_at: -1 });
+
 
         res.json({
             count: requests.length,
@@ -28,13 +29,21 @@ router.get('/verification-requests', adminAuthWithRateLimit, async (req, res) =>
                 status: r.status,
                 created_at: r.created_at,
                 updated_at: r.updated_at,
-                // Full Profile Data
-                first_name: r.first_name,
-                last_name: r.last_name,
+
+                // Layer 3 specific fields
+                verification_method: r.verification_method,
+                document_type: r.document_type,
+                document_data: r.document_data,
+                liveness_verified: r.liveness_verified,
+                upload_id: r.upload_id,
+
+                // Full Profile Data (for Layer 2/other tiers)
+                first_name: r.first_name || r.document_data?.first_name,
+                last_name: r.last_name || r.document_data?.last_name,
                 name: r.name,
-                date_of_birth: r.date_of_birth,
-                phone_number: r.phone_number,
-                home_address: r.home_address,
+                date_of_birth: r.date_of_birth || r.document_data?.date_of_birth,
+                phone_number: r.phone_number || r.document_data?.phone_number,
+                home_address: r.home_address || r.document_data?.address,
                 location: r.location,
                 age: r.age,
                 education: r.education,
@@ -160,32 +169,32 @@ router.post('/revoke', adminAuthWithRateLimit, async (req, res) => {
 router.post('/sync-verified-profiles', adminAuthWithRateLimit, async (req, res) => {
     try {
         console.log('🔄 Starting manual sync of verified profiles...');
-        
+
         // Find all approved verification requests
         const approvedRequests = await VerificationRequest.find({ status: 'approved' });
-        
+
         let syncedCount = 0;
         let errorCount = 0;
         const results = [];
-        
+
         for (const request of approvedRequests) {
             try {
                 // Generate human ID for this wallet
                 const { humanId } = walletToHuman(request.wallet);
-                
+
                 // Prepare verified data
                 const verifiedProfileData = {
                     first_name: request.first_name,
                     last_name: request.last_name,
                     email: request.email,
                     phone_number: request.phone_number,
-                    
+
                     // Format address properly if it's an object
                     ...(request.home_address && typeof request.home_address === 'object' ? {
                         city: request.home_address.city,
                         country: request.home_address.country,
                     } : {}),
-                    
+
                     human_id: humanId,
                     verified_at: new Date(),
                     verification_source: 'manual_sync'
@@ -194,17 +203,17 @@ router.post('/sync-verified-profiles', adminAuthWithRateLimit, async (req, res) 
                 // Update or create profile
                 const updatedProfile = await UserProfile.findOneAndUpdate(
                     { wallet: request.wallet },
-                    { 
+                    {
                         $set: verifiedProfileData,
-                        $setOnInsert: { 
+                        $setOnInsert: {
                             wallet: request.wallet,
                             created_at: new Date()
                         }
                     },
-                    { 
-                        new: true, 
-                        upsert: true, 
-                        runValidators: true 
+                    {
+                        new: true,
+                        upsert: true,
+                        runValidators: true
                     }
                 );
 
@@ -217,7 +226,7 @@ router.post('/sync-verified-profiles', adminAuthWithRateLimit, async (req, res) 
 
                 syncedCount++;
                 console.log(`✅ Synced ${request.first_name} ${request.last_name} (${request.wallet.substring(0, 8)}...)`);
-                
+
             } catch (error) {
                 console.error(`❌ Error syncing ${request.wallet}:`, error);
                 results.push({
@@ -243,6 +252,79 @@ router.post('/sync-verified-profiles', adminAuthWithRateLimit, async (req, res) 
     } catch (error) {
         console.error('Manual sync error:', error);
         res.status(500).json({ error: 'Failed to sync verified profiles' });
+    }
+});
+
+/**
+ * POST /api/admin/issue-missing-credentials
+ * Audit and fix missing credentials for existing users who already have wallets
+ */
+router.post('/issue-missing-credentials', adminAuthWithRateLimit, async (req, res) => {
+    try {
+        console.log('🔍 Audit: Checking for users with missing credentials...');
+        const { UserAccount } = require('../database/models');
+        const crypto = require('crypto');
+
+        // Find all users who have a wallet address
+        const usersWithWallet = await UserAccount.find({
+            wallet: { $exists: true, $ne: null }
+        });
+
+        let fixedCount = 0;
+        let skippedCount = 0;
+        const results = [];
+
+        for (const user of usersWithWallet) {
+            // Check if Credential exists
+            const exists = await Credential.findOne({ wallet: user.wallet });
+
+            if (!exists) {
+                console.log(`🛠 Fixing missing credential for: ${user.wallet}`);
+
+                // Determine Human ID (placeholder or fetch)
+                const { getHumanIdForWallet } = require('../utils/wallet-to-human');
+                let humanId = null;
+                try {
+                    humanId = await getHumanIdForWallet(user.wallet);
+                } catch (e) { /* ignore */ }
+
+                const newCredential = new Credential({
+                    wallet: user.wallet,
+                    human_id: humanId,
+                    tier: user.layer_status || 'basic',
+                    last_kyc_at: Math.floor(Date.now() / 1000),
+                    issuer_id: 'CasperID-System-Migration',
+                    credential_json: JSON.stringify({
+                        subject_wallet: user.wallet,
+                        tier: user.layer_status || 'basic',
+                        issued_at: Date.now(),
+                        migration: true
+                    }),
+                    credential_hash: crypto.createHash('sha256').update(user.user_id).digest('hex'),
+                    created_at: new Date()
+                });
+
+                await newCredential.save();
+                fixedCount++;
+                results.push({ wallet: user.wallet, status: 'fixed' });
+            } else {
+                skippedCount++;
+            }
+        }
+
+        res.json({
+            message: 'Credential audit completed',
+            summary: {
+                total_analyzed: usersWithWallet.length,
+                missing_credentials_fixed: fixedCount,
+                already_valid: skippedCount
+            },
+            fixed_wallets: results
+        });
+
+    } catch (error) {
+        console.error('Credential audit error:', error);
+        res.status(500).json({ error: 'Failed to run credential audit' });
     }
 });
 

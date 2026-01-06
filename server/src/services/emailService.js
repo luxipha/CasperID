@@ -1,0 +1,345 @@
+const Imap = require('imap');
+const { simpleParser } = require('mailparser');
+const nodemailer = require('nodemailer');
+
+class EmailService {
+    constructor() {
+        // Handle different port configurations
+        const port = parseInt(process.env.SUPPORT_EMAIL_PORT) || 993;
+        
+        // Port 587 is typically SMTP STARTTLS, convert to IMAP
+        // Port 465 is SMTP SSL, convert to IMAP SSL (993)
+        // Port 143 is IMAP STARTTLS
+        // Port 993 is IMAP SSL
+        let imapPort = port;
+        let useSSL = false;
+        let useSTARTTLS = false;
+        
+        if (port === 587) {
+            // SMTP STARTTLS -> IMAP STARTTLS
+            imapPort = 143;
+            useSTARTTLS = true;
+        } else if (port === 465) {
+            // SMTP SSL -> IMAP SSL
+            imapPort = 993;
+            useSSL = true;
+        } else if (port === 993) {
+            useSSL = true;
+        } else if (port === 143) {
+            useSTARTTLS = true;
+        }
+        
+        console.log('🔧 Email config setup:', {
+            originalPort: port,
+            imapPort: imapPort,
+            useSSL: useSSL,
+            useSTARTTLS: useSTARTTLS,
+            host: process.env.SUPPORT_EMAIL_HOST
+        });
+        
+        this.imapConfig = {
+            user: process.env.SUPPORT_EMAIL || 'support@ile.africa',
+            password: process.env.SUPPORT_EMAIL_PASSWORD,
+            host: process.env.SUPPORT_EMAIL_HOST || 'mail.ile.africa',
+            port: imapPort,
+            tls: useSSL,
+            secure: useSSL,
+            requireTLS: useSTARTTLS,
+            tlsOptions: {
+                rejectUnauthorized: false,
+                servername: process.env.SUPPORT_EMAIL_HOST || 'mail.ile.africa'
+            },
+            authTimeout: 30000,
+            connTimeout: 30000,
+            keepalive: false
+        };
+
+        // SMTP Configuration for sending emails
+        this.smtpConfig = {
+            host: process.env.SUPPORT_EMAIL_HOST || 'mail.ile.africa',
+            port: parseInt(process.env.SUPPORT_EMAIL_PORT) || 587,
+            secure: parseInt(process.env.SUPPORT_EMAIL_PORT) === 465, // true for 465, false for other ports
+            auth: {
+                user: process.env.SUPPORT_EMAIL || 'support@ile.africa',
+                pass: process.env.SUPPORT_EMAIL_PASSWORD
+            },
+            tls: {
+                rejectUnauthorized: false
+            }
+        };
+
+        // Create reusable transporter object
+        this.transporter = nodemailer.createTransport(this.smtpConfig);
+    }
+
+    async fetchEmails(limit = 50, folder = 'INBOX') {
+        return new Promise((resolve, reject) => {
+            console.log('🔧 Attempting to connect to email server:', {
+                host: this.imapConfig.host,
+                port: this.imapConfig.port,
+                user: this.imapConfig.user
+            });
+
+            const imap = new Imap(this.imapConfig);
+            const emails = [];
+
+            imap.once('ready', () => {
+                console.log('✅ Email connection established successfully');
+                imap.openBox(folder, true, (err, box) => {
+                    if (err) {
+                        reject(err);
+                        return;
+                    }
+
+                    // Fetch latest emails
+                    const fetchOptions = {
+                        bodies: '',
+                        struct: true,
+                        envelope: true
+                    };
+
+                    const totalMessages = box.messages.total;
+                    const start = Math.max(1, totalMessages - limit + 1);
+                    const range = `${start}:${totalMessages}`;
+
+                    const fetch = imap.seq.fetch(range, fetchOptions);
+
+                    fetch.on('message', (msg, seqno) => {
+                        let emailData = {
+                            id: seqno.toString(),
+                            seqno: seqno,
+                            flags: [],
+                            date: null,
+                            from: null,
+                            to: null,
+                            subject: null,
+                            body: null,
+                            html: null,
+                            attachments: []
+                        };
+
+                        msg.on('body', (stream, info) => {
+                            simpleParser(stream, (err, parsed) => {
+                                if (err) {
+                                    console.error('Error parsing email:', err);
+                                    return;
+                                }
+
+                                emailData.date = parsed.date;
+                                emailData.from = parsed.from;
+                                emailData.to = parsed.to;
+                                emailData.subject = parsed.subject;
+                                emailData.body = parsed.text;
+                                emailData.html = parsed.html;
+                                emailData.attachments = parsed.attachments || [];
+                            });
+                        });
+
+                        msg.on('attributes', (attrs) => {
+                            emailData.flags = attrs.flags;
+                            emailData.date = attrs.date;
+                            emailData.envelope = attrs.envelope;
+                        });
+
+                        msg.once('end', () => {
+                            emails.push(emailData);
+                        });
+                    });
+
+                    fetch.once('error', (err) => {
+                        reject(err);
+                    });
+
+                    fetch.once('end', () => {
+                        imap.end();
+                    });
+                });
+            });
+
+            imap.once('error', (err) => {
+                console.error('❌ Email connection error:', err);
+                reject(err);
+            });
+
+            imap.once('end', () => {
+                console.log('📧 Email fetch completed, found', emails.length, 'emails');
+                // Sort emails by date (newest first)
+                emails.sort((a, b) => new Date(b.date) - new Date(a.date));
+                resolve(emails);
+            });
+
+            imap.connect();
+        });
+    }
+
+    async getFolders() {
+        return new Promise((resolve, reject) => {
+            const imap = new Imap(this.imapConfig);
+
+            imap.once('ready', () => {
+                imap.getBoxes((err, boxes) => {
+                    if (err) {
+                        reject(err);
+                        return;
+                    }
+                    imap.end();
+                    resolve(boxes);
+                });
+            });
+
+            imap.once('error', (err) => {
+                reject(err);
+            });
+
+            imap.connect();
+        });
+    }
+
+    async markAsRead(seqno, folder = 'INBOX') {
+        return new Promise((resolve, reject) => {
+            const imap = new Imap(this.imapConfig);
+
+            imap.once('ready', () => {
+                imap.openBox(folder, false, (err, box) => {
+                    if (err) {
+                        reject(err);
+                        return;
+                    }
+
+                    imap.seq.addFlags(seqno, '\\Seen', (err) => {
+                        if (err) {
+                            reject(err);
+                            return;
+                        }
+                        imap.end();
+                        resolve(true);
+                    });
+                });
+            });
+
+            imap.once('error', (err) => {
+                reject(err);
+            });
+
+            imap.connect();
+        });
+    }
+
+    formatEmailsForFrontend(emails) {
+        return emails.map((email, index) => {
+            const fromAddress = email.envelope?.from?.[0] || email.from?.value?.[0];
+            const toAddress = email.envelope?.to?.[0] || email.to?.value?.[0];
+            
+            return {
+                id: email.id || index.toString(),
+                subject: email.envelope?.subject || email.subject || 'No Subject',
+                content: email.body || 'No content available',
+                html: email.html,
+                from: {
+                    id: fromAddress?.address || 'unknown',
+                    name: fromAddress?.name || fromAddress?.address || 'Unknown Sender',
+                    email: fromAddress?.address || 'unknown@unknown.com',
+                    avatar: null
+                },
+                to: {
+                    id: 'support@ile.africa',
+                    name: 'Ile Africa Support',
+                    email: 'support@ile.africa',
+                    avatar: null
+                },
+                label: this.categorizeEmail(email.envelope?.subject || email.subject || ''),
+                createdAt: email.date || email.envelope?.date || new Date(),
+                read: !email.flags || !email.flags.includes('\\Recent'),
+                starred: email.flags && email.flags.includes('\\Flagged'),
+                important: this.isImportant(email.envelope?.subject || email.subject || ''),
+                deleted: false,
+                attachments: email.attachments?.map(att => ({
+                    filename: att.filename,
+                    contentType: att.contentType,
+                    size: att.size
+                })) || []
+            };
+        });
+    }
+
+    categorizeEmail(subject) {
+        // Simplify - put all emails in Primary for now
+        return 'Primary';
+    }
+
+    isImportant(subject) {
+        const importantKeywords = ['urgent', 'important', 'critical', 'emergency', 'security', 'account', 'suspended'];
+        return importantKeywords.some(keyword => subject.toLowerCase().includes(keyword));
+    }
+
+    // Generate 6-digit OTP
+    generateOTP() {
+        return Math.floor(100000 + Math.random() * 900000).toString();
+    }
+
+    // Send OTP email
+    async sendOTP(email, otp) {
+        try {
+            console.log(`📧 Sending OTP ${otp} to ${email}`);
+            
+            const mailOptions = {
+                from: `"CasperID Security" <${process.env.SUPPORT_EMAIL}>`,
+                to: email,
+                subject: 'Your CasperID Verification Code',
+                html: `
+                    <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f8f9ff;">
+                        <div style="background: white; border-radius: 16px; padding: 40px; text-align: center; border: 1px solid #e5e7eb;">
+                            <div style="width: 64px; height: 64px; background: #8652e2; border-radius: 20px; margin: 0 auto 24px; display: flex; align-items: center; justify-content: center;">
+                                <div style="color: white; font-size: 32px; font-weight: bold;">🔐</div>
+                            </div>
+                            
+                            <h1 style="color: #1f2937; margin: 0 0 16px 0; font-size: 28px; font-weight: 800;">Verify Your Identity</h1>
+                            
+                            <p style="color: #6b7280; margin: 0 0 32px 0; font-size: 16px; line-height: 1.5;">
+                                Enter this verification code in your CasperID app to continue setting up your secure digital identity.
+                            </p>
+                            
+                            <div style="background: #f3f4f6; border-radius: 12px; padding: 24px; margin: 32px 0; display: inline-block;">
+                                <div style="color: #374151; font-size: 14px; font-weight: 600; margin-bottom: 8px;">VERIFICATION CODE</div>
+                                <div style="font-family: 'SF Mono', Monaco, monospace; font-size: 32px; font-weight: 800; color: #8652e2; letter-spacing: 8px;">${otp}</div>
+                            </div>
+                            
+                            <p style="color: #9ca3af; font-size: 14px; margin: 24px 0 0 0;">
+                                This code expires in 10 minutes. Never share this code with anyone.
+                            </p>
+                            
+                            <div style="border-top: 1px solid #e5e7eb; margin-top: 32px; padding-top: 24px;">
+                                <p style="color: #9ca3af; font-size: 12px; margin: 0;">
+                                    Powered by CasperID Security Standard<br>
+                                    If you didn't request this code, please ignore this email.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                `,
+                text: `Your CasperID verification code is: ${otp}\n\nThis code expires in 10 minutes. Never share this code with anyone.\n\nIf you didn't request this code, please ignore this email.`
+            };
+
+            const result = await this.transporter.sendMail(mailOptions);
+            console.log('✅ OTP email sent successfully:', result.messageId);
+            return { success: true, messageId: result.messageId };
+        } catch (error) {
+            console.error('❌ Failed to send OTP email:', error);
+            throw error;
+        }
+    }
+
+    // Verify SMTP connection
+    async verifyConnection() {
+        try {
+            await this.transporter.verify();
+            console.log('✅ SMTP server connection verified successfully');
+            return true;
+        } catch (error) {
+            console.error('❌ SMTP server connection failed:', error);
+            return false;
+        }
+    }
+}
+
+module.exports = new EmailService();

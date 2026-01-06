@@ -4,10 +4,7 @@
  */
 
 const { GoogleGenerativeAI } = require('@google/generative-ai');
-const { trackDocumentVerification, trackResumeParsingLLM, trackLivenessDetection } = require('../utils/manual-llm-trace');
-
-// Get the tracer instance
-const tracer = require('dd-trace');
+// Datadog tracking imports removed - not using Datadog anymore
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
 
@@ -22,7 +19,7 @@ async function analyzeIDDocument(imageBuffer) {
     let error;
     
     try {
-        const model = genAI.getGenerativeModel({ model: 'gemini-1.5-pro' });
+        const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
 
         const prompt = `Analyze this ID document and extract the following information in JSON format:
 {
@@ -56,30 +53,14 @@ If you cannot extract certain information, use null for that field. Be very care
             throw new Error('Failed to parse AI response');
         }
 
-        // Send LLM trace to Datadog
-        const latency = Date.now() - startTime;
-        await trackDocumentVerification({
-            extractedData: result,
-            confidence: result.confidence / 100,
-            verified: result.isValid,
-            latency,
-            inputTokens: Math.ceil(prompt.length / 4) + Math.ceil(imageBuffer.length / 1000), // Estimate
-            outputTokens: Math.ceil(text.length / 4)
-        });
+        // Datadog LLM trace removed - not using Datadog anymore
 
         return result;
     } catch (err) {
         error = err;
         console.error('[Gemini] ID analysis error:', err);
         
-        // Send error trace to Datadog
-        const latency = Date.now() - startTime;
-        await trackDocumentVerification({
-            confidence: 0,
-            verified: false,
-            latency,
-            error: err.message
-        });
+        // Datadog error trace removed - not using Datadog anymore
         
         throw new Error('Failed to analyze ID document');
     }
@@ -93,7 +74,7 @@ If you cannot extract certain information, use null for that field. Be very care
  */
 async function compareFaceWithID(idImageBuffer, selfieBuffer) {
     try {
-        const model = genAI.getGenerativeModel({ model: 'gemini-1.5-pro' });
+        const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
 
         const prompt = `You are analyzing two images for identity verification:
 1. The first image is an ID document (passport, driver's license, etc.)
@@ -148,7 +129,7 @@ Be thorough in your comparison. Consider facial features, structure, and any vis
  */
 async function verifyLivenessGesture(imageBuffer, expectedGesture) {
     try {
-        const model = genAI.getGenerativeModel({ model: 'gemini-1.5-pro' });
+        const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
 
         const prompt = `You are verifying a liveness check. The person should be showing: "${expectedGesture}"
 
@@ -260,7 +241,7 @@ async function verifyLivenessSequence(frameBuffers, expectedSteps) {
     let result;
     
     try {
-        const model = genAI.getGenerativeModel({ model: 'gemini-1.5-pro' });
+        const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
 
         // Analyze a sampling of frames (first, middle, last few) to reduce API cost
         const sampleFrames = [];
@@ -371,32 +352,13 @@ Only mark as passed if you're confident this is a live human performing natural 
             throw new Error('Failed to parse AI response');
         }
 
-        // Send LLM trace to Datadog
-        const latency = Date.now() - startTime;
-        await trackLivenessDetection({
-            frameCount: totalFrames,
-            isLive: result.passed,
-            confidence: result.confidence / 100,
-            gestures: expectedSteps,
-            latency,
-            inputTokens: Math.ceil(prompt.length / 4) + (sampleFrames.length * 1000), // Estimate
-            outputTokens: Math.ceil(text.length / 4)
-        });
+        // Datadog LLM trace removed - not using Datadog anymore
 
         return result;
     } catch (err) {
         console.error('[Gemini] Liveness sequence verification error:', err);
         
-        // Send error trace to Datadog
-        const latency = Date.now() - startTime;
-        await trackLivenessDetection({
-            frameCount: frameBuffers.length,
-            isLive: false,
-            confidence: 0,
-            gestures: expectedSteps,
-            latency,
-            error: err.message
-        });
+        // Datadog error trace removed - not using Datadog anymore
         
         return {
             passed: false,
@@ -419,7 +381,11 @@ async function parseResume(fileBuffer, mimeType) {
     let error;
     
     try {
+        console.log(`[Gemini] Starting parseResume with mimeType: ${mimeType}, buffer size: ${fileBuffer.length}`);
+        console.log(`[Gemini] Buffer first 20 bytes (hex): ${fileBuffer.toString('hex', 0, 20)}`);
+        
         const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
+        console.log(`[Gemini] Model created successfully`);
 
         const prompt = `Analyze this resume and extract the person's professional profile into a structured JSON format. 
 Return ONLY the JSON.
@@ -440,6 +406,10 @@ IMPORTANT PARSING GUIDELINES:
 - Extract personal contact information from headers, contact sections, or anywhere on resume
 - Look for social media links in contact sections, headers, or signature areas
 - For names: Extract from header or contact section, split into first_name and last_name
+- For employment_type, use ONLY these values: "full-time", "part-time", "self-employed", "freelance", "contract", "internship", "seasonal"
+- For location_type, use ONLY these values: "on-site", "hybrid", "remote" (if not specified, use "on-site")
+- For certifications: ONLY include entries that have BOTH name AND issuing organization. Skip any certifications without issuing organization.
+- For certification dates: Convert to {month: Number, year: Number} format. Set does_not_expire: true if no expiry date is mentioned.
 
 Expected JSON structure:
 {
@@ -454,6 +424,8 @@ Expected JSON structure:
     {
       "company_name": "Google Inc",
       "job_title": "Software Engineer",
+      "employment_type": "full-time",
+      "location_type": "on-site",
       "start_date": "2020-01-01",
       "end_date": "2022-06-01",
       "description": "Developed web applications using React and Node.js",
@@ -474,8 +446,15 @@ Expected JSON structure:
     {
       "name": "string",
       "issuing_organization": "string",
-      "issue_date": "YYYY-MM-DD",
-      "expiry_date": "YYYY-MM-DD or null",
+      "issue_date": {
+        "month": 6,
+        "year": 2023
+      },
+      "expiration_date": {
+        "month": 6,
+        "year": 2025,
+        "does_not_expire": false
+      },
       "credential_id": "string",
       "credential_url": "url"
     }
@@ -493,8 +472,11 @@ Expected JSON structure:
   "awards": [
     {
       "title": "string",
-      "issuer": "string",
-      "date": "YYYY-MM-DD",
+      "issuing_organization": "string",
+      "issue_date": {
+        "month": 6,
+        "year": 2023
+      },
       "description": "string"
     }
   ],
@@ -540,42 +522,50 @@ Return the complete JSON with all available information filled in.`;
             }
         };
 
+        console.log(`[Gemini] Calling generateContent with prompt length: ${prompt.length}`);
+        console.log(`[Gemini] Base64 data length: ${fileBuffer.toString('base64').length}`);
+        
         const aiResult = await model.generateContent([prompt, filePart]);
+        console.log(`[Gemini] AI request completed`);
+        
         const response = await aiResult.response;
         const text = response.text();
+        console.log(`[Gemini] Response received, text length: ${text.length}`);
+        console.log(`[Gemini] Response preview: ${text.substring(0, 200)}...`);
 
         // Extract JSON from the response
         const jsonMatch = text.match(/\{[\s\S]*\}/);
         if (jsonMatch) {
+            console.log(`[Gemini] JSON extracted successfully`);
             result = JSON.parse(jsonMatch[0]);
         } else {
-            throw new Error('Failed to parse AI response');
+            console.error(`[Gemini] No JSON found in response: ${text}`);
+            throw new Error('Failed to parse AI response - no JSON found');
         }
 
-        // Send LLM trace to Datadog
-        const latency = Date.now() - startTime;
-        await trackResumeParsingLLM({
-            filename: 'resume.pdf', // Could get this from request
-            parsedData: result,
-            latency,
-            inputTokens: Math.ceil(prompt.length / 4) + Math.ceil(fileBuffer.length / 1000), // Estimate
-            outputTokens: Math.ceil(text.length / 4)
-        });
-
+        console.log(`[Gemini] Parse completed successfully in ${Date.now() - startTime}ms`);
         return result;
     } catch (err) {
         error = err;
         console.error('[Gemini] Resume parsing error:', err);
+        console.error('[Gemini] Error type:', err.constructor.name);
+        console.error('[Gemini] Error status:', err.status);
+        console.error('[Gemini] Error statusText:', err.statusText);
+        console.error('[Gemini] Error message:', err.message);
+        console.error('[Gemini] Full error object:', JSON.stringify(err, Object.getOwnPropertyNames(err), 2));
         
-        // Send error trace to Datadog
-        const latency = Date.now() - startTime;
-        await trackResumeParsingLLM({
-            filename: 'resume.pdf',
-            latency,
-            error: err.message
-        });
-        
-        throw new Error('Failed to parse resume');
+        // Return more specific error information
+        if (err.status === 400) {
+            throw new Error(`Gemini API Error (400): ${err.message}`);
+        } else if (err.status === 403) {
+            throw new Error(`Gemini API Authentication Error (403): Check API key`);
+        } else if (err.status === 413) {
+            throw new Error(`File too large for Gemini API (413): Try a smaller file`);
+        } else if (err.status === 429) {
+            throw new Error(`Gemini API Rate Limit (429): Please try again later`);
+        } else {
+            throw new Error(`Failed to parse resume: ${err.message}`);
+        }
     }
 }
 
@@ -587,7 +577,7 @@ Return the complete JSON with all available information filled in.`;
  */
 async function generateCoverLetter(profileData, jobDescription) {
     try {
-        const model = genAI.getGenerativeModel({ model: 'gemini-1.5-pro' });
+        const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
 
         const prompt = `You are an expert career coach. Write a highly personalized, compelling cover letter for the user.
 

@@ -25,7 +25,7 @@ const verificationRequestSchema = new mongoose.Schema({
     cns_name: { type: String },
     tier: {
         type: String,
-        enum: ['basic', 'full_kyc'],
+        enum: ['basic', 'full_kyc', 'layer_1', 'layer_2', 'layer_3'],
         default: 'basic',
         required: true
     },
@@ -68,7 +68,7 @@ const credentialSchema = new mongoose.Schema({
     },
     tier: {
         type: String,
-        enum: ['basic', 'full_kyc'],
+        enum: ['basic', 'full_kyc', 'layer_1', 'layer_2', 'layer_3'],
         required: true
     },
     last_kyc_at: {
@@ -220,8 +220,8 @@ const userProfileSchema = new mongoose.Schema({
 
     // === VERIFICATION TRACKING ===
     verified_at: { type: Date },
-    verification_source: { 
-        type: String, 
+    verification_source: {
+        type: String,
         enum: ['kyc_approval', 'manual_sync', 'migration']
     },
 
@@ -582,6 +582,568 @@ const adminUserSchema = new mongoose.Schema({
 });
 
 // ============================================
+// PASSKEY AUTHENTICATION SYSTEM
+// ============================================
+
+const userAccountSchema = new mongoose.Schema({
+    user_id: {
+        type: String,
+        required: true,
+        unique: true,
+        index: true
+    },
+    recovery_email: {
+        type: String,
+        required: true,
+        index: true
+    },
+    email_verified: {
+        type: Boolean,
+        default: false
+    },
+    wallet: {
+        type: String,
+        unique: true,
+        sparse: true,
+        index: true
+    },
+    did_address: {
+        type: String,
+        unique: true,
+        sparse: true,
+        index: true
+    },
+    user_salt: {
+        type: String,
+        required: true
+    },
+    active_passkey_id: {
+        type: String,
+        index: true
+    },
+    backup_passkeys: [{
+        credential_id: String,
+        device_name: String,
+        created_at: Date,
+        revoked: { type: Boolean, default: false }
+    }],
+    layer_status: {
+        type: String,
+        enum: ['layer_0', 'layer_1', 'layer_2', 'layer_3'],
+        default: 'layer_0'
+    },
+    metamask_connected: {
+        type: Boolean,
+        default: false
+    },
+    metamask_address: String,
+    created_at: {
+        type: Date,
+        default: Date.now
+    },
+    updated_at: {
+        type: Date,
+        default: Date.now
+    },
+    notification_preferences: {
+        security_alerts: { type: Boolean, default: true },
+        kyc_updates: { type: Boolean, default: true },
+        marketing_news: { type: Boolean, default: false }
+    }
+});
+
+const passkeyCredentialSchema = new mongoose.Schema({
+    user_id: {
+        type: String,
+        required: true,
+        index: true
+    },
+    credential_id: {
+        type: String,
+        required: true,
+        unique: true,
+        index: true
+    },
+    credential_public_key: {
+        type: Buffer,
+        required: true
+    },
+    counter: {
+        type: Number,
+        default: 0
+    },
+    device_type: {
+        type: String,
+        enum: ['mobile', 'desktop', 'tablet']
+    },
+    device_name: String,
+    transports: [{
+        type: String,
+        enum: ['internal', 'hybrid', 'usb', 'nfc', 'ble']
+    }],
+    backup_eligible: Boolean,
+    backup_state: Boolean,
+    attestation_object: Buffer,
+    client_data_json: Buffer,
+    is_primary: {
+        type: Boolean,
+        default: false
+    },
+    revoked: {
+        type: Boolean,
+        default: false
+    },
+    revoked_reason: String,
+    created_at: {
+        type: Date,
+        default: Date.now
+    },
+    last_used: {
+        type: Date,
+        default: Date.now
+    }
+});
+
+const deviceSessionSchema = new mongoose.Schema({
+    session_id: {
+        type: String,
+        required: true,
+        unique: true,
+        index: true
+    },
+    user_id: {
+        type: String,
+        required: true,
+        index: true
+    },
+    credential_id: {
+        type: String,
+        required: true,
+        index: true
+    },
+    session_token: {
+        type: String,
+        required: true,
+        unique: true
+    },
+    device_fingerprint: String,
+    ip_address: String,
+    user_agent: String,
+    bound_to_device: {
+        type: Boolean,
+        default: true
+    },
+    requires_biometric: {
+        type: Boolean,
+        default: true
+    },
+    created_at: {
+        type: Date,
+        default: Date.now
+    },
+    expires_at: {
+        type: Date,
+        required: true,
+        index: true
+    },
+    last_activity: {
+        type: Date,
+        default: Date.now
+    },
+    revoked: {
+        type: Boolean,
+        default: false
+    }
+});
+
+const devicePairingSchema = new mongoose.Schema({
+    pairing_id: {
+        type: String,
+        required: true,
+        unique: true,
+        index: true
+    },
+    user_id: {
+        type: String,
+        required: true,
+        index: true
+    },
+    qr_code_data: {
+        type: String,
+        required: true
+    },
+    initiating_device_id: String,
+    pairing_token: {
+        type: String,
+        required: true
+    },
+    status: {
+        type: String,
+        enum: ['pending', 'completed', 'expired', 'cancelled'],
+        default: 'pending'
+    },
+    target_device_info: {
+        device_name: String,
+        device_type: String,
+        user_agent: String
+    },
+    created_at: {
+        type: Date,
+        default: Date.now
+    },
+    expires_at: {
+        type: Date,
+        required: true,
+        index: true
+    },
+    completed_at: Date
+});
+
+const emailVerificationSchema = new mongoose.Schema({
+    verification_id: {
+        type: String,
+        required: true,
+        unique: true,
+        index: true
+    },
+    email: {
+        type: String,
+        required: true,
+        index: true
+    },
+    user_id: String,
+    verification_code: {
+        type: String,
+        required: true
+    },
+    verification_token: String,
+    type: {
+        type: String,
+        enum: ['registration', 'recovery', 'change_email'],
+        required: true
+    },
+    verified: {
+        type: Boolean,
+        default: false
+    },
+    attempts: {
+        type: Number,
+        default: 0
+    },
+    max_attempts: {
+        type: Number,
+        default: 5
+    },
+    created_at: {
+        type: Date,
+        default: Date.now
+    },
+    expires_at: {
+        type: Date,
+        required: true,
+        index: true
+    },
+    verified_at: Date
+});
+
+const recoveryRequestSchema = new mongoose.Schema({
+    recovery_id: {
+        type: String,
+        required: true,
+        unique: true,
+        index: true
+    },
+    user_id: {
+        type: String,
+        required: true,
+        index: true
+    },
+    recovery_email: {
+        type: String,
+        required: true
+    },
+    recovery_method: {
+        type: String,
+        enum: ['email_verification', 'backup_passkey', 'admin_override'],
+        required: true
+    },
+    status: {
+        type: String,
+        enum: ['initiated', 'email_verified', 'completed', 'failed', 'expired'],
+        default: 'initiated'
+    },
+    verification_steps_completed: [{
+        step: String,
+        completed_at: Date,
+        metadata: Object
+    }],
+    new_passkey_credential_id: String,
+    admin_approval_required: {
+        type: Boolean,
+        default: false
+    },
+    admin_notes: String,
+    created_at: {
+        type: Date,
+        default: Date.now
+    },
+    expires_at: {
+        type: Date,
+        required: true,
+        index: true
+    },
+    completed_at: Date
+});
+
+// ============================================
+// METAMASK ADVANCED PERMISSIONS (ERC-7715)
+// ============================================
+
+const permissionGrantSchema = new mongoose.Schema({
+    grant_id: {
+        type: String,
+        required: true,
+        unique: true,
+        index: true
+    },
+    user_id: {
+        type: String,
+        required: true,
+        index: true
+    },
+    metamask_address: {
+        type: String,
+        required: true,
+        index: true
+    },
+    dapp_origin: {
+        type: String,
+        required: true
+    },
+    permissions: [{
+        action: {
+            type: String,
+            enum: ['verify:identity', 'verify:liveness', 'verify:kyc', 'spend:verification_fee'],
+            required: true
+        },
+        scope: {
+            tier: {
+                type: String,
+                enum: ['layer_1', 'layer_2', 'layer_3']
+            },
+            frequency: {
+                type: String,
+                enum: ['once', 'daily', 'weekly', 'monthly', 'unlimited']
+            },
+            spend_limit: {
+                amount: Number,
+                currency: String,
+                period: String
+            }
+        },
+        granted_at: {
+            type: Date,
+            default: Date.now
+        }
+    }],
+    status: {
+        type: String,
+        enum: ['active', 'revoked', 'expired'],
+        default: 'active'
+    },
+    expires_at: {
+        type: Date,
+        required: true,
+        index: true
+    },
+    usage_count: {
+        type: Number,
+        default: 0
+    },
+    last_used: Date,
+    revoked_reason: String,
+    created_at: {
+        type: Date,
+        default: Date.now
+    },
+    updated_at: {
+        type: Date,
+        default: Date.now
+    }
+});
+
+const permissionUsageSchema = new mongoose.Schema({
+    usage_id: {
+        type: String,
+        required: true,
+        unique: true,
+        index: true
+    },
+    grant_id: {
+        type: String,
+        required: true,
+        index: true
+    },
+    user_id: {
+        type: String,
+        required: true,
+        index: true
+    },
+    dapp_origin: {
+        type: String,
+        required: true
+    },
+    action: {
+        type: String,
+        required: true
+    },
+    verification_type: {
+        type: String,
+        enum: ['layer_2', 'layer_3']
+    },
+    amount_spent: {
+        amount: Number,
+        currency: String
+    },
+    verification_result: {
+        type: String,
+        enum: ['success', 'failed', 'pending']
+    },
+    transaction_hash: String,
+    metadata: Object,
+    created_at: {
+        type: Date,
+        default: Date.now
+    }
+});
+
+const dappIntegrationSchema = new mongoose.Schema({
+    dapp_id: {
+        type: String,
+        required: true,
+        unique: true,
+        index: true
+    },
+    dapp_name: {
+        type: String,
+        required: true
+    },
+    dapp_origin: {
+        type: String,
+        required: true,
+        unique: true,
+        index: true
+    },
+    developer_email: String,
+    api_key: {
+        type: String,
+        required: true,
+        unique: true
+    },
+    webhook_url: String,
+    supported_networks: [{
+        chain_id: Number,
+        network_name: String
+    }],
+    verification_requirements: [{
+        tier: String,
+        required_fields: [String],
+        max_spend_per_verification: {
+            amount: Number,
+            currency: String
+        }
+    }],
+    active: {
+        type: Boolean,
+        default: true
+    },
+    total_verifications: {
+        type: Number,
+        default: 0
+    },
+    total_users: {
+        type: Number,
+        default: 0
+    },
+    created_at: {
+        type: Date,
+        default: Date.now
+    },
+    updated_at: {
+        type: Date,
+        default: Date.now
+    }
+});
+
+const verificationRequestV2Schema = new mongoose.Schema({
+    request_id: {
+        type: String,
+        required: true,
+        unique: true,
+        index: true
+    },
+    user_id: {
+        type: String,
+        required: true,
+        index: true
+    },
+    dapp_id: {
+        type: String,
+        required: true,
+        index: true
+    },
+    grant_id: String,
+    verification_tier: {
+        type: String,
+        enum: ['layer_1', 'layer_2', 'layer_3'],
+        required: true
+    },
+    requested_fields: [String],
+    purpose: String,
+    consent_granted: {
+        type: Boolean,
+        default: false
+    },
+    consent_granted_at: Date,
+    status: {
+        type: String,
+        enum: ['pending', 'in_progress', 'completed', 'failed', 'cancelled'],
+        default: 'pending'
+    },
+    verification_data: {
+        liveness_score: Number,
+        kyc_status: String,
+        document_verified: Boolean,
+        identity_data_hash: String
+    },
+    proof_generated: {
+        type: Boolean,
+        default: false
+    },
+    proof_data: {
+        credential_hash: String,
+        signature: String,
+        public_key: String,
+        verification_timestamp: Number
+    },
+    redirect_url: String,
+    webhook_notified: {
+        type: Boolean,
+        default: false
+    },
+    error_message: String,
+    created_at: {
+        type: Date,
+        default: Date.now
+    },
+    completed_at: Date,
+    expires_at: {
+        type: Date,
+        default: () => new Date(Date.now() + 24 * 60 * 60 * 1000) // 24 hours
+    }
+});
+
+// ============================================
 // RATE LIMITING
 // ============================================
 
@@ -609,6 +1171,71 @@ const rateLimitSchema = new mongoose.Schema({
     }
 });
 
+// ============================================
+// BLOCKCHAIN EVENT INDEXING
+// ============================================
+
+const verificationEventSchema = new mongoose.Schema({
+    event_id: {
+        type: String,
+        required: true,
+        unique: true,
+        index: true
+    },
+    network_name: {
+        type: String,
+        required: true,
+        index: true
+    },
+    chain_id: {
+        type: Number,
+        required: true,
+        index: true
+    },
+    block_number: {
+        type: Number,
+        required: true,
+        index: true
+    },
+    transaction_hash: {
+        type: String,
+        required: true,
+        index: true
+    },
+    event_type: {
+        type: String,
+        required: true,
+        enum: ['VerificationRequested', 'VerificationCompleted', 'PermissionGranted', 'PermissionRevoked'],
+        index: true
+    },
+    contract_address: {
+        type: String,
+        required: true
+    },
+    user_address: {
+        type: String,
+        index: true
+    },
+    event_data: {
+        type: Object,
+        default: {}
+    },
+    timestamp: {
+        type: Date,
+        required: true,
+        index: true
+    },
+    indexed_at: {
+        type: Date,
+        default: Date.now
+    }
+});
+
+// Compound indexes for efficient querying
+verificationEventSchema.index({ user_address: 1, timestamp: -1 });
+verificationEventSchema.index({ network_name: 1, block_number: 1 });
+verificationEventSchema.index({ event_type: 1, timestamp: -1 });
+
 
 // ============================================
 // MODEL EXPORTS
@@ -618,6 +1245,20 @@ const VerificationRequest = mongoose.model('VerificationRequest', verificationRe
 const Credential = mongoose.model('Credential', credentialSchema);
 const Issuer = mongoose.model('Issuer', issuerSchema);
 const LoginSession = mongoose.model('LoginSession', loginSessionSchema);
+
+// Passkey Authentication Models
+const UserAccount = mongoose.model('UserAccount', userAccountSchema);
+const PasskeyCredential = mongoose.model('PasskeyCredential', passkeyCredentialSchema);
+const DeviceSession = mongoose.model('DeviceSession', deviceSessionSchema);
+const DevicePairing = mongoose.model('DevicePairing', devicePairingSchema);
+const EmailVerification = mongoose.model('EmailVerification', emailVerificationSchema);
+const RecoveryRequest = mongoose.model('RecoveryRequest', recoveryRequestSchema);
+
+// MetaMask Advanced Permissions Models
+const PermissionGrant = mongoose.model('PermissionGrant', permissionGrantSchema);
+const PermissionUsage = mongoose.model('PermissionUsage', permissionUsageSchema);
+const DappIntegration = mongoose.model('DappIntegration', dappIntegrationSchema);
+const VerificationRequestV2 = mongoose.model('VerificationRequestV2', verificationRequestV2Schema);
 
 const AdminUser = mongoose.model('AdminUser', adminUserSchema);
 const RateLimit = mongoose.model('RateLimit', rateLimitSchema);
@@ -634,6 +1275,7 @@ const Volunteer = mongoose.model('Volunteer', volunteerSchema);
 
 const ViewEvent = mongoose.model('ViewEvent', viewEventSchema);
 const Notification = mongoose.model('Notification', notificationSchema);
+const VerificationEvent = mongoose.model('VerificationEvent', verificationEventSchema);
 
 module.exports = {
     // Verification & Credentials
@@ -641,6 +1283,20 @@ module.exports = {
     Credential,
     Issuer,
     LoginSession,
+
+    // Passkey Authentication System
+    UserAccount,
+    PasskeyCredential,
+    DeviceSession,
+    DevicePairing,
+    EmailVerification,
+    RecoveryRequest,
+
+    // MetaMask Advanced Permissions
+    PermissionGrant,
+    PermissionUsage,
+    DappIntegration,
+    VerificationRequestV2,
 
     // Admin & Security
     AdminUser,
@@ -659,5 +1315,8 @@ module.exports = {
 
     // System
     ViewEvent,
-    Notification
+    Notification,
+
+    // Blockchain Event Indexing
+    VerificationEvent
 };

@@ -1,39 +1,48 @@
-// Datadog APM + LLM Observability - Must be imported and initialized FIRST
-const tracer = require('dd-trace').init({
-    service: 'casperid-api',
-    env: 'development',
-    version: '1.0.0',
-    logInjection: true,
-    analytics: true,
-    runtimeMetrics: false, // Disabled - requires agent
-    profiling: false, // Disabled - requires agent
-    // LLM Observability Configuration
-    experimental: {
-        llmobs: {
-            enabled: true,
-            mlApp: 'casperid-llm-app',
-            agentlessEnabled: true, // Force agentless for immediate data
-            apiKey: process.env.DD_API_KEY,
-            site: process.env.DD_SITE || 'us5.datadoghq.com'
-        }
-    }
-});
-
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const mongoose = require('mongoose');
+const cookieParser = require('cookie-parser');
+const helmet = require('helmet');
+const mongoSanitize = require('express-mongo-sanitize');
 
 const app = express();
 const PORT = process.env.PORT || 8080;
 
-// Middleware
+// Security Middleware
+app.use(helmet({
+    contentSecurityPolicy: {
+        directives: {
+            defaultSrc: ["'self'"],
+            styleSrc: ["'self'", "'unsafe-inline'"],
+            scriptSrc: ["'self'"],
+            imgSrc: ["'self'", "data:", "https:"],
+        },
+    },
+    crossOriginEmbedderPolicy: false
+}));
+
+// MongoDB injection prevention
+app.use(mongoSanitize());
+
+// Core Middleware
 app.use(cors({
     origin: process.env.FRONTEND_URL || 'http://localhost:3000',
     credentials: true
 }));
-app.use(express.json({ limit: '50mb' }));
+app.use(express.json({ 
+    limit: '50mb',
+    verify: (req, res, buf) => {
+        try {
+            JSON.parse(buf);
+        } catch (e) {
+            res.status(400).json({ error: 'Invalid JSON' });
+            return;
+        }
+    }
+}));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
+app.use(cookieParser());
 
 // Serve static files from uploads directory
 const path = require('path');
@@ -72,21 +81,29 @@ app.get('/health', (req, res) => {
 
 // Import routes
 const verificationRoutes = require('./routes/verification');
+const verificationV2Routes = require('./routes/verification-v2');
 const adminRoutes = require('./routes/admin');
 const adminAuthRoutes = require('./routes/admin-auth');
 const authRoutes = require('./routes/auth');
 const aiRoutes = require('./routes/ai');
 const casperidAuthRoutes = require('./routes/casperid-auth');
+const passkeyAuthRoutes = require('./routes/passkey-auth');
+const metamaskPermissionsRoutes = require('./routes/metamask-permissions');
+const indexerRoutes = require('./routes/indexer');
 const profileRoutes = require('./routes/profile');
 const verifiedProfilesRoutes = require('./routes/verified-profiles');
 
 // Use routes
 app.use('/api', verificationRoutes);
+app.use('/api/v2/verification', verificationV2Routes); // Updated verification flows (Layer 2/3)
 app.use('/api/admin', adminRoutes);
 app.use('/api/admin', adminAuthRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api', aiRoutes);
 app.use('/api/casperid', casperidAuthRoutes);
+app.use('/api/passkey', passkeyAuthRoutes); // Passkey authentication (Layer 0/1)
+app.use('/api/metamask', metamaskPermissionsRoutes); // MetaMask Advanced Permissions (ERC-7715)
+app.use('/api/indexer', indexerRoutes); // Blockchain event indexing
 app.use('/api', profileRoutes); // Profile routes (GET /api/profile/:wallet, etc.)
 app.use('/api', verifiedProfilesRoutes); // Verified profiles for sitemap
 app.use('/api/notifications', require('./routes/notifications'));
