@@ -277,6 +277,24 @@ class ApiService {
     }
   }
 
+  async updatePermission(grantId: string, permissions: any[]): Promise<ApiResponse> {
+    try {
+      const response = await this.client.patch(`/api/metamask/user/permissions/${grantId}`, { permissions });
+      return response.data;
+    } catch (error) {
+      throw this.handleError(error);
+    }
+  }
+
+  async exportData(): Promise<any> {
+    try {
+      const response = await this.client.post('/api/metamask/user/export-data');
+      return response.data.data;
+    } catch (error) {
+      throw this.handleError(error);
+    }
+  }
+
   // ============================================
   // DEVICE MANAGEMENT
   // ============================================
@@ -1140,6 +1158,9 @@ class ApiService {
       throw this.handleError(error);
     }
   }
+
+
+
 }
 
 // Export singleton instance

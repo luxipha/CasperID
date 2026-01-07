@@ -1,7 +1,10 @@
 const express = require('express');
 const router = express.Router();
 const metamaskPermissions = require('../services/metamask-permissions');
-const { DappIntegration, PermissionGrant, UserAccount } = require('../database/models');
+const {
+    DappIntegration, PermissionGrant, UserAccount,
+    PermissionUsage, UserProfile, VerificationRequest, Credential
+} = require('../database/models');
 const { v4: uuidv4 } = require('uuid');
 
 // Import validation middleware
@@ -79,9 +82,9 @@ router.get('/dapp/:apiKey', async (req, res) => {
     try {
         const { apiKey } = req.params;
 
-        const dapp = await DappIntegration.findOne({ 
+        const dapp = await DappIntegration.findOne({
             api_key: apiKey,
-            active: true 
+            active: true
         });
 
         if (!dapp) {
@@ -125,7 +128,7 @@ router.get('/dapp/:apiKey', async (req, res) => {
 router.post('/permissions/request', permissionRateLimit, validateApiKey, validatePermissionRequest, async (req, res) => {
     try {
         const dappApiKey = req.headers['x-api-key'];
-        
+
         if (!dappApiKey) {
             return res.status(401).json({
                 success: false,
@@ -178,7 +181,7 @@ router.post('/permissions/request', permissionRateLimit, validateApiKey, validat
 router.post('/permissions/generate-payload', async (req, res) => {
     try {
         const dappApiKey = req.headers['x-api-key'];
-        
+
         if (!dappApiKey) {
             return res.status(401).json({
                 success: false,
@@ -189,9 +192,9 @@ router.post('/permissions/generate-payload', async (req, res) => {
         const { permissions, userAddress } = req.body;
 
         // Get dApp info
-        const dapp = await DappIntegration.findOne({ 
+        const dapp = await DappIntegration.findOne({
             api_key: dappApiKey,
-            active: true 
+            active: true
         });
 
         if (!dapp) {
@@ -202,8 +205,8 @@ router.post('/permissions/generate-payload', async (req, res) => {
         }
 
         const payload = metamaskPermissions.generatePermissionRequestPayload(
-            dapp, 
-            permissions, 
+            dapp,
+            permissions,
             userAddress
         );
 
@@ -232,7 +235,7 @@ router.post('/permissions/generate-payload', async (req, res) => {
 router.post('/verification/execute', async (req, res) => {
     try {
         const dappApiKey = req.headers['x-api-key'];
-        
+
         if (!dappApiKey) {
             return res.status(401).json({
                 success: false,
@@ -320,8 +323,8 @@ router.get('/verification/:requestId', async (req, res) => {
  */
 router.get('/user/permissions', async (req, res) => {
     try {
-        const sessionToken = req.cookies.casperid_session || 
-                           req.headers.authorization?.replace('Bearer ', '');
+        const sessionToken = req.cookies.casperid_session ||
+            req.headers.authorization?.replace('Bearer ', '');
 
         if (!sessionToken) {
             return res.status(401).json({
@@ -354,9 +357,9 @@ router.delete('/user/permissions/:grantId', async (req, res) => {
     try {
         const { grantId } = req.params;
         const { reason } = req.body;
-        
-        const sessionToken = req.cookies.casperid_session || 
-                           req.headers.authorization?.replace('Bearer ', '');
+
+        const sessionToken = req.cookies.casperid_session ||
+            req.headers.authorization?.replace('Bearer ', '');
 
         if (!sessionToken) {
             return res.status(401).json({
@@ -366,8 +369,8 @@ router.delete('/user/permissions/:grantId', async (req, res) => {
         }
 
         const result = await metamaskPermissions.revokePermission(
-            sessionToken, 
-            grantId, 
+            sessionToken,
+            grantId,
             reason
         );
 
@@ -397,9 +400,9 @@ router.delete('/user/permissions/:grantId', async (req, res) => {
 router.post('/link-account', async (req, res) => {
     try {
         const { metamaskAddress, signature, message } = req.body;
-        
-        const sessionToken = req.cookies.casperid_session || 
-                           req.headers.authorization?.replace('Bearer ', '');
+
+        const sessionToken = req.cookies.casperid_session ||
+            req.headers.authorization?.replace('Bearer ', '');
 
         if (!sessionToken) {
             return res.status(401).json({
@@ -485,8 +488,8 @@ router.post('/link-account', async (req, res) => {
  */
 router.delete('/unlink-account', async (req, res) => {
     try {
-        const sessionToken = req.cookies.casperid_session || 
-                           req.headers.authorization?.replace('Bearer ', '');
+        const sessionToken = req.cookies.casperid_session ||
+            req.headers.authorization?.replace('Bearer ', '');
 
         if (!sessionToken) {
             return res.status(401).json({
@@ -508,11 +511,11 @@ router.delete('/unlink-account', async (req, res) => {
 
         // Revoke all active permission grants
         await PermissionGrant.updateMany(
-            { 
+            {
                 user_id: sessionData.userAccount.user_id,
                 status: 'active'
             },
-            { 
+            {
                 status: 'revoked',
                 revoked_reason: 'Account unlinked',
                 updated_at: new Date()
@@ -554,7 +557,7 @@ router.delete('/unlink-account', async (req, res) => {
 router.get('/dapp/analytics', async (req, res) => {
     try {
         const dappApiKey = req.headers['x-api-key'];
-        
+
         if (!dappApiKey) {
             return res.status(401).json({
                 success: false,
@@ -562,9 +565,9 @@ router.get('/dapp/analytics', async (req, res) => {
             });
         }
 
-        const dapp = await DappIntegration.findOne({ 
+        const dapp = await DappIntegration.findOne({
             api_key: dappApiKey,
-            active: true 
+            active: true
         });
 
         if (!dapp) {
@@ -579,7 +582,7 @@ router.get('/dapp/analytics', async (req, res) => {
             dapp_origin: dapp.dapp_origin
         });
 
-        const activeGrants = grants.filter(g => 
+        const activeGrants = grants.filter(g =>
             g.status === 'active' && g.expires_at > new Date()
         ).length;
 
@@ -615,6 +618,127 @@ router.get('/dapp/analytics', async (req, res) => {
             success: false,
             error: error.message
         });
+    }
+});
+
+
+
+/**
+ * Update permission grant (Toggle scopes)
+ * PATCH /api/metamask/user/permissions/:grantId
+ */
+router.patch('/user/permissions/:grantId', async (req, res) => {
+    try {
+        const { grantId } = req.params;
+        const { permissions } = req.body; // Array of updated permissions
+
+        const sessionToken = req.cookies.casperid_session ||
+            req.headers.authorization?.replace('Bearer ', '');
+
+        if (!sessionToken) {
+            return res.status(401).json({ success: false, error: 'Authentication required' });
+        }
+
+        const webauthnService = require('../services/webauthn');
+        const sessionData = await webauthnService.validateSession(sessionToken);
+
+        if (!sessionData) {
+            return res.status(401).json({ success: false, error: 'Invalid session' });
+        }
+
+        const grant = await PermissionGrant.findOne({
+            grant_id: grantId,
+            user_id: sessionData.userAccount.user_id
+        });
+
+        if (!grant) {
+            return res.status(404).json({ success: false, error: 'Grant not found' });
+        }
+
+        // Update permissions
+        // In a real implementation, we might want to validate these against the DApp's allowed scopes again
+        // For now, we trust the array conforms to schema
+        grant.permissions = permissions;
+        grant.updated_at = new Date();
+        await grant.save();
+
+        res.json({
+            success: true,
+            message: 'Permissions updated',
+            grant
+        });
+
+    } catch (error) {
+        console.error('Update permissions failed:', error);
+        res.status(400).json({ success: false, error: error.message });
+    }
+});
+
+/**
+ * Export user data
+ * POST /api/metamask/user/export-data
+ */
+router.post('/user/export-data', async (req, res) => {
+    try {
+        const sessionToken = req.cookies.casperid_session ||
+            req.headers.authorization?.replace('Bearer ', '');
+
+        if (!sessionToken) {
+            return res.status(401).json({ success: false, error: 'Authentication required' });
+        }
+
+        const webauthnService = require('../services/webauthn');
+        const sessionData = await webauthnService.validateSession(sessionToken);
+
+        if (!sessionData) {
+            return res.status(401).json({ success: false, error: 'Invalid session' });
+        }
+
+        const userId = sessionData.userAccount.user_id;
+
+        // Gather all data
+        const [
+            userAccount,
+            profile,
+            verifications,
+            credentials,
+            grants,
+            permissionUsage
+        ] = await Promise.all([
+            UserAccount.findOne({ user_id: userId }).lean(),
+            UserProfile.findOne({ wallet: sessionData.userAccount.wallet }).lean(), // Assuming wallet link
+            VerificationRequest.find({ wallet: sessionData.userAccount.wallet }).lean(),
+            Credential.find({ wallet: sessionData.userAccount.wallet }).lean(),
+            PermissionGrant.find({ user_id: userId }).lean(),
+            PermissionUsage.find({ user_id: userId }).lean()
+        ]);
+
+        const exportData = {
+            metadata: {
+                exported_at: new Date(),
+                user_id: userId
+            },
+            account: userAccount ? {
+                username: userAccount.username,
+                wallet: userAccount.wallet, // Fallback if not in account
+                tier: userAccount.tier,
+                created_at: userAccount.created_at
+            } : null,
+            profile: profile || {},
+            verifications: verifications || [],
+            credentials: credentials || [],
+            connected_apps: grants || [],
+            audit_log: permissionUsage || []
+        };
+
+        res.json({
+            success: true,
+            data: exportData
+        });
+
+    } catch (error) {
+        console.error('Data export failed:', error);
+        res.status(500).json({ success: false, error: 'Failed to export data' });
     }
 });
 

@@ -21,6 +21,8 @@ import { ProjectForm } from './forms/ProjectForm';
 import { AwardForm } from './forms/AwardForm';
 import { VolunteerForm } from './forms/VolunteerForm';
 import { LanguageForm } from './forms/LanguageForm';
+import { calculateATSScore } from '../utils/atsAlgorithm';
+import { ATSScoreCard } from './ATSScoreCard';
 
 // Reverted to self-contained state for compatibility
 // interface ProfileProps {
@@ -45,6 +47,7 @@ export const Profile: React.FC = () => {
   const [volunteers, setVolunteers] = useState<Volunteer[]>([]);
 
   const [isLoading, setIsLoading] = useState(false);
+  const [atsScoreData, setAtsScoreData] = useState<{ score: number; breakdown: any; feedback: string[] } | null>(null);
 
   // UI State for Editing/Adding
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -125,6 +128,11 @@ export const Profile: React.FC = () => {
           setProfile(res);
           // Sync local UI states with profile data
           setOpenToWork(res.open_to_work?.enabled || false);
+
+          // Calculate initial ATS Score
+          // Note: We need to fetch sub-collections to calculate accurate score initially if not already loaded
+          // But usually we load them below? Wait, loadProfile only loads profile.
+          // We rely on refreshAllData to load everything.
         } else {
           console.error("❌ Profile fetch failed or no wallet:", res);
         }
@@ -133,10 +141,20 @@ export const Profile: React.FC = () => {
         // Only redirect on specific 401/403 errors, but generic catch is okay for now
       } finally {
         setIsLoading(false);
+        // Trigger full data load
+        refreshAllData();
       }
     };
     loadProfile();
   }, []);
+
+  // Effect to recalculate ATS score whenever data changes
+  useEffect(() => {
+    if (profile) {
+      const result = calculateATSScore(profile, experiences, education, skills);
+      setAtsScoreData(result);
+    }
+  }, [profile, experiences, education, skills]);
 
   // Save Handlers
   const handleSaveExperience = async (data: Experience) => {
@@ -1891,6 +1909,12 @@ export const Profile: React.FC = () => {
                   </button>
                 ))}
               </nav>
+
+              {/* ATS Score Card (Global Sidebar) */}
+              <ATSScoreCard
+                data={atsScoreData}
+                onClickReport={() => alert("Full Report coming soon!")}
+              />
             </div>
           </aside>
 

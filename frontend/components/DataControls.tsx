@@ -1,47 +1,152 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { RevokeModal } from './RevokeModal';
+import { apiService } from '../services/api';
 
-const stats = [
-  { label: 'Privacy Score', value: '92', total: '100', trend: '+2% vs last week', icon: 'shield', color: 'text-green-600', progress: 92 },
-  { label: 'Active Connections', value: '12', sub: 'Apps connected', icon: 'hub', color: 'text-primary' },
-  { label: 'Recent Requests (7d)', value: '34', sub: 'New activity', icon: 'history', color: 'text-blue-500', note: 'Most accessed: Identity Profile (ZK-Proof)' },
-];
+// Helper to map backend actions to UI labels
+const PERMISSION_MAP: Record<string, { label: string; sub: string; icon: string }> = {
+  'verify:identity': { label: 'Identity Profile', sub: 'Basic info (ZK-Proof)', icon: 'account_circle' },
+  'verify:kyc': { label: 'KYC Status', sub: 'Verified Credential', icon: 'verified' },
+  'verify:liveness': { label: 'Liveness Check', sub: 'Biometric Verification', icon: 'face' },
+  'spend:verification_fee': { label: 'Wallet Spend', sub: 'Verification Fees', icon: 'account_balance_wallet' },
+};
 
-const appPermissions = [
-  {
-    name: 'Uniswap Protocol',
-    type: 'Web3',
-    category: 'Decentralized Exchange',
-    logo: 'U',
-    logoBg: 'bg-pink-100 text-pink-600',
-    logoSrc: 'https://cryptologos.cc/logos/uniswap-uni-logo.png',
-    permissions: [
-      { id: 'p1', label: 'Identity Profile', sub: 'Basic info (ZK-Proof)', icon: 'account_circle', enabled: true },
-      { id: 'p2', label: 'KYC Status', sub: 'Verified Credential', icon: 'verified', enabled: true, verified: true },
-      { id: 'p3', label: 'Wallet Address', sub: 'Public Key (Raw Data)', icon: 'account_balance_wallet', enabled: true },
-    ]
-  },
-  {
-    name: 'LinkedIn Clone',
-    type: 'Web2',
-    category: 'Professional Networking',
-    logo: 'work',
-    logoIsIcon: true,
-    logoBg: 'bg-blue-100 text-blue-600',
-    permissions: [
-      { id: 'p4', label: 'Email Address', sub: 'Primary Email (Raw Data)', icon: 'contact_mail', enabled: true },
-      { id: 'p5', label: 'Resume Data', sub: 'Work history, Education', icon: 'description', enabled: false },
-      { id: 'p6', label: 'Location', sub: 'City/Country (Revoked)', icon: 'location_on', enabled: false, revoked: true },
-    ]
-  }
-];
+const getPermissionDetails = (action: string) => {
+  return PERMISSION_MAP[action] || { label: action, sub: 'Custom Permission', icon: 'security' };
+};
 
 export const DataControls: React.FC = () => {
-  const [revokingApp, setRevokingApp] = useState<typeof appPermissions[0] | null>(null);
+  const [apps, setApps] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [revokingApp, setRevokingApp] = useState<any | null>(null);
+  const [auditLog, setAuditLog] = useState<any[]>([]);
+  const [stats, setStats] = useState({
+    activeConnections: 0,
+    totalGrants: 0,
+    privacyScore: 100
+  });
+
+  useEffect(() => {
+    fetchData();
+  }, []);
+
+  const fetchData = async () => {
+    try {
+      setLoading(true);
+      const response = await apiService.getUserPermissions();
+      const data = response.userPermissions || { permissions: [], totalGrants: 0, activeGrants: 0 };
+
+      // Transform backend data to UI format
+      const transformedApps = data.permissions.map((grant: any) => ({
+        grantId: grant.grantId,
+        name: grant.dappName,
+        type: 'Web3', // Default
+        category: 'Connected DApp',
+        logo: grant.dappName.charAt(0),
+        logoBg: 'bg-indigo-100 text-indigo-600',
+        logoIsIcon: false,
+        permissions: grant.permissions.map((p: any) => ({
+          id: p.action,
+          ...getPermissionDetails(p.action),
+          enabled: true, // If present in active grant, it's enabled
+          scope: p.scope // Keep scope for updates
+        })),
+        usageCount: grant.usageCount
+      }));
+
+      // Flatten and sort audit log from recent usage
+      const allUsage = data.permissions.flatMap((grant: any) =>
+        grant.recentUsage.map((usage: any) => ({
+          app: grant.dappName,
+          data: getPermissionDetails(usage.action).label,
+          type: 'Zero-Knowledge',
+          typeColor: 'bg-purple-50 text-purple-700 border-purple-100', // Default
+          time: new Date(usage.createdAt).toLocaleString(),
+          status: usage.result === 'success' ? 'Approved' : usage.result,
+          statusColor: usage.result === 'success' ? 'bg-green-500' : 'bg-red-500',
+          logo: grant.dappName.charAt(0),
+          logoBg: 'bg-indigo-100 text-indigo-600'
+        }))
+      ).sort((a: any, b: any) => new Date(b.time).getTime() - new Date(a.time).getTime());
+
+      setApps(transformedApps);
+      setAuditLog(allUsage);
+      setStats({
+        activeConnections: data.activeGrants,
+        totalGrants: data.totalGrants,
+        privacyScore: Math.max(0, 100 - (data.activeGrants * 5))
+      });
+
+    } catch (error) {
+      console.error('Failed to fetch permissions:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleTogglePermission = async (appIndex: number, permId: string, enabled: boolean) => {
+    // If disabling, we remove it from the list sent to backend
+    // If enabling, we currently can't add it back as we lose scope. 
+    // UI behavior: Once unchecked, it effectively revokes.
+    if (!enabled) {
+      const app = apps[appIndex];
+      const newPermissions = app.permissions
+        .filter((p: any) => p.id !== permId)
+        .map((p: any) => ({ action: p.id, scope: p.scope }));
+
+      try {
+        await apiService.updatePermission(app.grantId, newPermissions);
+        // Optimistic update
+        const newApps = [...apps];
+        newApps[appIndex].permissions = newApps[appIndex].permissions.map((p: any) =>
+          p.id === permId ? { ...p, enabled: false, revoked: true } : p
+        );
+        setApps(newApps);
+      } catch (error) {
+        console.error('Failed to update permission:', error);
+        alert('Failed to update permission');
+      }
+    }
+  };
+
+  const handleRevokeApp = async () => {
+    if (!revokingApp) return;
+    try {
+      await apiService.revokePermission(revokingApp.grantId, "User revoked via Data Controls");
+      setRevokingApp(null);
+      fetchData(); // Refresh list
+    } catch (error) {
+      console.error('Failed to revoke app:', error);
+      alert('Failed to revoke access');
+    }
+  };
+
+  const handleExportData = async () => {
+    try {
+      const data = await apiService.exportData();
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `casperid-data-export-${new Date().toISOString()}.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Export failed:', error);
+      alert('Failed to export data');
+    }
+  };
+
+  const statCards = [
+    { label: 'Privacy Score', value: stats.privacyScore.toString(), total: '100', trend: '+0% vs last week', icon: 'shield', color: 'text-green-600', progress: stats.privacyScore },
+    { label: 'Active Connections', value: stats.activeConnections.toString(), sub: 'Apps connected', icon: 'hub', color: 'text-primary' },
+    { label: 'Recent Requests', value: auditLog.length.toString(), sub: 'Total activity', icon: 'history', color: 'text-blue-500' },
+  ];
 
   return (
-    <div className="space-y-10 pb-12">
+    <div className="space-y-10 pb-12 animate-in fade-in duration-500">
       {/* Heading */}
       <div className="flex flex-col gap-3">
         <h1 className="text-3xl md:text-4xl font-black leading-tight tracking-[-0.03em] text-text-main">Data Controls & Privacy</h1>
@@ -52,7 +157,7 @@ export const DataControls: React.FC = () => {
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        {stats.map((s, idx) => (
+        {statCards.map((s, idx) => (
           <div key={idx} className="bg-white p-6 rounded-[32px] border border-gray-100 shadow-soft flex flex-col gap-4">
             <div className="flex items-center justify-between">
               <p className="text-text-sub text-[11px] font-bold uppercase tracking-widest">{s.label}</p>
@@ -69,15 +174,8 @@ export const DataControls: React.FC = () => {
               <div className="w-full bg-gray-100 rounded-full h-1.5 mt-2">
                 <div className="bg-green-500 h-1.5 rounded-full transition-all duration-1000" style={{ width: `${s.progress}%` }}></div>
               </div>
-            ) : s.note ? (
-              <p className="text-[10px] text-text-sub font-medium mt-1 italic">{s.note}</p>
             ) : (
-               <div className="flex -space-x-2 mt-2">
-                {[1, 2, 3].map(i => (
-                  <div key={i} className="w-7 h-7 rounded-full border-2 border-white bg-gray-200 shadow-sm" style={{ backgroundImage: `url(https://picsum.photos/id/${i + 20}/50/50)`, backgroundSize: 'cover' }}></div>
-                ))}
-                <div className="w-7 h-7 rounded-full border-2 border-white bg-gray-50 flex items-center justify-center text-[9px] text-gray-500 font-bold">+9</div>
-              </div>
+              <div className="h-1.5 mt-2"></div>
             )}
           </div>
         ))}
@@ -91,138 +189,153 @@ export const DataControls: React.FC = () => {
             <span className="absolute inset-y-0 left-3 flex items-center pointer-events-none">
               <span className="material-symbols-outlined text-gray-400 group-focus-within:text-primary transition-colors text-[20px]">search</span>
             </span>
-            <input 
-              className="w-full h-11 rounded-xl border-none bg-white py-2 pl-10 pr-4 text-sm text-text-main shadow-sm ring-1 ring-inset ring-gray-200 placeholder:text-gray-400 focus:ring-2 focus:ring-primary/20 outline-none" 
-              placeholder="Search apps or services..." 
+            <input
+              className="w-full h-11 rounded-xl border-none bg-white py-2 pl-10 pr-4 text-sm text-text-main shadow-sm ring-1 ring-inset ring-gray-200 placeholder:text-gray-400 focus:ring-2 focus:ring-primary/20 outline-none"
+              placeholder="Search apps or services..."
               type="text"
             />
           </div>
         </div>
 
-        <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-          {appPermissions.map((app, idx) => (
-            <div key={idx} className="bg-white rounded-[32px] border border-gray-100 p-7 shadow-soft flex flex-col gap-6">
-              <div className="flex justify-between items-start">
-                <div className="flex gap-4">
-                  <div className={`w-14 h-14 rounded-2xl ${app.logoBg} flex items-center justify-center shadow-sm`}>
-                    {app.logoIsIcon ? (
-                      <span className="material-symbols-outlined text-[32px]">{app.logo}</span>
-                    ) : (
-                      <span className="font-extrabold text-2xl">{app.logo}</span>
-                    )}
-                  </div>
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <h3 className="text-lg font-extrabold text-text-main tracking-tight">{app.name}</h3>
-                      <span className="bg-blue-50 text-blue-600 text-[9px] font-extrabold px-2 py-0.5 rounded-full uppercase tracking-widest border border-blue-100/50">
-                        {app.type}
-                      </span>
+        {loading ? (
+          <div className="flex items-center justify-center py-20">
+            <div className="animate-spin size-12 border-4 border-primary border-t-transparent rounded-full"></div>
+          </div>
+        ) : apps.length === 0 ? (
+          <div className="bg-white rounded-[32px] border border-gray-100 p-12 text-center text-text-sub">
+            <span className="material-symbols-outlined text-4xl mb-4">apps</span>
+            <p>No connected applications found.</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+            {apps.map((app, idx) => (
+              <div key={idx} className="bg-white rounded-[32px] border border-gray-100 p-7 shadow-soft flex flex-col gap-6">
+                <div className="flex justify-between items-start">
+                  <div className="flex gap-4">
+                    <div className={`w-14 h-14 rounded-2xl ${app.logoBg} flex items-center justify-center shadow-sm`}>
+                      {app.logoIsIcon ? (
+                        <span className="material-symbols-outlined text-[32px]">{app.logo}</span>
+                      ) : (
+                        <span className="font-extrabold text-2xl">{app.logo}</span>
+                      )}
                     </div>
-                    <p className="text-[13px] text-text-sub font-medium">{app.category}</p>
-                  </div>
-                </div>
-                <button className="text-text-sub hover:text-primary transition-colors p-1">
-                  <span className="material-symbols-outlined">more_vert</span>
-                </button>
-              </div>
-
-              <div className="space-y-1">
-                {app.permissions.map((p) => (
-                  <div key={p.id} className={`flex items-center justify-between py-3.5 border-b border-gray-50 last:border-0 ${p.revoked ? 'opacity-40' : ''}`}>
-                    <div className="flex items-center gap-4">
-                      <div className="w-10 h-10 rounded-full bg-gray-50 flex items-center justify-center text-text-sub">
-                        <span className="material-symbols-outlined text-[20px]">{p.icon}</span>
-                      </div>
-                      <div className="flex flex-col">
-                        <span className="text-sm font-bold text-text-main">{p.label}</span>
-                        <span className={`text-[11px] font-medium flex items-center gap-1 ${p.verified ? 'text-green-600' : 'text-text-sub'}`}>
-                          {p.verified && <span className="material-symbols-outlined text-[12px] icon-filled">check_circle</span>}
-                          {p.sub}
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <h3 className="text-lg font-extrabold text-text-main tracking-tight">{app.name}</h3>
+                        <span className="bg-blue-50 text-blue-600 text-[9px] font-extrabold px-2 py-0.5 rounded-full uppercase tracking-widest border border-blue-100/50">
+                          {app.type}
                         </span>
                       </div>
+                      <p className="text-[13px] text-text-sub font-medium">{app.category}</p>
                     </div>
-                    <label className="relative inline-flex items-center cursor-pointer">
-                      <input type="checkbox" className="sr-only peer" defaultChecked={p.enabled} disabled={p.revoked} />
-                      <div className="w-11 h-6 bg-gray-200 rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
-                    </label>
                   </div>
-                ))}
-              </div>
+                  <button className="text-text-sub hover:text-primary transition-colors p-1">
+                    <span className="material-symbols-outlined">more_vert</span>
+                  </button>
+                </div>
 
-              <div className="flex gap-3 pt-2">
-                <button className="flex-1 py-3 px-4 rounded-2xl bg-gray-50 text-sm font-bold text-text-main hover:bg-gray-100 transition-colors">View Logs</button>
-                <button 
-                  onClick={() => setRevokingApp(app)}
-                  className="flex-1 py-3 px-4 rounded-2xl border border-red-100 text-sm font-bold text-red-600 hover:bg-red-50 transition-colors"
-                >
-                  Revoke Access
-                </button>
+                <div className="space-y-1">
+                  {app.permissions.map((p: any) => (
+                    <div key={p.id} className={`flex items-center justify-between py-3.5 border-b border-gray-50 last:border-0 ${p.revoked ? 'opacity-40' : ''}`}>
+                      <div className="flex items-center gap-4">
+                        <div className="w-10 h-10 rounded-full bg-gray-50 flex items-center justify-center text-text-sub">
+                          <span className="material-symbols-outlined text-[20px]">{p.icon}</span>
+                        </div>
+                        <div className="flex flex-col">
+                          <span className="text-sm font-bold text-text-main">{p.label}</span>
+                          <span className={`text-[11px] font-medium flex items-center gap-1 ${p.revoked ? 'text-red-500' : 'text-text-sub'}`}>
+                            {p.sub} {p.revoked && '(Revoked)'}
+                          </span>
+                        </div>
+                      </div>
+                      <label className="relative inline-flex items-center cursor-pointer">
+                        <input
+                          type="checkbox"
+                          className="sr-only peer"
+                          checked={p.enabled && !p.revoked}
+                          onChange={(e) => handleTogglePermission(idx, p.id, e.target.checked)}
+                          disabled={p.revoked} // Once revoked, disabled for now
+                        />
+                        <div className="w-11 h-6 bg-gray-200 rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
+                      </label>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="flex gap-3 pt-2">
+                  <button className="flex-1 py-3 px-4 rounded-2xl bg-gray-50 text-sm font-bold text-text-main hover:bg-gray-100 transition-colors">View Logs</button>
+                  <button
+                    onClick={() => setRevokingApp(app)}
+                    className="flex-1 py-3 px-4 rounded-2xl border border-red-100 text-sm font-bold text-red-600 hover:bg-red-50 transition-colors"
+                  >
+                    Revoke Access
+                  </button>
+                </div>
               </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        )}
       </section>
 
       {/* Revoke Modal Integration */}
       {revokingApp && (
-        <RevokeModal 
+        <RevokeModal
           isOpen={true}
           onClose={() => setRevokingApp(null)}
-          onConfirm={() => setRevokingApp(null)}
-          title="Confirm Disconnect from"
+          onConfirm={handleRevokeApp}
+          title={`Disconnect ${revokingApp.name}?`}
           appName={revokingApp.name}
           description="Revoking access will immediately disconnect this application from your CasperID. You may need to reconnect to use its features again."
-          logoSrc={revokingApp.logoSrc}
-          logoText={revokingApp.logoIsIcon ? undefined : revokingApp.logo}
+          logoText={!revokingApp.logoIsIcon ? revokingApp.logo : undefined}
           logoBg={revokingApp.logoBg}
         />
       )}
 
-      {/* Audit Log remains same... */}
+      {/* Audit Log */}
       <section className="space-y-6">
         <h2 className="text-xl font-bold text-text-main">Access Audit Log</h2>
         <div className="bg-white rounded-[32px] border border-gray-100 shadow-soft overflow-hidden">
           <div className="overflow-x-auto">
-            <table className="w-full text-left text-sm whitespace-nowrap">
-              <thead className="bg-gray-50/50 border-b border-gray-100">
-                <tr>
-                  <th className="px-6 py-5 text-[10px] font-extrabold text-text-sub uppercase tracking-widest">Application</th>
-                  <th className="px-6 py-5 text-[10px] font-extrabold text-text-sub uppercase tracking-widest">Data Point</th>
-                  <th className="px-6 py-5 text-[10px] font-extrabold text-text-sub uppercase tracking-widest">Type</th>
-                  <th className="px-6 py-5 text-[10px] font-extrabold text-text-sub uppercase tracking-widest">Time</th>
-                  <th className="px-6 py-5 text-[10px] font-extrabold text-text-sub uppercase tracking-widest">Status</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-50">
-                {[
-                  { app: 'Uniswap Protocol', data: 'KYC Status', type: 'Zero-Knowledge', typeColor: 'bg-purple-50 text-purple-700 border-purple-100', time: '2 mins ago', status: 'Approved', statusColor: 'bg-green-500', logo: 'U', logoBg: 'bg-pink-100 text-pink-600' },
-                  { app: 'LinkedIn Clone', data: 'Resume Data', type: 'Raw Data', typeColor: 'bg-gray-50 text-gray-600 border-gray-100', time: '45 mins ago', status: 'Approved', statusColor: 'bg-green-500', logo: 'L', logoBg: 'bg-blue-100 text-blue-600' },
-                  { app: 'Aave V3', data: 'Credit Score', type: 'Zero-Knowledge', typeColor: 'bg-purple-50 text-purple-700 border-purple-100', time: 'Yesterday, 10:22 AM', status: 'Denied', statusColor: 'bg-red-500', logo: 'A', logoBg: 'bg-indigo-100 text-indigo-600' },
-                ].map((row, i) => (
-                  <tr key={i} className="hover:bg-gray-50/30 transition-colors group">
-                    <td className="px-6 py-5">
-                      <div className="flex items-center gap-3">
-                        <div className={`w-8 h-8 rounded-lg ${row.logoBg} flex items-center justify-center text-[11px] font-bold shadow-sm`}>{row.logo}</div>
-                        <span className="font-bold text-text-main">{row.app}</span>
-                      </div>
-                    </td>
-                    <td className="px-6 py-5 text-text-sub font-semibold">{row.data}</td>
-                    <td className="px-6 py-5">
-                      <span className={`inline-flex items-center px-2.5 py-1 rounded-lg text-[10px] font-bold border uppercase tracking-wider ${row.typeColor}`}>
-                        {row.type}
-                      </span>
-                    </td>
-                    <td className="px-6 py-5 text-text-sub font-medium">{row.time}</td>
-                    <td className="px-6 py-5">
-                      <span className="flex items-center gap-2 text-[11px] font-bold text-text-main">
-                        <span className={`h-2 w-2 rounded-full ${row.statusColor} animate-pulse`}></span>
-                        {row.status}
-                      </span>
-                    </td>
+            {auditLog.length === 0 ? (
+              <div className="p-8 text-center text-text-sub text-sm">No recent access activity.</div>
+            ) : (
+              <table className="w-full text-left text-sm whitespace-nowrap">
+                <thead className="bg-gray-50/50 border-b border-gray-100">
+                  <tr>
+                    <th className="px-6 py-5 text-[10px] font-extrabold text-text-sub uppercase tracking-widest">Application</th>
+                    <th className="px-6 py-5 text-[10px] font-extrabold text-text-sub uppercase tracking-widest">Data Point</th>
+                    <th className="px-6 py-5 text-[10px] font-extrabold text-text-sub uppercase tracking-widest">Type</th>
+                    <th className="px-6 py-5 text-[10px] font-extrabold text-text-sub uppercase tracking-widest">Time</th>
+                    <th className="px-6 py-5 text-[10px] font-extrabold text-text-sub uppercase tracking-widest">Status</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody className="divide-y divide-gray-50">
+                  {auditLog.map((row, i) => (
+                    <tr key={i} className="hover:bg-gray-50/30 transition-colors group">
+                      <td className="px-6 py-5">
+                        <div className="flex items-center gap-3">
+                          <div className={`w-8 h-8 rounded-lg ${row.logoBg} flex items-center justify-center text-[11px] font-bold shadow-sm`}>{row.logo}</div>
+                          <span className="font-bold text-text-main">{row.app}</span>
+                        </div>
+                      </td>
+                      <td className="px-6 py-5 text-text-sub font-semibold">{row.data}</td>
+                      <td className="px-6 py-5">
+                        <span className={`inline-flex items-center px-2.5 py-1 rounded-lg text-[10px] font-bold border uppercase tracking-wider ${row.typeColor}`}>
+                          {row.type}
+                        </span>
+                      </td>
+                      <td className="px-6 py-5 text-text-sub font-medium">{row.time}</td>
+                      <td className="px-6 py-5">
+                        <span className="flex items-center gap-2 text-[11px] font-bold text-text-main">
+                          <span className={`h-2 w-2 rounded-full ${row.statusColor} animate-pulse`}></span>
+                          {row.status}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
           </div>
         </div>
       </section>
@@ -240,7 +353,12 @@ export const DataControls: React.FC = () => {
             </p>
           </div>
           <div className="flex gap-4 w-full md:w-auto">
-            <button className="flex-1 md:flex-none px-6 py-3.5 bg-white border border-red-100 rounded-2xl text-sm font-bold text-text-main hover:bg-white transition-all shadow-sm">Export Data</button>
+            <button
+              onClick={handleExportData}
+              className="flex-1 md:flex-none px-6 py-3.5 bg-white border border-red-100 rounded-2xl text-sm font-bold text-text-main hover:bg-white transition-all shadow-sm"
+            >
+              Export Data
+            </button>
             <button className="flex-1 md:flex-none px-6 py-3.5 bg-red-600 text-white rounded-2xl text-sm font-bold hover:bg-red-700 transition-all shadow-lg shadow-red-200">Delete Identity</button>
           </div>
         </div>
