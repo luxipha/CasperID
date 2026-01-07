@@ -97,8 +97,8 @@ export const DIDManagement: React.FC<DIDManagementProps> = ({ onCreateNew, onMan
               onClick={onCreateNew}
               disabled={!!userData?.did_address}
               className={`flex items-center justify-center gap-2 px-6 py-3 rounded-2xl text-sm font-bold transition-all shadow-lg active:scale-95 ${userData?.did_address
-                  ? 'bg-gray-300 text-gray-500 cursor-not-allowed opacity-60'
-                  : 'bg-primary text-white hover:bg-primary/90 shadow-primary/20'
+                ? 'bg-gray-300 text-gray-500 cursor-not-allowed opacity-60'
+                : 'bg-primary text-white hover:bg-primary/90 shadow-primary/20'
                 }`}
             >
               <span className="material-symbols-outlined text-lg">{userData?.did_address ? 'check_circle' : 'add_circle'}</span>
@@ -139,7 +139,7 @@ export const DIDManagement: React.FC<DIDManagementProps> = ({ onCreateNew, onMan
             </button>
           )}
           <div className="absolute top-1/2 right-4 -translate-y-1/2 opacity-5">
-            <span className="material-symbols-outlined text-[100px]">fingerprint</span>
+            <img src="/logos/logo.svg" alt="CasperID" className="w-24 h-24" />
           </div>
         </div>
 

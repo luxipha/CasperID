@@ -155,7 +155,7 @@ export interface UserProfile {
     // Metadata
     profile_completeness?: number;
     industry?: string;
-    seniority_level?: 'entry' | 'mid' | 'senior' | 'executive' | 'director';
+    seniority_level?: string;
 
     // Verification status
     is_verified?: boolean;

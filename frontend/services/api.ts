@@ -1149,6 +1149,16 @@ class ApiService {
     }
   }
 
+  async getPublicProfile(identifier: string): Promise<any> {
+    try {
+      const response = await this.client.get(`/api/public-profile/${identifier}`);
+      return response.data;
+    } catch (error) {
+      console.error('[API] getPublicProfile error:', error);
+      throw this.handleError(error);
+    }
+  }
+
   async getActivityDetail(id: string): Promise<any> {
     try {
       const response = await this.client.get(`/api/activity-log/${id}`);

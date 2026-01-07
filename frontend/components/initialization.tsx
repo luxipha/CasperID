@@ -36,7 +36,7 @@ export const PostOnboardingBanner: React.FC<PostOnboardingBannerProps> = ({ onCo
 
   const checkMetaMaskStatus = () => {
     console.log('🔍 Checking MetaMask status:', { metamask_connected: user?.metamask_connected });
-    
+
     if (!user?.metamask_connected) {
       console.log('🦊 User has not connected MetaMask, showing CrossAppVerificationModal');
       setShowMetaMaskModal(true);
@@ -86,7 +86,7 @@ export const PostOnboardingBanner: React.FC<PostOnboardingBannerProps> = ({ onCo
             <p className="text-[#626D85] text-base font-medium max-w-2xl leading-relaxed">
               You have successfully authenticated via Passkey. We are now generating your Layer 1 DID and encryption keys. This process takes just a moment.
             </p>
-            
+
             {/* Progress Bar */}
             <div className="w-full max-w-md">
               <div className="flex justify-between items-center mb-2">
@@ -94,7 +94,7 @@ export const PostOnboardingBanner: React.FC<PostOnboardingBannerProps> = ({ onCo
                 <span className="text-xs font-bold text-primary">{Math.floor(progress)}%</span>
               </div>
               <div className="w-full h-2 bg-[#E9E4FF] rounded-full overflow-hidden">
-                <div 
+                <div
                   className="h-full bg-gradient-to-r from-primary to-purple-600 transition-all duration-300 rounded-full"
                   style={{ width: `${progress}%` }}
                 />
@@ -102,12 +102,12 @@ export const PostOnboardingBanner: React.FC<PostOnboardingBannerProps> = ({ onCo
             </div>
           </div>
         </div>
-        
+
         {/* Spinner (visible until progress completes) */}
         {progress < 100 && (
           <div className="size-10 border-4 border-primary/20 border-t-primary rounded-full animate-spin" />
         )}
-        
+
         {/* Checkmark (visible when progress completes) */}
         {progress >= 100 && (
           <div className="size-10 rounded-full bg-green-500 flex items-center justify-center animate-in zoom-in duration-300">

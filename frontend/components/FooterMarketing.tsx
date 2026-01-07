@@ -1,0 +1,66 @@
+// import Link from "next/link";
+import Logo from "./Logo";
+
+export function FooterMarketing({ className }: { className?: string }) {
+  const productLinks = [
+    { label: "Download", href: "#download" },
+    { label: "Product", href: "#product" },
+    { label: "Docs", href: "/docs" },
+    { label: "Changelog", href: "/changelog" },
+  ];
+
+  const resourceLinks = [
+    { label: "Blog", href: "#blogs" },
+    { label: "Pricing", href: "#developers" },
+    { label: "Use Cases", href: "#use-cases" },
+  ];
+
+
+  return (
+    <footer className={`w-full min-h-[900px] bg-white text-slate-900 flex flex-col justify-between py-12 px-10 ${className ?? ""}`}>
+      <div className="flex items-start justify-between">
+        <div className="text-lg font-semibold">Verify once, use everywhere</div>
+        <div className="flex items-start gap-16 text-sm">
+          <div className="space-y-3">
+            <div className="font-semibold text-slate-800">Product</div>
+            <div className="space-y-2">
+              {productLinks.map((link) => (
+                <a key={link.label} href={link.href} className="block hover:text-slate-500">
+                  {link.label}
+                </a>
+              ))}
+            </div>
+          </div>
+          <div className="space-y-3">
+            <div className="font-semibold text-slate-800">Resources</div>
+            <div className="space-y-2">
+              {resourceLinks.map((link) => (
+                <a key={link.label} href={link.href} className="block hover:text-slate-500">
+                  {link.label}
+                </a>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="flex-1 flex items-center">
+        <div className="text-[120px] md:text-[200px] font-black leading-none tracking-tight text-slate-900">
+          Casper<span style={{ color: "#9333EA" }}>ID</span>
+        </div>
+      </div>
+
+      <div className="flex items-center justify-between text-sm text-slate-700">
+        <Logo showName variant="png" />
+        <div className="text-center">
+          © 2026 CasperID. Built with precision for the sovereign web.
+        </div>
+        <div className="flex items-center gap-6">
+          <a href="#top" className="hover:text-slate-500">
+            About CasperID
+          </a>
+        </div>
+      </div>
+    </footer>
+  );
+}

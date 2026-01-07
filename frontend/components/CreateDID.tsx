@@ -163,8 +163,8 @@ export const CreateDID: React.FC<CreateDIDProps> = ({ onBack, onViewDetails }) =
             <label
               onClick={() => setMethod('casper')}
               className={`relative flex p-7 rounded-[28px] border-2 transition-all cursor-pointer group ${method === 'casper'
-                  ? 'border-primary bg-primary/[0.01]'
-                  : 'border-gray-100 bg-white hover:border-gray-200'
+                ? 'border-primary bg-primary/[0.01]'
+                : 'border-gray-100 bg-white hover:border-gray-200'
                 }`}
             >
               <div className="flex flex-col gap-5 w-full">
@@ -194,8 +194,8 @@ export const CreateDID: React.FC<CreateDIDProps> = ({ onBack, onViewDetails }) =
             <label
               onClick={() => setMethod('key')}
               className={`relative flex p-7 rounded-[28px] border-2 transition-all cursor-pointer group ${method === 'key'
-                  ? 'border-primary bg-primary/[0.01]'
-                  : 'border-gray-100 bg-white hover:border-gray-200'
+                ? 'border-primary bg-primary/[0.01]'
+                : 'border-gray-100 bg-white hover:border-gray-200'
                 }`}
             >
               <div className="flex flex-col gap-5 w-full">

@@ -32,11 +32,39 @@ import { CrossDevicePairing } from './components/CrossDevicePairing';
 import { PostOnboardingBanner } from './components/initialization';
 import { VerificationLevelBanner } from './components/VerificationLevelBanner';
 import { MobileLinkingPage } from './components/mobile/mobileLinking';
+import { PublicProfileContainer } from './components/PublicProfileContainer';
 import { useAuth } from './contexts/AuthContext';
 import { ApiTest } from './components/ApiTest';
+import LandingPage from './components/landing/LandingPage';
 
 const App: React.FC = () => {
-  const [currentView, setCurrentView] = useState('loading');
+  /* 
+     ROUTING LOGIC
+     We check the URL path to determine if we are visiting a specific page (like a public profile).
+     System paths (dashboard, internal pages) are ignored here and handled by Auth check below.
+  */
+  const getInitialView = () => {
+    const path = window.location.pathname;
+
+    // Check for explicit system routes to ignore or handle specific logic
+    if (path === '/') return 'landing';
+    if (path === '/pair' || path === '/dashboard') return 'loading';
+
+    // If path has content (e.g. /seme-kure), assume it is a public profile
+    if (path.length > 1) {
+      // Remove leading slash
+      const slug = path.substring(1);
+      return 'public-profile';
+    }
+
+    return 'landing'; // Default to landing for root or unknown
+  };
+
+  const [currentView, setCurrentView] = useState(getInitialView());
+  const [publicProfileSlug, setPublicProfileSlug] = useState<string | null>(
+    window.location.pathname.length > 1 && window.location.pathname !== '/pair' && window.location.pathname !== '/dashboard' ? window.location.pathname.substring(1) : null
+  );
+
   const [onboardingEmail, setOnboardingEmail] = useState('');
   const [verificationId, setVerificationId] = useState('');
   const [selectedActivityId, setSelectedActivityId] = useState<string | null>(null);
@@ -45,29 +73,38 @@ const App: React.FC = () => {
 
   // Set initial view based on authentication and completion state
   React.useEffect(() => {
+    // If we are viewing a public profile or landing page, DO NOT redirect based on auth
+    if (currentView === 'public-profile' || currentView === 'landing') return;
+
     if (!isLoading) {
       if (isAuthenticated && user) {
-        // Check if user has completed onboarding
-        if (user.wallet && user.human_id) {
-          // Complete user - go to dashboard
-          console.log('✅ Returning user with complete profile, going to dashboard');
-          setCurrentView('overview');
-        } else if (user.wallet) {
-          // Has wallet but no human_id - should be rare, try to refresh
-          console.log('🔄 User has wallet but no human_id, refreshing...');
-          setCurrentView('overview'); // Let the human_id fetch complete
-        } else {
-          // Partial user - continue onboarding at progress stage
-          console.log('🔄 Authenticated user without wallet, continuing onboarding');
-          setCurrentView('onboarding-progress');
+        // Only redirect to overview if we're currently in an auth-related view or loading
+        const isAuthView = ['auth-entry', 'otp-verify', 'onboarding-start', 'onboarding-progress', 'pairing', 'loading'].includes(currentView);
+
+        if (isAuthView) {
+          if (user.wallet && user.human_id) {
+            console.log('✅ Returning user with complete profile, going to dashboard');
+            setCurrentView('overview');
+          } else if (user.wallet) {
+            console.log('🔄 User has wallet but no human_id, going to dashboard');
+            setCurrentView('overview');
+          } else {
+            console.log('🔄 Authenticated user without wallet, continuing onboarding');
+            setCurrentView('onboarding-progress');
+          }
         }
       } else {
         // New user - start with email entry
-        console.log('🆕 New user, starting with email entry');
-        setCurrentView('auth-entry');
+        // If they are not authenticated, they should probably be at auth-entry
+        // BUT we should avoid forcing it if they are on a public route (handled at start)
+        const isDashboardView = !['landing', 'public-profile', 'auth-entry', 'otp-verify'].includes(currentView);
+        if (isDashboardView) {
+          console.log('🆕 Not authenticated, redirecting to auth entry');
+          setCurrentView('auth-entry');
+        }
       }
     }
-  }, [isLoading, isAuthenticated, user]);
+  }, [isLoading, isAuthenticated, user, currentView]);
 
   const handleViewActivityDetail = (id: string) => {
     setSelectedActivityId(id);
@@ -200,6 +237,10 @@ const App: React.FC = () => {
         );
       case 'settings':
         return <Settings />;
+      case 'profile':
+        return <Profile />;
+      case 'kyc':
+        return <KYCHome />;
       case 'credentials':
         return <CredentialVault />;
       case 'consent-demo':
@@ -233,10 +274,10 @@ const App: React.FC = () => {
         return <ExportDID onBack={() => setCurrentView('did-management')} />;
       case 'did-import':
         return <ImportDID onBack={() => setCurrentView('did-management')} />;
-      case 'profile':
-        return <Profile />;
-      case 'kyc':
-        return <KYCHome />;
+      case 'public-profile':
+        return publicProfileSlug ? <PublicProfileContainer walletOrUsername={publicProfileSlug} /> : <div>Invalid Profile</div>;
+      case 'landing':
+        return <LandingPage />;
       default:
         return (
           <div className="space-y-8 animate-in fade-in duration-700">
@@ -287,7 +328,7 @@ const App: React.FC = () => {
                   Consent Demo
                 </button>
                 <button className="flex items-center gap-2 px-6 py-3.5 bg-bg-dark text-white font-bold text-sm rounded-2xl hover:bg-black transition-all shadow-lg active:scale-95">
-                  <span className="material-symbols-outlined text-xl">fingerprint</span>
+                  <img src="/logos/logo.svg" alt="CasperID" className="w-5 h-5 invert brightness-0" />
                   Login with Casper
                 </button>
               </div>
@@ -324,8 +365,8 @@ const App: React.FC = () => {
     ? 'did-management'
     : currentView;
 
-  // Don't show layout chrome during onboarding
-  const isOnboarding = currentView === 'auth-entry' || currentView === 'otp-verify' || currentView === 'onboarding-start' || currentView === 'onboarding-progress' || currentView === 'pairing';
+  // Don't show layout chrome during onboarding, public profile view, or landing
+  const isOnboarding = currentView === 'public-profile' || currentView === 'landing' || currentView === 'auth-entry' || currentView === 'otp-verify' || currentView === 'onboarding-start' || currentView === 'onboarding-progress' || currentView === 'pairing';
 
   if (isOnboarding) {
     return <main className="bg-bg-light min-h-screen">{renderContent()}</main>;

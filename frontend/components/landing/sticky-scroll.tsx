@@ -1,7 +1,6 @@
 "use client";
 
 import { useLayoutEffect, useRef, useState } from "react";
-import Image from "next/image";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 
@@ -111,23 +110,19 @@ const StickyScrollSection = () => {
 
                 {/* Blurred Background Layer */}
                 <div className="absolute inset-0">
-                  <Image
+                  <img
                     src={step.image}
                     alt=""
-                    fill
-                    className="object-cover opacity-50 blur-2xl scale-110"
-                    priority={idx === 0}
+                    className="object-cover opacity-50 blur-2xl scale-110 w-full h-full"
                   />
                 </div>
 
                 {/* Sharp Foreground Layer */}
                 <div className="relative w-full h-full z-10 p-4 md:p-8">
-                  <Image
+                  <img
                     src={step.image}
                     alt={step.title}
-                    fill
-                    className="object-contain drop-shadow-2xl"
-                    priority={idx === 0}
+                    className="object-contain drop-shadow-2xl w-full h-full"
                   />
                 </div>
               </div>

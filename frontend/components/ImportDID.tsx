@@ -50,15 +50,15 @@ export const ImportDID: React.FC<ImportDIDProps> = ({ onBack, onSuccess }) => {
           <div className="relative size-32 mb-10">
             <svg className="size-full -rotate-90">
               <circle cx="64" cy="64" r="58" stroke="currentColor" strokeWidth="8" fill="transparent" className="text-gray-100" />
-              <circle 
-                cx="64" cy="64" r="58" stroke="currentColor" strokeWidth="8" fill="transparent" 
+              <circle
+                cx="64" cy="64" r="58" stroke="currentColor" strokeWidth="8" fill="transparent"
                 strokeDasharray="364" strokeDashoffset="120"
                 strokeLinecap="round"
-                className="text-primary animate-[spin_3s_linear_infinite]" 
+                className="text-primary animate-[spin_3s_linear_infinite]"
               />
             </svg>
             <div className="absolute inset-0 flex items-center justify-center">
-               <span className="material-symbols-outlined text-[40px] text-primary/60">sync_alt</span>
+              <span className="material-symbols-outlined text-[40px] text-primary/60">sync_alt</span>
             </div>
           </div>
 
@@ -69,16 +69,16 @@ export const ImportDID: React.FC<ImportDIDProps> = ({ onBack, onSuccess }) => {
 
           <div className="w-full space-y-4 mb-10">
             <div className="bg-[#F8F9FB] rounded-2xl p-5 flex items-center gap-4 text-left border border-gray-100/50">
-               <span className="material-symbols-outlined text-text-sub text-[22px]">schedule</span>
-               <p className="text-[13px] text-text-sub font-medium leading-tight">
-                 This typically takes a few moments, depending on the DID method and network conditions.
-               </p>
+              <span className="material-symbols-outlined text-text-sub text-[22px]">schedule</span>
+              <p className="text-[13px] text-text-sub font-medium leading-tight">
+                This typically takes a few moments, depending on the DID method and network conditions.
+              </p>
             </div>
             <div className="bg-green-50/50 rounded-2xl p-4 flex items-center gap-4 text-left border border-green-100/50">
-               <span className="material-symbols-outlined text-green-600 text-[20px] icon-filled">lock</span>
-               <p className="text-[12px] text-green-800 font-bold">
-                 Your DID and associated keys are being securely processed.
-               </p>
+              <span className="material-symbols-outlined text-green-600 text-[20px] icon-filled">lock</span>
+              <p className="text-[12px] text-green-800 font-bold">
+                Your DID and associated keys are being securely processed.
+              </p>
             </div>
           </div>
 
@@ -96,7 +96,7 @@ export const ImportDID: React.FC<ImportDIDProps> = ({ onBack, onSuccess }) => {
       <div className="w-full min-h-[80vh] flex flex-col items-center justify-center p-6 animate-in zoom-in-95 fade-in duration-500">
         <CasperLogo />
         <div className="w-full max-w-[540px] bg-white rounded-[40px] border border-gray-100 shadow-[0_20px_60px_-15px_rgba(134,82,226,0.1)] p-12 flex flex-col items-center text-center">
-          
+
           <div className="size-20 rounded-full bg-green-50 flex items-center justify-center text-green-500 mb-8 relative">
             <div className="absolute inset-0 bg-green-500/10 rounded-full animate-ping"></div>
             <div className="size-12 rounded-full bg-green-500 flex items-center justify-center text-white relative z-10">
@@ -113,18 +113,18 @@ export const ImportDID: React.FC<ImportDIDProps> = ({ onBack, onSuccess }) => {
           <div className="w-full bg-[#F8F9FB] rounded-[24px] border border-gray-100 p-8 space-y-6 mb-10">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
-                 <span className="material-symbols-outlined text-text-sub text-[22px]">hub</span>
-                 <span className="text-[12px] font-black text-text-sub uppercase tracking-widest">DID Method</span>
+                <span className="material-symbols-outlined text-text-sub text-[22px]">hub</span>
+                <span className="text-[12px] font-black text-text-sub uppercase tracking-widest">DID Method</span>
               </div>
               <span className="px-3 py-1 rounded-lg bg-primary/10 text-primary text-[11px] font-black uppercase tracking-wider border border-primary/10">did:casper</span>
             </div>
-            
+
             <div className="h-px bg-gray-200/40"></div>
 
             <div className="text-left space-y-3">
               <div className="flex items-center gap-3">
-                 <span className="material-symbols-outlined text-text-sub text-[22px]">fingerprint</span>
-                 <span className="text-[12px] font-black text-text-sub uppercase tracking-widest">Identifier</span>
+                <span className="material-symbols-outlined text-text-sub text-[22px]">fingerprint</span>
+                <span className="text-[12px] font-black text-text-sub uppercase tracking-widest">Identifier</span>
               </div>
               <div className="flex items-center gap-2 h-14 px-5 bg-white border border-gray-100 rounded-xl shadow-sm">
                 <span className="text-[13px] font-mono font-medium text-text-sub flex-1 truncate">did:casper:73a...9f2</span>
@@ -138,8 +138,8 @@ export const ImportDID: React.FC<ImportDIDProps> = ({ onBack, onSuccess }) => {
 
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
-                 <span className="material-symbols-outlined text-text-sub text-[22px]">badge</span>
-                 <span className="text-[12px] font-black text-text-sub uppercase tracking-widest">Name</span>
+                <span className="material-symbols-outlined text-text-sub text-[22px]">badge</span>
+                <span className="text-[12px] font-black text-text-sub uppercase tracking-widest">Name</span>
               </div>
               <span className="text-[15px] font-black text-text-main">Main Identity</span>
             </div>
@@ -147,14 +147,14 @@ export const ImportDID: React.FC<ImportDIDProps> = ({ onBack, onSuccess }) => {
 
           {/* Actions */}
           <div className="w-full flex flex-col gap-4">
-            <button 
+            <button
               onClick={onBack}
               className="w-full h-[64px] bg-primary hover:bg-primary/90 text-white rounded-[20px] font-black text-[16px] flex items-center justify-center gap-3 shadow-xl shadow-primary/25 transition-all active:scale-[0.98]"
             >
               Go to DID Management
               <span className="material-symbols-outlined text-[22px]">arrow_forward</span>
             </button>
-            <button 
+            <button
               onClick={onBack}
               className="w-full h-[64px] bg-white border border-gray-200 text-text-main hover:bg-gray-50 rounded-[20px] font-black text-[16px] flex items-center justify-center transition-all active:scale-[0.98]"
             >
@@ -199,11 +199,10 @@ export const ImportDID: React.FC<ImportDIDProps> = ({ onBack, onSuccess }) => {
             <div className="space-y-6">
               <label className="text-[14px] font-bold text-text-main">Sign with...</label>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                <button 
+                <button
                   onClick={() => setSignMethod('device')}
-                  className={`flex items-center gap-5 p-6 rounded-[28px] border-2 text-left transition-all ${
-                    signMethod === 'device' ? 'border-primary bg-primary/[0.02]' : 'border-gray-100 bg-white hover:border-gray-200'
-                  }`}
+                  className={`flex items-center gap-5 p-6 rounded-[28px] border-2 text-left transition-all ${signMethod === 'device' ? 'border-primary bg-primary/[0.02]' : 'border-gray-100 bg-white hover:border-gray-200'
+                    }`}
                 >
                   <div className={`size-14 rounded-2xl flex items-center justify-center transition-colors ${signMethod === 'device' ? 'bg-primary/10 text-primary' : 'bg-gray-50 text-text-sub'}`}>
                     <span className="material-symbols-outlined text-[32px] icon-filled">fingerprint</span>
@@ -214,11 +213,10 @@ export const ImportDID: React.FC<ImportDIDProps> = ({ onBack, onSuccess }) => {
                   </div>
                 </button>
 
-                <button 
+                <button
                   onClick={() => setSignMethod('signer')}
-                  className={`flex items-center gap-5 p-6 rounded-[28px] border-2 text-left transition-all ${
-                    signMethod === 'signer' ? 'border-primary bg-primary/[0.02]' : 'border-gray-100 bg-white hover:border-gray-200'
-                  }`}
+                  className={`flex items-center gap-5 p-6 rounded-[28px] border-2 text-left transition-all ${signMethod === 'signer' ? 'border-primary bg-primary/[0.02]' : 'border-gray-100 bg-white hover:border-gray-200'
+                    }`}
                 >
                   <div className={`size-14 rounded-2xl flex items-center justify-center transition-colors ${signMethod === 'signer' ? 'bg-primary/10 text-primary' : 'bg-gray-50 text-text-sub'}`}>
                     <span className="material-symbols-outlined text-[32px]">account_balance_wallet</span>
@@ -245,13 +243,13 @@ export const ImportDID: React.FC<ImportDIDProps> = ({ onBack, onSuccess }) => {
 
           {/* Footer Actions */}
           <div className="p-8 md:p-10 bg-gray-50/30 flex flex-col md:flex-row md:items-center justify-end gap-6 border-t border-gray-50">
-            <button 
+            <button
               onClick={() => setStage('input')}
               className="text-[15px] font-bold text-text-sub hover:text-text-main transition-colors px-6 text-center"
             >
               Cancel Import
             </button>
-            <button 
+            <button
               onClick={handleInitiateSignature}
               className="w-full md:w-auto h-[60px] px-12 bg-primary hover:bg-primary/90 text-white rounded-[22px] font-black text-[15px] flex items-center justify-center gap-3 shadow-xl shadow-primary/25 transition-all active:scale-[0.98]"
             >
@@ -269,8 +267,8 @@ export const ImportDID: React.FC<ImportDIDProps> = ({ onBack, onSuccess }) => {
       {/* Breadcrumb & Navigation */}
       <div className="flex flex-col gap-6">
         <nav className="flex items-center gap-2 text-[13px] font-bold text-text-sub">
-          <button 
-            onClick={onBack} 
+          <button
+            onClick={onBack}
             className="hover:text-primary transition-colors flex items-center gap-1 group"
           >
             <span className="material-symbols-outlined text-[18px] group-hover:-translate-x-1 transition-transform">arrow_back</span>
@@ -288,17 +286,16 @@ export const ImportDID: React.FC<ImportDIDProps> = ({ onBack, onSuccess }) => {
 
       {/* Main Container */}
       <div className="bg-white rounded-[32px] border border-gray-100 shadow-soft overflow-hidden">
-        
+
         {/* Method Selection Section */}
         <div className="p-8 md:p-10 border-b border-gray-50 bg-gray-50/10">
           <p className="text-[11px] font-black text-text-sub uppercase tracking-widest mb-6">Choose Import Method</p>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
             {/* Paste JSON */}
-            <button 
+            <button
               onClick={() => setMethod('json')}
-              className={`relative flex flex-col items-center justify-center p-8 rounded-[28px] border-2 transition-all gap-3 ${
-                method === 'json' ? 'border-primary bg-primary/[0.02] shadow-sm' : 'border-gray-100 bg-white hover:border-gray-200'
-              }`}
+              className={`relative flex flex-col items-center justify-center p-8 rounded-[28px] border-2 transition-all gap-3 ${method === 'json' ? 'border-primary bg-primary/[0.02] shadow-sm' : 'border-gray-100 bg-white hover:border-gray-200'
+                }`}
             >
               <div className={`size-12 rounded-2xl flex items-center justify-center transition-colors ${method === 'json' ? 'text-primary' : 'text-text-sub'}`}>
                 <span className="material-symbols-outlined text-[28px]">code</span>
@@ -315,11 +312,10 @@ export const ImportDID: React.FC<ImportDIDProps> = ({ onBack, onSuccess }) => {
             </button>
 
             {/* Upload File */}
-            <button 
+            <button
               onClick={() => setMethod('file')}
-              className={`relative flex flex-col items-center justify-center p-8 rounded-[28px] border-2 transition-all gap-3 ${
-                method === 'file' ? 'border-primary bg-primary/[0.02] shadow-sm' : 'border-gray-100 bg-white hover:border-gray-200'
-              }`}
+              className={`relative flex flex-col items-center justify-center p-8 rounded-[28px] border-2 transition-all gap-3 ${method === 'file' ? 'border-primary bg-primary/[0.02] shadow-sm' : 'border-gray-100 bg-white hover:border-gray-200'
+                }`}
             >
               <div className={`size-12 rounded-2xl flex items-center justify-center transition-colors ${method === 'file' ? 'text-primary' : 'text-text-sub'}`}>
                 <span className="material-symbols-outlined text-[28px]">upload_file</span>
@@ -336,11 +332,10 @@ export const ImportDID: React.FC<ImportDIDProps> = ({ onBack, onSuccess }) => {
             </button>
 
             {/* Connect Wallet */}
-            <button 
+            <button
               onClick={() => setMethod('wallet')}
-              className={`relative flex flex-col items-center justify-center p-8 rounded-[28px] border-2 transition-all gap-3 ${
-                method === 'wallet' ? 'border-primary bg-primary/[0.02] shadow-sm' : 'border-gray-100 bg-white hover:border-gray-200'
-              }`}
+              className={`relative flex flex-col items-center justify-center p-8 rounded-[28px] border-2 transition-all gap-3 ${method === 'wallet' ? 'border-primary bg-primary/[0.02] shadow-sm' : 'border-gray-100 bg-white hover:border-gray-200'
+                }`}
             >
               <div className={`size-12 rounded-2xl flex items-center justify-center transition-colors ${method === 'wallet' ? 'text-primary' : 'text-text-sub'}`}>
                 <span className="material-symbols-outlined text-[28px]">wallet</span>
@@ -360,7 +355,7 @@ export const ImportDID: React.FC<ImportDIDProps> = ({ onBack, onSuccess }) => {
 
         {/* Content Section */}
         <div className="p-8 md:p-10 space-y-10">
-          
+
           {/* Main content area (JSON or File Upload) */}
           <div className="space-y-4">
             <div className="flex items-center justify-between">
@@ -372,7 +367,7 @@ export const ImportDID: React.FC<ImportDIDProps> = ({ onBack, onSuccess }) => {
 
             {method === 'json' ? (
               <div className="relative group">
-                <textarea 
+                <textarea
                   className="w-full h-[300px] p-8 rounded-[24px] bg-[#F8F9FB] border border-gray-100 font-mono text-[13px] leading-relaxed text-text-main focus:bg-white focus:border-primary/30 focus:ring-4 focus:ring-primary/5 transition-all resize-none outline-none"
                   placeholder={`{\n  "@context": [\n    "https://www.w3.org/ns/did/v1"\n  ],\n  "id": "did:casper:...",\n  "verificationMethod": [\n    ...\n  ]\n}`}
                 ></textarea>
@@ -414,8 +409,8 @@ export const ImportDID: React.FC<ImportDIDProps> = ({ onBack, onSuccess }) => {
           <div className="grid grid-cols-1 lg:grid-cols-[1fr_auto_1fr] gap-10">
             <div className="space-y-4">
               <label className="text-[15px] font-bold text-text-main">DID Name / Label <span className="text-text-sub font-medium">(Optional)</span></label>
-              <input 
-                type="text" 
+              <input
+                type="text"
                 className="w-full h-14 px-6 rounded-2xl bg-white border border-gray-100 text-[15px] font-medium text-text-main placeholder:text-text-sub/30 focus:border-primary/50 transition-all outline-none"
                 placeholder="e.g. My Work Identity"
               />
@@ -444,14 +439,14 @@ export const ImportDID: React.FC<ImportDIDProps> = ({ onBack, onSuccess }) => {
 
         {/* Footer Actions */}
         <div className="p-8 md:p-10 bg-gray-50/30 flex flex-col md:flex-row md:items-center justify-between gap-6 border-t border-gray-50">
-          <button 
+          <button
             onClick={onBack}
             className="text-[15px] font-bold text-text-sub hover:text-text-main transition-colors px-4 text-center order-2 md:order-1"
           >
             Cancel
           </button>
-          
-          <button 
+
+          <button
             onClick={handleImportClick}
             className="w-full md:w-auto h-[60px] px-12 bg-primary hover:bg-primary/90 text-white rounded-[22px] font-black text-[15px] flex items-center justify-center gap-3 shadow-xl shadow-primary/25 transition-all active:scale-[0.98] order-1 md:order-2"
           >

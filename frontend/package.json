@@ -9,13 +9,16 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@tanstack/react-query": "^5.90.16",
-    "axios": "^1.13.2",
-    "react": "^19.2.3",
-    "react-dom": "^19.2.3", 
     "@mediapipe/camera_utils": "^0.3.1675466862",
     "@mediapipe/drawing_utils": "^0.3.1675466124",
-    "@mediapipe/face_mesh": "^0.4.1633559619"
+    "@mediapipe/face_mesh": "^0.4.1633559619",
+    "@tanstack/react-query": "^5.90.16",
+    "@types/three": "^0.182.0",
+    "axios": "^1.13.2",
+    "gsap": "^3.14.2",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "three": "^0.182.0"
   },
   "devDependencies": {
     "@types/node": "^22.14.0",

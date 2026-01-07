@@ -1,117 +1,103 @@
-import Link from "next/link";
-import Script from "next/script";
-import { FooterMarketing } from "@/components/footer-marketing";
+import React, { useEffect } from 'react';
+import { FooterMarketing } from "../FooterMarketing";
 import StickyScrollSection from "./sticky-scroll";
-import Logo from "@/components/logo";
-import ScanShowcase from "@/components/scan-showcase";
+import Logo from "../Logo";
+import ScanShowcase from "../ScanShowcase";
+import "./LandingPage.css";
 import RoadmapSection from "./RoadmapSection";
 import ChatAssistant from "./ChatAssistant";
 
 export default function LandingPage() {
+  useEffect(() => {
+    // Load tsparticles
+    const script = document.createElement('script');
+    script.src = "https://cdn.jsdelivr.net/npm/tsparticles@2/tsparticles.bundle.min.js";
+    script.async = true;
+    document.body.appendChild(script);
+
+    // Initializer
+    const scriptInit = document.createElement('script');
+    scriptInit.textContent = `
+      const loadParticles = () => {
+        if (!window.tsParticles) return;
+        window.tsParticles.load({
+          id: "tsparticles",
+          options: {
+            background: { color: "transparent" },
+            interactivity: {
+              detectsOn: "window",
+              events: {
+                onClick: { enable: false, mode: "repulse" },
+                onHover: { enable: false, mode: "bubble" },
+                resize: true
+              },
+              modes: {
+                bubble: { distance: 200, duration: 2, opacity: 0, size: 0, speed: 3 },
+                repulse: { distance: 400, duration: 0.4 }
+              }
+            },
+            particles: {
+              color: { value: "#ffffff" },
+              move: { enable: true, speed: 0.3, direction: "none", random: true, outModes: "out" },
+              number: { density: { enable: true }, value: 600 },
+              opacity: { animation: { enable: true, speed: 5 }, value: { min: 0.3, max: 0.6 } },
+              shape: { type: "circle" },
+              size: { value: 1 }
+            }
+          }
+        });
+      };
+      if (document.readyState === "complete") {
+        setTimeout(loadParticles, 1000); 
+      } else {
+        window.addEventListener("load", loadParticles);
+      }
+    `;
+    document.body.appendChild(scriptInit);
+
+    // Houdini
+    if ('paintWorklet' in CSS) {
+      // @ts-ignore
+      CSS.paintWorklet.addModule('https://unpkg.com/css-houdini-ringparticles/dist/ringparticles.js').catch(() => { });
+      const applyRing = (el: any) => {
+        if (!el) return;
+        const setPos = (x: number, y: number, interactive: boolean) => {
+          el.style.setProperty('--ring-x', x);
+          el.style.setProperty('--ring-y', y);
+          el.style.setProperty('--ring-interactive', interactive ? 1 : 0);
+        };
+        setPos(50, 50, false);
+        el.addEventListener('pointermove', (e: any) => {
+          setPos((e.clientX / window.innerWidth) * 100, (e.clientY / window.innerHeight) * 100, true);
+        });
+        el.addEventListener('pointerleave', () => setPos(50, 50, false));
+      };
+      document.querySelectorAll('[data-ring="true"]').forEach(applyRing);
+    }
+
+    // Header scroll
+    const header = document.getElementById('site-header');
+    if (header) {
+      const toggle = () => {
+        if (window.scrollY > 10) {
+          header.classList.add('scrolled');
+        } else {
+          header.classList.remove('scrolled');
+        }
+      };
+      toggle();
+      window.addEventListener('scroll', toggle, { passive: true });
+      return () => window.removeEventListener('scroll', toggle);
+    }
+
+    return () => {
+      document.body.removeChild(script);
+      document.body.removeChild(scriptInit);
+    };
+  }, []);
+
   return (
     <div id="top" className="font-sans relative min-h-screen bg-white text-slate-900 w-full">
-      <Script src="https://cdn.jsdelivr.net/npm/tsparticles@2/tsparticles.bundle.min.js" strategy="afterInteractive" />
-      <Script id="hero-ring-worklet" strategy="afterInteractive">
-        {`
-          if ('paintWorklet' in CSS) {
-            CSS.paintWorklet.addModule('https://unpkg.com/css-houdini-ringparticles/dist/ringparticles.js').catch(() => {});
-            const applyRing = (el) => {
-              if (!el) return;
-              const setPos = (x, y, interactive) => {
-                el.style.setProperty('--ring-x', x);
-                el.style.setProperty('--ring-y', y);
-                el.style.setProperty('--ring-interactive', interactive ? 1 : 0);
-              };
-              setPos(50, 50, 0);
-              el.addEventListener('pointermove', (e) => {
-                setPos((e.clientX / window.innerWidth) * 100, (e.clientY / window.innerHeight) * 100, true);
-              });
-              el.addEventListener('pointerleave', () => setPos(50, 50, false));
-            };
-
-            document.querySelectorAll('[data-ring="true"]').forEach(applyRing);
-          }
-        `}
-      </Script>
-      <Script id="tsparticles-init" strategy="afterInteractive">
-        {`
-          const loadParticles = () => {
-            if (!window.tsParticles) return;
-            window.tsParticles.load({
-              id: "tsparticles",
-              options: {
-                background: {
-                  color: "transparent"
-                },
-                interactivity: {
-                  detectsOn: "window",
-                  events: {
-                    onClick: { enable: false, mode: "repulse" },
-                    onHover: { enable: false, mode: "bubble" },
-                    resize: true
-                  },
-                  modes: {
-                    bubble: {
-                      distance: 200,
-                      duration: 2,
-                      opacity: 0,
-                      size: 0,
-                      speed: 3
-                    },
-                    repulse: {
-                      distance: 400,
-                      duration: 0.4
-                    }
-                  }
-                },
-                particles: {
-                  color: { value: "#ffffff" },
-                  move: {
-                    direction: "none",
-                    enable: true,
-                    outModes: "out",
-                    random: true,
-                    speed: 0.3
-                  },
-                  number: {
-                    density: { enable: true },
-                    value: 600
-                  },
-                  opacity: {
-                    animation: { enable: true, speed: 5 },
-                    value: { min: 0.3, max: 0.6 }
-                  },
-                  shape: { type: "circle" },
-                  size: { value: 1 }
-                }
-              }
-            });
-          };
-
-          if (document.readyState === "complete") {
-            loadParticles();
-          } else {
-            window.addEventListener("load", loadParticles);
-          }
-        `}
-      </Script>
-      <Script id="header-scroll" strategy="afterInteractive">
-        {`
-          const header = document.getElementById('site-header');
-          if (header) {
-            const toggle = () => {
-              if (window.scrollY > 10) {
-                header.classList.add('scrolled');
-              } else {
-                header.classList.remove('scrolled');
-              }
-            };
-            toggle();
-            window.addEventListener('scroll', toggle, { passive: true });
-          }
-        `}
-      </Script>
-      {/* <div id="tsparticles" className="fixed inset-0 w-screen h-screen pointer-events-none z-10" /> */}
       <div className="absolute inset-0 pointer-events-none z-0">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_10%_10%,rgba(99,102,241,0.12),transparent_25%),radial-gradient(circle_at_90%_15%,rgba(59,130,246,0.08),transparent_25%),radial-gradient(circle_at_30%_90%,rgba(147,51,234,0.06),transparent_25%)]" />
         <div className="absolute inset-0 bg-[radial-gradient(1px_1px_at_10%_20%,rgba(0,0,0,0.12),transparent),radial-gradient(1px_1px_at_40%_80%,rgba(0,0,0,0.08),transparent)] opacity-30" />
@@ -121,33 +107,33 @@ export default function LandingPage() {
         <header id="site-header" className="site-header fixed top-0 left-0 right-0 z-50 transition-all duration-300">
           <div className="w-full max-w-[1905px] mx-auto px-10 flex items-center justify-between py-6">
             <div className="flex items-center gap-6">
-              <Logo />
-            <nav className="hidden md:flex items-center gap-4 text-sm text-slate-600">
-              <Link href="#product" className="hover:text-slate-900">
-                Product
-              </Link>
-              <Link href="#use-cases" className="flex items-center gap-1 hover:text-slate-900 cursor-pointer">
-                <span>Use Cases</span>
-              </Link>
-              <Link href="#developers" className="hover:text-slate-900">
-                Pricing
-              </Link>
-              <Link href="#blogs" className="hover:text-slate-900">
-                Blog
-              </Link>
-              <Link href="#download" className="flex items-center gap-1 hover:text-slate-900 cursor-pointer">
-                <span>Resources</span>
-              </Link>
-            </nav>
+              <Logo variant="png" />
+              <nav className="hidden md:flex items-center gap-4 text-sm text-slate-600">
+                <a href="#product" className="hover:text-slate-900">
+                  Product
+                </a>
+                <a href="#use-cases" className="flex items-center gap-1 hover:text-slate-900 cursor-pointer">
+                  <span>Use Cases</span>
+                </a>
+                <a href="#developers" className="hover:text-slate-900">
+                  Pricing
+                </a>
+                <a href="#blogs" className="hover:text-slate-900">
+                  Blog
+                </a>
+                <a href="#download" className="flex items-center gap-1 hover:text-slate-900 cursor-pointer">
+                  <span>Resources</span>
+                </a>
+              </nav>
             </div>
             <div className="flex items-center gap-3">
-              <Link 
-                href="/me"
+              <a
+                href="/dashboard"
                 className="hidden md:inline-flex items-center gap-2 rounded-full bg-indigo-100 px-4 py-2 text-xs font-semibold text-indigo-700 shadow-sm shadow-indigo-200 hover:-translate-y-0.5 transition"
               >
                 <span className="h-2 w-2 rounded-full bg-indigo-500" />
                 Get CasperID
-              </Link>
+              </a>
               <button className="inline-flex items-center gap-2 rounded-full bg-slate-900 px-4 py-2 text-xs font-semibold text-white shadow-sm hover:-translate-y-0.5 transition">
                 Download
               </button>
@@ -161,7 +147,7 @@ export default function LandingPage() {
           className="relative overflow-hidden flex flex-col items-center text-center min-h-[70vh] justify-center bg-transparent"
         >
           <div className="relative z-10 flex flex-col items-center">
-            <Logo className="mb-6" />
+            <Logo className="mb-6" variant="png" />
             <h1 className="text-[52px] md:text-[80px] font-black tracking-tight mb-4 leading-[1.05]">
               Verify once
             </h1>
@@ -172,18 +158,18 @@ export default function LandingPage() {
               One-tap login, verified, and ready to autofill anywhere.
             </p>
             <div className="flex flex-wrap items-center justify-center gap-3">
-              <Link
-                href="/me"
+              <a
+                href="/dashboard"
                 className="inline-flex items-center gap-2 rounded-full bg-slate-900 px-5 py-3 text-sm font-semibold text-white shadow-md shadow-slate-300/40"
               >
                 Get Started
-              </Link>
-              <Link
+              </a>
+              <a
                 href="#use-cases"
                 className="inline-flex items-center gap-2 rounded-full bg-slate-100 px-5 py-3 text-sm font-semibold text-slate-800 border border-slate-200"
               >
                 Explore use cases
-              </Link>
+              </a>
             </div>
           </div>
         </section>
@@ -209,7 +195,7 @@ export default function LandingPage() {
           <div className="max-w-6xl mx-auto px-6 grid md:grid-cols-[1.1fr_0.9fr] items-start gap-6">
             <div className="max-w-xl text-left space-y-4">
               <h2 className="text-5xl font-bold leading-tight">
-CasperID is a reusable digital identity layer
+                CasperID is a reusable digital identity layer
               </h2>
               <p className="text-xl text-slate-600">
                 that lets you complete KYC once and log in across platforms without resubmitting documents or losing control of your data.</p>
@@ -323,9 +309,9 @@ CasperID is a reusable digital identity layer
                 <button className="px-6 py-3 rounded-full bg-slate-300 text-slate-500 text-sm font-semibold shadow-lg shadow-slate-800/30 cursor-not-allowed" disabled>
                   Add To Chrome
                 </button>
-                <Link href="/me" className="px-6 py-3 rounded-full bg-slate-800 text-white text-sm font-semibold shadow-lg shadow-slate-900/40">
+                <a href="/dashboard" className="px-6 py-3 rounded-full bg-slate-800 text-white text-sm font-semibold shadow-lg shadow-slate-900/40">
                   Create CasperID
-                </Link>
+                </a>
               </div>
             </div>
           </div>
@@ -333,12 +319,12 @@ CasperID is a reusable digital identity layer
       </section>
 
       <section className="w-full px-6 md:px-12 py-8 flex justify-end">
-        <Link
+        <a
           href="#top"
           className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-slate-200 bg-white text-sm font-semibold text-slate-800 shadow-sm hover:-translate-y-0.5 transition"
         >
           ↑ Back to top
-        </Link>
+        </a>
       </section>
       <FooterMarketing className="scroll-mt-24" />
       <ChatAssistant />

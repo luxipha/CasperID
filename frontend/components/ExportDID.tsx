@@ -12,7 +12,7 @@ export const ExportDID: React.FC<ExportDIDProps> = ({ onBack }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [otpCode, setOtpCode] = useState('');
   const [verificationToken, setVerificationToken] = useState('');
-  const [modal, setModal] = useState<{show: boolean, type: 'success' | 'error', message: string}>({
+  const [modal, setModal] = useState<{ show: boolean, type: 'success' | 'error', message: string }>({
     show: false,
     type: 'success',
     message: ''
@@ -23,10 +23,10 @@ export const ExportDID: React.FC<ExportDIDProps> = ({ onBack }) => {
   const sendOTP = async () => {
     setIsLoading(true);
     try {
-      const response = await apiService.post('/api/auth/send-verification-otp', { 
-        purpose: 'export-did' 
+      const response = await apiService.post('/api/auth/send-verification-otp', {
+        purpose: 'export-did'
       });
-      
+
       if (response.success) {
         setOtpSent(true);
         // No alert needed - UI will show input box
@@ -65,7 +65,7 @@ export const ExportDID: React.FC<ExportDIDProps> = ({ onBack }) => {
         otp: otpCode,
         purpose: 'export-did'
       });
-      
+
       if (response.success) {
         setVerificationToken(response.verificationToken);
         setStep(2);
@@ -99,11 +99,11 @@ export const ExportDID: React.FC<ExportDIDProps> = ({ onBack }) => {
         const now = new Date();
         const dateString = now.toISOString().split('T')[0]; // YYYY-MM-DD
         const timeString = now.toTimeString().split(' ')[0].replace(/:/g, '-'); // HH-MM-SS
-        
+
         const jsonString = JSON.stringify(response.data, null, 2);
         const blob = new Blob([jsonString], { type: 'application/json' });
         const url = URL.createObjectURL(blob);
-        
+
         // Create download link
         const link = document.createElement('a');
         link.href = url;
@@ -112,7 +112,7 @@ export const ExportDID: React.FC<ExportDIDProps> = ({ onBack }) => {
         link.click();
         document.body.removeChild(link);
         URL.revokeObjectURL(url);
-        
+
         setModal({
           show: true,
           type: 'success',
@@ -215,12 +215,12 @@ export const ExportDID: React.FC<ExportDIDProps> = ({ onBack }) => {
           </body>
           </html>
         `;
-        
+
         const printWindow = window.open('', '_blank');
         printWindow?.document.write(printContent);
         printWindow?.document.close();
         printWindow?.print();
-        
+
         setModal({
           show: true,
           type: 'success',
@@ -247,7 +247,7 @@ export const ExportDID: React.FC<ExportDIDProps> = ({ onBack }) => {
     <div className="w-full max-w-[800px] mx-auto space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
       {/* Header Navigation */}
       <div className="flex items-center justify-between">
-        <button 
+        <button
           onClick={onBack}
           className="flex items-center gap-2 text-[#626D85] hover:text-primary transition-colors font-bold text-sm group"
         >
@@ -296,7 +296,7 @@ export const ExportDID: React.FC<ExportDIDProps> = ({ onBack }) => {
                 <p className="text-[13px] text-[#626D85] font-medium leading-relaxed">
                   Use your device's biometric sensor (FaceID, TouchID) or security key.
                 </p>
-                <button 
+                <button
                   disabled
                   className="w-full h-14 bg-gray-300 text-gray-500 rounded-[18px] font-black text-sm flex items-center justify-center gap-3 cursor-not-allowed opacity-50"
                 >
@@ -308,8 +308,8 @@ export const ExportDID: React.FC<ExportDIDProps> = ({ onBack }) => {
 
             {/* OR Divider */}
             <div className="flex items-center justify-center py-4 md:py-0">
-               <div className="size-10 rounded-full bg-white border border-gray-100 flex items-center justify-center text-[10px] font-black text-[#626D85] shadow-sm relative z-10">OR</div>
-               <div className="hidden md:block absolute h-[300px] w-px bg-gray-50"></div>
+              <div className="size-10 rounded-full bg-white border border-gray-100 flex items-center justify-center text-[10px] font-black text-[#626D85] shadow-sm relative z-10">OR</div>
+              <div className="hidden md:block absolute h-[300px] w-px bg-gray-50"></div>
             </div>
 
             {/* OTP Column */}
@@ -326,7 +326,7 @@ export const ExportDID: React.FC<ExportDIDProps> = ({ onBack }) => {
                         We'll send a 6-digit verification code to your registered email or phone number.
                       </p>
                     </div>
-                    <button 
+                    <button
                       onClick={sendOTP}
                       disabled={isLoading}
                       className="w-full h-14 bg-white border border-gray-200 text-[#1A1A2E] hover:bg-gray-50 rounded-[18px] font-black text-sm transition-all active:scale-[0.98] shadow-sm disabled:opacity-50"
@@ -344,8 +344,8 @@ export const ExportDID: React.FC<ExportDIDProps> = ({ onBack }) => {
                     <div className="space-y-2 text-left">
                       <label className="text-[11px] font-bold text-[#626D85] uppercase tracking-widest">Enter OTP Code</label>
                       <div className="relative group">
-                        <input 
-                          type="text" 
+                        <input
+                          type="text"
                           value={otpCode}
                           onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
                           className="w-full h-14 px-6 rounded-2xl bg-gray-50 border border-transparent focus:bg-white focus:border-primary/30 text-sm font-medium transition-all outline-none text-center tracking-[0.5em]"
@@ -360,7 +360,7 @@ export const ExportDID: React.FC<ExportDIDProps> = ({ onBack }) => {
                         Check your registered email or phone for the 6-digit code
                       </p>
                     </div>
-                    <button 
+                    <button
                       onClick={verifyOTP}
                       disabled={isLoading || otpCode.length !== 6}
                       className="w-full h-14 bg-white border border-gray-200 text-[#1A1A2E] hover:bg-gray-50 rounded-[18px] font-black text-sm transition-all active:scale-[0.98] shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
@@ -368,7 +368,7 @@ export const ExportDID: React.FC<ExportDIDProps> = ({ onBack }) => {
                       {isLoading ? 'Verifying...' : 'Verify OTP'}
                     </button>
                     <div className="text-center">
-                      <button 
+                      <button
                         onClick={sendOTP}
                         className="text-[13px] font-bold text-primary hover:underline"
                       >
@@ -384,7 +384,7 @@ export const ExportDID: React.FC<ExportDIDProps> = ({ onBack }) => {
 
         {/* Footer Link */}
         <div className="bg-[#F8F9FB] py-6 text-center border-t border-gray-50">
-          <button 
+          <button
             onClick={onBack}
             className="text-[14px] font-bold text-[#626D85] hover:text-[#1A1A2E] transition-colors"
           >
@@ -399,7 +399,7 @@ export const ExportDID: React.FC<ExportDIDProps> = ({ onBack }) => {
     <div className="w-full max-w-[800px] mx-auto space-y-8 animate-in fade-in slide-in-from-right-4 duration-500">
       {/* Header Navigation */}
       <div className="flex items-center justify-between">
-        <button 
+        <button
           onClick={() => setStep(1)}
           className="flex items-center gap-2 text-[#626D85] hover:text-primary transition-colors font-bold text-sm group"
         >
@@ -441,20 +441,20 @@ export const ExportDID: React.FC<ExportDIDProps> = ({ onBack }) => {
             {/* JSON File Option */}
             <div className="p-8 rounded-[32px] border border-primary/20 bg-primary/[0.02] flex items-center justify-between gap-6 group hover:bg-primary/[0.04] transition-all">
               <div className="flex items-center gap-6">
-                 <div className="size-16 rounded-2xl bg-white border border-gray-100 flex items-center justify-center text-primary shadow-sm group-hover:scale-110 transition-transform">
-                    <span className="material-symbols-outlined text-[32px]">description</span>
-                 </div>
-                 <div className="text-left space-y-1">
-                    <div className="flex items-center gap-3">
-                       <h4 className="text-[17px] font-black text-[#1A1A2E]">Download Encrypted JSON File</h4>
-                       <span className="px-2.5 py-1 rounded bg-primary/10 text-primary text-[9px] font-black uppercase tracking-widest">Recommended</span>
-                    </div>
-                    <p className="text-[13px] text-[#626D85] font-medium max-w-md leading-relaxed">
-                       Download a password-protected JSON file containing your DID document and private keys.
-                    </p>
-                 </div>
+                <div className="size-16 rounded-2xl bg-white border border-gray-100 flex items-center justify-center text-primary shadow-sm group-hover:scale-110 transition-transform">
+                  <span className="material-symbols-outlined text-[32px]">description</span>
+                </div>
+                <div className="text-left space-y-1">
+                  <div className="flex items-center gap-3">
+                    <h4 className="text-[17px] font-black text-[#1A1A2E]">Download Encrypted JSON File</h4>
+                    <span className="px-2.5 py-1 rounded bg-primary/10 text-primary text-[9px] font-black uppercase tracking-widest">Recommended</span>
+                  </div>
+                  <p className="text-[13px] text-[#626D85] font-medium max-w-md leading-relaxed">
+                    Download a password-protected JSON file containing your DID document and private keys.
+                  </p>
+                </div>
               </div>
-              <button 
+              <button
                 onClick={downloadJSON}
                 className="h-14 px-8 bg-primary hover:bg-primary/90 text-white rounded-[18px] font-black text-sm flex items-center gap-2 shadow-lg shadow-primary/20 transition-all active:scale-[0.98] whitespace-nowrap"
               >
@@ -466,17 +466,17 @@ export const ExportDID: React.FC<ExportDIDProps> = ({ onBack }) => {
             {/* QR Code Option */}
             <div className="p-8 rounded-[32px] border border-gray-100 bg-white flex items-center justify-between gap-6 group hover:bg-gray-50/50 transition-all">
               <div className="flex items-center gap-6">
-                 <div className="size-16 rounded-2xl bg-gray-50 border border-gray-100 flex items-center justify-center text-[#626D85] shadow-sm group-hover:scale-110 transition-transform">
-                    <span className="material-symbols-outlined text-[32px]">qr_code_2</span>
-                 </div>
-                 <div className="text-left space-y-1">
-                    <h4 className="text-[17px] font-black text-[#1A1A2E]">Display QR Code (for Manual Scan)</h4>
-                    <p className="text-[13px] text-[#626D85] font-medium max-w-md leading-relaxed">
-                       Display a QR code containing your private key for secure manual transfer. <span className="text-red-500 font-bold">(Do not photograph this screen!)</span>
-                    </p>
-                 </div>
+                <div className="size-16 rounded-2xl bg-gray-50 border border-gray-100 flex items-center justify-center text-[#626D85] shadow-sm group-hover:scale-110 transition-transform">
+                  <span className="material-symbols-outlined text-[32px]">qr_code_2</span>
+                </div>
+                <div className="text-left space-y-1">
+                  <h4 className="text-[17px] font-black text-[#1A1A2E]">Display QR Code (for Manual Scan)</h4>
+                  <p className="text-[13px] text-[#626D85] font-medium max-w-md leading-relaxed">
+                    Display a QR code containing your private key for secure manual transfer. <span className="text-red-500 font-bold">(Do not photograph this screen!)</span>
+                  </p>
+                </div>
               </div>
-              <button 
+              <button
                 onClick={generateQRCode}
                 className="h-14 px-8 bg-white border border-gray-200 text-[#1A1A2E] hover:bg-gray-50 rounded-[18px] font-black text-sm transition-all active:scale-[0.98] shadow-sm whitespace-nowrap"
               >
@@ -487,17 +487,17 @@ export const ExportDID: React.FC<ExportDIDProps> = ({ onBack }) => {
             {/* Print Option */}
             <div className="p-8 rounded-[32px] border border-gray-100 bg-white flex items-center justify-between gap-6 group hover:bg-gray-50/50 transition-all">
               <div className="flex items-center gap-6">
-                 <div className="size-16 rounded-2xl bg-gray-50 border border-gray-100 flex items-center justify-center text-[#626D85] shadow-sm group-hover:scale-110 transition-transform">
-                    <span className="material-symbols-outlined text-[32px]">print</span>
-                 </div>
-                 <div className="text-left space-y-1">
-                    <h4 className="text-[17px] font-black text-[#1A1A2E]">Print Recovery Phrase</h4>
-                    <p className="text-[13px] text-[#626D85] font-medium max-w-md leading-relaxed">
-                       Generate a printable paper wallet with your recovery phrase.
-                    </p>
-                 </div>
+                <div className="size-16 rounded-2xl bg-gray-50 border border-gray-100 flex items-center justify-center text-[#626D85] shadow-sm group-hover:scale-110 transition-transform">
+                  <span className="material-symbols-outlined text-[32px]">print</span>
+                </div>
+                <div className="text-left space-y-1">
+                  <h4 className="text-[17px] font-black text-[#1A1A2E]">Print Recovery Phrase</h4>
+                  <p className="text-[13px] text-[#626D85] font-medium max-w-md leading-relaxed">
+                    Generate a printable paper wallet with your recovery phrase.
+                  </p>
+                </div>
               </div>
-              <button 
+              <button
                 onClick={printRecoveryPhrase}
                 className="h-14 px-8 bg-white border border-gray-200 text-[#1A1A2E] hover:bg-gray-50 rounded-[18px] font-black text-sm transition-all active:scale-[0.98] shadow-sm whitespace-nowrap"
               >
@@ -509,7 +509,7 @@ export const ExportDID: React.FC<ExportDIDProps> = ({ onBack }) => {
 
         {/* Footer Link */}
         <div className="bg-[#F8F9FB] py-6 text-center border-t border-gray-50">
-          <button 
+          <button
             onClick={onBack}
             className="text-[14px] font-bold text-[#626D85] hover:text-[#1A1A2E] transition-colors"
           >
@@ -523,15 +523,14 @@ export const ExportDID: React.FC<ExportDIDProps> = ({ onBack }) => {
   return (
     <div className="w-full pb-12">
       {step === 1 ? renderStep1() : renderStep2()}
-      
+
       {/* Native Modal */}
       {modal.show && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-[32px] p-8 max-w-md w-full shadow-2xl animate-in fade-in slide-in-from-bottom-4 duration-300">
             <div className="flex items-center gap-4 mb-6">
-              <div className={`size-12 rounded-full flex items-center justify-center ${
-                modal.type === 'success' ? 'bg-green-50 text-green-500' : 'bg-red-50 text-red-500'
-              }`}>
+              <div className={`size-12 rounded-full flex items-center justify-center ${modal.type === 'success' ? 'bg-green-50 text-green-500' : 'bg-red-50 text-red-500'
+                }`}>
                 <span className="material-symbols-outlined text-[24px]">
                   {modal.type === 'success' ? 'check_circle' : 'error'}
                 </span>
@@ -545,8 +544,8 @@ export const ExportDID: React.FC<ExportDIDProps> = ({ onBack }) => {
             <p className="text-text-sub font-medium mb-8 leading-relaxed">
               {modal.message}
             </p>
-            <button 
-              onClick={() => setModal({...modal, show: false})}
+            <button
+              onClick={() => setModal({ ...modal, show: false })}
               className="w-full h-12 bg-primary text-white rounded-[16px] font-black text-sm hover:bg-primary/90 transition-all active:scale-[0.98]"
             >
               Continue
@@ -567,7 +566,7 @@ export const ExportDID: React.FC<ExportDIDProps> = ({ onBack }) => {
                 </p>
               </div>
             </div>
-            
+
             <div className="flex items-center justify-center mb-6 bg-gray-50 rounded-2xl p-8">
               <div className="bg-white p-4 rounded-lg">
                 {/* QR Code would be rendered here with a QR library */}
@@ -576,18 +575,18 @@ export const ExportDID: React.FC<ExportDIDProps> = ({ onBack }) => {
                 </div>
               </div>
             </div>
-            
+
             <div className="flex gap-4">
-              <button 
+              <button
                 onClick={() => setShowQr(false)}
                 className="flex-1 h-12 bg-gray-100 text-gray-700 rounded-[16px] font-black text-sm hover:bg-gray-200 transition-all active:scale-[0.98]"
               >
                 Close
               </button>
-              <button 
+              <button
                 onClick={() => {
                   navigator.clipboard.writeText(qrCode);
-                  setModal({show: true, type: 'success', message: 'QR data copied to clipboard!'});
+                  setModal({ show: true, type: 'success', message: 'QR data copied to clipboard!' });
                   setShowQr(false);
                 }}
                 className="flex-1 h-12 bg-primary text-white rounded-[16px] font-black text-sm hover:bg-primary/90 transition-all active:scale-[0.98]"

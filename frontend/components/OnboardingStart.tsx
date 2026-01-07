@@ -15,24 +15,24 @@ export const OnboardingStart: React.FC<OnboardingStartProps> = ({ email, onConti
     try {
       clearError();
       setIsRegistering(true);
-      
+
       console.log('🚀 Creating passkey for verified email:', email);
-      
+
       // Check WebAuthn support
       if (!window.PublicKeyCredential) {
         throw new Error('WebAuthn is not supported in this browser. Please use Chrome, Safari, or Firefox.');
       }
-      
+
       console.log('✅ WebAuthn supported, creating passkey...');
-      
+
       // Use the verified email to register passkey
       const tempDisplayName = 'CasperID User'; // Temporary until human-id is generated
-      
+
       console.log('📝 Registering passkey for email:', email);
       await register(email, tempDisplayName);
-      
+
       console.log('✅ Passkey created successfully! Continuing to app...');
-      
+
       // If successful, continue to main app
       onContinue(email);
     } catch (error: any) {
@@ -46,7 +46,7 @@ export const OnboardingStart: React.FC<OnboardingStartProps> = ({ email, onConti
   return (
     <div className="min-h-screen bg-[#F8F9FF] flex flex-col items-center justify-center p-6 animate-in fade-in duration-700">
       <div className="w-full max-w-[540px] space-y-8">
-        
+
         {/* Header Section */}
         <div className="text-center space-y-3">
           <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-primary/5 rounded-full border border-primary/10 mb-4">
@@ -63,13 +63,13 @@ export const OnboardingStart: React.FC<OnboardingStartProps> = ({ email, onConti
         <div className="bg-white rounded-[44px] border border-gray-100 shadow-[0_40px_80px_-20px_rgba(134,82,226,0.12)] p-10 md:p-12 relative overflow-hidden">
           {/* Decorative Ring */}
           <div className="absolute top-0 right-0 size-32 bg-primary/5 rounded-bl-full -mr-10 -mt-10"></div>
-          
+
           <div className="flex flex-col items-center space-y-10 relative z-10">
             {/* Biometric Icon */}
             <div className="relative">
               <div className={`size-28 rounded-3xl bg-primary flex items-center justify-center text-white shadow-2xl transition-transform duration-500 ${isRegistering ? 'scale-110 shadow-primary/40' : ''}`}>
                 {isRegistering ? (
-                  <span className="material-symbols-outlined text-[56px] animate-pulse">fingerprint</span>
+                  <img src="/logos/logo.svg" alt="Registering" className="w-14 h-14 animate-pulse" />
                 ) : (
                   <span className="material-symbols-outlined text-[56px]">lock</span>
                 )}
@@ -112,7 +112,7 @@ export const OnboardingStart: React.FC<OnboardingStartProps> = ({ email, onConti
 
             {/* Action Button */}
             <div className="w-full space-y-4">
-              <button 
+              <button
                 onClick={handleCreatePasskey}
                 disabled={isRegistering || isLoading}
                 className="w-full h-16 bg-primary text-white rounded-2xl font-black text-lg flex items-center justify-center gap-3 shadow-xl shadow-primary/30 hover:bg-primary/90 transition-all active:scale-[0.98] disabled:opacity-50"

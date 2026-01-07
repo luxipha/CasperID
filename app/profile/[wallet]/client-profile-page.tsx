@@ -2,10 +2,10 @@
 
 import { useState, useEffect } from 'react';
 import { apiClient, UserProfile, Experience, Education, Certification, Skill, Project, Award, Language, Volunteer } from '@/lib/api-client';
-import LegacyProfileView from './legacy-profile-view';
 import ProfileSharingTools from './profile-sharing-tools';
-import Navbar from '@/components/navbar/navbar';
-import Footer from '@/components/footer';
+import HeaderMarketing from '../../../frontend/components/HeaderMarketing';
+import { FooterMarketing } from '@/components/footer-marketing';
+import ProfileDisplay from '../../../frontend/components/ProfileDisplay';
 import { Loader2, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
@@ -50,10 +50,10 @@ export default function ClientProfilePage({ params, initialProfile, originalSlug
     try {
       // Use public profile endpoint to get all data in one call
       const publicProfileData = await apiClient.getPublicProfile(wallet);
-      
+
       // Set profile data
-      setProfile(publicProfileData);
-      
+      setProfile(publicProfileData as unknown as UserProfile);
+
       // Set all section data from the single response
       setExperiences(publicProfileData.experiences || []);
       setEducationList(publicProfileData.education || []);
@@ -63,7 +63,7 @@ export default function ClientProfilePage({ params, initialProfile, originalSlug
       setAwards(publicProfileData.awards || []);
       setLanguages(publicProfileData.languages || []);
       setVolunteers(publicProfileData.volunteers || []);
-      
+
     } catch (error: any) {
       console.error('Failed to load public profile:', error);
       if (error.message?.includes('not found') || error.message?.includes('404')) {
@@ -137,27 +137,31 @@ export default function ClientProfilePage({ params, initialProfile, originalSlug
 
   return (
     <div className="min-h-screen bg-white">
-      <Navbar />
-      
+      <HeaderMarketing />
+
       {/* Profile sharing tools */}
-      <ProfileSharingTools 
+      <ProfileSharingTools
         profile={profile}
         walletOrHumanId={wallet}
       />
-      
-      <LegacyProfileView
-        profile={profile}
-        experiences={experiences}
-        educationList={educationList}
-        certifications={certifications}
-        skills={skills}
-        projects={projects}
-        awards={awards}
-        languages={languages}
-        volunteers={volunteers}
-      />
-      
-      <Footer />
+
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-24 pb-20">
+        <ProfileDisplay
+          data={{
+            profile,
+            experiences,
+            education: educationList,
+            certifications,
+            skills,
+            projects,
+            awards,
+            languages,
+            volunteers
+          } as any}
+        />
+      </main>
+
+      <FooterMarketing />
     </div>
   );
 }

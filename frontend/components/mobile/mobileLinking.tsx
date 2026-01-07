@@ -34,20 +34,20 @@ export const MobileLinkingPage: React.FC<MobileLinkingPageProps> = ({ onComplete
 
     const userAgent = navigator.userAgent.toLowerCase();
     console.log('🔍 User Agent:', userAgent);
-    
+
     // Check for in-app browsers that don't support WebAuthn properly
     const isInApp = userAgent.includes('wv') || // WebView
-                   userAgent.includes('fban') || // Facebook
-                   userAgent.includes('fbav') || // Facebook
-                   userAgent.includes('instagram') || // Instagram
-                   userAgent.includes('twitter') || // Twitter
-                   userAgent.includes('tiktok') || // TikTok
-                   userAgent.includes('line') || // Line
-                   userAgent.includes('whatsapp'); // WhatsApp
-    
+      userAgent.includes('fban') || // Facebook
+      userAgent.includes('fbav') || // Facebook
+      userAgent.includes('instagram') || // Instagram
+      userAgent.includes('twitter') || // Twitter
+      userAgent.includes('tiktok') || // TikTok
+      userAgent.includes('line') || // Line
+      userAgent.includes('whatsapp'); // WhatsApp
+
     console.log('📱 Is in-app browser:', isInApp);
     console.log('🔐 WebAuthn supported:', !!window.PublicKeyCredential);
-    
+
     return !isInApp;
   };
 
@@ -56,27 +56,27 @@ export const MobileLinkingPage: React.FC<MobileLinkingPageProps> = ({ onComplete
     const parseQRData = async () => {
       try {
         setIsLoading(true);
-        
+
         // Check browser capability first
         if (!window.PublicKeyCredential) {
           throw new Error('WebAuthn not supported. Please use Chrome, Safari, or Firefox.');
         }
-        
+
         if (!isInCapableBrowser()) {
           throw new Error('Please open this link in your device\'s default browser (Safari/Chrome) for Face ID/Touch ID to work.');
         }
-        
+
         // Get QR data from URL parameters
         const urlParams = new URLSearchParams(window.location.search);
         const qrDataParam = urlParams.get('data');
-        
+
         if (!qrDataParam) {
           throw new Error('No QR data found. Please scan the QR code again.');
         }
 
         // Parse the QR data
         const parsedData: QRData = JSON.parse(decodeURIComponent(qrDataParam));
-        
+
         // Validate QR data
         if (parsedData.type !== 'casperid_registration' || !parsedData.userId || !parsedData.options) {
           throw new Error('Invalid QR code. Please scan a valid CasperID pairing code.');
@@ -89,7 +89,7 @@ export const MobileLinkingPage: React.FC<MobileLinkingPageProps> = ({ onComplete
 
         setQrData(parsedData);
         setError('');
-        
+
       } catch (error: any) {
         console.error('QR parsing failed:', error);
         setError(error.message || 'Failed to parse QR code data');
@@ -108,7 +108,7 @@ export const MobileLinkingPage: React.FC<MobileLinkingPageProps> = ({ onComplete
     }
 
     setError('');
-    
+
     // Directly trigger WebAuthn instead of showing modal
     await handleSystemVerify();
   };
@@ -121,7 +121,7 @@ export const MobileLinkingPage: React.FC<MobileLinkingPageProps> = ({ onComplete
 
     try {
       setIsVerifying(true);
-      
+
       // Check WebAuthn support
       if (!window.PublicKeyCredential) {
         throw new Error('WebAuthn is not supported on this device. Please use a modern browser.');
@@ -167,8 +167,8 @@ export const MobileLinkingPage: React.FC<MobileLinkingPageProps> = ({ onComplete
           }
         },
         deviceInfo: {
-          deviceName: navigator.userAgent.includes('iPhone') ? 'iPhone' : 
-                     navigator.userAgent.includes('Android') ? 'Android' : 'Mobile Device',
+          deviceName: navigator.userAgent.includes('iPhone') ? 'iPhone' :
+            navigator.userAgent.includes('Android') ? 'Android' : 'Mobile Device',
           deviceType: 'mobile',
           userAgent: navigator.userAgent
         }
@@ -184,9 +184,9 @@ export const MobileLinkingPage: React.FC<MobileLinkingPageProps> = ({ onComplete
       }
 
       console.log('🎉 Registration completed successfully!');
-      
+
       setIsSuccess(true);
-      
+
       // Show success state briefly, then complete
       setTimeout(() => {
         onComplete();
@@ -215,7 +215,7 @@ export const MobileLinkingPage: React.FC<MobileLinkingPageProps> = ({ onComplete
   // Show error state if QR parsing failed
   if (error && !qrData) {
     const needsBrowserRedirect = error.includes('default browser');
-    
+
     return (
       <div className="min-h-screen bg-white flex flex-col items-center justify-center p-8">
         <div className="text-center space-y-6 max-w-md">
@@ -229,22 +229,22 @@ export const MobileLinkingPage: React.FC<MobileLinkingPageProps> = ({ onComplete
               {needsBrowserRedirect ? 'Open in Browser' : 'Setup Failed'}
             </h2>
             <p className="text-text-sub text-sm leading-relaxed">{error}</p>
-            
+
             {needsBrowserRedirect && (
               <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 text-left">
                 <p className="text-blue-800 text-sm font-medium">
-                  <strong>How to open in browser:</strong><br/>
-                  1. Tap the "Open in Browser" button below<br/>
+                  <strong>How to open in browser:</strong><br />
+                  1. Tap the "Open in Browser" button below<br />
                   2. Or copy this URL and paste in Safari/Chrome
                 </p>
               </div>
             )}
           </div>
-          
+
           <div className="flex flex-col gap-3">
             {needsBrowserRedirect ? (
               <>
-                <button 
+                <button
                   onClick={() => {
                     // Try to open in external browser
                     const currentUrl = window.location.href;
@@ -255,7 +255,7 @@ export const MobileLinkingPage: React.FC<MobileLinkingPageProps> = ({ onComplete
                   <span className="material-symbols-outlined text-sm mr-2">open_in_new</span>
                   Open in Browser
                 </button>
-                <button 
+                <button
                   onClick={() => {
                     navigator.clipboard.writeText(window.location.href);
                     alert('URL copied! Paste in Safari or Chrome.');
@@ -267,13 +267,13 @@ export const MobileLinkingPage: React.FC<MobileLinkingPageProps> = ({ onComplete
               </>
             ) : (
               <>
-                <button 
+                <button
                   onClick={onCancel}
                   className="px-6 py-3 bg-white border border-gray-200 text-text-main font-bold rounded-xl hover:bg-gray-50 transition-all"
                 >
                   Go Back
                 </button>
-                <button 
+                <button
                   onClick={() => window.location.reload()}
                   className="px-6 py-3 bg-primary text-white font-bold rounded-xl hover:bg-primary/90 transition-all"
                 >
@@ -308,7 +308,7 @@ export const MobileLinkingPage: React.FC<MobileLinkingPageProps> = ({ onComplete
     <div className="min-h-screen bg-white flex flex-col relative font-sans text-text-main overflow-hidden select-none">
       {/* --- Main Linking Screen --- */}
       <div className="flex-1 flex flex-col p-8">
-        
+
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-2">
@@ -337,19 +337,19 @@ export const MobileLinkingPage: React.FC<MobileLinkingPageProps> = ({ onComplete
             <div className="absolute inset-0 border border-gray-50 rounded-full opacity-50 scale-100"></div>
             <div className="absolute inset-8 border border-gray-100 rounded-full opacity-70 scale-100"></div>
             <div className="absolute inset-16 border border-gray-200 rounded-full scale-100"></div>
-            
+
             {/* Central Avatar Card */}
             <div className="relative size-40 bg-white rounded-[40px] shadow-[0_32px_64px_-16px_rgba(134,82,226,0.15)] flex flex-col items-center justify-center border border-gray-50 transition-transform hover:scale-105 duration-700">
-               <div className="size-20 text-primary mb-2 opacity-80">
-                  <svg viewBox="0 0 24 24" fill="currentColor" className="size-full">
-                    <path d="M12,2C6.48,2,2,6.48,2,12s4.48,10,10,10s10-4.48,10-10S17.52,2,12,2z M12,20c-4.41,0-8-3.59-8-8s3.59-8,8-8s8,3.59,8,8 S16.41,20,12,20z M12,13c-1.94,0-3.5-1.56-3.5-3.5S10.06,6,12,6s3.5,1.56,3.5,3.5S13.94,13,12,13z M12,14.5c2.33,0,7,1.17,7,3.5V19 H5v-1c0-2.33,4.67-3.5,7-3.5z" opacity=".2"/>
-                    <circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" strokeWidth="0.5" />
-                    <path d="M12,12c2.21,0,4-1.79,4-4s-1.79-4-4-4s-4,1.79-4,4S9.79,12,12,12z M12,14c-2.67,0-8,1.34-8,4v2h16v-2C20,15.34,14.67,14,12,14z" />
-                  </svg>
-               </div>
-               <div className="px-3 py-1 bg-green-500 rounded-lg text-white text-[10px] font-black uppercase tracking-widest shadow-lg shadow-green-200">
-                 Ready
-               </div>
+              <div className="size-20 text-primary mb-2 opacity-80">
+                <svg viewBox="0 0 24 24" fill="currentColor" className="size-full">
+                  <path d="M12,2C6.48,2,2,6.48,2,12s4.48,10,10,10s10-4.48,10-10S17.52,2,12,2z M12,20c-4.41,0-8-3.59-8-8s3.59-8,8-8s8,3.59,8,8 S16.41,20,12,20z M12,13c-1.94,0-3.5-1.56-3.5-3.5S10.06,6,12,6s3.5,1.56,3.5,3.5S13.94,13,12,13z M12,14.5c2.33,0,7,1.17,7,3.5V19 H5v-1c0-2.33,4.67-3.5,7-3.5z" opacity=".2" />
+                  <circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" strokeWidth="0.5" />
+                  <path d="M12,12c2.21,0,4-1.79,4-4s-1.79-4-4-4s-4,1.79-4,4S9.79,12,12,12z M12,14c-2.67,0-8,1.34-8,4v2h16v-2C20,15.34,14.67,14,12,14z" />
+                </svg>
+              </div>
+              <div className="px-3 py-1 bg-green-500 rounded-lg text-white text-[10px] font-black uppercase tracking-widest shadow-lg shadow-green-200">
+                Ready
+              </div>
             </div>
           </div>
 
@@ -378,7 +378,7 @@ export const MobileLinkingPage: React.FC<MobileLinkingPageProps> = ({ onComplete
 
         {/* Action Buttons */}
         <div className="mt-auto space-y-6 pb-10">
-          <button 
+          <button
             onClick={handleCreatePasskey}
             disabled={isVerifying}
             className="w-full h-16 bg-primary text-white rounded-3xl font-black text-lg shadow-2xl shadow-primary/30 active:scale-[0.98] transition-all flex items-center justify-center gap-3 disabled:opacity-50 disabled:cursor-not-allowed"

@@ -32,7 +32,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate }) => 
     switch (layerStatus) {
       case 'layer_0':
         return 'Basic';
-      case 'layer_1': 
+      case 'layer_1':
         return 'Basic';
       case 'layer_2':
         return 'Layer 2';
@@ -48,7 +48,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate }) => 
     switch (layerStatus) {
       case 'layer_0':
         return 'bg-gray-400';
-      case 'layer_1': 
+      case 'layer_1':
         return 'bg-blue-500';
       case 'layer_2':
         return 'bg-green-500';
@@ -62,7 +62,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate }) => 
     <aside className="hidden md:flex w-64 bg-white border-r border-border-color flex-col h-screen fixed left-0 top-0 z-50">
       <div className="p-6 flex items-center gap-3">
         <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary to-purple-600 flex items-center justify-center text-white shadow-lg shadow-primary/20">
-          <span className="material-symbols-outlined text-2xl">fingerprint</span>
+          <img src="/logos/logo.png" alt="CasperID logo" className="w-7 h-7 object-contain" />
         </div>
         <div>
           <h1 className="text-text-main text-lg font-bold leading-none tracking-tight">CasperID</h1>
@@ -78,11 +78,10 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate }) => 
           <button
             key={item.id}
             onClick={() => onNavigate(item.id)}
-            className={`flex items-center gap-3.5 px-4 py-3 rounded-xl transition-all font-medium group relative overflow-hidden ${
-              currentView === item.id 
-                ? 'bg-primary/10 text-primary font-bold shadow-sm shadow-primary/5' 
-                : 'text-text-sub hover:text-primary hover:bg-gray-50'
-            }`}
+            className={`flex items-center gap-3.5 px-4 py-3 rounded-xl transition-all font-medium group relative overflow-hidden ${currentView === item.id
+              ? 'bg-primary/10 text-primary font-bold shadow-sm shadow-primary/5'
+              : 'text-text-sub hover:text-primary hover:bg-gray-50'
+              }`}
           >
             {currentView === item.id && (
               <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1.5 h-6 bg-primary rounded-r-full" />
@@ -96,13 +95,12 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate }) => 
       </nav>
 
       <div className="p-4 border-t border-border-color space-y-4">
-        <button 
+        <button
           onClick={() => onNavigate('settings')}
-          className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-colors ${
-            currentView === 'settings' 
-              ? 'bg-primary/10 text-primary font-bold shadow-sm' 
-              : 'text-text-sub hover:bg-gray-50 hover:text-text-main'
-          }`}
+          className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-colors ${currentView === 'settings'
+            ? 'bg-primary/10 text-primary font-bold shadow-sm'
+            : 'text-text-sub hover:bg-gray-50 hover:text-text-main'
+            }`}
         >
           <span className={`material-symbols-outlined ${currentView === 'settings' ? 'icon-filled' : ''}`}>settings</span>
           <span>Settings</span>
@@ -123,7 +121,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate }) => 
               </p>
             </div>
           </div>
-          <button 
+          <button
             onClick={handleLogout}
             className="text-text-sub hover:text-primary transition-colors"
             title="Logout"

@@ -16,7 +16,7 @@ export const KYCProcessing: React.FC<KYCProcessingProps> = ({ title, subtitle, o
   return (
     <div className="w-full max-w-[600px] mx-auto animate-in fade-in duration-700 py-12">
       <div className="bg-white rounded-[44px] border border-gray-100 shadow-[0_40px_80px_-20px_rgba(134,82,226,0.15)] p-12 md:p-16 flex flex-col items-center text-center relative overflow-hidden">
-        
+
         {/* Animated Scanning Beam */}
         <div className="absolute top-0 left-0 w-full h-1.5 bg-gray-50 overflow-hidden">
           <div className="h-full bg-gradient-to-r from-transparent via-primary to-transparent w-1/2 animate-[loading_2s_infinite_linear]"></div>
@@ -26,15 +26,15 @@ export const KYCProcessing: React.FC<KYCProcessingProps> = ({ title, subtitle, o
         <div className="relative size-40 mb-10">
           {/* Outer Rotating Ring */}
           <div className="absolute inset-0 rounded-full border-4 border-dashed border-primary/20 animate-[spin_10s_linear_infinite]"></div>
-          
+
           {/* Middle Pulsing Circle */}
           <div className="absolute inset-4 rounded-full bg-primary/5 animate-pulse"></div>
-          
+
           {/* Inner Content */}
           <div className="absolute inset-0 flex items-center justify-center">
-             <div className="size-20 rounded-[24px] bg-primary text-white flex items-center justify-center shadow-xl shadow-primary/30">
-                <span className="material-symbols-outlined text-[44px] animate-bounce">database</span>
-             </div>
+            <div className="size-20 rounded-[24px] bg-primary text-white flex items-center justify-center shadow-xl shadow-primary/30">
+              <span className="material-symbols-outlined text-[44px] animate-bounce">database</span>
+            </div>
           </div>
 
           {/* Floating Data Points */}
@@ -69,7 +69,7 @@ export const KYCProcessing: React.FC<KYCProcessingProps> = ({ title, subtitle, o
           ))}
         </div>
       </div>
-      
+
       <p className="mt-8 text-center text-[10px] font-black text-text-sub uppercase tracking-[0.3em] opacity-40">
         Secured by Casper Encryption Standard
       </p>

@@ -1795,9 +1795,11 @@ export const Profile: React.FC = () => {
                           (profile?.cns_name || profile?.wallet || 'Unnamed User')}
                       </h2>
                       <div className="flex items-center gap-3 mt-1">
-                        <div className="flex items-center gap-2 bg-blue-50 px-3 py-1 rounded-full border border-blue-200">
-                          <span className="material-symbols-outlined text-blue-600 text-[16px]">trending_up</span>
-                          <span className="text-[11px] font-bold text-blue-700">ATS Score: 85%</span>
+                        <div className="flex items-center gap-1.5 px-3 py-1 bg-blue-50/50 rounded-full border border-blue-100/50">
+                          <span className="material-symbols-outlined text-[14px] text-blue-600 icon-filled">shield</span>
+                          <span className="text-[11px] font-bold text-blue-700 uppercase tracking-wider">
+                            Basic Verified
+                          </span>
                         </div>
                       </div>
                     </div>
@@ -1838,8 +1840,8 @@ export const Profile: React.FC = () => {
             {/* Bottom Identity Status Bar */}
             <div className="p-5 rounded-[24px] bg-white border border-gray-100 shadow-soft flex flex-col md:flex-row items-center justify-between gap-4">
               <div className="flex items-center gap-4 w-full md:w-auto">
-                <div className="size-12 rounded-xl bg-primary/10 flex items-center justify-center text-primary">
-                  <span className="material-symbols-outlined">fingerprint</span>
+                <div className="size-12 rounded-xl bg-primary/10 flex items-center justify-center">
+                  <img src="/logos/logo.svg" alt="CasperID" className="w-7 h-7" />
                 </div>
                 <div>
                   <p className="text-sm font-black text-text-main">CasperID (DID)</p>
