@@ -62,23 +62,19 @@ export const KYCHome: React.FC = () => {
       } else if (user.tier === 'layer_2') {
         // Check API for pending Layer 3 upgrade
         try {
-          const response = await fetch(`/api/identity-status?wallet=${encodeURIComponent(user.wallet)}`);
+          const data = await apiService.get(`/identity-status?wallet=${encodeURIComponent(user.wallet)}`);
+          console.log('[KYCHome] Identity status:', data);
 
-          if (response.ok) {
-            const data = await response.json();
-            console.log('[KYCHome] Identity status:', data);
-
-            // Check if user has pending Layer 3 upgrade
-            if (data.pending_upgrade_tier === 'layer_3' && data.status === 'pending') {
-              console.log('[KYCHome] Found pending Layer 3 upgrade');
-              setLayer3Status('pending');
-              setKycSubmitted(true);
-            }
-            // Check if user is ALREADY layer_3 or full_kyc but local state is stale
-            else if (data.tier === 'layer_3' || data.tier === 'layer_3') {
-              console.log('[KYCHome] confirmed layer_3/full_kyc from API');
-              setLayer3Status('approved');
-            }
+          // Check if user has pending Layer 3 upgrade
+          if (data.pending_upgrade_tier === 'layer_3' && data.status === 'pending') {
+            console.log('[KYCHome] Found pending Layer 3 upgrade');
+            setLayer3Status('pending');
+            setKycSubmitted(true);
+          }
+          // Check if user is ALREADY layer_3 or full_kyc but local state is stale
+          else if (data.tier === 'layer_3' || data.tier === 'layer_3') {
+            console.log('[KYCHome] confirmed layer_3/full_kyc from API');
+            setLayer3Status('approved');
           }
         } catch (error) {
           console.error('[KYCHome] Failed to check Layer 3 status:', error);

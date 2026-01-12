@@ -99,21 +99,18 @@ export const ReusableKYCCard: React.FC = () => {
         // Also fetch identity status to get pending_upgrade_tier
         if (user?.wallet) {
           try {
-            const identityResponse = await fetch(`/api/identity-status?wallet=${encodeURIComponent(user.wallet)}`);
-            if (identityResponse.ok) {
-              const identityData = await identityResponse.json();
-              console.log('🔍 [ReusableKYCCard] Identity status:', identityData);
+            const identityData = await apiService.get(`/identity-status?wallet=${encodeURIComponent(user.wallet)}`);
+            console.log('🔍 [ReusableKYCCard] Identity status:', identityData);
 
-              // Merge identity status into verification data
-              combinedData = {
-                ...combinedData,
-                currentStatus: {
-                  ...combinedData.currentStatus,
-                  pending_upgrade_tier: identityData.pending_upgrade_tier,
-                  status: identityData.status
-                }
-              };
-            }
+            // Merge identity status into verification data
+            combinedData = {
+              ...combinedData,
+              currentStatus: {
+                ...combinedData.currentStatus,
+                pending_upgrade_tier: identityData.pending_upgrade_tier,
+                status: identityData.status
+              }
+            };
           } catch (err) {
             console.error('Failed to fetch identity status:', err);
           }
