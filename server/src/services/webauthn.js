@@ -1,3 +1,9 @@
+// Polyfill Web Crypto API for @simplewebauthn/server in Node.js 18+
+if (!globalThis.crypto) {
+    const nodeCrypto = require('crypto');
+    globalThis.crypto = nodeCrypto.webcrypto;
+}
+
 const {
     generateRegistrationOptions,
     verifyRegistrationResponse,
