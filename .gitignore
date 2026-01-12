@@ -68,4 +68,4 @@ secrets/
 /scripts
 /keys
 github-actions-key.json
-/frontend/node_modules
+/frontend/node_modules/server/test-*.js
