@@ -536,6 +536,79 @@ class VerificationServiceV2 {
     }
 
     /**
+     * Generate a Selective Disclosure share package
+     */
+    async generateSharePackage(sessionToken, requestedFields = []) {
+        try {
+            // Validate user session
+            const sessionData = await this.validateUserSession(sessionToken);
+            if (!sessionData) {
+                throw new Error('Invalid or expired session');
+            }
+
+            const { userAccount } = sessionData;
+
+            // Fetch user's profile which contains the verified data
+            const { UserProfile } = require('../database/models');
+            const profile = await UserProfile.findOne({ wallet: userAccount.wallet });
+
+            if (!profile) {
+                throw new Error('User profile not found');
+            }
+
+            // Filter data based on requested fields
+            const sharedData = {};
+            const availableFields = [
+                'first_name', 'last_name', 'email', 'phone_number',
+                'city', 'country', 'pronouns', 'headline', 'about'
+            ];
+
+            requestedFields.forEach(field => {
+                if (availableFields.includes(field) && profile[field]) {
+                    sharedData[field] = profile[field];
+                }
+            });
+
+            // If a custom address was requested, we handle that specifically
+            if (requestedFields.includes('address') && profile.address) {
+                sharedData.address = profile.address;
+            }
+
+            // Always include basic verification metadata
+            sharedData.verification = {
+                tier: userAccount.tier,
+                human_id: profile.human_id,
+                wallet: userAccount.wallet,
+                timestamp: Date.now()
+            };
+
+            // Sign the shared data package
+            const payloadHash = crypto.createHash('sha256')
+                .update(JSON.stringify(sharedData))
+                .digest();
+
+            const signatureData = await walletGenerator.signTransactionForUser(
+                userAccount.user_id,
+                payloadHash,
+                'selective_disclosure'
+            );
+
+            return {
+                share_id: uuidv4(),
+                data: sharedData,
+                signature: signatureData.signature,
+                public_key: signatureData.publicKey,
+                signer: 'CasperID-User',
+                timestamp: sharedData.verification.timestamp
+            };
+
+        } catch (error) {
+            console.error('Selective Disclosure generation failed:', error);
+            throw new Error(`Failed to generate share package: ${error.message}`);
+        }
+    }
+
+    /**
      * Validate user session (integrate with existing session system)
      */
     async validateUserSession(sessionToken) {

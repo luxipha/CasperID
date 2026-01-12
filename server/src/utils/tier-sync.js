@@ -1,4 +1,4 @@
-const { UserAccount, IdentityCredential } = require('../database/models');
+const { UserAccount, Credential } = require('../database/models');
 
 /**
  * Tier Synchronization Utility
@@ -18,7 +18,7 @@ async function syncTierToUserAccount(wallet, options = {}) {
 
     try {
         // Get latest credential for this wallet
-        const credential = await IdentityCredential.findOne({ wallet, revoked: false })
+        const credential = await Credential.findOne({ wallet, revoked: false })
             .sort({ created_at: -1 });
 
         if (!credential) {
@@ -103,7 +103,7 @@ async function syncAllTiers(options = {}) {
 
     for (const user of users) {
         try {
-            const credential = await IdentityCredential
+            const credential = await Credential
                 .findOne({ wallet: user.wallet, revoked: false })
                 .sort({ created_at: -1 });
 
@@ -152,7 +152,7 @@ async function syncAllTiers(options = {}) {
  */
 async function getTierComparison(wallet) {
     const userAccount = await UserAccount.findOne({ wallet });
-    const credential = await IdentityCredential
+    const credential = await Credential
         .findOne({ wallet, revoked: false })
         .sort({ created_at: -1 });
 
@@ -170,6 +170,7 @@ async function getTierComparison(wallet) {
         inSync: userAccount?.tier === (credential ? normalizeTier(credential.tier) : null)
     };
 }
+
 
 module.exports = {
     syncTierToUserAccount,

@@ -343,6 +343,15 @@ class ApiService {
     }
   }
 
+  async shareKYCData(fields: string[]): Promise<ApiResponse> {
+    try {
+      const response = await this.client.post('/api/v2/verification/share', { fields });
+      return response.data;
+    } catch (error) {
+      throw this.handleError(error);
+    }
+  }
+
   async uploadDocument(file: File, documentType: string): Promise<ApiResponse> {
     try {
       const formData = new FormData();
@@ -1169,10 +1178,54 @@ class ApiService {
     }
   }
 
+  async clearProfileCategory(category: string, wallet?: string): Promise<ApiResponse> {
+    try {
+      const targetWallet = await this.getWalletForRequest(wallet);
+      const response = await this.client.delete(`/api/profile/${targetWallet}/batch-clear/${category}`);
+      return response.data;
+    } catch (error) {
+      throw this.handleError(error);
+    }
+  }
 
+  // ============ ADMIN API METHODS ============
+
+  async loginAdmin(username: string, password: string): Promise<{ token: string; admin: any }> {
+    try {
+      const response = await this.client.post('/api/admin/login', { username, password });
+      return response.data;
+    } catch (error) {
+      throw this.handleError(error);
+    }
+  }
+
+  async getVerificationRequests(token: string, status?: string): Promise<{ requests: any[] }> {
+    try {
+      const url = status ? `/api/admin/verification-requests?status=${status}` : '/api/admin/verification-requests';
+      const response = await this.client.get(url, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      return response.data;
+    } catch (error) {
+      throw this.handleError(error);
+    }
+  }
+
+  async issueCredential(token: string, requestId: string, approve: boolean): Promise<any> {
+    try {
+      const response = await this.client.post('/api/admin/issue-credential',
+        { request_id: requestId, approve },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      return response.data;
+    } catch (error) {
+      throw this.handleError(error);
+    }
+  }
 
 }
 
 // Export singleton instance
 export const apiService = new ApiService();
+export const apiClient = apiService; // Alias for compatibility with admin dashboard
 export default apiService;

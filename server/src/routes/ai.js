@@ -6,7 +6,8 @@ const {
     verifyLivenessGesture,
     verifyLivenessSequence,
     parseResume,
-    generateCoverLetter
+    generateCoverLetter,
+    matchJobWithProfile
 } = require('../services/gemini');
 const { getCNSInfo, checkNameAvailability, estimateClaimCost, claimName } = require('../services/cns');
 
@@ -176,20 +177,50 @@ router.post('/ai/verify-liveness-sequence', upload.fields([
             const jwt = require('jsonwebtoken');
             const casperService = require('../services/casper');
             const { walletToHuman } = require('../utils/wallet-to-human');
+            const fs = require('fs');
+            const path = require('path');
 
             // Check if this is Layer 3 flow (user already has Layer 2)
             if (userAccount.tier === 'layer_2') {
                 // Layer 3 flow - DON'T mint credential yet
-                // Just store liveness result for verification request
-                console.log(`[AI] Layer 3 liveness passed for ${userAccount.wallet}. Storing result for review.`);
+                // Save key frames for admin review
+                console.log(`[AI] Layer 3 liveness passed for ${userAccount.wallet}. Storing frames for review.`);
 
-                // In a production app, you'd store this in Redis or a LivenessSession model
-                // For now, we'll rely on the frontend to track this
+                // Save 5 key frames to disk for admin review
+                const uploadsDir = path.join(__dirname, '../../uploads/liveness');
+                if (!fs.existsSync(uploadsDir)) {
+                    fs.mkdirSync(uploadsDir, { recursive: true });
+                }
+
+                const frameInterval = Math.floor(frames.length / 5);
+                const keyFrameIndices = [0, frameInterval, frameInterval * 2, frameInterval * 3, frames.length - 1];
+                const savedFramePaths = [];
+
+                for (const idx of keyFrameIndices) {
+                    if (frames[idx]) {
+                        const frameId = `${userAccount.wallet.slice(-12)}-${Date.now()}-${idx}`;
+                        const framePath = path.join(uploadsDir, `${frameId}.jpg`);
+                        fs.writeFileSync(framePath, frames[idx]);
+                        savedFramePaths.push(`/uploads/liveness/${frameId}.jpg`);
+                    }
+                }
+
+                // Store liveness result with frame paths for the verification request
+                // We'll use a simple file-based approach for now
+                const livenessDataPath = path.join(uploadsDir, `${userAccount.wallet.slice(-20)}-result.json`);
+                fs.writeFileSync(livenessDataPath, JSON.stringify({
+                    wallet: userAccount.wallet,
+                    passed: true,
+                    completed_at: new Date().toISOString(),
+                    frame_paths: savedFramePaths,
+                    analysis: result
+                }));
 
                 return res.json({
                     ...result,
                     layer: 3,
                     next_step: 'review_submit',
+                    liveness_frames: savedFramePaths,
                     message: 'Liveness verification complete. Please proceed to submit your verification request.'
                 });
             }
@@ -427,7 +458,7 @@ router.post('/ai/parse-resume', upload.single('resume'), async (req, res) => {
  * POST /api/ai/generate-cover-letter
  * Generate a tailored cover letter
  */
-router.post('/api/ai/generate-cover-letter', async (req, res) => {
+router.post('/ai/generate-cover-letter', async (req, res) => {
     try {
         const { profileData, jobDescription } = req.body;
 
@@ -444,6 +475,32 @@ router.post('/api/ai/generate-cover-letter', async (req, res) => {
         console.error('[AI] Cover letter generation error:', error);
         res.status(500).json({
             error: 'Failed to generate cover letter',
+            details: error.message
+        });
+    }
+});
+
+/**
+ * POST /api/ai/match-job
+ * Match a profile with a job description
+ */
+router.post('/ai/match-job', async (req, res) => {
+    try {
+        const { profileData, jobDescription } = req.body;
+
+        if (!profileData || !jobDescription) {
+            return res.status(400).json({
+                error: 'Profile data and job description are required'
+            });
+        }
+
+        console.log('[AI] Matching job with profile...');
+        const result = await matchJobWithProfile(profileData, jobDescription);
+        res.json(result);
+    } catch (error) {
+        console.error('[AI] Job matching error:', error);
+        res.status(500).json({
+            error: 'Failed to perform job matching',
             details: error.message
         });
     }

@@ -44,9 +44,6 @@ export const KYCLayer3Method: React.FC<KYCLayer3MethodProps> = ({ onBack, onSele
                 <p className="text-text-sub text-base font-medium leading-relaxed max-w-xl">
                   Verify using your National Identity Management Commission number via QR Code (Mobile) or OTP (Desktop).
                 </p>
-                <p className="text-sm text-amber-700 font-bold mt-2">
-                  Requires partnership with NIMC. Available soon.
-                </p>
               </div>
               <span className="material-symbols-outlined text-text-sub ml-4">lock</span>
             </div>

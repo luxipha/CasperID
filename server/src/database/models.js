@@ -168,6 +168,7 @@ const userProfileSchema = new mongoose.Schema({
     // === LOCATION ===
     city: { type: String },
     country: { type: String },
+    address: { type: String }, // Full home address from KYC
 
     // === CONTACT INFO ===
     email: { type: String },

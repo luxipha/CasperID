@@ -40,11 +40,11 @@ export const OTPVerify: React.FC<OTPVerifyProps> = ({ email, verificationId, onS
     try {
       setIsLoading(true);
       setError('');
-      
+
       const otpString = otp.join('');
       const { apiService } = await import('../services/api');
       const response = await apiService.verifyOTP(verificationId, otpString);
-      
+
       if (response.success) {
         onSuccess(email);
       } else {
@@ -63,7 +63,7 @@ export const OTPVerify: React.FC<OTPVerifyProps> = ({ email, verificationId, onS
       setError('');
       const { apiService } = await import('../services/api');
       const response = await apiService.resendOTP(verificationId);
-      
+
       if (response.success) {
         setTimeLeft(59);
         setOtp(['', '', '', '', '', '']);
@@ -81,9 +81,9 @@ export const OTPVerify: React.FC<OTPVerifyProps> = ({ email, verificationId, onS
   return (
     <div className="min-h-screen bg-[#F8F9FF] flex flex-col items-center justify-center p-6 animate-in slide-in-from-right-4 duration-500">
       <div className="w-full max-w-[480px] space-y-10">
-        
+
         <div className="text-center space-y-3">
-          <button 
+          <button
             onClick={onBack}
             className="inline-flex items-center gap-2 text-text-sub hover:text-primary font-bold text-sm transition-colors mb-4 group"
           >
@@ -113,7 +113,7 @@ export const OTPVerify: React.FC<OTPVerifyProps> = ({ email, verificationId, onS
           </div>
 
           <div className="space-y-4">
-            <button 
+            <button
               disabled={!isComplete || isLoading}
               onClick={handleVerify}
               className="w-full h-16 bg-primary text-white rounded-2xl font-black text-lg flex items-center justify-center gap-3 shadow-xl shadow-primary/30 hover:bg-primary/90 transition-all active:scale-[0.98] disabled:opacity-50"
@@ -136,7 +136,7 @@ export const OTPVerify: React.FC<OTPVerifyProps> = ({ email, verificationId, onS
                 </div>
               </div>
             )}
-            
+
             <div className="flex items-center justify-center gap-2 text-text-sub text-xs font-bold">
               <span className="material-symbols-outlined text-sm">schedule</span>
               {timeLeft > 0 ? `Resend code in ${timeLeft}s` : (

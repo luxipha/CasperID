@@ -3,7 +3,7 @@ export interface UserProfile {
   wallet: string;
   human_id?: string;
   cns_name?: string;
-  tier?: 'layer_1' | 'layer_3' | 'layer_1' | 'layer_2' | 'layer_3';
+  tier?: 'layer_0' | 'layer_1' | 'layer_2' | 'layer_3';
   first_name?: string;
   last_name?: string;
   email?: string;
@@ -14,6 +14,7 @@ export interface UserProfile {
   cover_image_url?: string;
   city?: string;
   country?: string;
+  address?: string;
   website?: string;
   portfolio_links?: string[];
   about?: string;

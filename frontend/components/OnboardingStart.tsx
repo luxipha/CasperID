@@ -16,22 +16,16 @@ export const OnboardingStart: React.FC<OnboardingStartProps> = ({ email, onConti
       clearError();
       setIsRegistering(true);
 
-      console.log('🚀 Creating passkey for verified email:', email);
-
       // Check WebAuthn support
       if (!window.PublicKeyCredential) {
         throw new Error('WebAuthn is not supported in this browser. Please use Chrome, Safari, or Firefox.');
       }
 
-      console.log('✅ WebAuthn supported, creating passkey...');
-
       // Use the verified email to register passkey
       const tempDisplayName = 'CasperID User'; // Temporary until human-id is generated
 
-      console.log('📝 Registering passkey for email:', email);
       await register(email, tempDisplayName);
 
-      console.log('✅ Passkey created successfully! Continuing to app...');
 
       // If successful, continue to main app
       onContinue(email);

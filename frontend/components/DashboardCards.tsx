@@ -134,8 +134,21 @@ export const ReusableKYCCard: React.FC = () => {
   }, [user]);
 
   const getStatusInfo = (tier?: string, credentials?: any[]) => {
-    // Check if credential exists for this tier
-    const hasCredential = credentials?.some((c: any) => c.tier === tier && !c.revoked);
+    // Define tier levels to handle hierarchy (L3 includes L2 and L1)
+    const tierLevels: Record<string, number> = {
+      'layer_0': 0,
+      'layer_1': 1,
+      'layer_2': 2,
+      'layer_3': 3
+    };
+
+    const targetLevel = tierLevels[tier || ''] || 0;
+
+    // Check if credential exists for this tier OR higher
+    const hasCredential = credentials?.some((c: any) => {
+      const credLevel = tierLevels[c.tier] || 0;
+      return credLevel >= targetLevel && !c.revoked;
+    });
 
     if (hasCredential) {
       return { status: 'Verified', color: 'text-green-600', bg: 'bg-green-500' };
@@ -286,8 +299,8 @@ export const TrustScoreCard: React.FC = () => {
       </div>
 
       <div className="flex items-center gap-3 bg-gray-50/80 rounded-2xl p-4">
-        <span className={`material-icons-outlined text-[20px] ${score >= 80 ? 'text-green-600' : 'text-text-sub'}`}>
-          {score >= 80 ? 'verified' : 'hourglass_empty'}
+        <span className={`material-icons-outlined text-[20px] ${score >= 70 ? 'text-green-600' : 'text-text-sub'}`}>
+          {score >= 70 ? 'verified' : 'hourglass_empty'}
         </span>
         <p className="text-[13px] text-text-sub font-semibold tracking-tight">{scoreLabel}</p>
       </div>

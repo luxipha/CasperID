@@ -1,0 +1,7 @@
+{
+  "name": "CasperID Connect",
+  "description": "A secure digital identity manager on the blockchain with AI-powered security insights.",
+  "requestFramePermissions": [
+    "camera"
+  ]
+}

@@ -95,6 +95,25 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate }) => 
       </nav>
 
       <div className="p-4 border-t border-border-color space-y-4">
+        {/* Hidden sync elements for CasperID Extension */}
+        <div
+          id="casperid-extension-sync"
+          style={{ display: 'none' }}
+          data-wallet={user?.wallet || ''}
+          data-human-id={user?.human_id || ''}
+          data-cns={user?.cns_name || ''}
+          data-verified={user?.tier === 'layer_3' ? 'true' : 'false'}
+          data-tier={user?.tier || 'layer_0'}
+          data-kyc-date={user?.kyc_completed_at || ''}
+          data-liveness-date={user?.liveness_completed_at || ''}
+          data-token={localStorage.getItem('casperid_session_token') || ''}
+        />
+        <div
+          id="casperid-extension-full-data"
+          style={{ display: 'none' }}
+          data-json={JSON.stringify(user || {})}
+        />
+
         <button
           onClick={() => onNavigate('settings')}
           className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-colors ${currentView === 'settings'

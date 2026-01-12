@@ -432,6 +432,18 @@ export const Profile: React.FC = () => {
     setIsExiting(false);
   };
 
+  const handleShare = () => {
+    if (!profile) return;
+    const identifier = profile.human_id || profile.wallet;
+    if (!identifier) return;
+    const publicUrl = `${window.location.protocol}//${window.location.host}/${identifier}`;
+    navigator.clipboard.writeText(publicUrl).then(() => {
+      alert('Profile link copied to clipboard!');
+    }).catch(err => {
+      console.error('Failed to copy profile link:', err);
+    });
+  };
+
   const handleClosePreview = () => {
     setIsExiting(true);
     setTimeout(() => {
@@ -648,6 +660,13 @@ export const Profile: React.FC = () => {
         city: data.city || data.location?.split(',')[0]?.trim() || profile.city,
         country: data.country || data.location?.split(',')[1]?.trim() || profile.country,
         headline: data.job_title || profile.headline,
+        socials: {
+          ...profile.socials,
+          linkedin: data.socials?.linkedin || profile.socials?.linkedin,
+          twitter: data.socials?.twitter || profile.socials?.twitter,
+          github: data.socials?.github || profile.socials?.github,
+          website: data.socials?.website || profile.socials?.website,
+        }
       };
 
       // Save updated profile
@@ -656,6 +675,16 @@ export const Profile: React.FC = () => {
 
       // Prepare and save collections (Experiences, Education, etc.)
       const wallet = profile.wallet;
+
+      // CLEAR existing data before overwriting (to prevent duplicates)
+      const categoriesToClear = [
+        'experience', 'education', 'skill', 'project',
+        'certification', 'volunteer', 'award', 'language'
+      ];
+
+      await Promise.all(
+        categoriesToClear.map(cat => apiService.clearProfileCategory(cat, wallet))
+      );
 
       // Experiences
       if (data.experiences?.length > 0) {
@@ -674,13 +703,8 @@ export const Profile: React.FC = () => {
           };
         });
         const savedExps = await Promise.all(experiencesToSave.map((item: any) => apiService.addExperience(item, wallet)));
-        // Only update state if successful and currently viewing Experience tab (or refresh all?)
-        // For simplicity, we won't force refresh all tabs state immediately unless we want to managing complex state merging.
-        // But we should likely refetch or manually push to state if we are on that tab. 
-        // A simple way is to trust the user to switch tabs which triggers fetch, or update local state now.
-        // Let's update local state so the counters/preview update immediately.
-        const newExps = savedExps.map(r => r.data).filter(Boolean);
-        setExperiences(prev => [...prev, ...newExps]);
+        const newExps = savedExps.map(r => r).filter(Boolean);
+        setExperiences(newExps);
       }
 
       // Education
@@ -697,7 +721,7 @@ export const Profile: React.FC = () => {
           };
         });
         const savedEdu = await Promise.all(educationToSave.map((item: any) => apiService.addEducation(item, wallet)));
-        setEducation(prev => [...prev, ...savedEdu.map(r => r.data).filter(Boolean)]);
+        setEducation(savedEdu.map(r => r).filter(Boolean));
       }
 
       // Skills
@@ -714,7 +738,7 @@ export const Profile: React.FC = () => {
         }));
 
         const savedSkills = await Promise.all(skillsToSave.map((item: any) => apiService.addSkill(item, wallet)));
-        setSkills(prev => [...prev, ...savedSkills.map(r => r.data).filter(Boolean)]);
+        setSkills(savedSkills.map(r => r).filter(Boolean));
       }
 
       // Projects
@@ -731,7 +755,7 @@ export const Profile: React.FC = () => {
           };
         });
         const savedProjects = await Promise.all(projectsToSave.map((item: any) => apiService.addProject(item, wallet)));
-        setProjects(prev => [...prev, ...savedProjects.map(r => r.data).filter(Boolean)]);
+        setProjects(savedProjects.map(r => r).filter(Boolean));
       }
 
       // Certifications
@@ -751,7 +775,7 @@ export const Profile: React.FC = () => {
             };
           });
         const savedCerts = await Promise.all(certsToSave.map((item: any) => apiService.addCertification(item, wallet)));
-        setCertifications(prev => [...prev, ...savedCerts.map(r => r.data).filter(Boolean)]);
+        setCertifications(savedCerts.map(r => r).filter(Boolean));
       }
 
       // Volunteer
@@ -769,7 +793,19 @@ export const Profile: React.FC = () => {
           };
         });
         const savedVols = await Promise.all(volunteerToSave.map((item: any) => apiService.addVolunteer(item, wallet)));
-        setVolunteers(prev => [...prev, ...savedVols.map(r => r.data).filter(Boolean)]);
+        setVolunteers(savedVols.map(r => r).filter(Boolean));
+      }
+
+      // Awards
+      if (data.awards?.length > 0) {
+        const awardsToSave = data.awards.map((award: any) => ({
+          title: award.title || 'Award',
+          issuing_organization: award.issuing_organization || '',
+          issue_date: award.issue_date || { month: undefined, year: undefined },
+          description: award.description || ''
+        }));
+        const savedAwards = await Promise.all(awardsToSave.map((item: any) => apiService.addAward(item, wallet)));
+        setAwards(savedAwards.map(r => r).filter(Boolean));
       }
 
       // Languages
@@ -779,7 +815,7 @@ export const Profile: React.FC = () => {
           proficiency: lang.proficiency?.toLowerCase() || 'Elementary'
         }));
         const savedLangs = await Promise.all(languagesToSave.map((item: any) => apiService.addLanguage(item, wallet)));
-        setLanguages(prev => [...prev, ...savedLangs.map(r => r.data).filter(Boolean)]);
+        setLanguages(savedLangs.map(r => r).filter(Boolean));
       }
 
       // Refresh all data to show the newly imported resume data
@@ -1792,7 +1828,7 @@ export const Profile: React.FC = () => {
                       <h2 className="text-2xl font-black text-text-main tracking-tight">
                         {profile?.first_name && profile?.last_name ?
                           `${profile.first_name} ${profile.last_name}` :
-                          (profile?.cns_name || profile?.wallet || 'Unnamed User')}
+                          profile?.human_id}
                       </h2>
                       <div className="flex items-center gap-3 mt-1">
                         <div className="flex items-center gap-1.5 px-3 py-1 bg-blue-50/50 rounded-full border border-blue-100/50">
@@ -1892,6 +1928,14 @@ export const Profile: React.FC = () => {
               >
                 <span className="material-symbols-outlined text-primary group-hover:scale-110 transition-transform">visibility</span>
                 Profile Preview
+              </button>
+
+              <button
+                onClick={handleShare}
+                className="w-full flex items-center justify-center gap-3 px-6 py-4 bg-white border border-gray-100 rounded-2xl shadow-sm hover:shadow-md transition-all font-black text-text-main text-sm group active:scale-[0.98]"
+              >
+                <span className="material-symbols-outlined text-green-500 group-hover:scale-110 transition-transform">share</span>
+                Share Profile link
               </button>
 
               <nav className="bg-white rounded-[28px] border border-gray-100 shadow-soft p-2 flex flex-col gap-1">

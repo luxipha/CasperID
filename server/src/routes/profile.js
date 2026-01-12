@@ -46,6 +46,51 @@ const upload = multer({
     }
 });
 
+// ============================================
+// PROFILE CATEGORY BATCH CLEAR (For Resume Overwrite)
+// ============================================
+
+/**
+ * DELETE /api/profile/:wallet/batch-clear/:category
+ * Remove all entries for a specific category for a wallet
+ * Moved to top to avoid conflict with /:id individual delete routes
+ */
+router.delete('/profile/:wallet/batch-clear/:category', async (req, res) => {
+    try {
+        const { wallet, category } = req.params;
+
+        const models = {
+            experience: Experience,
+            education: Education,
+            certification: Certification,
+            skill: Skill,
+            project: Project,
+            award: Award,
+            language: Language,
+            volunteer: Volunteer
+        };
+
+        const Model = models[category.toLowerCase()];
+        if (!Model) {
+            return res.status(400).json({ error: 'Invalid category' });
+        }
+
+        const deleteResult = await Model.deleteMany({ wallet });
+        console.log(`[Clear] Removed ${deleteResult.deletedCount} items from ${category} for wallet ${wallet}`);
+
+        res.json({
+            success: true,
+            message: `Cleared all entries for ${category}`,
+            wallet,
+            category,
+            deletedCount: deleteResult.deletedCount
+        });
+    } catch (error) {
+        console.error('Clear category error:', error);
+        res.status(500).json({ error: error.message || 'Failed to clear category' });
+    }
+});
+
 
 // ============================================
 // AUTHENTICATED USER PROFILE
@@ -789,6 +834,7 @@ router.delete('/profile/:wallet/skills/:id', async (req, res) => {
         res.status(500).json({ error: error.message || 'Failed to delete skill' });
     }
 });
+
 
 // ============================================
 // PROJECTS

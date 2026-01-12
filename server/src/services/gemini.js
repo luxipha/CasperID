@@ -17,7 +17,7 @@ async function analyzeIDDocument(imageBuffer) {
     const startTime = Date.now();
     let result;
     let error;
-    
+
     try {
         const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
 
@@ -59,9 +59,9 @@ If you cannot extract certain information, use null for that field. Be very care
     } catch (err) {
         error = err;
         console.error('[Gemini] ID analysis error:', err);
-        
+
         // Datadog error trace removed - not using Datadog anymore
-        
+
         throw new Error('Failed to analyze ID document');
     }
 }
@@ -239,7 +239,7 @@ async function performKYCVerification(idImageBuffer, selfieBuffer, livenessImage
 async function verifyLivenessSequence(frameBuffers, expectedSteps) {
     const startTime = Date.now();
     let result;
-    
+
     try {
         const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
 
@@ -357,9 +357,9 @@ Only mark as passed if you're confident this is a live human performing natural 
         return result;
     } catch (err) {
         console.error('[Gemini] Liveness sequence verification error:', err);
-        
+
         // Datadog error trace removed - not using Datadog anymore
-        
+
         return {
             passed: false,
             confidence: 0,
@@ -379,11 +379,11 @@ async function parseResume(fileBuffer, mimeType) {
     const startTime = Date.now();
     let result;
     let error;
-    
+
     try {
         console.log(`[Gemini] Starting parseResume with mimeType: ${mimeType}, buffer size: ${fileBuffer.length}`);
         console.log(`[Gemini] Buffer first 20 bytes (hex): ${fileBuffer.toString('hex', 0, 20)}`);
-        
+
         const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
         console.log(`[Gemini] Model created successfully`);
 
@@ -409,7 +409,14 @@ IMPORTANT PARSING GUIDELINES:
 - For employment_type, use ONLY these values: "full-time", "part-time", "self-employed", "freelance", "contract", "internship", "seasonal"
 - For location_type, use ONLY these values: "on-site", "hybrid", "remote" (if not specified, use "on-site")
 - For certifications: ONLY include entries that have BOTH name AND issuing organization. Skip any certifications without issuing organization.
-- For certification dates: Convert to {month: Number, year: Number} format. Set does_not_expire: true if no expiry date is mentioned.
+- For dates (Experiences, Education, Projects, Volunteer): 
+  * Convert to YYYY-MM-DD for the JSON output. 
+  * If the input is only Month/Year, use the 1st of the month (e.g., "Jan 2022" -> "2022-01-01").
+- For volunteer entries: The "role" field is REQUIRED. If the resume doesn't specify a specific title, you MUST use "Volunteer" or "Contributor". NEVER return an empty string for the role.
+- For projects: The "name" field is REQUIRED. If no project name is clear, use "Project" or "Research Project". NEVER return an empty string for the project name.
+- For awards: The "title" field is REQUIRED. If no award title is clear, use "Award" or "Honors". NEVER return an empty string for the award title.
+- For socials: Aggressively look for LinkedIn, GitHub, Twitter, and Website links. They are often in the header, footer, or "Contact" section. Extract the FULL URL if present.
+- For contact info: Extract the primary phone number and email address. If multiple are present, take the first one.
 
 Expected JSON structure:
 {
@@ -524,10 +531,10 @@ Return the complete JSON with all available information filled in.`;
 
         console.log(`[Gemini] Calling generateContent with prompt length: ${prompt.length}`);
         console.log(`[Gemini] Base64 data length: ${fileBuffer.toString('base64').length}`);
-        
+
         const aiResult = await model.generateContent([prompt, filePart]);
         console.log(`[Gemini] AI request completed`);
-        
+
         const response = await aiResult.response;
         const text = response.text();
         console.log(`[Gemini] Response received, text length: ${text.length}`);
@@ -553,7 +560,7 @@ Return the complete JSON with all available information filled in.`;
         console.error('[Gemini] Error statusText:', err.statusText);
         console.error('[Gemini] Error message:', err.message);
         console.error('[Gemini] Full error object:', JSON.stringify(err, Object.getOwnPropertyNames(err), 2));
-        
+
         // Return more specific error information
         if (err.status === 400) {
             throw new Error(`Gemini API Error (400): ${err.message}`);
@@ -612,6 +619,53 @@ Return ONLY a JSON response:
     }
 }
 
+/**
+ * Match a user's profile with a job description to calculate fit and gaps
+ * @param {Object} profileData - User's CasperID profile data
+ * @param {string} jobDescription - Scraped job description
+ * @returns {Promise<Object>} Match results
+ */
+async function matchJobWithProfile(profileData, jobDescription) {
+    try {
+        const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
+
+        const prompt = `You are an expert ATS (Applicant Tracking System) and career matchmaker. 
+Analyze the user's professional profile against the provided job description.
+
+User Profile:
+${JSON.stringify(profileData, null, 2)}
+
+Job Description:
+${jobDescription}
+
+Provide a JSON response with the following structure:
+{
+  "matchScore": 0-100,
+  "summary": "1-2 sentence overview of why the user is or isn't a good fit",
+  "skillGaps": ["Skill 1", "Skill 2"],
+  "matchedSkills": ["Skill 1", "Skill 2"],
+  "careerAdvice": "Brief advice on what to emphasize in the application"
+}
+
+Be honest but constructive. Focus on technical skills, years of experience, and core responsibilities.`;
+
+        const result = await model.generateContent([prompt]);
+        const response = await result.response;
+        const text = response.text();
+
+        // Extract JSON from the response
+        const jsonMatch = text.match(/\{[\s\S]*\}/);
+        if (jsonMatch) {
+            return JSON.parse(jsonMatch[0]);
+        }
+
+        throw new Error('Failed to parse AI response');
+    } catch (error) {
+        console.error('[Gemini] Job matching error:', error);
+        throw new Error('Failed to match job with profile');
+    }
+}
+
 module.exports = {
     analyzeIDDocument,
     compareFaceWithID,
@@ -619,5 +673,6 @@ module.exports = {
     verifyLivenessSequence,
     performKYCVerification,
     parseResume,
-    generateCoverLetter
+    generateCoverLetter,
+    matchJobWithProfile
 };

@@ -41,6 +41,14 @@ export const PublicProfileContainer: React.FC<PublicProfileContainerProps> = ({ 
             // Set profile data
             setProfile(publicProfileData);
 
+            // Dynamically update page title for SEO
+            if (publicProfileData) {
+                const name = publicProfileData.first_name && publicProfileData.last_name
+                    ? `${publicProfileData.first_name} ${publicProfileData.last_name}`
+                    : (publicProfileData.human_id || walletOrUsername);
+                document.title = `${name} - CasperID Profile`;
+            }
+
             // Set all section data from the single response (safely handling potential missing arrays)
             setExperiences(publicProfileData.experiences || []);
             setEducationList(publicProfileData.education || []);

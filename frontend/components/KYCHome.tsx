@@ -113,9 +113,9 @@ export const KYCHome: React.FC = () => {
 
     const tier = user.tier as string;
 
-    if (layer === 1) return user.email_verified || user.wallet;
-    if (layer === 2) return tier === 'layer_2' || tier === 'layer_3' || tier === 'layer_3';
-    if (layer === 3) return tier === 'layer_3' || tier === 'layer_3' || layer3Status === 'approved';
+    if (layer === 1) return user.email_verified || !!user.wallet;
+    if (layer === 2) return tier === 'layer_2' || tier === 'layer_3';
+    if (layer === 3) return tier === 'layer_3' || layer3Status === 'approved';
     return false;
   };
 
@@ -129,7 +129,6 @@ export const KYCHome: React.FC = () => {
         return 1;
       case 'layer_2':
         return 2;
-      case 'layer_3':
       case 'layer_3':
         return 3;
       default:

@@ -36,11 +36,15 @@ export interface User {
   user_id: string;
   email: string;
   display_name: string;
-  human_id?: string;
   tier: 'layer_0' | 'layer_1' | 'layer_2' | 'layer_3';
   wallet?: string;
   metamask_address?: string;
   metamask_connected: boolean;
+  email_verified?: boolean;
+  human_id?: string;
+  cns_name?: string;
+  kyc_completed_at?: string;
+  liveness_completed_at?: string;
   created_at: string;
   last_login: string;
 }
@@ -143,6 +147,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           tier: userAccount.tier,
           wallet: userAccount.wallet,
           metamask_connected: userAccount.metamask_connected || false,
+          cns_name: userAccount.cns_name || '',
+          kyc_completed_at: userAccount.kyc_completed_at || '',
+          liveness_completed_at: userAccount.liveness_completed_at || '',
           created_at: new Date().toISOString(), // Backend doesn't return this
           last_login: new Date().toISOString()   // Backend doesn't return this
         };
@@ -373,12 +380,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const updateProfile = async (data: Partial<User>): Promise<void> => {
     try {
       setError(null);
-      const response = await apiService.updateUserProfile(data);
+      const response = await apiService.updateUserProfile(data) as any;
 
-      if (response.success) {
+      if (response && (response.success || response._id)) {
         await refreshUser(); // Refresh to get updated data
       } else {
-        throw new Error(response.error || 'Failed to update profile');
+        throw new Error((response && response.error) || 'Failed to update profile');
       }
     } catch (error: any) {
       const errorMessage = error.message || 'Failed to update profile';
@@ -457,10 +464,14 @@ export const useAuth = (): AuthContextType => {
       isLoading: false,
       isAuthenticated: false,
       error: null,
-      login: async () => ({ success: false, error: 'Auth context unavailable' }),
-      logout: () => {},
-      refreshUser: async () => {},
-      clearError: () => {},
+      login: async () => { },
+      logout: () => { },
+      register: async () => { },
+      updateProfile: async () => { },
+      refreshUser: async () => { },
+      linkMetaMask: async () => { },
+      unlinkMetaMask: async () => { },
+      clearError: () => { },
     } as AuthContextType;
   }
   return context;

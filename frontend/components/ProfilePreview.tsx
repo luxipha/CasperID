@@ -27,6 +27,24 @@ export const ProfilePreview: React.FC<ProfilePreviewProps> = ({ onBack, data }) 
   const jobTitle = experiences[0]?.job_title || 'Member';
   const company = experiences[0]?.company_name || 'Casper Ecosystem';
 
+  const handleShare = () => {
+    if (!profile) return;
+
+    // Determine the identifier (slug) - prioritize human_id, then wallet
+    const identifier = profile.human_id || profile.wallet;
+    if (!identifier) return;
+
+    // Construct the public URL
+    const publicUrl = `${window.location.protocol}//${window.location.host}/${identifier}`;
+
+    // Copy to clipboard
+    navigator.clipboard.writeText(publicUrl).then(() => {
+      alert('Profile link copied to clipboard!');
+    }).catch(err => {
+      console.error('Failed to copy profile link:', err);
+    });
+  };
+
   return (
     <div className="w-full space-y-10 animate-in fade-in slide-in-from-right-12 duration-700 pb-20">
       {/* Immersive Top Navigation Bar */}
@@ -46,7 +64,10 @@ export const ProfilePreview: React.FC<ProfilePreviewProps> = ({ onBack, data }) 
         </div>
 
         <div className="flex items-center gap-3">
-          <button className="flex-1 md:flex-none h-12 px-6 bg-white border border-gray-100 rounded-2xl text-sm font-black text-text-main hover:bg-gray-50 transition-all flex items-center justify-center gap-2 shadow-sm">
+          <button
+            onClick={handleShare}
+            className="flex-1 md:flex-none h-12 px-6 bg-white border border-gray-100 rounded-2xl text-sm font-black text-text-main hover:bg-gray-50 transition-all flex items-center justify-center gap-2 shadow-sm active:scale-95"
+          >
             <span className="material-symbols-outlined text-[20px]">share</span>
             Share Link
           </button>

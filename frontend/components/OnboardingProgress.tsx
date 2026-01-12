@@ -56,8 +56,6 @@ export const OnboardingProgress: React.FC<OnboardingProgressProps> = ({ email, o
 
   const generateWallet = async () => {
     try {
-      console.log('🔨 Starting wallet generation...');
-
       // Import API service dynamically to avoid circular dependencies
       const { apiService } = await import('../services/api');
 
@@ -65,7 +63,6 @@ export const OnboardingProgress: React.FC<OnboardingProgressProps> = ({ email, o
       const walletResponse = await apiService.generateWallet();
 
       if (walletResponse.success) {
-        console.log('✅ Wallet generated successfully:', walletResponse.walletInfo);
         setWalletGenerated(true);
 
         // Refresh user data to get the new wallet address
@@ -83,33 +80,24 @@ export const OnboardingProgress: React.FC<OnboardingProgressProps> = ({ email, o
 
   const setupSecurityAndMintDID = async () => {
     try {
-      console.log('🏗️ Starting DID minting and security setup...');
-
       // Import API service dynamically
       const { apiService } = await import('../services/api');
 
       // Step 1: Mint DID on Casper blockchain
-      console.log('🪙 Minting DID on blockchain...');
       const didResponse = await apiService.mintDID();
 
       if (didResponse.success) {
-        console.log('✅ DID minted successfully:', didResponse.did);
-      } else {
-        console.warn('⚠️ DID minting failed, will retry later:', didResponse.error);
+        // DID minted
       }
 
       // Step 2: Generate backup recovery keys
-      console.log('🔐 Generating backup recovery keys...');
       const backupResponse = await apiService.generateBackupKeys();
 
       if (backupResponse.success) {
-        console.log('✅ Backup keys generated successfully');
-      } else {
-        console.warn('⚠️ Backup key generation failed:', backupResponse.error);
+        // Backup keys generated
       }
 
       // Step 3: Set up device fingerprinting and security preferences
-      console.log('🛡️ Setting up security preferences...');
       const securityResponse = await apiService.initializeSecurity({
         deviceFingerprint: navigator.userAgent,
         timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
@@ -118,25 +106,20 @@ export const OnboardingProgress: React.FC<OnboardingProgressProps> = ({ email, o
       });
 
       if (securityResponse.success) {
-        console.log('✅ Security setup completed');
-      } else {
-        console.warn('⚠️ Security setup failed:', securityResponse.error);
+        // Security setup completed
       }
 
       // Step 4: Record successful account creation
-      console.log('📊 Recording account creation metrics...');
       const metricsResponse = await apiService.recordAccountCreation();
 
       if (metricsResponse.success) {
-        console.log('✅ Account creation recorded');
+        // Account creation recorded
       }
 
       setDidMinted(true);
 
       // Final refresh to get updated user data
       await refreshUser();
-
-      console.log('🎉 DID minting and security setup completed successfully!');
 
     } catch (error) {
       console.error('❌ DID minting and security setup error:', error);
@@ -205,10 +188,10 @@ export const OnboardingProgress: React.FC<OnboardingProgressProps> = ({ email, o
           {steps.map((s) => (
             <div key={s.id} className="flex items-center gap-5 transition-all duration-500">
               <div className={`size-8 rounded-full flex items-center justify-center transition-all ${step > s.id
-                  ? 'bg-[#E7F9ED] text-[#28A745]'
-                  : step === s.id
-                    ? 'text-primary animate-pulse'
-                    : 'bg-white border-2 border-gray-100 text-gray-300'
+                ? 'bg-[#E7F9ED] text-[#28A745]'
+                : step === s.id
+                  ? 'text-primary animate-pulse'
+                  : 'bg-white border-2 border-gray-100 text-gray-300'
                 }`}>
                 {step > s.id ? (
                   <span className="material-symbols-outlined text-[20px] font-bold">check</span>
@@ -219,10 +202,10 @@ export const OnboardingProgress: React.FC<OnboardingProgressProps> = ({ email, o
                 )}
               </div>
               <span className={`text-[15px] font-black transition-all ${step > s.id
-                  ? 'text-[#626D85] line-through opacity-50'
-                  : step === s.id
-                    ? 'text-primary'
-                    : 'text-[#626D85] opacity-50'
+                ? 'text-[#626D85] line-through opacity-50'
+                : step === s.id
+                  ? 'text-primary'
+                  : 'text-[#626D85] opacity-50'
                 }`}>
                 {s.label}
               </span>

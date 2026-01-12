@@ -22,7 +22,7 @@ import { ImportDID } from './components/ImportDID';
 import { Profile } from './components/Profile';
 import { KYCHome } from './components/KYCHome';
 import { CredentialVault } from './components/CredentialVault';
-import { ConsentRequest } from './components/ConsentRequest';
+import { ConsentRequestModal } from './components/ui/ConsentRequestModal';
 import { AuthEntry } from './components/AuthEntry';
 import { OTPVerify } from './components/OTPVerify';
 import { OnboardingStart } from './components/OnboardingStart';
@@ -36,6 +36,7 @@ import { PublicProfileContainer } from './components/PublicProfileContainer';
 import { useAuth } from './contexts/AuthContext';
 import { ApiTest } from './components/ApiTest';
 import LandingPage from './components/landing/LandingPage';
+import AdminPage from './admin/page';
 
 const App: React.FC = () => {
   /* 
@@ -48,6 +49,7 @@ const App: React.FC = () => {
 
     // Check for explicit system routes to ignore or handle specific logic
     if (path === '/') return 'landing';
+    if (path === '/admin') return 'admin';
     if (path === '/pair' || path === '/dashboard') return 'loading';
 
     // If path has content (e.g. /seme-kure), assume it is a public profile
@@ -68,13 +70,14 @@ const App: React.FC = () => {
   const [onboardingEmail, setOnboardingEmail] = useState('');
   const [verificationId, setVerificationId] = useState('');
   const [selectedActivityId, setSelectedActivityId] = useState<string | null>(null);
+  const [isConsentModalOpen, setIsConsentModalOpen] = useState(false);
   const [showPostOnboardingBanner, setShowPostOnboardingBanner] = useState(false);
   const { user, isLoading, isAuthenticated } = useAuth();
 
   // Set initial view based on authentication and completion state
   React.useEffect(() => {
     // If we are viewing a public profile or landing page, DO NOT redirect based on auth
-    if (currentView === 'public-profile' || currentView === 'landing') return;
+    if (currentView === 'public-profile' || currentView === 'landing' || currentView === 'admin') return;
 
     if (!isLoading) {
       if (isAuthenticated && user) {
@@ -83,13 +86,10 @@ const App: React.FC = () => {
 
         if (isAuthView) {
           if (user.wallet && user.human_id) {
-            console.log('✅ Returning user with complete profile, going to dashboard');
             setCurrentView('overview');
           } else if (user.wallet) {
-            console.log('🔄 User has wallet but no human_id, going to dashboard');
             setCurrentView('overview');
           } else {
-            console.log('🔄 Authenticated user without wallet, continuing onboarding');
             setCurrentView('onboarding-progress');
           }
         }
@@ -97,9 +97,8 @@ const App: React.FC = () => {
         // New user - start with email entry
         // If they are not authenticated, they should probably be at auth-entry
         // BUT we should avoid forcing it if they are on a public route (handled at start)
-        const isDashboardView = !['landing', 'public-profile', 'auth-entry', 'otp-verify'].includes(currentView);
+        const isDashboardView = !['landing', 'public-profile', 'auth-entry', 'otp-verify', 'onboarding-start', 'onboarding-progress', 'pairing'].includes(currentView);
         if (isDashboardView) {
-          console.log('🆕 Not authenticated, redirecting to auth entry');
           setCurrentView('auth-entry');
         }
       }
@@ -174,7 +173,6 @@ const App: React.FC = () => {
               setCurrentView('otp-verify');
             }}
             onReturningUser={(email) => {
-              console.log('🔑 Returning user authenticated:', email);
               setCurrentView('overview');
             }}
             onBiometricLogin={() => setCurrentView('overview')}
@@ -243,15 +241,6 @@ const App: React.FC = () => {
         return <KYCHome />;
       case 'credentials':
         return <CredentialVault />;
-      case 'consent-demo':
-        return (
-          <ConsentRequest
-            appName="Uniswap V4"
-            appLogo="https://cryptologos.cc/logos/uniswap-uni-logo.png"
-            onApprove={() => setCurrentView('overview')}
-            onDeny={() => setCurrentView('overview')}
-          />
-        );
       case 'did-management':
         return (
           <DIDManagement
@@ -276,6 +265,8 @@ const App: React.FC = () => {
         return <ImportDID onBack={() => setCurrentView('did-management')} />;
       case 'public-profile':
         return publicProfileSlug ? <PublicProfileContainer walletOrUsername={publicProfileSlug} /> : <div>Invalid Profile</div>;
+      case 'admin':
+        return <AdminPage />;
       case 'landing':
         return <LandingPage />;
       default:
@@ -321,7 +312,7 @@ const App: React.FC = () => {
               </div>
               <div className="flex gap-3">
                 <button
-                  onClick={() => setCurrentView('consent-demo')}
+                  onClick={() => setIsConsentModalOpen(true)}
                   className="flex items-center gap-2 px-6 py-3.5 bg-white border border-gray-200 text-text-main font-bold text-sm rounded-2xl hover:bg-gray-50 transition-all shadow-sm active:scale-95"
                 >
                   <span className="material-symbols-outlined text-xl">login</span>
@@ -344,7 +335,7 @@ const App: React.FC = () => {
             {/* Tools & Platforms */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
               <div className="lg:col-span-2">
-                <ConnectedPlatforms />
+                <ConnectedPlatforms onAddNew={() => setCurrentView('integrations')} />
               </div>
               <div className="flex flex-col gap-8">
                 <ReusableTools />
@@ -365,8 +356,8 @@ const App: React.FC = () => {
     ? 'did-management'
     : currentView;
 
-  // Don't show layout chrome during onboarding, public profile view, or landing
-  const isOnboarding = currentView === 'public-profile' || currentView === 'landing' || currentView === 'auth-entry' || currentView === 'otp-verify' || currentView === 'onboarding-start' || currentView === 'onboarding-progress' || currentView === 'pairing';
+  // Don't show layout chrome during onboarding, public profile view, landing, or admin
+  const isOnboarding = currentView === 'public-profile' || currentView === 'landing' || currentView === 'admin' || currentView === 'auth-entry' || currentView === 'otp-verify' || currentView === 'onboarding-start' || currentView === 'onboarding-progress' || currentView === 'pairing';
 
   if (isOnboarding) {
     return <main className="bg-bg-light min-h-screen">{renderContent()}</main>;
@@ -393,6 +384,16 @@ const App: React.FC = () => {
 
       {/* API Connection Test (development only) */}
       <ApiTest />
+
+      {/* Consent Demo Modal */}
+      <ConsentRequestModal
+        isOpen={isConsentModalOpen}
+        onClose={() => setIsConsentModalOpen(false)}
+        appName="Uniswap V4"
+        appLogo="https://cryptologos.cc/logos/uniswap-uni-logo.png"
+        onApprove={() => console.log('Consent approved')}
+        onDeny={() => console.log('Consent denied')}
+      />
     </div>
   );
 };

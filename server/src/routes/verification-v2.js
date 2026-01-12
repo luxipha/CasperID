@@ -427,28 +427,56 @@ router.post('/layer3/submit', async (req, res) => {
 
         console.log('[FullKYC] UserAccount email:', fullUserAccount.recovery_email, 'wallet:', fullUserAccount.wallet);
 
+        // Try to load saved liveness frames from the liveness check
+        let livenessFrames = [];
+        let livenessCompletedAt = null;
+        try {
+            const fs = require('fs');
+            const path = require('path');
+            const livenessDataPath = path.join(__dirname, `../../uploads/liveness/${fullUserAccount.wallet.slice(-20)}-result.json`);
+
+            if (fs.existsSync(livenessDataPath)) {
+                const livenessData = JSON.parse(fs.readFileSync(livenessDataPath, 'utf8'));
+                livenessFrames = livenessData.frame_paths || [];
+                livenessCompletedAt = livenessData.completed_at;
+                console.log(`[FullKYC] Loaded ${livenessFrames.length} liveness frames from storage`);
+            }
+        } catch (err) {
+            console.warn('[FullKYC] Could not load liveness frames:', err.message);
+        }
+
         // Create verification request
         const verificationRequest = new VerificationRequest({
             wallet: fullUserAccount.wallet,
             email: fullUserAccount.recovery_email, // Using recovery_email field
             tier: 'layer_3',
             status: 'pending',
+
+            // Populate top-level fields for admin mapping
+            first_name: document_data.first_name,
+            last_name: document_data.last_name,
+            date_of_birth: document_data.date_of_birth,
+            phone_number: document_data.phone_number,
+            home_address: document_data.address,
+            location: document_data.address,
+
             verification_method: 'document',
-            document_type: document_data.document_type,
-            document_data: {
+
+            // Store everything in the existing 'metadata' field to prevent data loss
+            metadata: {
+                document_type: document_data.document_type,
                 document_number: document_data.document_number,
-                first_name: document_data.first_name,
-                last_name: document_data.last_name,
-                date_of_birth: document_data.date_of_birth,
                 gender: document_data.gender,
                 nationality: document_data.nationality || 'Nigerian',
-                address: document_data.address,
-                phone_number: document_data.phone_number,
-                nin: document_data.nin // Include NIN if provided
+                nin: document_data.nin,
+                liveness_verified: liveness_verified || false,
+                liveness_frames: livenessFrames,
+                liveness_completed_at: livenessCompletedAt,
+                upload_id: upload_id,
+                document_data_json: JSON.stringify(document_data) // Backup of full OCR
             },
-            liveness_verified: liveness_verified || false,
-            upload_id,
-            submitted_at: new Date()
+
+            created_at: new Date()
         });
 
         await verificationRequest.save();
@@ -637,6 +665,44 @@ router.get('/history', async (req, res) => {
     } catch (error) {
         console.error('History retrieval failed:', error);
         res.status(500).json({
+            success: false,
+            error: error.message
+        });
+    }
+});
+
+// ============================================
+// SELECTIVE DISCLOSURE (SHARE KYC)
+// ============================================
+
+/**
+ * Generate a Selective Disclosure share package
+ * POST /api/v2/verification/share
+ */
+router.post('/share', async (req, res) => {
+    try {
+        const sessionToken = req.cookies.casperid_session ||
+            req.headers.authorization?.replace('Bearer ', '');
+
+        if (!sessionToken) {
+            return res.status(401).json({
+                success: false,
+                error: 'Authentication required'
+            });
+        }
+
+        const { fields } = req.body;
+
+        const result = await verificationServiceV2.generateSharePackage(sessionToken, fields);
+
+        res.json({
+            success: true,
+            sharePackage: result
+        });
+
+    } catch (error) {
+        console.error('Selective Disclosure failed:', error);
+        res.status(400).json({
             success: false,
             error: error.message
         });

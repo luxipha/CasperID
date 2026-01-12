@@ -128,23 +128,13 @@ async function mintCredential(request) {
             email: request.email,
             phone_number: request.phone_number,
 
-            // Format address properly if it's an object
-            ...(request.home_address && typeof request.home_address === 'object' ? {
-                address: {
-                    street: request.home_address.street || '',
-                    city: request.home_address.city || '',
-                    state: request.home_address.state || '',
-                    postal_code: request.home_address.postal_code || '',
-                    country: request.home_address.country || ''
-                }
-            } : request.home_address ? {
-                address: {
-                    street: request.home_address,
-                    city: '',
-                    state: '',
-                    postal_code: '',
-                    country: ''
-                }
+            // Format address properly - store as string (as submitted from KYC)
+            ...(request.home_address ? {
+                address: typeof request.home_address === 'string'
+                    ? request.home_address
+                    : (request.home_address.street || '') +
+                    (request.home_address.city ? ', ' + request.home_address.city : '') +
+                    (request.home_address.country ? ', ' + request.home_address.country : '')
             } : {}),
 
             // Set verification status
