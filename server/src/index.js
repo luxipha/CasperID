@@ -30,6 +30,9 @@ app.use(cors({
     origin: [
         'http://localhost:3000',
         'http://localhost:3002',
+        'https://casper-id.netlify.app',
+        'https://casperid.com',
+        'https://www.casperid.com',
         process.env.FRONTEND_URL
     ].filter(Boolean),
     credentials: true
