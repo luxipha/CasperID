@@ -6,9 +6,17 @@ node_modules/
 # Testing
 /coverage
 
-# Next.js
+# Next.js (removed from root, only frontend/ and server/ are used)
 /.next/
 /out/
+/app/
+/components/
+/public/
+/next.config.js
+/package.json
+/package-lock.json
+/tsconfig.json
+/components.json
 
 # Production
 /build

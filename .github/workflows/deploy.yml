@@ -72,6 +72,13 @@ jobs:
             APPLICATION_ID=${{ secrets.APPLICATION_ID }}
             ACCESS_KEY=${{ secrets.ACCESS_KEY }}
             SECRET_KEY=${{ secrets.SECRET_KEY }}
+            WEBAUTHN_RP_ID=${{ secrets.WEBAUTHN_RP_ID }}
+            WEBAUTHN_RP_NAME=${{ secrets.WEBAUTHN_RP_NAME }}
+            WEBAUTHN_ORIGIN=${{ secrets.WEBAUTHN_ORIGIN }}
+            SUPPORT_EMAIL=${{ secrets.SUPPORT_EMAIL }}
+            SUPPORT_EMAIL_PASSWORD=${{ secrets.SUPPORT_EMAIL_PASSWORD }}
+            SUPPORT_EMAIL_HOST=${{ secrets.SUPPORT_EMAIL_HOST }}
+            SUPPORT_EMAIL_PORT=${{ secrets.SUPPORT_EMAIL_PORT }}
 
       - name: Show Output
         run: echo ${{ steps.deploy.outputs.url }}

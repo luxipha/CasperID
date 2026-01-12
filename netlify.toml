@@ -1,58 +1,52 @@
+# Netlify configuration for Vite React frontend
+# Only builds when frontend/ directory changes
+
 [build]
-  base = "."
-  command = "npm run build"
-  ignore = "git diff --quiet $CACHED_COMMIT_REF $COMMIT_REF -- . ':!server/'"
+  base = "frontend"
+  command = "npm install && npm run build"
+  publish = "dist"
+  ignore = "git diff --quiet $CACHED_COMMIT_REF $COMMIT_REF frontend/"
 
 [build.environment]
   NODE_VERSION = "18"
-  NPM_VERSION = "9"
-  NETLIFY_USE_YARN = "false"
 
-[[plugins]]
-  package = "@netlify/plugin-nextjs"
-  
-# Compression and caching for all static assets
+# Security headers
 [[headers]]
   for = "/*"
   [headers.values]
     X-Frame-Options = "DENY"
     X-XSS-Protection = "1; mode=block"
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "strict-origin-when-cross-origin"
 
-# Cache static assets aggressively  
+# Cache static assets aggressively
 [[headers]]
   for = "/logos/*"
   [headers.values]
-    cache-control = "public, max-age=31536000, immutable"
-    
+    Cache-Control = "public, max-age=31536000, immutable"
+
 [[headers]]
   for = "/images/*"
   [headers.values]
-    cache-control = "public, max-age=31536000, immutable"
-    
+    Cache-Control = "public, max-age=31536000, immutable"
+
 [[headers]]
-  for = "/_next/static/*"
+  for = "/id-cards/*"
   [headers.values]
-    cache-control = "public, max-age=31536000, immutable"
+    Cache-Control = "public, max-age=31536000, immutable"
 
-# Enable compression for text files
 [[headers]]
-  for = "*.js"
+  for = "/assets/*"
   [headers.values]
-    cache-control = "public, max-age=31536000"
-    
+    Cache-Control = "public, max-age=31536000, immutable"
+
+# Cache JavaScript and CSS bundles
 [[headers]]
-  for = "*.css"
+  for = "/*.js"
   [headers.values]
-    cache-control = "public, max-age=31536000"
+    Cache-Control = "public, max-age=31536000, immutable"
 
-[context.production]
-  command = "npm run build"
-
-[context.deploy-preview]
-  command = "npm run build"
-
-[context.branch-deploy]
-  command = "npm run build"
-
-# Redirects for Next.js App Router - removed problematic catch-all redirect
-# The Next.js plugin will handle 404s automatically
+[[headers]]
+  for = "/*.css"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
