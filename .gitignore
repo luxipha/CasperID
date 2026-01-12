@@ -68,3 +68,4 @@ secrets/
 /scripts
 /keys
 github-actions-key.json
+/frontend/node_modules
