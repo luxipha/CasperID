@@ -89,24 +89,6 @@ app.get('/health', (req, res) => {
     });
 });
 
-// Debug endpoint to check WebAuthn configuration (for troubleshooting)
-app.get('/debug/webauthn-config', (req, res) => {
-    res.json({
-        status: 'ok',
-        webauthn: {
-            rpID: process.env.WEBAUTHN_RP_ID || 'localhost (default)',
-            rpName: process.env.WEBAUTHN_RP_NAME || 'CasperID (default)',
-            origin: process.env.WEBAUTHN_ORIGIN || 'http://localhost:3000 (default)',
-            challengeTimeout: process.env.WEBAUTHN_CHALLENGE_TIMEOUT || '60000 (default)'
-        },
-        environment: {
-            nodeEnv: process.env.NODE_ENV || 'development',
-            frontendUrl: process.env.FRONTEND_URL || 'not set'
-        },
-        note: 'For production, WEBAUTHN_RP_ID should be "casperid.com" and WEBAUTHN_ORIGIN should be "https://casperid.com"'
-    });
-});
-
 // Import routes
 const verificationRoutes = require('./routes/verification');
 const verificationV2Routes = require('./routes/verification-v2');

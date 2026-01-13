@@ -5,7 +5,8 @@ import Logo from "../Logo";
 import ScanShowcase from "../ScanShowcase";
 import "./LandingPage.css";
 import RoadmapSection from "./RoadmapSection";
-import ChatAssistant from "./ChatAssistant";
+// ChatAssistant disabled - using Crisp chatbot instead
+// import ChatAssistant from "./ChatAssistant";
 import OldVsNewSection from "./OldVsNewSection";
 
 export default function LandingPage() {
@@ -370,7 +371,8 @@ export default function LandingPage() {
         </a>
       </section>
       <FooterMarketing className="scroll-mt-24" />
-      <ChatAssistant />
+      {/* ChatAssistant disabled - using Crisp chatbot instead */}
+      {/* <ChatAssistant /> */}
     </div>
   );
 }

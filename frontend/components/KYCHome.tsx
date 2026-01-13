@@ -62,7 +62,7 @@ export const KYCHome: React.FC = () => {
       } else if (user.tier === 'layer_2') {
         // Check API for pending Layer 3 upgrade
         try {
-          const data = await apiService.get(`/identity-status?wallet=${encodeURIComponent(user.wallet)}`);
+          const data = await apiService.get(`/api/identity-status?wallet=${encodeURIComponent(user.wallet)}`);
           console.log('[KYCHome] Identity status:', data);
 
           // Check if user has pending Layer 3 upgrade
