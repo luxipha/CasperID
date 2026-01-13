@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { FaceMesh } from '@mediapipe/face_mesh';
 import { Camera } from '@mediapipe/camera_utils';
+import { apiService } from '../services/api';
 
 interface L3LivenessCheckProps {
     onComplete?: () => void;
@@ -244,16 +245,10 @@ export const L3LivenessCheck: React.FC<L3LivenessCheckProps> = ({ onComplete }) 
 
             console.log(`[L3Liveness] Submitting ${frames.length} frames to API`);
 
-            const response = await fetch('/api/ai/verify-liveness-sequence', {
-                method: 'POST',
-                credentials: 'include',
-                body: formData,
-            });
-
-            const result = await response.json();
+            const result = await apiService.post('/api/ai/verify-liveness-sequence', formData);
             console.log('[L3Liveness] API response:', result);
 
-            if (response.ok && result.passed) {
+            if (result.passed) {
                 // Layer 3 doesn't change user status, so no need to refresh
                 // Call onComplete immediately to prevent App.tsx from routing to dashboard
                 setState("SUCCESS");

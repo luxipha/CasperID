@@ -4,6 +4,7 @@ import { FaceMesh } from '@mediapipe/face_mesh';
 import { Camera } from '@mediapipe/camera_utils';
 import { LivenessSuccess } from './LivenessSuccess';
 import { VerificationProgress } from './VerificationProgress';
+import { apiService } from '../services/api';
 
 interface LivenessCheckProps {
   onBack?: () => void;
@@ -254,24 +255,15 @@ export const LivenessCheck: React.FC<LivenessCheckProps> = ({ onBack, onComplete
       formData.append('totalFrames', frames.length.toString());
       formData.append('stepSequence', JSON.stringify(['blink', 'turn_left']));
 
-      const response = await fetch('/api/ai/verify-liveness-sequence', {
-        method: 'POST',
-        credentials: 'include',
-        body: formData,
-      });
+      const result = await apiService.post('/api/ai/verify-liveness-sequence', formData);
 
-      if (response.ok) {
-        const result = await response.json();
-        if (result.passed) {
-          await refreshUser();
-          setIsApiComplete(true); // Signal progress component to finish
-        } else {
-          setGuidance("Verification failed. Please try again.");
-          setState("POSITIONING");
-          setIsApiComplete(false);
-        }
+      if (result.passed) {
+        await refreshUser();
+        setIsApiComplete(true); // Signal progress component to finish
       } else {
-        throw new Error('Verification failed');
+        setGuidance("Verification failed. Please try again.");
+        setState("POSITIONING");
+        setIsApiComplete(false);
       }
     } catch (error) {
       console.error('Liveness error:', error);
