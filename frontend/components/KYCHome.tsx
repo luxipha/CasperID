@@ -1,6 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
+import { apiService } from '../services/api';
 import { LivenessCheck } from './LivenessCheck';
 import { L3LivenessCheck } from './L3LivenessCheck';
 import { LivenessSuccess } from './LivenessSuccess';
