@@ -1,7 +1,83 @@
 
-import React from 'react';
+import React, { useState, useEffect, useRef } from 'react';
+import { apiService } from '../services/api';
+import { useAuth } from '../contexts/AuthContext';
+
+// Get network name from environment
+const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+
+interface Notification {
+  _id: string;
+  type: string;
+  title: string;
+  message: string;
+  read: boolean;
+  createdAt: string;
+}
 
 export const Header: React.FC = () => {
+  const [serverOnline, setServerOnline] = useState<boolean | null>(null);
+  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [showDropdown, setShowDropdown] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+  const { isAuthenticated } = useAuth();
+
+  // Check server status on mount
+  useEffect(() => {
+    const checkServer = async () => {
+      try {
+        const response = await fetch(`${apiUrl}/health`, { method: 'GET' });
+        setServerOnline(response.ok);
+      } catch {
+        setServerOnline(false);
+      }
+    };
+    checkServer();
+    const interval = setInterval(checkServer, 30000);
+    return () => clearInterval(interval);
+  }, []);
+
+  // Fetch notifications when authenticated
+  useEffect(() => {
+    const fetchNotifications = async () => {
+      if (!isAuthenticated) return;
+      try {
+        const response = await apiService.getNotifications();
+        if (response.success && response.notifications) {
+          setNotifications(response.notifications);
+        }
+      } catch (error) {
+        // Silently fail for notifications
+      }
+    };
+    fetchNotifications();
+    // Refresh every 60 seconds
+    const interval = setInterval(fetchNotifications, 60000);
+    return () => clearInterval(interval);
+  }, [isAuthenticated]);
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setShowDropdown(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const handleMarkAsRead = async (id: string) => {
+    try {
+      await apiService.markNotificationAsRead(id);
+      setNotifications(prev => prev.filter(n => n._id !== id));
+    } catch (error) {
+      console.error('Failed to mark notification as read:', error);
+    }
+  };
+
+  const unreadCount = notifications.length;
+
   return (
     <header className="h-20 bg-white/80 backdrop-blur-md border-b border-border-color flex items-center justify-between px-8 sticky top-0 z-30">
       <div className="flex items-center gap-4 lg:hidden">
@@ -16,8 +92,8 @@ export const Header: React.FC = () => {
           <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
             <span className="material-symbols-outlined text-text-sub group-focus-within:text-primary transition-colors">search</span>
           </div>
-          <input 
-            type="text" 
+          <input
+            type="text"
             className="block w-full pl-10 pr-3 py-2.5 border-none rounded-xl leading-5 bg-bg-light text-text-main placeholder-text-sub focus:outline-none focus:ring-2 focus:ring-primary/20 focus:bg-white transition-all sm:text-sm"
             placeholder="Search connected apps or credentials..."
           />
@@ -25,17 +101,88 @@ export const Header: React.FC = () => {
       </div>
 
       <div className="flex items-center gap-4">
-        <div className="hidden sm:flex items-center px-3 py-1.5 bg-green-50 text-green-700 rounded-lg text-xs font-bold border border-green-100">
-          <div className="w-2 h-2 bg-green-500 rounded-full mr-2 animate-pulse"></div>
-          CasperID Mainnet
+        {/* Server Status Indicator */}
+        <div className={`hidden sm:flex items-center px-3 py-1.5 rounded-lg text-xs font-bold border ${serverOnline === null
+          ? 'bg-gray-50 text-gray-500 border-gray-100'
+          : serverOnline
+            ? 'bg-green-50 text-green-700 border-green-100'
+            : 'bg-red-50 text-red-700 border-red-100'
+          }`}>
+          <div className={`w-2 h-2 rounded-full mr-2 ${serverOnline === null
+            ? 'bg-gray-400'
+            : serverOnline
+              ? 'bg-green-500 animate-pulse'
+              : 'bg-red-500'
+            }`}></div>
+          {serverOnline === null ? 'Checking...' : serverOnline ? 'Online' : 'Offline'}
         </div>
-        <button className="relative p-2 text-text-sub hover:bg-gray-100 rounded-full transition-colors">
-          <span className="material-symbols-outlined">notifications</span>
-          <span className="absolute top-2.5 right-2.5 w-2 h-2 bg-alerts rounded-full border-2 border-white"></span>
-        </button>
-        <button className="flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-xl font-semibold shadow-lg shadow-primary/25 hover:bg-primary/90 transition-all active:scale-95">
-          <span className="material-symbols-outlined text-[20px]">login</span>
-          <span className="text-sm">Connect App</span>
+
+        {/* Network Badge */}
+        <div className="hidden sm:flex items-center px-3 py-1.5 bg-purple-50 text-purple-700 rounded-lg text-xs font-bold border border-purple-100">
+          Testnet
+        </div>
+
+        {/* Notifications */}
+        <div className="relative" ref={dropdownRef}>
+          <button
+            onClick={() => setShowDropdown(!showDropdown)}
+            className="relative p-2 text-text-sub hover:bg-gray-100 rounded-full transition-colors"
+          >
+            <span className="material-symbols-outlined">notifications</span>
+            {unreadCount > 0 && (
+              <span className="absolute top-1 right-1 min-w-[18px] h-[18px] bg-alerts text-white text-[10px] font-bold rounded-full flex items-center justify-center border-2 border-white">
+                {unreadCount > 9 ? '9+' : unreadCount}
+              </span>
+            )}
+          </button>
+
+          {/* Notification Dropdown */}
+          {showDropdown && (
+            <div className="absolute right-0 mt-2 w-80 bg-white rounded-2xl shadow-2xl border border-gray-100 overflow-hidden z-50 animate-in fade-in slide-in-from-top-2 duration-200">
+              <div className="p-4 border-b border-gray-100 flex justify-between items-center">
+                <h3 className="font-bold text-text-main">Notifications</h3>
+                {unreadCount > 0 && (
+                  <span className="text-xs text-text-sub">{unreadCount} unread</span>
+                )}
+              </div>
+              <div className="max-h-80 overflow-y-auto">
+                {notifications.length === 0 ? (
+                  <div className="p-8 text-center">
+                    <span className="material-symbols-outlined text-4xl text-gray-300 mb-2">notifications_off</span>
+                    <p className="text-text-sub text-sm">No new notifications</p>
+                  </div>
+                ) : (
+                  notifications.map((notif) => (
+                    <div
+                      key={notif._id}
+                      className="p-4 border-b border-gray-50 hover:bg-gray-50 transition-colors cursor-pointer"
+                      onClick={() => handleMarkAsRead(notif._id)}
+                    >
+                      <div className="flex justify-between items-start gap-3">
+                        <div className="flex-1">
+                          <p className="font-semibold text-sm text-text-main">{notif.title}</p>
+                          <p className="text-xs text-text-sub mt-1 line-clamp-2">{notif.message}</p>
+                          <p className="text-[10px] text-text-sub mt-2">
+                            {new Date(notif.createdAt).toLocaleDateString()}
+                          </p>
+                        </div>
+                        <span className="material-symbols-outlined text-sm text-primary">mark_email_read</span>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Add to Chrome button (muted/disabled) */}
+        <button
+          disabled
+          className="flex items-center gap-2 px-4 py-2 bg-gray-200 text-gray-400 rounded-xl font-semibold cursor-not-allowed"
+        >
+          <span className="material-symbols-outlined text-[20px]">extension</span>
+          <span className="text-sm">Add to Chrome</span>
         </button>
       </div>
     </header>

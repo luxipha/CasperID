@@ -34,7 +34,8 @@ import { VerificationLevelBanner } from './components/VerificationLevelBanner';
 import { MobileLinkingPage } from './components/mobile/mobileLinking';
 import { PublicProfileContainer } from './components/PublicProfileContainer';
 import { useAuth } from './contexts/AuthContext';
-import { ApiTest } from './components/ApiTest';
+// ApiTest removed - was for debugging
+// import { ApiTest } from './components/ApiTest';
 import LandingPage from './components/landing/LandingPage';
 import AdminPage from './admin/page';
 
@@ -339,7 +340,7 @@ const App: React.FC = () => {
               </div>
               <div className="flex flex-col gap-8">
                 <ReusableTools />
-                <HumanFirstIdentity />
+                <HumanFirstIdentity onNavigate={setCurrentView} />
               </div>
             </div>
 
@@ -382,8 +383,7 @@ const App: React.FC = () => {
 
       <BottomNav currentView={currentView} onNavigate={setCurrentView} />
 
-      {/* API Connection Test (development only) */}
-      <ApiTest />
+      {/* ApiTest removed - was for debugging */}
 
       {/* Consent Demo Modal */}
       <ConsentRequestModal

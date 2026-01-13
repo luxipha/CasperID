@@ -95,15 +95,16 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       setIsLoading(true);
       setError(null);
 
-      console.log('🔍 Auth initialization started');
-      console.log('🔍 apiService.isAuthenticated():', apiService.isAuthenticated());
+      // Debug logs removed for production
+      // console.log('🔍 Auth initialization started');
+      // console.log('🔍 apiService.isAuthenticated():', apiService.isAuthenticated());
 
       // Check if user has valid token
       if (apiService.isAuthenticated()) {
-        console.log('🔍 Found stored token, attempting to refresh user...');
+        // console.log('🔍 Found stored token, attempting to refresh user...');
         await refreshUser();
       } else {
-        console.log('🔍 No valid token found, setting user to null');
+        // console.log('🔍 No valid token found, setting user to null');
         setUser(null);
       }
     } catch (error) {
@@ -113,7 +114,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       setUser(null);
     } finally {
       setIsLoading(false);
-      console.log('🔍 Auth initialization complete, isLoading set to false');
+      // console.log('🔍 Auth initialization complete, isLoading set to false');
     }
   };
 
@@ -129,11 +130,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         let humanId;
         if (userAccount.wallet) {
           try {
-            console.log('🔍 Fetching human-id for wallet:', userAccount.wallet);
+            // console.log('🔍 Fetching human-id for wallet:', userAccount.wallet);
             const humanIdResponse = await apiService.getHumanId(userAccount.wallet);
-            console.log('🔍 Human-id API response:', humanIdResponse);
+            // console.log('🔍 Human-id API response:', humanIdResponse);
             humanId = humanIdResponse.success ? humanIdResponse.humanId : null;
-            console.log('🔍 Final humanId:', humanId);
+            // console.log('🔍 Final humanId:', humanId);
           } catch (error) {
             console.warn('Failed to fetch human-id:', error);
           }
@@ -156,7 +157,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
         setUser(user);
         setError(null);
-        console.log('✅ User session restored:', user);
+        // console.log('✅ User session restored:', user);
       } else {
         throw new Error('No valid session');
       }
@@ -174,11 +175,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       setError(null);
 
       // Step 1: Initialize passkey registration
-      console.log('🔄 Calling passkeyRegisterInit with:', { email, displayName });
+      // console.log('🔄 Calling passkeyRegisterInit with:', { email, displayName });
 
       const initResponse = await apiService.passkeyRegisterInit(email, displayName);
 
-      console.log('📨 Registration init response:', initResponse);
+      // console.log('📨 Registration init response:', initResponse);
 
       if (!initResponse.success) {
         console.error('❌ Registration init failed:', initResponse);
@@ -192,7 +193,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
       // Step 2: Create WebAuthn credential
       const credentialCreationOptions = initResponse.options;
-      console.log('🔑 Credential creation options:', credentialCreationOptions);
+      // console.log('🔑 Credential creation options:', credentialCreationOptions);
 
       // Convert base64url to ArrayBuffer for WebAuthn API
       const challenge = base64urlToArrayBuffer(credentialCreationOptions.challenge);
@@ -217,15 +218,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       // Step 3: Send credential to server for verification
       const response = credential.response as AuthenticatorAttestationResponse;
 
-      console.log('🔐 Raw credential from browser:', {
-        id: credential.id,
-        rawId: credential.rawId,
-        type: credential.type,
-        response: {
-          attestationObject: response.attestationObject,
-          clientDataJSON: response.clientDataJSON
-        }
-      });
+      // Debug logs removed for production
+      // console.log('🔐 Raw credential from browser:', { ... });
 
       // Format credential for SimpleWebAuthn library - exact format it expects
       const formattedCredential = {
@@ -262,7 +256,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         }
       };
 
-      console.log('📤 Sending registration data:', JSON.stringify(registrationData, null, 2));
+      // console.log('📤 Sending registration data:', JSON.stringify(registrationData, null, 2));
 
       const verifyResponse = await apiService.passkeyRegisterComplete(registrationData);
 
@@ -271,12 +265,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       }
 
       // Registration successful - user is now logged in!
-      console.log('✅ Registration completed and user logged in!', verifyResponse);
+      // console.log('✅ Registration completed and user logged in!', verifyResponse);
 
       // User is now logged in - refresh user data and continue to onboarding
       await refreshUser();
 
-      console.log('🚀 Ready to show OnboardingProgress component!');
+      // console.log('🚀 Ready to show OnboardingProgress component!');
 
     } catch (error: any) {
       console.error('Registration failed:', error);

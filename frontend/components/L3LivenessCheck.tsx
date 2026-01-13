@@ -30,9 +30,16 @@ export const L3LivenessCheck: React.FC<L3LivenessCheckProps> = ({ onComplete }) 
         positionTimer: 0,
         blinkCount: 0,
         isBlinking: false,
-        frames: [] as string[],
+        frames: [] as Blob[],
         lastFrameTime: 0
     });
+
+    // Async frame capture helper (non-blocking)
+    const captureFrame = (canvas: HTMLCanvasElement): Promise<Blob | null> => {
+        return new Promise((resolve) => {
+            canvas.toBlob((blob) => resolve(blob), 'image/jpeg', 0.5);
+        });
+    };
 
     useEffect(() => {
         let camera: any = null;
@@ -124,9 +131,14 @@ export const L3LivenessCheck: React.FC<L3LivenessCheckProps> = ({ onComplete }) 
                             st.isBlinking = false;
                             st.blinkCount++;
 
+                            // Capture frame when blink completes (async, non-blocking)
                             if (canvasRef.current && st.frames.length < 15) {
-                                st.frames.push(canvasRef.current.toDataURL('image/jpeg', 0.6));
-                                console.log(`[L3Liveness] Captured frame ${st.frames.length} after blink ${st.blinkCount}`);
+                                captureFrame(canvasRef.current).then((blob) => {
+                                    if (blob) {
+                                        st.frames.push(blob);
+                                        console.log(`[L3Liveness] Captured frame ${st.frames.length} after blink ${st.blinkCount}`);
+                                    }
+                                });
                             }
 
                             setProgress((st.blinkCount / 3) * 100);
@@ -147,19 +159,32 @@ export const L3LivenessCheck: React.FC<L3LivenessCheckProps> = ({ onComplete }) 
                     const faceWidth = rightCheek.x - leftCheek.x;
                     const nosePos = (nose.x - leftCheek.x) / faceWidth;
 
-                    if (now - st.lastFrameTime > 300 && st.frames.length < 15) {
-                        st.frames.push(canvasRef.current?.toDataURL('image/jpeg', 0.6) || "");
+                    // Capture frames periodically during head turn (async, non-blocking)
+                    if (now - st.lastFrameTime > 300 && st.frames.length < 15 && canvasRef.current) {
                         st.lastFrameTime = now;
-                        console.log(`[L3Liveness] Captured frame ${st.frames.length} during head turn (nosePos: ${nosePos.toFixed(2)})`);
+                        captureFrame(canvasRef.current).then((blob) => {
+                            if (blob) {
+                                st.frames.push(blob);
+                                console.log(`[L3Liveness] Captured frame ${st.frames.length} during head turn (nosePos: ${nosePos.toFixed(2)})`);
+                            }
+                        });
                     }
 
                     if (nosePos < 0.3) {
+                        // Head turned left sufficiently - capture final frame and submit
                         if (canvasRef.current && st.frames.length < 15) {
-                            st.frames.push(canvasRef.current.toDataURL('image/jpeg', 0.6));
-                            console.log(`[L3Liveness] Captured final frame ${st.frames.length} at full left turn`);
+                            captureFrame(canvasRef.current).then((blob) => {
+                                if (blob) {
+                                    st.frames.push(blob);
+                                    console.log(`[L3Liveness] Captured final frame ${st.frames.length} at full left turn`);
+                                }
+                                console.log(`[L3Liveness] Submitting ${st.frames.length} frames for verification`);
+                                submitLiveness(st.frames);
+                            });
+                        } else {
+                            console.log(`[L3Liveness] Submitting ${st.frames.length} frames for verification`);
+                            submitLiveness(st.frames);
                         }
-                        console.log(`[L3Liveness] Submitting ${st.frames.length} frames for verification`);
-                        submitLiveness(st.frames);
                     }
                 }
             }
@@ -211,7 +236,7 @@ export const L3LivenessCheck: React.FC<L3LivenessCheckProps> = ({ onComplete }) 
         };
     }, [state, challenge]);
 
-    const submitLiveness = async (frames: string[]) => {
+    const submitLiveness = async (frames: Blob[]) => {
         if (state === "VERIFYING") return; // Prevent double submission
 
         console.log(`[L3Liveness] submitLiveness called with ${frames.length} frames`);
@@ -228,15 +253,9 @@ export const L3LivenessCheck: React.FC<L3LivenessCheckProps> = ({ onComplete }) 
             setState("VERIFYING");
             setGuidance("Verifying liveness...");
 
+            // Build FormData directly from Blobs (no conversion needed)
             const formData = new FormData();
-            frames.forEach((frame, index) => {
-                const byteString = atob(frame.split(',')[1]);
-                const ab = new ArrayBuffer(byteString.length);
-                const ia = new Uint8Array(ab);
-                for (let i = 0; i < byteString.length; i++) {
-                    ia[i] = byteString.charCodeAt(i);
-                }
-                const blob = new Blob([ab], { type: 'image/jpeg' });
+            frames.forEach((blob, index) => {
                 formData.append(`frame_${index}`, blob, `frame_${index}.jpg`);
             });
             formData.append('totalFrames', frames.length.toString());

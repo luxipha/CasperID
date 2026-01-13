@@ -33,9 +33,16 @@ export const LivenessCheck: React.FC<LivenessCheckProps> = ({ onBack, onComplete
     positionTimer: 0,
     blinkCount: 0,
     isBlinking: false,
-    frames: [] as string[],
+    frames: [] as Blob[],
     lastFrameTime: 0
   });
+
+  // Async frame capture helper (non-blocking)
+  const captureFrame = (canvas: HTMLCanvasElement): Promise<Blob | null> => {
+    return new Promise((resolve) => {
+      canvas.toBlob((blob) => resolve(blob), 'image/jpeg', 0.5);
+    });
+  };
 
   useEffect(() => {
     let camera: any = null;
@@ -134,10 +141,14 @@ export const LivenessCheck: React.FC<LivenessCheckProps> = ({ onBack, onComplete
               st.isBlinking = false;
               st.blinkCount++;
 
-              // Capture frame when blink completes
+              // Capture frame when blink completes (async, non-blocking)
               if (canvasRef.current && st.frames.length < 15) {
-                st.frames.push(canvasRef.current.toDataURL('image/jpeg', 0.6));
-                console.log(`[Liveness] Captured frame ${st.frames.length} after blink ${st.blinkCount}`);
+                captureFrame(canvasRef.current).then((blob) => {
+                  if (blob) {
+                    st.frames.push(blob);
+                    console.log(`[Liveness] Captured frame ${st.frames.length} after blink ${st.blinkCount}`);
+                  }
+                });
               }
 
               setProgress((st.blinkCount / 3) * 100);
@@ -160,20 +171,30 @@ export const LivenessCheck: React.FC<LivenessCheckProps> = ({ onBack, onComplete
           // Nose percent from left cheek (0.0 to 1.0)
           const nosePos = (nose.x - leftCheek.x) / faceWidth;
 
-          // Capture frames periodically during head turn to show movement
-          if (now - st.lastFrameTime > 300 && st.frames.length < 15) {
-            st.frames.push(canvasRef.current?.toDataURL('image/jpeg', 0.6) || "");
+          // Capture frames periodically during head turn (async, non-blocking)
+          if (now - st.lastFrameTime > 300 && st.frames.length < 15 && canvasRef.current) {
             st.lastFrameTime = now;
-            console.log(`[Liveness] Captured frame ${st.frames.length} during head turn (nosePos: ${nosePos.toFixed(2)})`);
+            captureFrame(canvasRef.current).then((blob) => {
+              if (blob) {
+                st.frames.push(blob);
+                console.log(`[Liveness] Captured frame ${st.frames.length} during head turn (nosePos: ${nosePos.toFixed(2)})`);
+              }
+            });
           }
 
           if (nosePos < 0.3) {
             // Head turned left sufficiently - capture final frame and submit
             if (canvasRef.current && st.frames.length < 15) {
-              st.frames.push(canvasRef.current.toDataURL('image/jpeg', 0.6));
-              console.log(`[Liveness] Captured final frame ${st.frames.length} at full left turn`);
+              captureFrame(canvasRef.current).then((blob) => {
+                if (blob) {
+                  st.frames.push(blob);
+                  console.log(`[Liveness] Captured final frame ${st.frames.length} at full left turn`);
+                }
+                submitLiveness(st.frames);
+              });
+            } else {
+              submitLiveness(st.frames);
             }
-            submitLiveness(st.frames);
           }
         }
       }
@@ -231,7 +252,7 @@ export const LivenessCheck: React.FC<LivenessCheckProps> = ({ onBack, onComplete
     };
   }, [state, challenge]);
 
-  const submitLiveness = async (frames: string[]) => {
+  const submitLiveness = async (frames: Blob[]) => {
     // Prevent double submission
     if (state === "MINTING") return;
 
@@ -239,16 +260,9 @@ export const LivenessCheck: React.FC<LivenessCheckProps> = ({ onBack, onComplete
       setState("MINTING"); // Transition to progress UI
       setGuidance("Verifying & Minting...");
 
-      // Convert frames and submit to backend
+      // Build FormData directly from Blobs (no conversion needed)
       const formData = new FormData();
-      frames.forEach((frame, index) => {
-        const byteString = atob(frame.split(',')[1]);
-        const ab = new ArrayBuffer(byteString.length);
-        const ia = new Uint8Array(ab);
-        for (let i = 0; i < byteString.length; i++) {
-          ia[i] = byteString.charCodeAt(i);
-        }
-        const blob = new Blob([ab], { type: 'image/jpeg' });
+      frames.forEach((blob, index) => {
         formData.append(`frame_${index}`, blob, `frame_${index}.jpg`);
       });
       formData.append('totalFrames', frames.length.toString());

@@ -1,36 +1,41 @@
 
 import React, { useState } from 'react';
 import { SelectiveDisclosureModal } from './SelectiveDisclosureModal';
-
-const tools = [
-  {
-    id: 'liveness',
-    title: 'Liveness Check',
-    description: 'Completed & Verified',
-    icon: 'face_retouching_natural',
-    color: 'bg-[#EEF4FF] text-[#4C82FB]',
-    verified: true
-  },
-  {
-    id: 'share',
-    title: 'Share KYC Data',
-    description: 'Selectively reveal info',
-    icon: 'share',
-    color: 'bg-[#F5EEFF] text-[#8652E2]',
-    verified: false
-  },
-  {
-    id: 'proof',
-    title: 'Generate Proof',
-    description: 'ZK-proof for age/location',
-    icon: 'vpn_key',
-    color: 'bg-[#FFF4EB] text-[#FF8A00]',
-    verified: false
-  },
-];
+import { useAuth } from '../contexts/AuthContext';
 
 export const ReusableTools: React.FC = () => {
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
+  const { user } = useAuth();
+
+  // Determine liveness status from real user data
+  const livenessCompleted = user?.liveness_completed_at || (user?.tier === 'layer_2' || user?.tier === 'layer_3');
+
+  const tools = [
+    {
+      id: 'liveness',
+      title: 'Liveness Check',
+      description: livenessCompleted ? 'Completed & Verified' : 'Not Completed',
+      icon: 'face_retouching_natural',
+      color: livenessCompleted ? 'bg-[#EEF4FF] text-[#4C82FB]' : 'bg-gray-100 text-gray-400',
+      verified: livenessCompleted
+    },
+    {
+      id: 'share',
+      title: 'Share KYC Data',
+      description: 'Selectively reveal info',
+      icon: 'share',
+      color: 'bg-[#F5EEFF] text-[#8652E2]',
+      verified: false
+    },
+    {
+      id: 'proof',
+      title: 'Generate Proof',
+      description: 'ZK-proof for age/location',
+      icon: 'vpn_key',
+      color: 'bg-[#FFF4EB] text-[#FF8A00]',
+      verified: false
+    },
+  ];
 
   const handleToolClick = (toolId: string) => {
     if (toolId === 'share') {

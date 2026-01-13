@@ -1009,6 +1009,33 @@ class ApiService {
     }
   }
 
+  async getNotifications(): Promise<ApiResponse> {
+    try {
+      const response = await this.client.get('/api/notifications');
+      return response.data;
+    } catch (error) {
+      throw this.handleError(error);
+    }
+  }
+
+  async markNotificationAsRead(id: string): Promise<ApiResponse> {
+    try {
+      const response = await this.client.post(`/api/notifications/${id}/read`);
+      return response.data;
+    } catch (error) {
+      throw this.handleError(error);
+    }
+  }
+
+  async getAccessLogs(): Promise<ApiResponse> {
+    try {
+      const response = await this.client.get('/api/notifications/access-logs');
+      return response.data;
+    } catch (error) {
+      throw this.handleError(error);
+    }
+  }
+
   // ============================================
   // ERROR HANDLING
   // ============================================
