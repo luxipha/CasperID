@@ -17,7 +17,6 @@ async function checkExistingName(walletAddress) {
         // const client = new CasperClient(process.env.CASPER_NODE_URL);
         // const result = await client.queryState(...);
 
-        console.log(`[CNS] Checking name for ${walletAddress}`);
 
         // Mock: Return null for now (no existing name)
         return null;
@@ -61,7 +60,6 @@ function generateSuggestedName(walletAddress, profileData = {}) {
 async function checkNameAvailability(name) {
     try {
         // TODO: Query actual CNS contract
-        console.log(`[CNS] Checking availability for ${name}.cspr`);
 
         // Mock: Always return true for now
         return true;
@@ -79,7 +77,6 @@ async function checkNameAvailability(name) {
 async function estimateClaimCost(name) {
     try {
         // TODO: Query actual CNS contract for pricing
-        console.log(`[CNS] Estimating cost for ${name}.cspr`);
 
         // Mock pricing logic
         const nameLength = name.length;
@@ -114,7 +111,6 @@ async function estimateClaimCost(name) {
 async function claimName(walletAddress, name) {
     try {
         // TODO: Create actual transaction to CNS contract
-        console.log(`[CNS] Claiming ${name}.cspr for ${walletAddress}`);
 
         // Mock: Return a fake transaction hash
         const txHash = `cns-claim-${Date.now()}-${Math.random().toString(36).substring(7)}`;

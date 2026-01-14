@@ -31,14 +31,38 @@ export const L3LivenessCheck: React.FC<L3LivenessCheckProps> = ({ onComplete }) 
         blinkCount: 0,
         isBlinking: false,
         frames: [] as Blob[],
-        lastFrameTime: 0
+        lastFrameTime: 0,
+        isSubmitting: false,  // Guard against multiple submissions
+        isCapturing: false    // Guard against concurrent captures
     });
 
-    // Async frame capture helper (non-blocking)
-    const captureFrame = (canvas: HTMLCanvasElement): Promise<Blob | null> => {
+    // Async frame capture helper (non-blocking) with guard
+    const captureFrame = async (canvas: HTMLCanvasElement, st: typeof logicState.current, ignoreLimit: boolean = false): Promise<boolean> => {
+        // Synchronous guard - check before starting async operation
+        if (!ignoreLimit && st.frames.length >= 20 || st.isCapturing) return false;
+        st.isCapturing = true;
+
         return new Promise((resolve) => {
-            canvas.toBlob((blob) => resolve(blob), 'image/jpeg', 0.5);
+            canvas.toBlob((blob) => {
+                if (blob && (ignoreLimit || st.frames.length < 20)) {
+                    st.frames.push(blob);
+                    resolve(true);
+                } else {
+                    resolve(false);
+                }
+                st.isCapturing = false;
+            }, 'image/jpeg', 0.5);
         });
+    };
+
+    const resetLivenessState = () => {
+        logicState.current.frames = [];
+        logicState.current.blinkCount = 0;
+        logicState.current.isSubmitting = false;
+        logicState.current.isCapturing = false;
+        logicState.current.lastFrameTime = 0;
+        setProgress(0);
+        setChallenge("BLINK");
     };
 
     useEffect(() => {
@@ -125,17 +149,19 @@ export const L3LivenessCheck: React.FC<L3LivenessCheckProps> = ({ onComplete }) 
                     const ratio = leftEyeOpen / leftEyeWidth;
 
                     if (ratio < 0.16) {
-                        if (!st.isBlinking) st.isBlinking = true;
+                        if (!st.isBlinking) {
+                            st.isBlinking = true;
+                        }
                     } else {
                         if (st.isBlinking) {
                             st.isBlinking = false;
                             st.blinkCount++;
 
+
                             // Capture frame when blink completes (async, non-blocking)
-                            if (canvasRef.current && st.frames.length < 15) {
-                                captureFrame(canvasRef.current).then((blob) => {
-                                    if (blob) {
-                                        st.frames.push(blob);
+                            if (canvasRef.current && st.frames.length < 20) {
+                                captureFrame(canvasRef.current, st).then((captured) => {
+                                    if (captured) {
                                         console.log(`[L3Liveness] Captured frame ${st.frames.length} after blink ${st.blinkCount}`);
                                     }
                                 });
@@ -160,32 +186,29 @@ export const L3LivenessCheck: React.FC<L3LivenessCheckProps> = ({ onComplete }) 
                     const nosePos = (nose.x - leftCheek.x) / faceWidth;
 
                     // Capture frames periodically during head turn (async, non-blocking)
-                    if (now - st.lastFrameTime > 300 && st.frames.length < 15 && canvasRef.current) {
+                    if (now - st.lastFrameTime > 200 && st.frames.length < 20 && canvasRef.current && !st.isCapturing) {
                         st.lastFrameTime = now;
-                        captureFrame(canvasRef.current).then((blob) => {
-                            if (blob) {
-                                st.frames.push(blob);
-                                console.log(`[L3Liveness] Captured frame ${st.frames.length} during head turn (nosePos: ${nosePos.toFixed(2)})`);
+                        captureFrame(canvasRef.current, st).then((captured) => {
+                            if (captured) {
+                                console.log(`[L3Liveness] Captured frame ${st.frames.length} during head turn (nosePos: ${nosePos.toFixed(3)})`);
                             }
                         });
                     }
 
-                    if (nosePos < 0.3) {
-                        // Head turned left sufficiently - capture final frame and submit
-                        if (canvasRef.current && st.frames.length < 15) {
-                            captureFrame(canvasRef.current).then((blob) => {
-                                if (blob) {
-                                    st.frames.push(blob);
-                                    console.log(`[L3Liveness] Captured final frame ${st.frames.length} at full left turn`);
-                                }
-                                console.log(`[L3Liveness] Submitting ${st.frames.length} frames for verification`);
-                                submitLiveness(st.frames);
+                    if (nosePos < 0.3 && !st.isSubmitting) {
+                        // Immediately set guard to prevent duplicate submissions
+                        st.isSubmitting = true;
+
+                        // CAPTURE THE PEAK FRAME
+                        if (canvasRef.current) {
+                            captureFrame(canvasRef.current, st, true).then(() => {
+                                submitLiveness([...st.frames]); // Pass a copy to prevent mutation
                             });
                         } else {
-                            console.log(`[L3Liveness] Submitting ${st.frames.length} frames for verification`);
-                            submitLiveness(st.frames);
+                            submitLiveness([...st.frames]);
                         }
                     }
+
                 }
             }
         };
@@ -237,13 +260,9 @@ export const L3LivenessCheck: React.FC<L3LivenessCheckProps> = ({ onComplete }) 
     }, [state, challenge]);
 
     const submitLiveness = async (frames: Blob[]) => {
-        if (state === "VERIFYING") return; // Prevent double submission
+        if (state === "VERIFYING") return;
 
-        console.log(`[L3Liveness] submitLiveness called with ${frames.length} frames`);
-
-        // Validate frame count
         if (frames.length < 10) {
-            console.error(`[L3Liveness] Insufficient frames: ${frames.length}/10 minimum`);
             setGuidance("Not enough frames captured. Please try again.");
             setState("POSITIONING");
             return;
@@ -253,15 +272,12 @@ export const L3LivenessCheck: React.FC<L3LivenessCheckProps> = ({ onComplete }) 
             setState("VERIFYING");
             setGuidance("Verifying liveness...");
 
-            // Build FormData directly from Blobs (no conversion needed)
             const formData = new FormData();
             frames.forEach((blob, index) => {
                 formData.append(`frame_${index}`, blob, `frame_${index}.jpg`);
             });
             formData.append('totalFrames', frames.length.toString());
             formData.append('stepSequence', JSON.stringify(['blink', 'turn_left']));
-
-            console.log(`[L3Liveness] Submitting ${frames.length} frames to API`);
 
             const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001';
             const response = await fetch(`${apiUrl}/api/ai/verify-liveness-sequence`, {
@@ -271,7 +287,6 @@ export const L3LivenessCheck: React.FC<L3LivenessCheckProps> = ({ onComplete }) 
             });
 
             const result = await response.json();
-            console.log('[L3Liveness] API response:', result);
 
             if (response.ok && result.passed) {
                 // Layer 3 doesn't change user status, so no need to refresh
@@ -279,17 +294,18 @@ export const L3LivenessCheck: React.FC<L3LivenessCheckProps> = ({ onComplete }) 
                 setState("SUCCESS");
                 setGuidance("Verification complete!");
                 setTimeout(() => {
-                    console.log('[L3Liveness] Calling onComplete callback');
                     if (onComplete) onComplete();
                 }, 1500);
             } else {
                 console.error('[L3Liveness] Verification failed:', result);
                 setGuidance(result.error || "Verification failed. Please try again.");
+                resetLivenessState();
                 setState("POSITIONING");
             }
         } catch (error) {
             console.error('Liveness error:', error);
             setGuidance("Error. Try again.");
+            resetLivenessState();
             setState("POSITIONING");
         }
     };
@@ -374,7 +390,7 @@ export const L3LivenessCheck: React.FC<L3LivenessCheckProps> = ({ onComplete }) 
                     <div className="flex flex-col md:flex-row md:items-center justify-between gap-10">
                         <div className="space-y-1">
                             <h3 className="text-xl font-black text-text-main">Ready to scan?</h3>
-                            <p className="text-text-sub text-base font-medium">Ensure good lighting and no accessories.</p>
+                            <p className="text-text-sub text-base font-medium">Ensure good lighting. Turn your head slowly during the check.</p>
                         </div>
                         <button
                             onClick={() => window.location.reload()}

@@ -259,7 +259,6 @@ router.post('/device/check', async (req, res) => {
             });
         }
 
-        console.log(`🔍 Checking device fingerprint: ${deviceFingerprint}`);
 
         // Check if device exists in sessions
         const { DeviceSession } = require('../database/models');
@@ -275,7 +274,6 @@ router.post('/device/check', async (req, res) => {
                 user_id: existingSession.user_id
             });
 
-            console.log(`✅ Found existing device for user: ${existingSession.user_id}`);
 
             return res.json({
                 success: true,
@@ -285,7 +283,6 @@ router.post('/device/check', async (req, res) => {
                 lastActivity: existingSession.last_activity
             });
         } else {
-            console.log(`🆕 Device fingerprint not found, new device`);
 
             return res.json({
                 success: true,

@@ -2,7 +2,6 @@
 
 // Listen for extension installation
 chrome.runtime.onInstalled.addListener(() => {
-    console.log('[CasperID] Extension installed');
 
     // Initialize storage
     chrome.storage.local.set({
@@ -16,7 +15,6 @@ chrome.runtime.onInstalled.addListener(() => {
 
 // Listen for messages from content scripts and popup
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-    console.log('[CasperID Background] Received message:', message);
 
     if (message.type === 'CASPERID_LOGIN_REQUEST') {
         handleLoginRequest(message, sender, sendResponse);
@@ -79,7 +77,6 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 // Handle identity sync
 async function handleSyncIdentityData(data) {
     if (!data) return;
-    console.log('[CasperID Background] Syncing identity data:', data);
 
     const { sessionToken } = await chrome.storage.local.get(['sessionToken']);
 
@@ -105,7 +102,6 @@ async function handleSyncIdentityData(data) {
             }
             if (permissions) {
                 updates.permissions = permissions;
-                console.log('[CasperID Background] Permissions (Connected Apps) synced');
             }
 
             if (Object.keys(updates).length > 0) {
@@ -120,7 +116,6 @@ async function handleSyncIdentityData(data) {
 // Handle job data sync from various platforms
 async function handleSyncJobData(data) {
     if (!data) return;
-    console.log('[CasperID Background] Syncing job data:', data.title, 'at', data.company);
     await chrome.storage.local.set({ currentJob: data });
 }
 
@@ -153,7 +148,6 @@ async function handleGetUserProfile(sendResponse) {
 async function handleLoginRequest(message, sender, sendResponse) {
     const domain = message.domain;
 
-    console.log(`[CasperID] Login request from ${domain}`);
 
     // Check if already connected
     const { connected, userData } = await chrome.storage.local.get(['connected', 'userData']);
@@ -226,7 +220,6 @@ async function handleGrantPermission(message, sendResponse) {
 
 // Handle permission revoke
 async function handleRevokePermission(domain, sendResponse) {
-    console.log(`[CasperID Background] Revoking permission for ${domain}`);
 
     const { permissions } = await chrome.storage.local.get('permissions');
     const filtered = (permissions || []).filter(p => p.domain !== domain);
@@ -247,7 +240,6 @@ async function handleRevokePermission(domain, sendResponse) {
 
 // Handle total disconnect
 async function handleDisconnectIdentity(sendResponse) {
-    console.log('[CasperID Background] Total disconnect requested');
 
     await chrome.storage.local.set({
         connected: false,
@@ -262,7 +254,6 @@ async function handleDisconnectIdentity(sendResponse) {
 
 // Handle AI Cover Letter Generation
 async function handleGenerateCoverLetter(jobDescription, sendResponse) {
-    console.log('[CasperID Background] Requesting AI cover letter generation');
 
     try {
         const { userData, sessionToken } = await chrome.storage.local.get(['userData', 'sessionToken']);
@@ -273,7 +264,6 @@ async function handleGenerateCoverLetter(jobDescription, sendResponse) {
         }
 
         const profileData = userData.profile || userData;
-        console.log('[CasperID Background] Sending cover letter request to server...');
 
         const response = await fetch('http://localhost:3001/api/ai/generate-cover-letter', {
             method: 'POST',
@@ -284,11 +274,9 @@ async function handleGenerateCoverLetter(jobDescription, sendResponse) {
             body: JSON.stringify({ profileData, jobDescription })
         });
 
-        console.log('[CasperID Background] Server response status:', response.status);
 
         if (response.ok) {
             const data = await response.json();
-            console.log('[CasperID Background] Cover letter generated:', data.subject);
 
             // Save cover letter to storage for display
             const { currentJob } = await chrome.storage.local.get('currentJob');
@@ -436,14 +424,8 @@ async function fetchPermissions(token) {
 
 // Helper: Match job with profile via backend AI
 async function handleMatchJob(jobDescription, sendResponse) {
-    console.log('[CasperID Background] handleMatchJob started');
     try {
         const { userData, sessionToken } = await chrome.storage.local.get(['userData', 'sessionToken']);
-        console.log('[CasperID Background] Data fetched from storage:', {
-            hasUserData: !!userData,
-            hasToken: !!sessionToken,
-            wallet: userData?.wallet
-        });
 
         if (!userData || !sessionToken) {
             console.error('[CasperID Background] Missing data for matching');
@@ -452,7 +434,6 @@ async function handleMatchJob(jobDescription, sendResponse) {
         }
 
         const profileData = userData.profile || userData;
-        console.log('[CasperID Background] Sending fetch to server on port 3001...');
 
         const res = await fetch(`http://localhost:3001/api/ai/match-job`, {
             method: 'POST',
@@ -466,7 +447,6 @@ async function handleMatchJob(jobDescription, sendResponse) {
             })
         });
 
-        console.log('[CasperID Background] Server response status:', res.status);
 
         if (!res.ok) {
             const err = await res.json();
@@ -475,13 +455,11 @@ async function handleMatchJob(jobDescription, sendResponse) {
         }
 
         const result = await res.json();
-        console.log('[CasperID Background] Match results received from AI:', result);
 
         // Save match results to storage so they persist in the popup
         const { currentJob } = await chrome.storage.local.get('currentJob');
         if (currentJob) {
             const updatedJob = { ...currentJob, matchResults: result };
-            console.log('[CasperID Background] Updating currentJob with results in storage');
             await chrome.storage.local.set({ currentJob: updatedJob });
         }
 
@@ -492,4 +470,3 @@ async function handleMatchJob(jobDescription, sendResponse) {
     }
 }
 
-console.log('[CasperID] Background service worker loaded');

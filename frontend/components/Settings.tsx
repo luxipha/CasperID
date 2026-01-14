@@ -70,13 +70,11 @@ const GeneralTab = () => {
       };
 
       const response = await apiService.updateUserProfile(updates);
-      if (response.success) {
+      if (response) {
         alert('Profile updated successfully');
         // Refresh profile data
         const data = await apiService.getUserProfile();
         setProfile(data);
-      } else {
-        alert('Failed to update profile: ' + response.error);
       }
     } catch (error: any) {
       console.error('Update failed:', error);
@@ -214,15 +212,13 @@ const SecurityTab = () => {
   useEffect(() => {
     const fetchDevices = async () => {
       try {
-        console.log('🔒 [Settings] Fetching devices...');
         const response = await apiService.getDevices();
-        console.log('📱 [Settings] Devices response:', response);
 
         if (response.success) {
-          // The API returns { devices: { devices: [], activeSessions: [] } }
-          // So we need to handle the nested structure
-          const devicesData = response.devices;
-          const rawList = Array.isArray(devicesData) ? devicesData : (devicesData?.devices || []);
+          // The API returns { success: true, devices: { devices: [], activeSessions: [], recentPairings: [] } }
+          // Extract the actual devices array from the nested structure
+          const devicesData = response.devices as any || {};
+          const rawList = Array.isArray(devicesData) ? devicesData : (devicesData.devices || []);
 
           // Map backend snake_case to frontend camelCase
           const mappedList = rawList.map((d: any) => ({
@@ -233,7 +229,6 @@ const SecurityTab = () => {
             lastUsed: d.last_used || d.last_activity
           }));
 
-          console.log(`✅ [Settings] Loaded ${mappedList.length} devices`);
           setDevices(mappedList);
         } else {
           console.warn('⚠️  [Settings] No devices in response');
@@ -257,9 +252,7 @@ const SecurityTab = () => {
 
     setRevoking(credentialId);
     try {
-      console.log('🗑️  [Settings] Revoking device:', credentialId);
       const response = await apiService.revokeDevice(credentialId);
-      console.log('✅ [Settings] Revoke response:', response);
 
       if (response.success) {
         // Remove device from list
@@ -470,7 +463,7 @@ const PermissionsTab = () => {
           apiService.getUserPermissions()
         ]);
 
-        if (profileRes.success) setProfile(profileRes.data || profileRes.user); // Handle wrapper
+        if (profileRes) setProfile(profileRes);
         if (permsRes.success) setPermissions(permsRes.userPermissions || []);
 
       } catch (e) {

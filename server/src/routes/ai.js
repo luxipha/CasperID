@@ -41,7 +41,6 @@ router.post('/ai/verify-kyc', upload.fields([
         const selfieBuffer = req.files.selfie[0].buffer;
         const livenessBuffer = req.files.livenessPhoto ? req.files.livenessPhoto[0].buffer : null;
 
-        console.log('[AI] Starting KYC verification...');
 
         const result = await performKYCVerification(
             idBuffer,
@@ -166,7 +165,7 @@ router.post('/ai/verify-liveness-sequence', upload.fields([
             return res.status(400).json({ error: 'Insufficient frames for liveness verification' });
         }
 
-        console.log(`[AI] Verifying liveness sequence for user ${userAccount.user_id}`);
+
 
         const result = await verifyLivenessSequence(frames, JSON.parse(stepSequence || '[]'));
 
@@ -184,7 +183,6 @@ router.post('/ai/verify-liveness-sequence', upload.fields([
             if (userAccount.tier === 'layer_2') {
                 // Layer 3 flow - DON'T mint credential yet
                 // Save key frames for admin review
-                console.log(`[AI] Layer 3 liveness passed for ${userAccount.wallet}. Storing frames for review.`);
 
                 // Save 5 key frames to disk for admin review
                 const uploadsDir = path.join(__dirname, '../../uploads/liveness');

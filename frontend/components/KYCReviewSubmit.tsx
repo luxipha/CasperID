@@ -39,7 +39,6 @@ export const KYCReviewSubmit: React.FC<KYCReviewSubmitProps> = ({
 
     try {
       setIsSubmitting(true);
-      console.log('[Layer3] Submitting verification request...');
 
       // Import API service
       const { apiService } = await import('../services/api');
@@ -51,7 +50,6 @@ export const KYCReviewSubmit: React.FC<KYCReviewSubmitProps> = ({
         liveness_verified: livenessVerified
       });
 
-      console.log('[Layer3] Verification submitted successfully');
       onSubmit();
     } catch (error) {
       console.error('[Layer3] Submit failed:', error);

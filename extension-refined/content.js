@@ -14,21 +14,18 @@ function isContextValid() {
 async function initSmartWidgets() {
     // Guard: Don't run if extension context is dead
     if (!isContextValid()) {
-        console.log('[CasperID] Skipping widget init - context invalidated');
         return;
     }
 
     try {
         const { anchorHiddenUntil } = await chrome.storage.local.get(['anchorHiddenUntil']);
         if (anchorHiddenUntil && Date.now() < anchorHiddenUntil) {
-            console.log('[CasperID] Anchor is hidden by user request');
         } else {
             injectDraggableAnchor();
         }
         initGhostIcons();
     } catch (e) {
         // Extension context was invalidated during async operation
-        console.log('[CasperID] Widget init aborted - context lost');
     }
 }
 
@@ -175,7 +172,6 @@ async function injectDraggableAnchor() {
     };
 
     document.body.appendChild(anchor);
-    console.log('[CasperID] Draggable anchor injected');
 }
 
 async function handleDismissAnchor() {
@@ -205,16 +201,13 @@ async function handleDismissAnchor() {
 function handleCasperIDLogin() {
     if (!isContextValid()) return;
 
-    console.log('[CasperID] Anchor clicked - checking connection status');
 
     chrome.storage.local.get(['connected', 'userData'], (result) => {
         if (result.connected && result.userData) {
             // Already connected - trigger autofill
-            console.log('[CasperID] User connected, triggering autofill');
             triggerAutofill();
         } else {
             // Not connected - show loading and redirect to dashboard for login
-            console.log('[CasperID] User not connected, opening popup');
             showLoadingModal();
 
             // Open the extension popup or redirect to CasperID dashboard
@@ -289,7 +282,6 @@ function showTooltip(anchor, message) {
 function handleLoginSuccess(userData) {
     hideLoadingModal();
 
-    console.log('[CasperID] Login successful', userData);
 
     // Dispatch custom event that websites can listen to
     window.dispatchEvent(new CustomEvent('casperid-login', {
@@ -374,7 +366,6 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 });
 
 function scrapeJobDetails() {
-    console.log('[CasperID] Scraping job details...');
 
     // Look for common job description containers
     const selectors = [
@@ -418,7 +409,6 @@ function scrapeJobDetails() {
 }
 
 function handleAccessRevoked(domain) {
-    console.log(`[CasperID] Access revoked for ${domain}`);
 
     // Clear any stored login data
     localStorage.removeItem('casperid_user');
@@ -473,7 +463,6 @@ function showLogoutMessage(domain) {
 
 // [NEW] Form Detection & Autofill
 (function () {
-    console.log('[CasperID Autofill] Initializing...');
 
     const fieldMap = {
         first_name: ['first', 'given'],
@@ -617,7 +606,6 @@ function showLogoutMessage(domain) {
             if (response && response.userData) {
                 fillForms(response.userData);
             } else {
-                console.warn('[CasperID Autofill] No user data available. Connect extension first.');
             }
         });
     }
@@ -723,7 +711,6 @@ function showLogoutMessage(domain) {
         if (filledCount > 0) {
             showSuccessMessage({ cnsName: 'Autofill Complete' });
         } else {
-            console.log('[CasperID Autofill] No matching fields found for data:', data);
         }
     }
 
@@ -769,7 +756,6 @@ function syncIdentityStatus(force = false) {
         // Sync if forced or data has changed
         const dataString = JSON.stringify(data);
         if (force || dataString !== lastSyncedData) {
-            console.log(`[CasperID Sync] Syncing identity data (force=${force}):`, data);
             lastSyncedData = dataString;
 
             // Send to background to save
@@ -784,7 +770,6 @@ function syncIdentityStatus(force = false) {
         }
     } else if (sessionToken) {
         // No sync element but we have a token - still sync what we can
-        console.log('[CasperID Sync] No sync element, but found session token in localStorage');
         const data = {
             sessionToken: sessionToken,
             wallet: null,
@@ -793,7 +778,6 @@ function syncIdentityStatus(force = false) {
         };
         const dataString = JSON.stringify(data);
         if (force || dataString !== lastSyncedData) {
-            console.log(`[CasperID Sync] Syncing minimal token-only data (force=${force}):`, data);
             lastSyncedData = dataString;
             try {
                 chrome.runtime.sendMessage({
@@ -805,7 +789,6 @@ function syncIdentityStatus(force = false) {
             }
         }
     } else {
-        console.log('[CasperID Sync] No sync element and no session token found');
     }
 }
 
@@ -814,7 +797,6 @@ function syncIdentityStatus(force = false) {
 const isCasperIdHost = window.location.hostname === 'localhost' && window.location.port === '3000';
 
 if (isCasperIdHost) {
-    console.log('[CasperID Sync] CasperID dashboard detected, starting sync...');
     // Initial sync
     syncIdentityStatus();
     // Poll every 3 seconds to catch new logins

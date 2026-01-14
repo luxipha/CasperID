@@ -21,14 +21,10 @@ export const CredentialVault: React.FC = () => {
   useEffect(() => {
     const fetchCredentials = async () => {
       try {
-        console.log('🔐 [CredentialVault] Fetching verification history...');
         const response = await apiService.getVerificationHistory();
-        console.log('📊 [CredentialVault] History response:', response);
 
         if (response.success && response.history) {
           const { credentials: creds, currentStatus } = response.history;
-          console.log('📋 [CredentialVault] Raw credentials:', creds);
-          console.log('📋 [CredentialVault] Current status:', currentStatus);
 
           // Map backend credentials to display format
           const mappedCredentials: Credential[] = creds.map((cred: any, index: number) => {
@@ -45,11 +41,9 @@ export const CredentialVault: React.FC = () => {
               color: getTierColor(cred.tier),
               icon: getTierIcon(cred.tier)
             };
-            console.log(`✅ [CredentialVault] Mapped credential ${index}:`, mapped);
             return mapped;
           });
 
-          console.log(`✅ [CredentialVault] Total credentials loaded: ${mappedCredentials.length}`);
           setCredentials(mappedCredentials);
         } else {
           console.warn('⚠️  [CredentialVault] No credentials in response');
@@ -61,7 +55,6 @@ export const CredentialVault: React.FC = () => {
         setError(err.message || 'Failed to load credentials');
       } finally {
         setLoading(false);
-        console.log('🏁 [CredentialVault] Loading complete');
       }
     };
 

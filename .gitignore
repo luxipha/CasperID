@@ -62,6 +62,7 @@ keys/
 secrets/
 /server/.env
 *.md
+roadmap.md
 /server/*.md
 /extension/
 /secrets.json

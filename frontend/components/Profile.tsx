@@ -64,47 +64,38 @@ export const Profile: React.FC = () => {
 
   const handleDelete = async (section: string, id: string) => {
     try {
-      console.log(`🗑️ Deleting ${section} item:`, id);
       let res;
       switch (section) {
         case 'Experience':
           res = await apiService.deleteExperience(id);
-          console.log('Delete experience result:', res);
           setExperiences(prev => prev.filter(i => i._id !== id));
           break;
         case 'Education':
           res = await apiService.deleteEducation(id);
-          console.log('Delete education result:', res);
           setEducation(prev => prev.filter(i => i._id !== id));
           break;
         case 'Skills':
           res = await apiService.deleteSkill(id);
-          console.log('Delete skill result:', res);
           setSkills(prev => prev.filter(i => i._id !== id));
           break;
         case 'Certifications':
           res = await apiService.deleteCertification(id);
-          console.log('Delete certification result:', res);
           setCertifications(prev => prev.filter(i => i._id !== id));
           break;
         case 'Projects':
           res = await apiService.deleteProject(id);
-          console.log('Delete project result:', res);
           setProjects(prev => prev.filter(i => i._id !== id));
           break;
         case 'Awards':
           res = await apiService.deleteAward(id);
-          console.log('Delete award result:', res);
           setAwards(prev => prev.filter(i => i._id !== id));
           break;
         case 'Volunteer':
           res = await apiService.deleteVolunteer(id);
-          console.log('Delete volunteer result:', res);
           setVolunteers(prev => prev.filter(i => i._id !== id));
           break;
         case 'Languages':
           res = await apiService.deleteLanguage(id);
-          console.log('Delete language result:', res);
           setLanguages(prev => prev.filter(i => i._id !== id));
           break;
       }
@@ -119,9 +110,7 @@ export const Profile: React.FC = () => {
     const loadProfile = async () => {
       setIsLoading(true);
       try {
-        console.log("🔄 Fetching user profile...");
         const res = await apiService.getUserProfile();
-        console.log("✅ Profile fetch result:", res);
 
         // Backend returns raw profile object directly
         if (res && res.wallet) {
@@ -160,7 +149,6 @@ export const Profile: React.FC = () => {
   const handleSaveExperience = async (data: Experience) => {
     try {
       if (data._id) {
-        console.log(`[Profile] Updating Experience ${data._id}`, data);
         const res = await apiService.updateExperience(data._id, data);
         if (res.success || res._id) {
           setExperiences(prev => prev.map(item => item._id === data._id ? (res.menu ? res.data : res) : item));
@@ -198,39 +186,27 @@ export const Profile: React.FC = () => {
   };
 
   const handleSaveSkill = async (data: Skill) => {
-    console.log('🚀 handleSaveSkill called with data:', data);
     try {
       if (data._id) {
-        console.log('📝 Updating existing skill with ID:', data._id);
         const res = await apiService.updateSkill(data._id, data);
-        console.log('📝 Update skill response:', res);
         if (res.success || res._id) {
           setSkills(prev => prev.map(item => item._id === data._id ? (res.success ? res.data : res) : item));
           setEditingId(null);
-          console.log('✅ Skill updated in state');
         }
       } else {
-        console.log('✨ Creating new skill:', data);
         const res = await apiService.addSkill(data);
-        console.log('✨ Add skill API response:', res);
 
         // Handle both response formats - direct object or wrapped in success/data
         const newSkill = res.success ? res.data : res;
-        console.log('✨ Processed new skill object:', newSkill);
 
-        console.log('📊 Current skills before update:', skills);
         setSkills(prev => {
           const updated = [...prev, newSkill];
-          console.log('📊 Updated skills array:', updated);
           return updated;
         });
         setAddingSection(null);
-        console.log('✅ Skill added to state, form closed');
 
         // Force refresh to ensure UI updates
-        console.log('🔄 Refreshing all data...');
         await refreshAllData();
-        console.log('🔄 Data refresh completed');
       }
     } catch (e) {
       console.error('❌ Error saving skill:', e);
@@ -335,7 +311,6 @@ export const Profile: React.FC = () => {
 
   // Function to refresh all data sections
   const refreshAllData = async () => {
-    console.log('🔄 refreshAllData started');
     try {
       const [expRes, eduRes, skillsRes, certsRes, projectsRes, awardsRes, langsRes, volRes] = await Promise.all([
         apiService.getExperience(),
@@ -348,46 +323,32 @@ export const Profile: React.FC = () => {
         apiService.getVolunteers()
       ]);
 
-      console.log('🔍 Raw API responses:', {
-        experiences: expRes,
-        skills: skillsRes,
-        education: eduRes
-      });
 
       // Backend returns direct arrays, not wrapped in success/data
       if (Array.isArray(expRes)) {
         setExperiences(expRes);
-        console.log('🔄 Updated experiences:', expRes);
       }
       if (Array.isArray(eduRes)) {
         setEducation(eduRes);
-        console.log('🔄 Updated education:', eduRes);
       }
       if (Array.isArray(skillsRes)) {
         setSkills(skillsRes);
-        console.log('🔄 Updated skills:', skillsRes);
       }
       if (Array.isArray(certsRes)) {
         setCertifications(certsRes);
-        console.log('🔄 Updated certifications:', certsRes);
       }
       if (Array.isArray(projectsRes)) {
         setProjects(projectsRes);
-        console.log('🔄 Updated projects:', projectsRes);
       }
       if (Array.isArray(awardsRes)) {
         setAwards(awardsRes);
-        console.log('🔄 Updated awards:', awardsRes);
       }
       if (Array.isArray(langsRes)) {
         setLanguages(langsRes);
-        console.log('🔄 Updated languages:', langsRes);
       }
       if (Array.isArray(volRes)) {
         setVolunteers(volRes);
-        console.log('🔄 Updated volunteers:', volRes);
       }
-      console.log('🔄 refreshAllData completed successfully');
     } catch (error) {
       console.error('❌ Error refreshing data:', error);
     }
@@ -542,7 +503,6 @@ export const Profile: React.FC = () => {
     };
 
     try {
-      console.log('Saving profile with openToWork:', openToWork);
       const res = await apiService.updateUserProfile(updatedProfile);
       if (res && res.wallet) {
         setLastSaved(new Date());
@@ -623,7 +583,6 @@ export const Profile: React.FC = () => {
 
   const handleResumeUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    console.log("📂 Upload triggered:", file?.name); // DEBUG
 
     if (!file) return;
 

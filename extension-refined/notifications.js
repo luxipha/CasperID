@@ -4,7 +4,6 @@ chrome.runtime.onInstalled.addListener(() => {
     if (chrome.notifications) {
         chrome.notifications.getPermissionLevel((level) => {
             if (level !== 'granted') {
-                console.log('[CasperID] Notification permission not granted');
             }
         });
     }

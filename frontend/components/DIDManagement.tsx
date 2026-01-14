@@ -25,10 +25,8 @@ export const DIDManagement: React.FC<DIDManagementProps> = ({ onCreateNew, onMan
     const fetchUserData = async () => {
       try {
         const profile = await apiService.getUserProfile();
-        console.log('📋 User profile for DID Management:', profile);
         setUserData(profile as any);
       } catch (error) {
-        console.error('Failed to fetch user data:', error);
       } finally {
         setLoading(false);
       }

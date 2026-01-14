@@ -89,12 +89,10 @@ router.post('/request-verification', rateLimitMiddleware('verification_requests'
 
         if (canMint) {
             try {
-                console.log(`[DEBUG] Starting auto-mint process for wallet: ${wallet}`);
 
                 // Automatically mint the credential for basic tier
                 const { credential } = await mintCredential(request);
 
-                console.log(`✅ Auto-minted credential for ${wallet}`);
 
                 res.status(201).json({
                     message: 'Basic verification completed automatically',
@@ -203,10 +201,8 @@ router.post('/mint-basic-id', rateLimitMiddleware('credential_minting'), async (
         await request.save();
 
         // Automatically mint the credential
-        console.log(`Direct basic ID minting for wallet: ${wallet}`);
         const { credential } = await mintCredential(request);
 
-        console.log(`✅ Basic ID minted directly for ${wallet}`);
 
         res.status(201).json({
             message: 'Basic ID minted successfully',

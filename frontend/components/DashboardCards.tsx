@@ -90,9 +90,7 @@ export const ReusableKYCCard: React.FC = () => {
   useEffect(() => {
     const fetchVerificationStatus = async () => {
       try {
-        console.log('🔐 [ReusableKYCCard] Fetching verification history...');
         const response = await apiService.getVerificationHistory();
-        console.log('📊 [ReusableKYCCard] History response:', response);
 
         let combinedData = response.history || {};
 
@@ -100,7 +98,6 @@ export const ReusableKYCCard: React.FC = () => {
         if (user?.wallet) {
           try {
             const identityData = await apiService.get(`/api/identity-status?wallet=${encodeURIComponent(user.wallet)}`);
-            console.log('🔍 [ReusableKYCCard] Identity status:', identityData);
 
             // Merge identity status into verification data
             combinedData = {
@@ -117,7 +114,6 @@ export const ReusableKYCCard: React.FC = () => {
         }
 
         if (response.success) {
-          console.log('✅ [ReusableKYCCard] Final combined data:', combinedData);
           setVerificationData(combinedData);
         }
       } catch (err) {

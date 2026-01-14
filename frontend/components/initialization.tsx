@@ -35,13 +35,9 @@ export const PostOnboardingBanner: React.FC<PostOnboardingBannerProps> = ({ onCo
   }, [showBanner]);
 
   const checkMetaMaskStatus = () => {
-    console.log('🔍 Checking MetaMask status:', { metamask_connected: user?.metamask_connected });
-
     if (!user?.metamask_connected) {
-      console.log('🦊 User has not connected MetaMask, showing CrossAppVerificationModal');
       setShowMetaMaskModal(true);
     } else {
-      console.log('✅ User already connected MetaMask, skipping modal');
       completeBanner();
     }
   };
@@ -52,14 +48,12 @@ export const PostOnboardingBanner: React.FC<PostOnboardingBannerProps> = ({ onCo
   };
 
   const handleMetaMaskConnect = () => {
-    console.log('🦊 User clicked Connect MetaMask');
     // TODO: Implement MetaMask connection logic
     setShowMetaMaskModal(false);
     completeBanner();
   };
 
   const handleMetaMaskSkip = () => {
-    console.log('⏭️ User skipped MetaMask connection');
     setShowMetaMaskModal(false);
     completeBanner();
   };

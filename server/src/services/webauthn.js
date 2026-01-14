@@ -108,12 +108,6 @@ class WebAuthnService {
                 throw new Error('Registration challenge not found or expired');
             }
 
-            console.log('🔍 About to verify registration with:', {
-                registrationResponse,
-                expectedChallenge: storedChallenge.challenge,
-                expectedOrigin: this.origin,
-                expectedRPID: this.rpID
-            });
 
             // Verify the registration
             const verification = await verifyRegistrationResponse({
@@ -124,8 +118,6 @@ class WebAuthnService {
                 requireUserVerification: true,
             });
 
-            console.log('📋 Verification result:', verification);
-            console.log('📋 Registration info:', verification.registrationInfo);
 
             if (!verification.verified || !verification.registrationInfo) {
                 console.error('❌ Registration verification failed:', {
@@ -141,13 +133,6 @@ class WebAuthnService {
             const credentialPublicKey = credential.publicKey;
             const counter = credential.counter;
 
-            console.log('🔑 Extracted credential data:', {
-                credentialID: credentialID ? `[${typeof credentialID}] ${credentialID}` : 'UNDEFINED',
-                credentialPublicKey: credentialPublicKey ? `[${typeof credentialPublicKey}] ${credentialPublicKey.length} bytes` : 'UNDEFINED',
-                counter,
-                hasAttestationObject: !!attestationObject,
-                actualTransports: registrationResponse.response.transports
-            });
 
             // Generate user salt for key derivation
             const userSalt = crypto.randomBytes(32).toString('hex');
@@ -250,7 +235,6 @@ class WebAuthnService {
 
             // If user identifier provided (email), get their credentials
             if (userIdentifier) {
-                console.log(`🔍 Email-based auth requested for: ${userIdentifier}`);
                 const userAccount = await UserAccount.findOne({
                     recovery_email: userIdentifier
                 });
@@ -261,38 +245,17 @@ class WebAuthnService {
                         revoked: false
                     });
 
-                    console.log('🔍 Found credentials for user:', userCredentials.length);
-                    userCredentials.forEach((cred, i) => {
-                        console.log(`   ${i + 1}. Credential ID: ${cred.credential_id}`);
-                        console.log(`      Type: ${typeof cred.credential_id}`);
-                        console.log(`      Length: ${cred.credential_id?.length}`);
-                        console.log(`      Transports in DB: ${JSON.stringify(cred.transports)}`);
-                    });
 
                     // For email-based auth, DON'T send allowCredentials to avoid conditional UI
                     // This forces the browser to use modal UI and directly prompt Touch ID
-                    console.log('🚫 Skipping allowCredentials for email-based auth to force modal Touch ID');
                     allowCredentials = [];
                 } else {
-                    console.log('❌ No user account found for email:', userIdentifier);
                 }
             } else {
-                console.log('🔍 No email provided - using discoverable credentials');
             }
 
-            console.log('🔍 About to call generateAuthenticationOptions with:');
-            console.log('   allowCredentials length:', allowCredentials.length);
-            allowCredentials.forEach((cred, i) => {
-                console.log(`   ${i + 1}. id type:`, typeof cred.id);
-                console.log(`   ${i + 1}. id value:`, cred.id);
-                console.log(`   ${i + 1}. id length:`, cred.id?.length);
-                console.log(`   ${i + 1}. type:`, cred.type);
-                console.log(`   ${i + 1}. transports:`, cred.transports);
-            });
 
             const finalAllowCredentials = allowCredentials.length > 0 ? allowCredentials : undefined;
-            console.log('📋 Final allowCredentials:', finalAllowCredentials ? 'PROVIDED' : 'UNDEFINED');
-            console.log('📋 This will trigger:', finalAllowCredentials ? 'CONDITIONAL UI (device selection)' : 'MODAL UI (direct Touch ID)');
 
             const options = await generateAuthenticationOptions({
                 timeout: this.timeout,
@@ -301,7 +264,6 @@ class WebAuthnService {
                 rpID: this.rpID,
             });
 
-            console.log('✅ Generated authentication options successfully');
 
             // Store challenge temporarily
             const challengeId = uuidv4();
@@ -335,20 +297,12 @@ class WebAuthnService {
                 throw new Error('Authentication challenge not found or expired');
             }
 
-            console.log('🔍 Authentication verification started with:', {
-                challengeId,
-                authResponseId: authenticationResponse.id,
-                authResponseType: typeof authenticationResponse.id,
-                authResponseIdLength: authenticationResponse.id?.length
-            });
 
             // Convert credential ID to match database format
             // The database stores credential IDs as base64url encoded from the original base64url
             // So we need to convert browser's rawId (base64url) to base64 then back to base64url to match DB
             const searchCredentialId = authenticationResponse.rawId;
 
-            console.log('🔍 Trying different credential ID formats:');
-            console.log('   Original rawId:', searchCredentialId);
 
             // Try to find credential with the original format first
             let credential = await PasskeyCredential.findOne({
@@ -359,7 +313,6 @@ class WebAuthnService {
             // If not found, try base64 encoding the rawId (to match double encoding from registration)
             if (!credential) {
                 const doubleEncodedId = Buffer.from(searchCredentialId).toString('base64url');
-                console.log('   Double encoded format:', doubleEncodedId);
 
                 credential = await PasskeyCredential.findOne({
                     credential_id: doubleEncodedId,
@@ -370,22 +323,9 @@ class WebAuthnService {
             if (!credential) {
                 // Debug: List all credentials to see what we have
                 const allCredentials = await PasskeyCredential.find({ revoked: false });
-                console.log('❌ Credential not found. Available credentials:');
-                allCredentials.forEach((cred, i) => {
-                    console.log(`   ${i + 1}. ${cred.credential_id} (length: ${cred.credential_id?.length})`);
-                });
-                console.log('   Searched for:', credentialIdBase64, '(length:', credentialIdBase64?.length, ')');
                 throw new Error('Credential not found');
             }
 
-            console.log('✅ Found credential:', credential.credential_id);
-            console.log('🔍 Credential details:', {
-                id: credential.credential_id,
-                counter: credential.counter,
-                counterType: typeof credential.counter,
-                publicKeyLength: credential.credential_public_key?.length,
-                userId: credential.user_id
-            });
 
             // Find user account
             const userAccount = await UserAccount.findOne({
@@ -396,7 +336,6 @@ class WebAuthnService {
                 throw new Error('User account not found');
             }
 
-            console.log('🔍 User account found:', userAccount.user_id);
 
             // Ensure counter is a valid number
             const counter = credential.counter || 0;

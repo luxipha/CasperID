@@ -1,5 +1,5 @@
 {
-  "name": "CasperID Dashboard",
+  "name": "casperId - Verify once, Reuse everywhere",
   "description": "A reusable identity layer dashboard for managing Web3 credentials and liveness verification.",
   "requestFramePermissions": [
     "camera"

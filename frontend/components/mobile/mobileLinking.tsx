@@ -33,7 +33,6 @@ export const MobileLinkingPage: React.FC<MobileLinkingPageProps> = ({ onComplete
     }
 
     const userAgent = navigator.userAgent.toLowerCase();
-    console.log('🔍 User Agent:', userAgent);
 
     // Check for in-app browsers that don't support WebAuthn properly
     const isInApp = userAgent.includes('wv') || // WebView
@@ -45,8 +44,6 @@ export const MobileLinkingPage: React.FC<MobileLinkingPageProps> = ({ onComplete
       userAgent.includes('line') || // Line
       userAgent.includes('whatsapp'); // WhatsApp
 
-    console.log('📱 Is in-app browser:', isInApp);
-    console.log('🔐 WebAuthn supported:', !!window.PublicKeyCredential);
 
     return !isInApp;
   };
@@ -140,7 +137,6 @@ export const MobileLinkingPage: React.FC<MobileLinkingPageProps> = ({ onComplete
         }
       };
 
-      console.log('🔐 Creating passkey with options:', credentialCreationOptions);
 
       // Create the passkey using WebAuthn
       const credential = await navigator.credentials.create({
@@ -151,7 +147,6 @@ export const MobileLinkingPage: React.FC<MobileLinkingPageProps> = ({ onComplete
         throw new Error('Failed to create passkey. Please try again.');
       }
 
-      console.log('✅ Passkey created successfully:', credential);
 
       // Prepare credential data for backend
       const response = credential.response as AuthenticatorAttestationResponse;
@@ -174,16 +169,12 @@ export const MobileLinkingPage: React.FC<MobileLinkingPageProps> = ({ onComplete
         }
       };
 
-      console.log('📤 Sending registration to backend...');
-
       // Send to backend to complete registration
       const registrationResult = await apiService.passkeyRegisterComplete(credentialData);
 
       if (!registrationResult.success) {
         throw new Error(registrationResult.error || 'Registration failed');
       }
-
-      console.log('🎉 Registration completed successfully!');
 
       setIsSuccess(true);
 

@@ -82,7 +82,6 @@ async function getVerificationStatus(accountHash) {
 
         return result;
     } catch (error) {
-        console.log(`[Casper] Verification record not found for ${accountHash} (or error)`);
         return { verified: false };
     }
 }
@@ -108,7 +107,6 @@ async function setVerification(
     verified
 ) {
     try {
-        console.log(`[Casper] Setting verification for ${accountHash}`);
 
         if (!CONTRACT_HASH) throw new Error('CONTRACT_HASH not configured');
 
@@ -144,7 +142,6 @@ async function setVerification(
 
         // Send deploy
         const deployHash = await client.putDeploy(deploy);
-        console.log(`[Casper] Verification set. Deploy Hash: ${deployHash}`);
 
         return deployHash;
     } catch (error) {

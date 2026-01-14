@@ -33,7 +33,7 @@ export const CrossDevicePairing: React.FC<CrossDevicePairingProps> = ({ onBack, 
           setExpiresAt(response.qrCode.payload.expiresAt);
           setTimeLeft(Math.floor((response.qrCode.payload.expiresAt - Date.now()) / 1000));
           setStatus('waiting');
-          
+
           // Start polling for completion
           startPolling(response.userId);
         } else {
@@ -69,7 +69,6 @@ export const CrossDevicePairing: React.FC<CrossDevicePairingProps> = ({ onBack, 
   // Auto-refresh QR code when it expires
   const refreshQRCode = async () => {
     try {
-      console.log('🔄 Refreshing QR code...');
       const tempEmail = `user_${Date.now()}@casperid.temp`;
       setEmail(tempEmail);
 
@@ -81,7 +80,7 @@ export const CrossDevicePairing: React.FC<CrossDevicePairingProps> = ({ onBack, 
         setUserId(response.userId);
         setExpiresAt(response.qrCode.payload.expiresAt);
         setTimeLeft(Math.floor((response.qrCode.payload.expiresAt - Date.now()) / 1000));
-        
+
         // Start polling for the new registration
         startPolling(response.userId);
       }
@@ -96,12 +95,12 @@ export const CrossDevicePairing: React.FC<CrossDevicePairingProps> = ({ onBack, 
     const pollInterval = setInterval(async () => {
       try {
         const statusResponse = await apiService.passkeyRegisterStatus(userId);
-        
+
         if (statusResponse.success) {
           if (statusResponse.completed) {
             clearInterval(pollInterval);
             setStatus('success');
-            
+
             // Store session tokens if provided
             if (statusResponse.sessionToken) {
               apiService.setTokens({
@@ -109,7 +108,7 @@ export const CrossDevicePairing: React.FC<CrossDevicePairingProps> = ({ onBack, 
                 expiresAt: new Date(statusResponse.expiresAt).getTime()
               });
             }
-            
+
             // Complete the flow
             setTimeout(() => {
               onPaired(email);
@@ -151,13 +150,13 @@ export const CrossDevicePairing: React.FC<CrossDevicePairingProps> = ({ onBack, 
             <p className="text-text-sub">{error}</p>
           </div>
           <div className="flex gap-3">
-            <button 
+            <button
               onClick={onBack}
               className="px-6 py-3 bg-white border border-gray-200 text-text-main font-bold rounded-xl hover:bg-gray-50 transition-all"
             >
               Go Back
             </button>
-            <button 
+            <button
               onClick={() => window.location.reload()}
               className="px-6 py-3 bg-primary text-white font-bold rounded-xl hover:bg-primary/90 transition-all"
             >
@@ -183,11 +182,11 @@ export const CrossDevicePairing: React.FC<CrossDevicePairingProps> = ({ onBack, 
   return (
     <div className="min-h-screen bg-[#F8F9FF] flex flex-col items-center justify-center p-8 animate-in fade-in duration-700">
       <div className="w-full max-w-[1100px] grid grid-cols-[1fr_420px] gap-16 items-center">
-        
+
         {/* Instructions - Desktop optimized */}
         <div className="space-y-10">
           <div className="space-y-4">
-            <button 
+            <button
               onClick={onBack}
               className="flex items-center gap-2 text-text-sub hover:text-primary font-bold text-sm transition-colors group"
             >
@@ -229,22 +228,21 @@ export const CrossDevicePairing: React.FC<CrossDevicePairingProps> = ({ onBack, 
           </div>
 
           <div className="pt-6 border-t border-gray-100 flex items-center gap-4">
-             <div className="flex -space-x-2">
-                <img src="https://picsum.photos/id/1/40/40" className="size-8 rounded-full border-2 border-white" alt="App Store" />
-                <img src="https://picsum.photos/id/2/40/40" className="size-8 rounded-full border-2 border-white" alt="Play Store" />
-             </div>
-             <p className="text-xs font-bold text-text-sub uppercase tracking-widest opacity-60 italic">Available on App Store & Play Store</p>
+            <div className="flex -space-x-2">
+              <img src="https://picsum.photos/id/1/40/40" className="size-8 rounded-full border-2 border-white" alt="App Store" />
+              <img src="https://picsum.photos/id/2/40/40" className="size-8 rounded-full border-2 border-white" alt="Play Store" />
+            </div>
+            <p className="text-xs font-bold text-text-sub uppercase tracking-widest opacity-60 italic">Available on App Store & Play Store</p>
           </div>
         </div>
 
         {/* QR Vault - Desktop optimized */}
         <div className="relative">
           <div className={`bg-white rounded-[48px] border-4 border-white shadow-[0_40px_100px_-20px_rgba(134,82,226,0.2)] p-14 flex flex-col items-center transition-all duration-500 ${status === 'success' ? 'scale-105 border-green-400' : ''}`}>
-            
+
             {/* Pairing Status Badge */}
-            <div className={`mb-10 px-6 py-3 rounded-full border flex items-center gap-3 transition-all ${
-              status === 'success' ? 'bg-green-50 border-green-200 text-green-700' : 'bg-primary/5 border-primary/10 text-primary'
-            }`}>
+            <div className={`mb-10 px-6 py-3 rounded-full border flex items-center gap-3 transition-all ${status === 'success' ? 'bg-green-50 border-green-200 text-green-700' : 'bg-primary/5 border-primary/10 text-primary'
+              }`}>
               <div className={`size-2.5 rounded-full ${status === 'success' ? 'bg-green-500' : 'bg-primary animate-pulse'}`}></div>
               <span className="text-xs font-black uppercase tracking-[0.2em]">
                 {status === 'waiting' && 'Waiting for scan'}
@@ -256,12 +254,12 @@ export const CrossDevicePairing: React.FC<CrossDevicePairingProps> = ({ onBack, 
 
             {/* QR Container - Desktop optimized */}
             <div className="relative size-80 p-8 bg-gray-50 rounded-[40px] border-2 border-dashed border-gray-200 flex items-center justify-center overflow-hidden group">
-              
+
               {/* The QR Code */}
               <div className={`transition-all duration-700 ${status === 'success' || status === 'confirming' ? 'opacity-10 scale-90 blur-sm' : 'opacity-100'}`}>
-                <img 
-                  src={qrCodeUrl} 
-                  alt="Pairing QR" 
+                <img
+                  src={qrCodeUrl}
+                  alt="Pairing QR"
                   className="size-full object-contain"
                 />
               </div>
@@ -292,7 +290,7 @@ export const CrossDevicePairing: React.FC<CrossDevicePairingProps> = ({ onBack, 
             </div>
 
             <p className="mt-10 text-text-sub text-sm font-medium opacity-60">
-              {timeLeft < 10 ? 
+              {timeLeft < 10 ?
                 <span className="text-orange-600 font-bold">QR refreshing in {timeLeft}s...</span> :
                 <>Session expires in <span className="text-text-main font-bold">{formatTime(timeLeft)}</span></>
               }

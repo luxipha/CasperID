@@ -59,7 +59,6 @@ router.post('/login', async (req, res) => {
         //     });
         // }
 
-        console.log(`[Auth] Login request from wallet: ${wallet}`);
 
         // Check if user is verified
         const credential = await Credential.findOne({ wallet, revoked: false });
@@ -100,7 +99,6 @@ router.post('/login', async (req, res) => {
 
         await session.save();
 
-        console.log(`[Auth] Login successful for ${credential.human_id}`);
 
         // Respond with token and user data
         res.json({
@@ -271,7 +269,6 @@ router.post('/logout', async (req, res) => {
             });
         }
 
-        console.log('[Auth] Session revoked');
 
         res.json({
             success: true,

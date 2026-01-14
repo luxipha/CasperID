@@ -67,7 +67,6 @@ router.post('/send-otp', async (req, res) => {
 
             if (userCredentials && userCredentials.length > 0) {
                 // Returning user with passkey - direct to passkey auth
-                console.log(`🔑 Returning user detected: ${email} - directing to passkey auth`);
                 return res.json({
                     success: true,
                     userExists: true,
@@ -92,7 +91,6 @@ router.post('/send-otp', async (req, res) => {
             verified: false
         });
 
-        console.log(`📧 Generated OTP for ${email}: ${otp} (ID: ${verificationId})`);
 
         // Send OTP email
         await emailService.sendOTP(email, otp);
@@ -180,7 +178,6 @@ router.post('/verify-otp', async (req, res) => {
         // Mark as verified
         storedData.verified = true;
 
-        console.log(`✅ OTP verified successfully for ${storedData.email}`);
 
         // Generate Session Token
         // 1. Find user account to get wallet/human_id
@@ -283,7 +280,6 @@ router.post('/resend-otp', async (req, res) => {
         storedData.attempts = 0;
         storedData.verified = false;
 
-        console.log(`📧 Resending OTP to ${storedData.email}: ${newOtp}`);
 
         // Send new OTP email
         await emailService.sendOTP(storedData.email, newOtp);
@@ -434,7 +430,6 @@ router.post('/send-verification-otp', require('../middleware/auth').requireAuth,
             verified: false
         });
 
-        console.log(`📧 Generated ${purpose} OTP for user ${userAccount.user_id}: ${otp}`);
 
         // Send OTP email with purpose context
         await emailService.sendOTP(userAccount.recovery_email, otp, `CasperID - ${purpose.replace('-', ' ').toUpperCase()} Verification`);
@@ -540,7 +535,6 @@ router.post('/verify-verification-otp', require('../middleware/auth').requireAut
         // Success - mark as verified
         otpEntry.verified = true;
 
-        console.log(`✅ OTP verified for user ${userAccount.user_id} - ${purpose}`);
 
         // Store verification token for subsequent requests (using in-memory for now)
         const verificationToken = `${userAccount.user_id}-${purpose}-${Date.now()}-verified`;

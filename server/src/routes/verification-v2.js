@@ -212,12 +212,11 @@ router.post('/layer3/documents/upload', upload.fields([
             return res.status(400).json({ error: 'back_image is required for ID/Driver\'s License' });
         }
 
-        console.log(`[Layer3] Processing ${document_type} for ${userAccount.wallet}`);
 
         // Initialize Tesseract OCR worker with better configuration
         const { createWorker } = require('tesseract.js');
         worker = await createWorker('eng', 1, {
-            logger: m => console.log('[Tesseract]', m)
+            logger: m => { }
         });
 
         // Configure Tesseract for better accuracy
@@ -227,24 +226,18 @@ router.post('/layer3/documents/upload', upload.fields([
         });
 
         // Perform OCR on front image with confidence data
-        console.log('[Layer3] Starting OCR recognition...');
         const { data } = await worker.recognize(frontImage.path);
 
-        console.log('[Layer3] OCR confidence:', data.confidence);
-        console.log('[Layer3] OCR extracted text length:', data.text.length);
-        console.log('[Layer3] OCR full text:', data.text);
 
         // If confidence is too low, try again with different settings
         let finalText = data.text;
         if (data.confidence < 60) {
-            console.log('[Layer3] Low confidence, trying alternative OCR settings...');
             await worker.setParameters({
                 tessedit_pageseg_mode: '6', // Assume a single uniform block of text
             });
             const retry = await worker.recognize(frontImage.path);
             if (retry.data.confidence > data.confidence) {
                 finalText = retry.data.text;
-                console.log('[Layer3] Using retry result with confidence:', retry.data.confidence);
             }
         }
 
@@ -308,7 +301,6 @@ function parseDocumentText(text, documentType, ocrConfidence = 0) {
             const nextLine = lines[index + 1];
             if (nextLine && nextLine.length > 1 && nextLine.length < 50) {
                 extracted.last_name = nextLine.toUpperCase();
-                console.log('[Parser] Found surname:', extracted.last_name);
             }
         }
 
@@ -317,7 +309,6 @@ function parseDocumentText(text, documentType, ocrConfidence = 0) {
             const nextLine = lines[index + 1];
             if (nextLine && nextLine.length > 1) {
                 extracted.first_name = nextLine.split(/\s+/)[0].toUpperCase();
-                console.log('[Parser] Found given name:', extracted.first_name);
             }
         }
 
@@ -325,7 +316,6 @@ function parseDocumentText(text, documentType, ocrConfidence = 0) {
         const passportMatch = line.match(/[AB]\d{8}/);
         if (passportMatch && !extracted.document_number) {
             extracted.document_number = passportMatch[0];
-            console.log('[Parser] Found passport number:', extracted.document_number);
         }
 
         // Extract NIN (11 digits, usually after "NIN" label on Nigerian passport)
@@ -334,7 +324,6 @@ function parseDocumentText(text, documentType, ocrConfidence = 0) {
             const ninMatch = nextLine?.match(/\d{11}/) || line.match(/\d{11}/);
             if (ninMatch && !extracted.nin) {
                 extracted.nin = ninMatch[0];
-                console.log('[Parser] Found NIN:', extracted.nin);
             }
         }
 
@@ -345,16 +334,13 @@ function parseDocumentText(text, documentType, ocrConfidence = 0) {
             const month = dobMatch[2].toUpperCase();
             const year = '19' + dobMatch[3]; // Assuming 19xx
             extracted.date_of_birth = `${day} ${month} ${year}`;
-            console.log('[Parser] Found DOB:', extracted.date_of_birth);
         }
 
         // Gender (single letter M or F)
         if ((line.trim() === 'M' || line.trim() === '-M') && !extracted.gender) {
             extracted.gender = 'Male';
-            console.log('[Parser] Found gender: Male');
         } else if ((line.trim() === 'F' || line.trim() === '-F') && !extracted.gender) {
             extracted.gender = 'Female';
-            console.log('[Parser] Found gender: Female');
         }
 
         // Nationality
@@ -425,7 +411,6 @@ router.post('/layer3/submit', async (req, res) => {
             });
         }
 
-        console.log('[FullKYC] UserAccount email:', fullUserAccount.recovery_email, 'wallet:', fullUserAccount.wallet);
 
         // Try to load saved liveness frames from the liveness check
         let livenessFrames = [];
@@ -439,7 +424,6 @@ router.post('/layer3/submit', async (req, res) => {
                 const livenessData = JSON.parse(fs.readFileSync(livenessDataPath, 'utf8'));
                 livenessFrames = livenessData.frame_paths || [];
                 livenessCompletedAt = livenessData.completed_at;
-                console.log(`[FullKYC] Loaded ${livenessFrames.length} liveness frames from storage`);
             }
         } catch (err) {
             console.warn('[FullKYC] Could not load liveness frames:', err.message);
@@ -481,7 +465,6 @@ router.post('/layer3/submit', async (req, res) => {
 
         await verificationRequest.save();
 
-        console.log(`[Layer3] Verification request submitted for ${fullUserAccount.wallet}`);
 
         res.json({
             success: true,

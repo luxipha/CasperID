@@ -77,13 +77,29 @@ mongoose.connect(process.env.MONGODB_URI, {
         // Schedule rate limit cleanup
         const { cleanupOldRecords } = require('./utils/rate-limiter');
         setInterval(cleanupOldRecords, 60 * 60 * 1000); // Cleanup every hour
+
+        // Start server only AFTER database is ready
+        app.listen(PORT, () => {
+            console.log(`🚀 CasperID API server running on port ${PORT}`);
+            console.log(`📍 Environment: ${process.env.NODE_ENV || 'development'}`);
+            console.log(`🌐 Frontend URL: ${process.env.FRONTEND_URL || 'http://localhost:3000'}`);
+        });
     })
-    .catch((err) => console.error('❌ MongoDB connection error:', err));
+    .catch((err) => {
+        console.error('❌ MongoDB connection FATAL error:', err.message);
+        console.error('📋 Connection details:', {
+            uri: process.env.MONGODB_URI ? 'REDACTED (Present)' : 'MISSING',
+            node_version: process.version,
+            platform: process.platform
+        });
+        process.exit(1); // Exit if we can't connect to DB
+    });
 
 // Routes
 app.get('/health', (req, res) => {
     res.json({
-        status: 'ok',
+        status: mongoose.connection.readyState === 1 ? 'ok' : 'degraded',
+        db_state: mongoose.connection.readyState,
         message: 'CasperID API is running',
         timestamp: new Date().toISOString()
     });
@@ -132,13 +148,6 @@ app.use((err, req, res, next) => {
 // 404 handler
 app.use((req, res) => {
     res.status(404).json({ error: 'Route not found' });
-});
-
-// Start server
-app.listen(PORT, () => {
-    console.log(`🚀 CasperID API server running on port ${PORT}`);
-    console.log(`📍 Environment: ${process.env.NODE_ENV || 'development'}`);
-    console.log(`🌐 Frontend URL: ${process.env.FRONTEND_URL || 'http://localhost:3000'}`);
 });
 
 module.exports = app;

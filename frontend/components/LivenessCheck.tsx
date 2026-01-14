@@ -34,14 +34,38 @@ export const LivenessCheck: React.FC<LivenessCheckProps> = ({ onBack, onComplete
     blinkCount: 0,
     isBlinking: false,
     frames: [] as Blob[],
-    lastFrameTime: 0
+    lastFrameTime: 0,
+    isSubmitting: false,  // Guard against multiple submissions
+    isCapturing: false    // Guard against concurrent captures
   });
 
-  // Async frame capture helper (non-blocking)
-  const captureFrame = (canvas: HTMLCanvasElement): Promise<Blob | null> => {
+  // Async frame capture helper (non-blocking) with guard
+  const captureFrame = async (canvas: HTMLCanvasElement, st: typeof logicState.current, ignoreLimit: boolean = false): Promise<boolean> => {
+    // Synchronous guard - check before starting async operation
+    if (!ignoreLimit && st.frames.length >= 20 || st.isCapturing) return false;
+    st.isCapturing = true;
+
     return new Promise((resolve) => {
-      canvas.toBlob((blob) => resolve(blob), 'image/jpeg', 0.5);
+      canvas.toBlob((blob) => {
+        if (blob && (ignoreLimit || st.frames.length < 20)) {
+          st.frames.push(blob);
+          resolve(true);
+        } else {
+          resolve(false);
+        }
+        st.isCapturing = false;
+      }, 'image/jpeg', 0.5);
     });
+  };
+
+  const resetLivenessState = () => {
+    logicState.current.frames = [];
+    logicState.current.blinkCount = 0;
+    logicState.current.isSubmitting = false;
+    logicState.current.isCapturing = false;
+    logicState.current.lastFrameTime = 0;
+    setProgress(0);
+    setChallenge("BLINK");
   };
 
   useEffect(() => {
@@ -135,17 +159,19 @@ export const LivenessCheck: React.FC<LivenessCheckProps> = ({ onBack, onComplete
           const ratio = leftEyeOpen / leftEyeWidth;
 
           if (ratio < 0.16) { // Closed
-            if (!st.isBlinking) st.isBlinking = true;
+            if (!st.isBlinking) {
+              st.isBlinking = true;
+            }
           } else { // Open
             if (st.isBlinking) {
               st.isBlinking = false;
               st.blinkCount++;
 
               // Capture frame when blink completes (async, non-blocking)
-              if (canvasRef.current && st.frames.length < 15) {
-                captureFrame(canvasRef.current).then((blob) => {
-                  if (blob) {
-                    st.frames.push(blob);
+              if (canvasRef.current && st.frames.length < 20) {
+
+                captureFrame(canvasRef.current, st).then((captured) => {
+                  if (captured) {
                     console.log(`[Liveness] Captured frame ${st.frames.length} after blink ${st.blinkCount}`);
                   }
                 });
@@ -172,30 +198,29 @@ export const LivenessCheck: React.FC<LivenessCheckProps> = ({ onBack, onComplete
           const nosePos = (nose.x - leftCheek.x) / faceWidth;
 
           // Capture frames periodically during head turn (async, non-blocking)
-          if (now - st.lastFrameTime > 300 && st.frames.length < 15 && canvasRef.current) {
+          if (now - st.lastFrameTime > 200 && st.frames.length < 20 && canvasRef.current && !st.isCapturing) {
             st.lastFrameTime = now;
-            captureFrame(canvasRef.current).then((blob) => {
-              if (blob) {
-                st.frames.push(blob);
-                console.log(`[Liveness] Captured frame ${st.frames.length} during head turn (nosePos: ${nosePos.toFixed(2)})`);
+            captureFrame(canvasRef.current, st).then((captured) => {
+              if (captured) {
+                console.log(`[Liveness] Captured frame ${st.frames.length} during head turn (nosePos: ${nosePos.toFixed(3)})`);
               }
             });
           }
 
-          if (nosePos < 0.3) {
-            // Head turned left sufficiently - capture final frame and submit
-            if (canvasRef.current && st.frames.length < 15) {
-              captureFrame(canvasRef.current).then((blob) => {
-                if (blob) {
-                  st.frames.push(blob);
-                  console.log(`[Liveness] Captured final frame ${st.frames.length} at full left turn`);
-                }
-                submitLiveness(st.frames);
+          if (nosePos < 0.3 && !st.isSubmitting) {
+            // Immediately set guard to prevent duplicate submissions
+            st.isSubmitting = true;
+
+            // CAPTURE THE PEAK FRAME (the one that actually triggered the success)
+            if (canvasRef.current) {
+              captureFrame(canvasRef.current, st, true).then(() => {
+                submitLiveness([...st.frames]); // Pass a copy to prevent mutation
               });
             } else {
-              submitLiveness(st.frames);
+              submitLiveness([...st.frames]);
             }
           }
+
         }
       }
     };
@@ -275,13 +300,17 @@ export const LivenessCheck: React.FC<LivenessCheckProps> = ({ onBack, onComplete
         body: formData,
       });
 
+
+
       if (response.ok) {
         const result = await response.json();
         if (result.passed) {
           await refreshUser();
           setIsApiComplete(true); // Signal progress component to finish
         } else {
-          setGuidance("Verification failed. Please try again.");
+          console.error('[Liveness] Verification failed:', result);
+          setGuidance(result.error || "Verification failed. Please try again.");
+          resetLivenessState();
           setState("POSITIONING");
           setIsApiComplete(false);
         }
@@ -291,6 +320,7 @@ export const LivenessCheck: React.FC<LivenessCheckProps> = ({ onBack, onComplete
     } catch (error) {
       console.error('Liveness error:', error);
       setGuidance("Error. Try again.");
+      resetLivenessState();
       setState("POSITIONING");
     }
   };
@@ -336,7 +366,6 @@ export const LivenessCheck: React.FC<LivenessCheckProps> = ({ onBack, onComplete
               <VerificationProgress
                 isProcessComplete={isApiComplete}
                 onComplete={() => {
-                  console.log('[LivenessCheck] VerificationProgress called onComplete - setting state to COMPLETED');
                   setState("COMPLETED");
                 }}
               />
@@ -418,7 +447,7 @@ export const LivenessCheck: React.FC<LivenessCheckProps> = ({ onBack, onComplete
                 <div className="space-y-1">
                   <h3 className="text-xl font-black text-text-main">Ready to scan?</h3>
                   <p className="text-text-sub text-base font-medium">
-                    Ensure good lighting and no accessories.
+                    Ensure good lighting. Turn your head slowly during the check.
                   </p>
                 </div>
 

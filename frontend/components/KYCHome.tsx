@@ -64,17 +64,14 @@ export const KYCHome: React.FC = () => {
         // Check API for pending Layer 3 upgrade
         try {
           const data = await apiService.get(`/api/identity-status?wallet=${encodeURIComponent(user.wallet)}`);
-          console.log('[KYCHome] Identity status:', data);
 
           // Check if user has pending Layer 3 upgrade
           if (data.pending_upgrade_tier === 'layer_3' && data.status === 'pending') {
-            console.log('[KYCHome] Found pending Layer 3 upgrade');
             setLayer3Status('pending');
             setKycSubmitted(true);
           }
           // Check if user is ALREADY layer_3 or full_kyc but local state is stale
           else if (data.tier === 'layer_3' || data.tier === 'layer_3') {
-            console.log('[KYCHome] confirmed layer_3/full_kyc from API');
             setLayer3Status('approved');
           }
         } catch (error) {
@@ -151,14 +148,12 @@ export const KYCHome: React.FC = () => {
   if (activeStep === 'liveness') {
     // Use the tracked flow state instead of user status
     const livenessLayer = isLayer3Flow ? 3 : 2;
-    console.log('[KYCHome] Liveness step - isLayer3Flow:', isLayer3Flow, 'livenessLayer:', livenessLayer);
 
     // Layer 3 uses stripped-down component (no sidebar/header)
     if (isLayer3Flow) {
       return (
         <L3LivenessCheck
           onComplete={() => {
-            console.log('[KYCHome] L3LivenessCheck onComplete called - routing to layer3_review_submit');
             setActiveStep('layer3_review_submit');
           }}
         />
@@ -302,7 +297,6 @@ export const KYCHome: React.FC = () => {
       <KYCFullSuccess
         onDashboard={goToDashboard}
         onViewProfile={() => {
-          console.log('Navigate to profile from success');
           goToDashboard();
         }}
       />
@@ -330,7 +324,6 @@ export const KYCHome: React.FC = () => {
         onCancel={goToDashboard}
         onNext={async (frontFile, backFile) => {
           try {
-            console.log('[Layer3] Uploading documents for OCR processing...');
 
             // Import API service
             const { apiService } = await import('../services/api');
@@ -342,7 +335,6 @@ export const KYCHome: React.FC = () => {
               selectedDocType as 'passport' | 'drivers_license' | 'national_id'
             );
 
-            console.log('[Layer3] OCR extraction successful:', response);
 
             // Set extracted data
             setExtractedData(response.extracted_data);

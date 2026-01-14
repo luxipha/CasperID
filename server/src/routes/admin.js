@@ -168,7 +168,6 @@ router.post('/revoke', adminAuthWithRateLimit, async (req, res) => {
  */
 router.post('/sync-verified-profiles', adminAuthWithRateLimit, async (req, res) => {
     try {
-        console.log('🔄 Starting manual sync of verified profiles...');
 
         // Find all approved verification requests
         const approvedRequests = await VerificationRequest.find({ status: 'approved' });
@@ -225,7 +224,6 @@ router.post('/sync-verified-profiles', adminAuthWithRateLimit, async (req, res) 
                 });
 
                 syncedCount++;
-                console.log(`✅ Synced ${request.first_name} ${request.last_name} (${request.wallet.substring(0, 8)}...)`);
 
             } catch (error) {
                 console.error(`❌ Error syncing ${request.wallet}:`, error);
@@ -261,7 +259,6 @@ router.post('/sync-verified-profiles', adminAuthWithRateLimit, async (req, res) 
  */
 router.post('/issue-missing-credentials', adminAuthWithRateLimit, async (req, res) => {
     try {
-        console.log('🔍 Audit: Checking for users with missing credentials...');
         const { UserAccount } = require('../database/models');
         const crypto = require('crypto');
 
@@ -279,7 +276,6 @@ router.post('/issue-missing-credentials', adminAuthWithRateLimit, async (req, re
             const exists = await Credential.findOne({ wallet: user.wallet });
 
             if (!exists) {
-                console.log(`🛠 Fixing missing credential for: ${user.wallet}`);
 
                 // Determine Human ID (placeholder or fetch)
                 const { getHumanIdForWallet } = require('../utils/wallet-to-human');

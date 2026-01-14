@@ -118,22 +118,18 @@ const App: React.FC = () => {
   };
 
   const handleVerificationUpgrade = (nextLevel: 'layer_1' | 'layer_2' | 'layer_3') => {
-    console.log(`🔼 User wants to upgrade to ${nextLevel}`);
 
     switch (nextLevel) {
       case 'layer_1':
         // Navigate to email verification flow
-        console.log('📧 Redirecting to email verification...');
         // TODO: Implement email verification flow
         break;
       case 'layer_2':
         // Navigate to liveness check
-        console.log('👁️ Redirecting to liveness verification...');
         setCurrentView('kyc'); // Assuming KYC component handles liveness
         break;
       case 'layer_3':
         // Navigate to full KYC
-        console.log('🆔 Redirecting to full KYC verification...');
         setCurrentView('kyc');
         break;
     }
@@ -391,8 +387,8 @@ const App: React.FC = () => {
         onClose={() => setIsConsentModalOpen(false)}
         appName="Uniswap V4"
         appLogo="https://cryptologos.cc/logos/uniswap-uni-logo.png"
-        onApprove={() => console.log('Consent approved')}
-        onDeny={() => console.log('Consent denied')}
+        onApprove={() => { }}
+        onDeny={() => { }}
       />
     </div>
   );

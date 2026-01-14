@@ -269,17 +269,22 @@ async function verifyLivenessSequence(frameBuffers, expectedSteps) {
             sampleFrames.push({ index: threeQuarterIndex, buffer: frameBuffers[threeQuarterIndex] });
         }
 
-        const prompt = `You are analyzing a liveness verification sequence. The person was asked to perform these actions: ${expectedSteps.join(', ')}.
 
-I'm providing you with ${sampleFrames.length} key frames from a video sequence of ${totalFrames} total frames.
+        // Sort frames chronologically to maintain temporal context for the AI
+        sampleFrames.sort((a, b) => a.index - b.index);
+
+        const prompt = `You are analyzing a liveness verification sequence. The person was asked to perform these actions in sequence: ${expectedSteps.join(', ')}.
+        
+I'm providing you with ${sampleFrames.length} key frames from a video sequence, provided in CHRONOLOGICAL order.
+- The first frames show the initial state and blinking.
+- The final frames (especially the last one) capture the peak of the head turn or movement.
 
 For liveness verification, analyze these aspects:
 1. **Face Detection**: Is a real human face consistently visible?
 2. **Movement Detection**: Are there natural variations in face position, expression, or head pose across frames?
 3. **Blinking**: Do you observe natural eye blinking or eye state changes?
-4. **Head Movement**: Do you see natural head rotation or position changes?
-5. **Expression Changes**: Are there natural facial expression variations?
-6. **Anti-Spoofing**: Does this appear to be a live person vs a photo or video replay?
+4. **Head Movement**: Do you see natural head rotation or position changes? (Crucial: check if the person turns their head as requested).
+5. **Anti-Spoofing**: Does this appear to be a live person vs a photo or video replay?
 
 Provide a JSON response:
 {
@@ -289,7 +294,6 @@ Provide a JSON response:
   "movementDetected": true/false,
   "blinkingObserved": true/false,
   "headMovementObserved": true/false,
-  "expressionChanges": true/false,
   "antiSpoofingScore": 0-100,
   "reasoning": "Detailed explanation of your analysis",
   "suspiciousIndicators": ["list any suspicious signs"],
@@ -297,14 +301,13 @@ Provide a JSON response:
     {
       "frameIndex": 0,
       "faceVisible": true/false,
-      "eyeState": "open/closed/partially",
       "headPose": "description",
-      "expression": "description"
+      "actionDetected": "what action is shown in this specific frame"
     }
   ]
 }
 
-Only mark as passed if you're confident this is a live human performing natural movements.`;
+Only mark as passed if you're confident this is a live human performing the requested movements.`;
 
         // Convert sample frames to image parts
         const imageParts = sampleFrames.map(frame => ({
@@ -318,7 +321,7 @@ Only mark as passed if you're confident this is a live human performing natural 
         const response = await aiResult.response;
         const text = response.text();
 
-        console.log('[Gemini] Liveness sequence analysis response:', text);
+
 
         // Extract JSON from the response
         const jsonMatch = text.match(/\{[\s\S]*\}/);
@@ -348,6 +351,11 @@ Only mark as passed if you're confident this is a live human performing natural 
                     faceDetectionPass: analysis.faceDetectedInAllFrames
                 }
             };
+
+            if (!finalPassed) {
+                console.log(`[Gemini] Liveness verification FAILED for session. Reasoning: ${analysis.reasoning}`);
+            }
+
         } else {
             throw new Error('Failed to parse AI response');
         }

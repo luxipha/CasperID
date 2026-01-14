@@ -22,13 +22,13 @@ router.use(securityHeaders);
 router.post('/start', async (req, res) => {
     try {
         await envioIndexer.startIndexing();
-        
+
         res.json({
             success: true,
             message: 'Indexer started successfully',
             status: envioIndexer.getIndexerStatus()
         });
-        
+
     } catch (error) {
         console.error('Failed to start indexer:', error);
         res.status(500).json({
@@ -45,12 +45,12 @@ router.post('/start', async (req, res) => {
 router.post('/stop', async (req, res) => {
     try {
         envioIndexer.stopIndexing();
-        
+
         res.json({
             success: true,
             message: 'Indexer stopped successfully'
         });
-        
+
     } catch (error) {
         console.error('Failed to stop indexer:', error);
         res.status(500).json({
@@ -68,13 +68,13 @@ router.get('/status', async (req, res) => {
     try {
         const status = envioIndexer.getIndexerStatus();
         const stats = await envioIndexer.getNetworkStatistics();
-        
+
         res.json({
             success: true,
             indexer: status,
             statistics: stats
         });
-        
+
     } catch (error) {
         console.error('Failed to get indexer status:', error);
         res.status(500).json({
@@ -96,19 +96,19 @@ router.get('/user/:address/events', async (req, res) => {
     try {
         const { address } = req.params;
         const { limit = 50, offset = 0 } = req.query;
-        
+
         if (!address || !/^0x[a-fA-F0-9]{40}$/.test(address)) {
             return res.status(400).json({
                 success: false,
                 error: 'Valid Ethereum address required'
             });
         }
-        
+
         const events = await envioIndexer.getUserVerificationEvents(address);
-        
+
         // Apply pagination
         const paginatedEvents = events.slice(offset, offset + parseInt(limit));
-        
+
         res.json({
             success: true,
             events: paginatedEvents,
@@ -119,7 +119,7 @@ router.get('/user/:address/events', async (req, res) => {
                 hasMore: events.length > offset + parseInt(limit)
             }
         });
-        
+
     } catch (error) {
         console.error('Failed to get user events:', error);
         res.status(500).json({
@@ -136,22 +136,22 @@ router.get('/user/:address/events', async (req, res) => {
 router.get('/transaction/:hash/events', async (req, res) => {
     try {
         const { hash } = req.params;
-        
+
         if (!hash || !/^0x[a-fA-F0-9]{64}$/.test(hash)) {
             return res.status(400).json({
                 success: false,
                 error: 'Valid transaction hash required'
             });
         }
-        
+
         const events = await envioIndexer.getTransactionEvents(hash);
-        
+
         res.json({
             success: true,
             events,
             total: events.length
         });
-        
+
     } catch (error) {
         console.error('Failed to get transaction events:', error);
         res.status(500).json({
@@ -168,19 +168,19 @@ router.get('/transaction/:hash/events', async (req, res) => {
 router.get('/analytics', async (req, res) => {
     try {
         const stats = await envioIndexer.getNetworkStatistics();
-        
+
         if (!stats) {
             return res.status(500).json({
                 success: false,
                 error: 'Failed to retrieve analytics'
             });
         }
-        
+
         res.json({
             success: true,
             analytics: stats
         });
-        
+
     } catch (error) {
         console.error('Failed to get analytics:', error);
         res.status(500).json({
@@ -207,20 +207,20 @@ router.post('/search', async (req, res) => {
             limit = 100,
             offset = 0
         } = req.body;
-        
+
         const { VerificationEvent } = require('../database/models');
-        
+
         // Build query
         const query = {};
-        
+
         if (networks.length > 0) {
             query.network_name = { $in: networks };
         }
-        
+
         if (eventTypes.length > 0) {
             query.event_type = { $in: eventTypes };
         }
-        
+
         if (userAddress) {
             if (!/^0x[a-fA-F0-9]{40}$/.test(userAddress)) {
                 return res.status(400).json({
@@ -230,26 +230,26 @@ router.post('/search', async (req, res) => {
             }
             query.user_address = userAddress.toLowerCase();
         }
-        
+
         if (fromBlock || toBlock) {
             query.block_number = {};
             if (fromBlock) query.block_number.$gte = parseInt(fromBlock);
             if (toBlock) query.block_number.$lte = parseInt(toBlock);
         }
-        
+
         if (startDate || endDate) {
             query.timestamp = {};
             if (startDate) query.timestamp.$gte = new Date(startDate);
             if (endDate) query.timestamp.$lte = new Date(endDate);
         }
-        
+
         // Execute search
         const totalCount = await VerificationEvent.countDocuments(query);
         const events = await VerificationEvent.find(query)
             .sort({ timestamp: -1, block_number: -1 })
             .skip(parseInt(offset))
             .limit(parseInt(limit));
-        
+
         res.json({
             success: true,
             events,
@@ -261,7 +261,7 @@ router.post('/search', async (req, res) => {
             },
             query: query
         });
-        
+
     } catch (error) {
         console.error('Search failed:', error);
         res.status(500).json({
@@ -278,7 +278,7 @@ router.post('/search', async (req, res) => {
 router.get('/stream', async (req, res) => {
     try {
         const { networks, eventTypes, userAddress } = req.query;
-        
+
         // Set up Server-Sent Events
         res.writeHead(200, {
             'Content-Type': 'text/event-stream',
@@ -287,31 +287,31 @@ router.get('/stream', async (req, res) => {
             'Access-Control-Allow-Origin': '*',
             'Access-Control-Allow-Headers': 'Cache-Control'
         });
-        
+
         // Build filter criteria
         const filter = {};
         if (networks) filter.network_name = { $in: networks.split(',') };
         if (eventTypes) filter.event_type = { $in: eventTypes.split(',') };
         if (userAddress) filter.user_address = userAddress.toLowerCase();
-        
+
         // Send initial status
         res.write(`data: ${JSON.stringify({
             type: 'status',
             message: 'Connected to event stream',
             timestamp: new Date().toISOString()
         })}\n\n`);
-        
+
         // Set up MongoDB change stream (if supported)
         const { VerificationEvent } = require('../database/models');
-        
+
         try {
             const changeStream = VerificationEvent.watch([
                 { $match: { 'fullDocument.operationType': 'insert' } }
             ]);
-            
+
             changeStream.on('change', (change) => {
                 const event = change.fullDocument;
-                
+
                 // Apply filters
                 if (filter.network_name && !filter.network_name.$in.includes(event.network_name)) {
                     return;
@@ -322,7 +322,7 @@ router.get('/stream', async (req, res) => {
                 if (filter.user_address && event.user_address !== filter.user_address) {
                     return;
                 }
-                
+
                 // Send event to client
                 res.write(`data: ${JSON.stringify({
                     type: 'event',
@@ -330,45 +330,44 @@ router.get('/stream', async (req, res) => {
                     timestamp: new Date().toISOString()
                 })}\n\n`);
             });
-            
+
             // Handle client disconnect
             req.on('close', () => {
                 changeStream.close();
             });
-            
+
         } catch (streamError) {
             // Fallback to polling if change streams not supported
-            console.log('Change streams not available, using polling fallback');
-            
+
             let lastEventTime = new Date();
-            
+
             const pollInterval = setInterval(async () => {
                 try {
                     const newEvents = await VerificationEvent.find({
                         ...filter,
                         timestamp: { $gt: lastEventTime }
                     }).sort({ timestamp: 1 });
-                    
+
                     for (const event of newEvents) {
                         res.write(`data: ${JSON.stringify({
                             type: 'event',
                             event: event,
                             timestamp: new Date().toISOString()
                         })}\n\n`);
-                        
+
                         lastEventTime = event.timestamp;
                     }
-                    
+
                 } catch (pollError) {
                     console.error('Polling error:', pollError);
                 }
             }, 5000); // Poll every 5 seconds
-            
+
             req.on('close', () => {
                 clearInterval(pollInterval);
             });
         }
-        
+
         // Send heartbeat every 30 seconds
         const heartbeat = setInterval(() => {
             res.write(`data: ${JSON.stringify({
@@ -376,11 +375,11 @@ router.get('/stream', async (req, res) => {
                 timestamp: new Date().toISOString()
             })}\n\n`);
         }, 30000);
-        
+
         req.on('close', () => {
             clearInterval(heartbeat);
         });
-        
+
     } catch (error) {
         console.error('Stream setup failed:', error);
         res.status(500).json({

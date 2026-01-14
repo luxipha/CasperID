@@ -79,7 +79,6 @@ export function CasperProvider({ children }: { children: ReactNode }) {
             setPublicKey(activeKey);
             setAccount(activeKey); // Store full public key, not truncated account-hash
 
-            console.log('Casper wallet connected:', activeKey);
         } catch (error: any) {
             console.error('Error connecting to Casper wallet:', error);
             alert(error.message || 'Failed to connect to Casper wallet');

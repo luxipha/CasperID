@@ -23,9 +23,7 @@ export const VerificationProgress: React.FC<VerificationProgressProps> = ({ onCo
                     const fastNext = prev + 5;
                     if (fastNext >= 100) {
                         clearInterval(interval);
-                        console.log('[VerificationProgress] Completing - calling onComplete in 800ms');
                         setTimeout(() => {
-                            console.log('[VerificationProgress] Calling onComplete NOW');
                             onComplete();
                         }, 800);
                         return 100;
@@ -35,7 +33,6 @@ export const VerificationProgress: React.FC<VerificationProgressProps> = ({ onCo
 
                 if (prev >= 100) {
                     clearInterval(interval);
-                    console.log('[VerificationProgress] Progress reached 100 - calling onComplete in 800ms');
                     setTimeout(() => {
                         console.log('[VerificationProgress] Calling onComplete NOW');
                         onComplete();
