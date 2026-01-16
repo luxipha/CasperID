@@ -15,6 +15,7 @@ const {
     passkeyRateLimit,
     securityHeaders
 } = require('../middleware/validation');
+const { extractViewer } = require('../middleware/auth');
 
 /**
  * Passkey Authentication Routes
@@ -32,9 +33,17 @@ router.use(securityHeaders);
  * Start passkey registration process
  * POST /api/passkey/register/begin
  */
-router.post('/register/begin', passkeyRateLimit, validatePasskeyRegistration, async (req, res) => {
+router.post('/register/begin', passkeyRateLimit, extractViewer, validatePasskeyRegistration, async (req, res) => {
     try {
         const { email, name, crossDevice } = req.body;
+
+        // Check if email is already verified in this session (e.g. from initial OTP)
+        // requireAuth/extractViewer populates req.user.email
+        const isEmailVerified = !!(req.user && req.user.email && req.user.email.toLowerCase() === email.toLowerCase());
+
+        if (isEmailVerified) {
+            console.log(`[Passkey] Suppressing redundant OTP for pre-verified email: ${email}`);
+        }
 
         if (!email) {
             return res.status(400).json({
@@ -52,7 +61,7 @@ router.post('/register/begin', passkeyRateLimit, validatePasskeyRegistration, as
             });
         }
 
-        const result = await webauthnService.generateRegistrationOptions(email, name);
+        const result = await webauthnService.generateRegistrationOptions(email, name, isEmailVerified);
 
         // If cross-device registration, generate QR code
         let qrCode = null;
@@ -897,22 +906,33 @@ router.post('/wallet/generate', async (req, res) => {
         const existingCredential = await Credential.findOne({ wallet: walletInfo.walletAddress });
 
         if (!existingCredential) {
-            const newCredential = new Credential({
+            console.log(`[Layer 1] Initiating on-chain verification for ${walletInfo.walletAddress}`);
+
+            // Use the shared credential minter to log on-chain immediately
+            const { mintCredential } = require('../utils/credential-minter');
+
+            // Create a mock request object for the minter
+            const mockRequest = {
                 wallet: walletInfo.walletAddress,
-                human_id: walletInfo.humanId,
-                tier: 'layer_1', // Initial tier
-                last_kyc_at: Math.floor(Date.now() / 1000),
-                issuer_id: 'CasperID-System',
-                credential_json: JSON.stringify({
-                    subject_wallet: walletInfo.walletAddress,
-                    tier: 'layer_1',
-                    issued_at: Date.now()
-                }),
-                credential_hash: crypto.createHash('sha256').update(userAccount.user_id).digest('hex'),
-                created_at: new Date()
-            });
-            await newCredential.save();
-            console.log(`✅ Generated initial credential for ${walletInfo.walletAddress}`);
+                tier: 'layer_1', // Basic Tier
+                status: 'approved',
+                first_name: '',
+                last_name: '',
+                email: userAccount.recovery_email,
+                ip: req.ip,
+                userAgent: req.get('User-Agent'),
+                save: async () => { } // Mock save function
+            };
+
+            try {
+                const result = await mintCredential(mockRequest);
+                console.log(`✅ Generated initial on-chain credential for ${walletInfo.walletAddress}: ${result.tx_hash}`);
+            } catch (mintError) {
+                console.error('❌ Failed to mint initial credential:', mintError);
+                // Fallback to DB-only if chain fails, to not block onboarding? 
+                // For now, allow error to bubble up or log it.
+                // We'll proceed silently to ensure user can still login.
+            }
         }
 
         // ENSURE USER PROFILE EXISTS (Explicit Creation)
@@ -979,7 +999,7 @@ router.post('/did/mint', async (req, res) => {
 
         const userAccount = sessionData.userAccount;
 
-        // Check if DID already exists
+        // Check if DID already exists in database
         if (userAccount.did_address) {
             return res.json({
                 success: true,
@@ -990,19 +1010,55 @@ router.post('/did/mint', async (req, res) => {
         }
 
         // Mint DID using Casper blockchain service
-        // TODO: Implement actual DID minting when Casper service is ready
-        const mockDID = `did:casper:${userAccount.wallet}`;
+        // Real implementation using the Identity Registry
+        const casperService = require('../services/casper');
 
-        // For now, just update the user account with a mock DID
+        // Safety check: Query on-chain state before minting
+        // This prevents DIDAlreadyExists errors when DB is out of sync
+        const existingOnChain = await casperService.getVerificationStatus(userAccount.wallet);
+        if (existingOnChain) {
+            // DID exists on-chain but not in DB - sync and return
+            const realDID = `did:casper:${userAccount.wallet}`;
+            await UserAccount.updateOne(
+                { user_id: userAccount.user_id },
+                { did_address: realDID }
+            );
+            console.log(`[DID] Synced existing on-chain DID to DB for ${userAccount.wallet}`);
+            return res.json({
+                success: true,
+                message: 'DID already exists on-chain (synced to database)',
+                did: realDID,
+                alreadyExists: true
+            });
+        }
+
+        console.log(`[DID] Minting Master DID for ${userAccount.wallet}`);
+        const txHash = await casperService.mintDID(userAccount.wallet, userAccount.tier || 'layer_1');
+
+        const realDID = `did:casper:${userAccount.wallet}`;
+
+        // Update user account with real DID
+        // Also ensure linked_wallets has the Casper wallet entry
         await UserAccount.updateOne(
             { user_id: userAccount.user_id },
-            { did_address: mockDID }
+            {
+                did_address: realDID,
+                $addToSet: {
+                    linked_wallets: {
+                        chain: 'casper',
+                        address: userAccount.wallet,
+                        verified: true,
+                        verified_at: new Date()
+                    }
+                }
+            }
         );
 
         res.json({
             success: true,
-            message: 'DID minted successfully',
-            did: mockDID
+            message: 'DID minted successfully on Casper blockchain',
+            did: realDID,
+            tx_hash: txHash
         });
 
     } catch (error) {

@@ -129,12 +129,14 @@ app.use('/api/auth', authRoutes);
 app.use('/api', aiRoutes);
 app.use('/api/casperid', casperidAuthRoutes);
 app.use('/api/passkey', passkeyAuthRoutes); // Passkey authentication (Layer 0/1)
+app.use('/api/passkey/context-did', require('./routes/context-did')); // Context DID Management (Layer 2+)
 app.use('/api/metamask', metamaskPermissionsRoutes); // MetaMask Advanced Permissions (ERC-7715)
 app.use('/api/indexer', indexerRoutes); // Blockchain event indexing
 app.use('/api', profileRoutes); // Profile routes (GET /api/profile/:wallet, etc.)
 app.use('/api', activityRoutes); // Activity log routes
 app.use('/api', verifiedProfilesRoutes); // Verified profiles for sitemap
 app.use('/api/notifications', require('./routes/notifications'));
+app.use('/api', require('./routes/cns')); // CNS Name Resolution & Registration
 
 // Error handling middleware
 app.use((err, req, res, next) => {

@@ -15,6 +15,14 @@ const TIER_LEVELS = {
 // Array of all valid tier values (for schema enum)
 const TIER_ENUM = Object.values(TIER_LEVELS);
 
+// Numeric mapping for smart contracts (u8)
+const TIER_NUMERIC = {
+    [TIER_LEVELS.LAYER_0]: 0,
+    [TIER_LEVELS.LAYER_1]: 1,
+    [TIER_LEVELS.LAYER_2]: 2,
+    [TIER_LEVELS.LAYER_3]: 3
+};
+
 // Tier display names for UI
 const TIER_LABELS = {
     [TIER_LEVELS.LAYER_0]: 'Not Verified',
@@ -73,6 +81,7 @@ function normalizeTier(tier) {
 module.exports = {
     TIER_LEVELS,
     TIER_ENUM,
+    TIER_NUMERIC,
     TIER_LABELS,
     TIER_ORDER,
     getTierIndex,

@@ -243,30 +243,23 @@ async function verifyLivenessSequence(frameBuffers, expectedSteps) {
     try {
         const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
 
-        // Analyze a sampling of frames (first, middle, last few) to reduce API cost
+        // Dense sampling to capture movement nuances (up to 20 frames)
         const sampleFrames = [];
         const totalFrames = frameBuffers.length;
+        const maxSampleCount = 20;
 
-        // Always include first frame
-        sampleFrames.push({ index: 0, buffer: frameBuffers[0] });
-
-        // Include middle frame
-        if (totalFrames > 2) {
-            const midIndex = Math.floor(totalFrames / 2);
-            sampleFrames.push({ index: midIndex, buffer: frameBuffers[midIndex] });
-        }
-
-        // Include last frame
-        if (totalFrames > 1) {
-            sampleFrames.push({ index: totalFrames - 1, buffer: frameBuffers[totalFrames - 1] });
-        }
-
-        // Include a couple more frames for better analysis
-        if (totalFrames > 6) {
-            const quarterIndex = Math.floor(totalFrames / 4);
-            const threeQuarterIndex = Math.floor(totalFrames * 3 / 4);
-            sampleFrames.push({ index: quarterIndex, buffer: frameBuffers[quarterIndex] });
-            sampleFrames.push({ index: threeQuarterIndex, buffer: frameBuffers[threeQuarterIndex] });
+        if (totalFrames <= maxSampleCount) {
+            // If we have fewer than max frames, just use all of them
+            for (let i = 0; i < totalFrames; i++) {
+                sampleFrames.push({ index: i, buffer: frameBuffers[i] });
+            }
+        } else {
+            // Densely sample across the sequence
+            const step = (totalFrames - 1) / (maxSampleCount - 1);
+            for (let i = 0; i < maxSampleCount; i++) {
+                const idx = Math.round(i * step);
+                sampleFrames.push({ index: idx, buffer: frameBuffers[idx] });
+            }
         }
 
 

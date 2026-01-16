@@ -310,7 +310,7 @@ class VerificationServiceV2 {
             // Create credential
             const credentialData = await this.createVerificationCredential(
                 userAccount,
-                'layer_1', // Layer 2 maps to 'layer_1' tier
+                'layer_2', // Correctly identifying as layer_2
                 proofData
             );
 

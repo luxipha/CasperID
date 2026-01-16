@@ -252,15 +252,10 @@ router.post('/ai/verify-liveness-sequence', upload.fields([
                 .update(credential_json)
                 .digest('hex');
 
-            // Call Casper contract to set verification
-            const tx_hash = await casperService.setVerification(
+            // Call Casper contract to upgrade verification tier
+            const tx_hash = await casperService.updateTier(
                 userAccount.wallet,
-                'layer_2',
-                now,
-                now,
-                process.env.ISSUER_ID || 'CasperID-Demo',
-                credential_hash,
-                true
+                'layer_2'
             );
 
             // Generate human-friendly ID

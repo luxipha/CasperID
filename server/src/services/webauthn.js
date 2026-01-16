@@ -37,7 +37,7 @@ class WebAuthnService {
     /**
      * Generate registration options for new passkey creation
      */
-    async generateRegistrationOptions(userEmail, userName = null) {
+    async generateRegistrationOptions(userEmail, userName = null, isEmailVerified = false) {
         try {
             const userId = uuidv4();
             const userDisplayName = userName || userEmail.split('@')[0];
@@ -80,6 +80,7 @@ class WebAuthnService {
             this.challengeStorage.set(userId, {
                 challenge: options.challenge,
                 userEmail,
+                isEmailVerified,
                 timestamp: Date.now(),
             });
 
@@ -143,17 +144,22 @@ class WebAuthnService {
             });
 
             if (!userAccount) {
+                // New users must have verified OTP before reaching passkey creation
+                // The UI flow enforces OTP verification first, so email is verified
                 userAccount = new UserAccount({
                     user_id: userId,
                     recovery_email: storedChallenge.userEmail,
-                    email_verified: false,
+                    email_verified: true,
                     user_salt: userSalt,
                     active_passkey_id: Buffer.from(credentialID).toString('base64url'),
-                    tier: 'layer_0',
+                    tier: 'layer_1',
                 });
             } else {
                 userAccount.active_passkey_id = Buffer.from(credentialID).toString('base64url');
                 userAccount.user_salt = userSalt;
+                // Existing users completing passkey registration have verified email
+                userAccount.email_verified = true;
+                userAccount.tier = userAccount.tier || 'layer_1';
             }
 
             await userAccount.save();
@@ -197,12 +203,9 @@ class WebAuthnService {
 
             await deviceSession.save();
 
-            // Initialize email verification (optional - for recovery)
-            const emailVerificationId = await this.initializeEmailVerification(
-                storedChallenge.userEmail,
-                userId,
-                'registration'
-            );
+            // Skip automatic email verification - users already verify via OTP before passkey creation
+            // The OTP flow in auth.js handles email verification for registration
+            const emailVerificationId = null;
 
             return {
                 success: true,

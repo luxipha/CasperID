@@ -3,7 +3,20 @@
  * Handles interaction with Casper smart contracts
  */
 
-const { CasperClient, Contracts, Keys, RuntimeArgs, CLValueBuilder } = require('casper-js-sdk');
+const { CasperClient, Contracts, Keys, RuntimeArgs, CLValueBuilder, CLAccountHash, CLPublicKey } = require('casper-js-sdk');
+const { TIER_NUMERIC } = require('../constants/tier-levels');
+const { blake2b } = require('blakejs');
+
+/**
+ * Build Odra storage key for Mapping lookup
+ * Formula: blake2b256([index as u32 BE] + [mapping_key_bytes])
+ */
+function buildOdraKey(fieldIndex, mappingKeyBytes) {
+    const indexBuf = Buffer.alloc(4);
+    indexBuf.writeUInt32BE(fieldIndex);
+    const keyData = Buffer.concat([indexBuf, mappingKeyBytes]);
+    return Buffer.from(blake2b(keyData, null, 32)).toString('hex');
+}
 
 // Configuration
 const RPC_API = process.env.CASPER_NODE_URL || 'https://rpc.testnet.casperlabs.io/rpc';
@@ -18,6 +31,59 @@ if (CONTRACT_HASH) {
     // Handle 'hash-' prefix if present
     const hash = CONTRACT_HASH.startsWith('hash-') ? CONTRACT_HASH.slice(5) : CONTRACT_HASH;
     contractClient.setContractHash(`hash-${hash}`);
+    console.log(`[Casper] Contract initialized: hash-${hash.slice(0, 8)}...${hash.slice(-6)}`);
+} else {
+    console.warn('[Casper] CONTRACT_HASH not set!');
+}
+
+/**
+ * Get verification status from Casper contract
+ * Queries the Odra contract's identities Mapping to check if wallet has a DID
+ * @param {string} walletAddress - Wallet address (public key or account-hash)
+ * @returns {Promise<Object|null>} Verification record with tier, or null if not found
+ */
+async function getVerificationStatus(walletAddress) {
+    if (!CONTRACT_HASH) return null;
+
+    try {
+        // Convert wallet to account hash bytes
+        let accountHashHex;
+        if (walletAddress.startsWith('account-hash-')) {
+            accountHashHex = walletAddress.replace('account-hash-', '');
+        } else {
+            const pubKey = CLPublicKey.fromHex(walletAddress);
+            accountHashHex = Buffer.from(pubKey.toAccountHash()).toString('hex');
+        }
+
+        // Odra Address serialization: 0x00 (Account variant) + 32 bytes account hash
+        const addressBytes = Buffer.concat([
+            Buffer.from([0x00]),
+            Buffer.from(accountHashHex, 'hex')
+        ]);
+
+        // Build Odra key for 'identities' mapping (field index 2 in IdentityRegistry)
+        const IDENTITIES_FIELD_INDEX = 2;
+        const odraKey = buildOdraKey(IDENTITIES_FIELD_INDEX, addressBytes);
+
+        const result = await contractClient.queryContractDictionary('state', odraKey);
+
+        if (result) {
+            console.log(`[Casper] ✅ Found DID for ${walletAddress.slice(0, 20)}...`);
+            // Parse MasterIdentity struct - tier is at a specific offset in the serialized data
+            // The result is raw bytes, we just need to confirm it exists
+            return { exists: true, raw: result };
+        }
+
+        return null;
+    } catch (error) {
+        // "Query failed" or "ValueNotFound" means no DID exists
+        if (error.message?.includes('Query failed') || error.message?.includes('ValueNotFound')) {
+            console.log(`[Casper] No DID found for ${walletAddress.slice(0, 20)}...`);
+            return null;
+        }
+        console.error('[Casper] Error getting verification status:', error.message);
+        return null;
+    }
 }
 
 /**
@@ -27,20 +93,29 @@ if (CONTRACT_HASH) {
 function getIssuerKeys() {
     try {
         const privateKeyHex = process.env.ISSUER_PRIVATE_KEY;
-        const publicKeyHex = process.env.ISSUER_PUBLIC_KEY;
-
-        if (!privateKeyHex || !publicKeyHex) {
-            throw new Error('Issuer keys not found in environment');
+        if (!privateKeyHex) {
+            throw new Error('Issuer private key not found in environment');
         }
 
-        // Convert hex to Uint8Array
-        const privateKey = Uint8Array.from(Buffer.from(privateKeyHex, 'hex'));
-        const publicKey = Uint8Array.from(Buffer.from(publicKeyHex, 'hex'));
+        // Clean the private key hex
+        const cleanPriv = privateKeyHex.startsWith('01') ? privateKeyHex.slice(2) : privateKeyHex;
 
-        // Assume Ed25519 (standard for Casper)
-        // Note: SDK v2.x key loading might vary, trying standard parse
-        const keys = new Keys.Ed25519.parseKeyPair(publicKey, privateKey);
-        return keys;
+        // Use parsePrivateKey for more robust loading
+        // For Ed25519, the private key is 32 bytes
+        const privateKey = Uint8Array.from(Buffer.from(cleanPriv, 'hex'));
+
+        if (privateKey.length !== 32) {
+            throw new Error(`Invalid Ed25519 private key length. Expected 32 bytes, got ${privateKey.length}`);
+        }
+
+        // Derive the full key pair
+        const keyPair = Keys.Ed25519.parseKeyPair(
+            Keys.Ed25519.privateToPublicKey(privateKey),
+            privateKey
+        );
+
+        console.log(`[Casper] Issuer keys loaded. Public Key: ${keyPair.accountHex()}`);
+        return keyPair;
     } catch (error) {
         console.error('Failed to load issuer keys:', error);
         throw error;
@@ -48,115 +123,137 @@ function getIssuerKeys() {
 }
 
 /**
- * Get verification status from Casper contract
- * @param {string} accountHash - Account hash to query
- * @returns {Promise<Object>} Verification record
+ * Helper to convert wallet address to CLKey for Address argument
  */
-async function getVerificationStatus(accountHash) {
-    if (!CONTRACT_HASH) return null;
-
+function toAddressArg(walletAddress) {
     try {
-        // Query the identities dictionary
-        // The key in the dictionary is the account_hash string
-        const result = await contractClient.queryContractDictionary(
-            'identities',
-            accountHash
-        );
+        if (!walletAddress) throw new Error('Wallet address is required');
 
-        if (!result) {
-            return { verified: false };
+        // Case 1: account-hash- prefix (Generated by self-custody service)
+        if (walletAddress.startsWith('account-hash-')) {
+            const hash = walletAddress.replace('account-hash-', '');
+            const bytes = Uint8Array.from(Buffer.from(hash, 'hex'));
+            return CLValueBuilder.key(new CLAccountHash(bytes));
         }
 
-        // Result is a CLValue (Tuple)
-        // Data structure: ((verified, tier, last_kyc_at), (last_liveness_at, issuer_id, credential_hash))
-        // We need to unpack it. SDK typically returns abstract values.
-
-        // This part depends heavily on SDK response format for Tuple.
-        // For robustness, if query fails or returns null, we assume unverified.
-
-        // Note: Parsing complex CLTypes from raw query response can be tricky without types.
-        // For MVP, we might trust the backend DB, but this function is asked for "Get Identity Status".
-
-        // Let's interpret the response if possible
-        // Assuming result is the data.
-
-        return result;
+        // Case 2: Standard public key hex (01 or 02 prefix)
+        return CLValueBuilder.key(CLPublicKey.fromHex(walletAddress));
     } catch (error) {
-        return { verified: false };
-    }
-}
-
-/**
- * Set verification status on Casper contract
- * @param {string} accountHash - Account hash
- * @param {string} tier - Verification tier
- * @param {number} lastKycAt - Last KYC timestamp
- * @param {number} lastLivenessAt - Last liveness timestamp
- * @param {string} issuerId - Issuer ID
- * @param {string} credentialHash - Credential hash
- * @param {boolean} verified - Verification status
- * @returns {Promise<string>} Transaction hash
- */
-async function setVerification(
-    accountHash,
-    tier,
-    lastKycAt,
-    lastLivenessAt,
-    issuerId,
-    credentialHash,
-    verified
-) {
-    try {
-
-        if (!CONTRACT_HASH) throw new Error('CONTRACT_HASH not configured');
-
-        const keys = getIssuerKeys();
-
-        // Construct arguments matching contract signature:
-        // account_hash: String
-        // tier: String
-        // last_kyc_at: U64
-        // last_liveness_at: U64
-        // issuer_id: String
-        // credential_hash: String
-        // verified: Bool
-        const args = RuntimeArgs.fromMap({
-            account_hash: CLValueBuilder.string(accountHash),
-            tier: CLValueBuilder.string(tier),
-            last_kyc_at: CLValueBuilder.u64(lastKycAt),
-            last_liveness_at: CLValueBuilder.u64(lastLivenessAt),
-            issuer_id: CLValueBuilder.string(issuerId),
-            credential_hash: CLValueBuilder.string(credentialHash),
-            verified: CLValueBuilder.bool(verified)
-        });
-
-        // Current CASPER-JS-SDK v2 usage for contract calls
-        const deploy = contractClient.callEntrypoint(
-            'set_verification',
-            args,
-            keys.publicKey,
-            CHAIN_NAME,
-            '3000000000', // Payment: 3 CSPR (Deployment cost ~2.5, keeping buffer)
-            [keys] // Signing keys
-        );
-
-        // Send deploy
-        const deployHash = await client.putDeploy(deploy);
-
-        return deployHash;
-    } catch (error) {
-        console.error('[Casper] Set verification error:', error);
+        console.error('[Casper] Error converting address:', error);
         throw error;
     }
 }
 
 /**
- * Add an authorized issuer to the contract
+ * Mint a new Master DID on the blockchain
+ * Registers the identity in the on-chain registry
+ * @param {string} walletAddress - Wallet address
+ * @param {string} tier - Initial tier ('layer_1', 'layer_2')
+ * @returns {Promise<{deployHash: string, alreadyExists?: boolean}>} Transaction result
  */
-async function addIssuer(publicKey) {
+async function mintMasterDID(walletAddress, tier = 'layer_1') {
+    try {
+        if (!CONTRACT_HASH) throw new Error('CONTRACT_HASH not configured');
+
+        const keys = getIssuerKeys();
+        const numericTier = TIER_NUMERIC[tier] || 1;
+
+        const args = RuntimeArgs.fromMap({
+            user: toAddressArg(walletAddress),
+            tier: CLValueBuilder.u8(numericTier)
+        });
+
+        const deploy = contractClient.callEntrypoint(
+            'mint_for_user',
+            args,
+            keys.publicKey,
+            CHAIN_NAME,
+            '4500000000', // ~4.5 CSPR for minting
+            [keys]
+        );
+
+        const deployHash = await client.putDeploy(deploy);
+        console.log(`[Casper] Minted Master DID for ${walletAddress}. Tx: ${deployHash}`);
+        return deployHash;
+    } catch (error) {
+        const errorMsg = error.message || String(error);
+
+        // Check if it's a DIDAlreadyExists error (error code 1 from contract)
+        if (errorMsg.includes('DIDAlreadyExists') || errorMsg.includes('User Err') && errorMsg.includes('1')) {
+            console.log(`[Casper] DID already exists for ${walletAddress} - returning success`);
+            return { deployHash: 'already_exists', alreadyExists: true };
+        }
+
+        console.error('[Casper] mintMasterDID error:', error);
+        throw error;
+    }
+}
+
+/**
+ * Update verification tier on-chain
+ * @param {string} walletAddress - Wallet address
+ * @param {string} tier - New tier ('layer_2', 'layer_3')
+ * @returns {Promise<string>} Transaction hash
+ */
+async function updateTier(walletAddress, tier) {
+    try {
+        if (!CONTRACT_HASH) throw new Error('CONTRACT_HASH not configured');
+
+        const keys = getIssuerKeys();
+        const numericTier = TIER_NUMERIC[tier] || 2;
+
+        const args = RuntimeArgs.fromMap({
+            wallet: toAddressArg(walletAddress),
+            new_tier: CLValueBuilder.u8(numericTier)
+        });
+
+        const deploy = contractClient.callEntrypoint(
+            'update_tier',
+            args,
+            keys.publicKey,
+            CHAIN_NAME,
+            '2500000000', // ~2.5 CSPR
+            [keys]
+        );
+
+        const deployHash = await client.putDeploy(deploy);
+        console.log(`[Casper] Updated tier for ${walletAddress} to ${tier}. Tx: ${deployHash}`);
+        return deployHash;
+    } catch (error) {
+        console.error('[Casper] updateTier error:', error);
+        throw error;
+    }
+}
+
+/**
+ * Legacy method - Smart DID management
+ * Checks on-chain if user exists before deciding to mint or update.
+ * @deprecated Use mintMasterDID or updateTier directly
+ */
+async function setVerification(accountHash, tier, ...args) {
+    console.warn('[Casper] setVerification is DEPRECATED.');
+
+    // Query chain for existing DID
+    const existing = await getVerificationStatus(accountHash);
+    const hasDID = existing != null;
+
+    if (hasDID) {
+        console.log(`[Casper] User exists on-chain (Result: ${JSON.stringify(existing)}) -> updateTier`);
+        return updateTier(accountHash, tier);
+    } else {
+        console.log('[Casper] New user -> mintMasterDID');
+        return mintMasterDID(accountHash, tier);
+    }
+}
+
+/**
+ * Add an authorized issuer to the contract
+ * @param {string} issuerAddress - Issuer wallet address (public key or account-hash)
+ */
+async function addIssuer(issuerAddress) {
     const keys = getIssuerKeys();
     const args = RuntimeArgs.fromMap({
-        pub_key: CLValueBuilder.string(publicKey)
+        issuer: toAddressArg(issuerAddress)
     });
     const deploy = contractClient.callEntrypoint('add_issuer', args, keys.publicKey, CHAIN_NAME, '2500000000', [keys]);
     return client.putDeploy(deploy);
@@ -164,19 +261,84 @@ async function addIssuer(publicKey) {
 
 /**
  * Remove an issuer from the contract
+ * @param {string} issuerAddress - Issuer wallet address (public key or account-hash)
  */
-async function removeIssuer(publicKey) {
+async function removeIssuer(issuerAddress) {
     const keys = getIssuerKeys();
     const args = RuntimeArgs.fromMap({
-        pub_key: CLValueBuilder.string(publicKey)
+        issuer: toAddressArg(issuerAddress)
     });
     const deploy = contractClient.callEntrypoint('remove_issuer', args, keys.publicKey, CHAIN_NAME, '2500000000', [keys]);
     return client.putDeploy(deploy);
+}
+
+/**
+ * Mint a new DID on the blockchain
+ * @deprecated Use mintMasterDID
+ */
+async function mintDID(walletAddress, tier = 'layer_1') {
+    return mintMasterDID(walletAddress, tier);
+}
+
+/**
+ * Mint a new .cid name NFT
+ * @param {string} walletAddress - Recipient wallet address
+ * @param {string} name - The .cid name (e.g., "alice.cid")
+ * @param {string} boundDid - The Master DID to bind
+ * @param {boolean} isPremium - Whether it's a premium name
+ * @param {number} expiresAt - Expiry timestamp (0 for no expiry)
+ * @returns {Promise<string>} Transaction hash
+ */
+async function mintCidName(walletAddress, name, boundDid, isPremium = true, expiresAt = 0) {
+    try {
+        const cnsContractHash = process.env.CID_NAME_NFT_CONTRACT_HASH;
+        if (!cnsContractHash) throw new Error('CID_NAME_NFT_CONTRACT_HASH not configured');
+
+        const keys = getIssuerKeys();
+
+        // Initialize a clean contract client for this specific hash
+        const cnsClient = new Contracts.Contract(client);
+        const hash = cnsContractHash.startsWith('hash-') ? cnsContractHash.slice(5) : cnsContractHash;
+        cnsClient.setContractHash(`hash-${hash}`);
+
+        // Construct arguments matching Odra CidNameNFT signature:
+        // to: Address (Key)
+        // name: String
+        // bound_did: String
+        // is_premium: bool (Odra maps this to Bool)
+        // expires_at: u64
+        const args = RuntimeArgs.fromMap({
+            to: toAddressArg(walletAddress),
+            name: CLValueBuilder.string(name),
+            bound_did: CLValueBuilder.string(boundDid),
+            is_premium: CLValueBuilder.bool(isPremium),
+            expires_at: CLValueBuilder.u64(expiresAt)
+        });
+
+        const deploy = cnsClient.callEntrypoint(
+            'mint_cid_name',
+            args,
+            keys.publicKey,
+            CHAIN_NAME,
+            '25000000000', // Payment: 25 CSPR (Odra contracts often require more gas)
+            [keys]
+        );
+
+        const deployHash = await client.putDeploy(deploy);
+        return deployHash;
+    } catch (error) {
+        console.error('[Casper] Mint CID Name error:', error);
+        throw error;
+    }
 }
 
 module.exports = {
     getVerificationStatus,
     setVerification,
     addIssuer,
-    removeIssuer
+    removeIssuer,
+    mintDID,
+    mintMasterDID,
+    updateTier,
+    mintCidName
 };

@@ -1,6 +1,6 @@
 require('dotenv').config();
 const mongoose = require('mongoose');
-const { Skill, UserProfile } = require('./src/database/models');
+const { Skill, UserProfile } = require('../src/database/models');
 
 async function checkSkillsDb() {
     try {

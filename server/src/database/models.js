@@ -626,12 +626,54 @@ const userAccountSchema = new mongoose.Schema({
         sparse: true,
         index: true
     },
+
+    // Master DID (Root Identity)
     did_address: {
         type: String,
         unique: true,
         sparse: true,
         index: true
     },
+    // Track if DID has been minted on-chain (prevents duplicate mint attempts)
+    did_minted: {
+        type: Boolean,
+        default: false
+    },
+    onchain_did_tx: String, // Transaction hash of the DID minting
+    // Premium .cid name (e.g., "alice" for alice.cid)
+    cns_name: {
+        type: String,
+        unique: true,
+        sparse: true,
+        index: true
+    },
+    onchain_name_tx: String,
+    // Context DIDs (Domain-specific pseudonyms)
+    context_dids: [{
+        did: { type: String, required: true },
+        context: { type: String, required: true }, // e.g. 'professional', 'gaming', 'social'
+        tier_required: { type: String, default: 'layer_2' },
+        created_at: { type: Date, default: Date.now }
+    }],
+    // CNS Routing (Programmable Pointers)
+    cns_routing: [{
+        name: { type: String, required: true }, // e.g. 'alice.cid' or 'work.alice.cid'
+        target_type: {
+            type: String,
+            enum: ['master_profile', 'context_did', 'wallet_only', 'redirect'],
+            default: 'master_profile'
+        },
+        target_id: String, // Context name or DID
+        redirect_url: String, // External URL
+        active: { type: Boolean, default: true }
+    }],
+    // Linked Wallets (Cross-chain)
+    linked_wallets: [{
+        chain: { type: String, enum: ['casper', 'ethereum', 'solana', 'bitcoin'], required: true },
+        address: { type: String, required: true },
+        verified: { type: Boolean, default: false },
+        verified_at: Date
+    }],
     user_salt: {
         type: String,
         required: true

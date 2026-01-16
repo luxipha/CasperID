@@ -41,7 +41,7 @@ async function mintCredential(request) {
         .update(credential_json)
         .digest('hex');
 
-    // Call Casper contract to set verification
+    // Call Casper contract to set verification (for L1: mints Master DID)
     const tx_hash = await casperService.setVerification(
         request.wallet,
         request.tier,
@@ -55,11 +55,42 @@ async function mintCredential(request) {
     // Generate human-friendly ID
     const { humanId } = walletToHuman(request.wallet);
 
-    // Check if this is an upgrade scenario (existing credential exists)
+    // For new L1 users, mint their free humanId.cid name on-chain
+    let nameTxHash = null;
     const existingCredential = await Credential.findOne({
         wallet: request.wallet,
         revoked: false
     });
+
+    if (!existingCredential && request.tier === 'layer_1') {
+        try {
+            // Construct free .cid name and bound DID
+            const cidName = `${humanId}.cid`;
+            const boundDid = `did:casper:${request.wallet}`;
+
+            // Mint free name on-chain (isPremium = false)
+            nameTxHash = await casperService.mintCidName(
+                request.wallet,
+                cidName,
+                boundDid,
+                false, // Free tier name
+                0      // No expiry
+            );
+            console.log(`[Credential-Minter] ✅ Minted free name ${cidName}. Tx: ${nameTxHash}`);
+
+            // Update UserAccount with the auto-assigned name
+            await require('../database/models').UserAccount.findOneAndUpdate(
+                { wallet: request.wallet },
+                {
+                    cns_name: cidName,
+                    onchain_name_tx: nameTxHash
+                }
+            );
+        } catch (nameError) {
+            console.error('[Credential-Minter] ⚠️ Free name minting failed:', nameError.message);
+            // Continue - name minting failure shouldn't block credential issuance
+        }
+    }
 
     let credential;
     if (existingCredential) {
@@ -182,6 +213,27 @@ async function mintCredential(request) {
     } catch (syncError) {
         console.error('[CREDENTIAL-MINTER] Error syncing tier:', syncError);
         // Don't fail the credential creation if sync fails
+    }
+
+    // ========================================
+    // SYNC DID ADDRESS TO USER ACCOUNT
+    // This prevents duplicate mint_master_did calls
+    // ========================================
+    if (!existingCredential) {
+        try {
+            const realDID = `did:casper:${request.wallet}`;
+            await UserAccount.findOneAndUpdate(
+                { wallet: request.wallet },
+                {
+                    did_address: realDID,
+                    did_tx_hash: tx_hash
+                }
+            );
+            console.log(`[CREDENTIAL-MINTER] ✅ Synced did_address for ${request.wallet}: ${realDID}`);
+        } catch (didSyncError) {
+            console.error('[CREDENTIAL-MINTER] Error syncing did_address:', didSyncError);
+            // Don't fail - the DID is already on-chain
+        }
     }
 
     return {

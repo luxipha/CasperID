@@ -27,29 +27,54 @@ async function checkExistingName(walletAddress) {
 }
 
 /**
+ * Word lists for Markov-style handle generation
+ * Creates memorable two-word handles like "brave-tiger" or "swift-moon"
+ */
+const ADJECTIVES = [
+    'brave', 'swift', 'calm', 'bold', 'wise', 'keen', 'fair', 'true',
+    'noble', 'bright', 'cool', 'warm', 'deep', 'free', 'wild', 'pure',
+    'quick', 'soft', 'sharp', 'clear', 'light', 'dark', 'fresh', 'prime'
+];
+
+const NOUNS = [
+    'tiger', 'eagle', 'wolf', 'hawk', 'bear', 'lion', 'fox', 'owl',
+    'moon', 'star', 'sun', 'sky', 'wave', 'wind', 'rain', 'cloud',
+    'peak', 'river', 'stone', 'flame', 'frost', 'leaf', 'tree', 'rose'
+];
+
+/**
+ * Generate a Markov-style handle (e.g., "brave-tiger")
+ * @returns {string} Generated handle
+ */
+function generateMarkovHandle() {
+    const adj = ADJECTIVES[Math.floor(Math.random() * ADJECTIVES.length)];
+    const noun = NOUNS[Math.floor(Math.random() * NOUNS.length)];
+    return `${adj}-${noun}`;
+}
+
+/**
  * Generate a suggested CNS name for a wallet address
  * @param {string} walletAddress - Casper wallet address
  * @param {Object} profileData - User profile data (name, email, etc.)
- * @returns {string} Suggested CNS name
+ * @returns {string} Suggested CNS name (without .cspr suffix)
  */
 function generateSuggestedName(walletAddress, profileData = {}) {
     // Strategy 1: Use first name if available
     if (profileData.name) {
         const firstName = profileData.name.split(' ')[0].toLowerCase();
-        const random = Math.floor(Math.random() * 9999);
-        return `${firstName}${random}.cspr`;
+        const random = Math.floor(Math.random() * 999);
+        return `${firstName}${random}`;
     }
 
     // Strategy 2: Use email prefix if available
     if (profileData.email) {
-        const emailPrefix = profileData.email.split('@')[0].toLowerCase();
-        const random = Math.floor(Math.random() * 9999);
-        return `${emailPrefix}${random}.cspr`;
+        const emailPrefix = profileData.email.split('@')[0].toLowerCase().replace(/[^a-z0-9]/g, '');
+        const random = Math.floor(Math.random() * 999);
+        return `${emailPrefix}${random}`;
     }
 
-    // Strategy 3: Use shortened wallet address
-    const shortAddr = walletAddress.slice(2, 8);
-    return `user-${shortAddr}.cspr`;
+    // Strategy 3: Generate Markov handle
+    return generateMarkovHandle();
 }
 
 /**
@@ -154,6 +179,7 @@ async function getCNSInfo(walletAddress, profileData = {}) {
 module.exports = {
     checkExistingName,
     generateSuggestedName,
+    generateMarkovHandle,
     checkNameAvailability,
     estimateClaimCost,
     claimName,

@@ -523,4 +523,70 @@ router.post('/evaluate-requirements', async (req, res) => {
     }
 });
 
+/**
+ * GET /api/verify/:credentialHash
+ * PUBLIC endpoint - Verify a credential by its hash
+ * Returns credential status without revealing user identity
+ */
+router.get('/verify/:credentialHash', async (req, res) => {
+    try {
+        const { credentialHash } = req.params;
+
+        if (!credentialHash) {
+            return res.status(400).json({
+                success: false,
+                error: 'Credential hash is required'
+            });
+        }
+
+        // Find credential by hash
+        const credential = await Credential.findOne({
+            credential_hash: credentialHash
+        });
+
+        if (!credential) {
+            return res.status(404).json({
+                success: false,
+                verified: false,
+                error: 'Credential not found'
+            });
+        }
+
+        // Map tier to human-readable type
+        const getTierDisplay = (tier) => {
+            switch (tier) {
+                case 'layer_1': return { type: 'Basic ID', title: 'CasperID Basic Verified' };
+                case 'layer_2': return { type: 'Verified ID', title: 'Identity Verified (Liveness)' };
+                case 'layer_3': return { type: 'Full KYC', title: 'Full KYC Verified' };
+                default: return { type: 'Unknown', title: 'Verification' };
+            }
+        };
+
+        const tierInfo = getTierDisplay(credential.tier);
+
+        // Return verification result (privacy-preserving - no user identity)
+        res.json({
+            success: true,
+            verified: !credential.revoked,
+            credential: {
+                type: tierInfo.type,
+                title: tierInfo.title,
+                tier: credential.tier,
+                issuer: 'CasperID',
+                status: credential.revoked ? 'Revoked' : 'Active',
+                issuedAt: credential.created_at,
+                expiresAt: credential.expires_at || null,
+                credentialHash: credential.credential_hash
+            }
+        });
+
+    } catch (error) {
+        console.error('Credential verification error:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Failed to verify credential'
+        });
+    }
+});
+
 module.exports = router;
