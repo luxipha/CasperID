@@ -4,9 +4,10 @@ import { apiService } from '../services/api';
 
 interface DIDManagementProps {
   onCreateNew: () => void;
-  onManageDID: (id: string) => void;
+  onManageDID: (name?: string) => void;
   onExportKeys?: () => void;
   onImportDID?: () => void;
+  onConfigureIdentity?: () => void;
 }
 
 interface UserData {
@@ -15,9 +16,11 @@ interface UserData {
   tier?: string;
   account_created_at?: string;
   passkey_count?: number;
+  cns_name?: string;
+  human_id?: string;
 }
 
-export const DIDManagement: React.FC<DIDManagementProps> = ({ onCreateNew, onManageDID, onExportKeys, onImportDID }) => {
+export const DIDManagement: React.FC<DIDManagementProps> = ({ onCreateNew, onManageDID, onExportKeys, onImportDID, onConfigureIdentity }) => {
   const [userData, setUserData] = useState<UserData | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -64,6 +67,13 @@ export const DIDManagement: React.FC<DIDManagementProps> = ({ onCreateNew, onMan
     });
   };
 
+  // Get display name for Primary Identity
+  const getPrimaryIdentityName = () => {
+    if (userData?.cns_name) return userData.cns_name;
+    if (userData?.human_id) return userData.human_id;
+    return 'No identity set';
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
@@ -84,6 +94,13 @@ export const DIDManagement: React.FC<DIDManagementProps> = ({ onCreateNew, onMan
         </div>
         <div className="flex flex-col items-end gap-3">
           <div className="flex gap-3">
+            <button
+              onClick={onExportKeys}
+              className="flex items-center justify-center gap-2 px-6 py-3 bg-white border border-gray-200 rounded-2xl text-sm font-bold text-text-main hover:bg-gray-50 transition-all shadow-sm active:scale-95"
+            >
+              <span className="material-symbols-outlined text-lg">download</span>
+              Export Keys
+            </button>
             <button
               onClick={onImportDID}
               className="flex items-center justify-center gap-2 px-6 py-3 bg-white border border-gray-200 rounded-2xl text-sm font-bold text-text-main hover:bg-gray-50 transition-all shadow-sm active:scale-95"
@@ -111,8 +128,35 @@ export const DIDManagement: React.FC<DIDManagementProps> = ({ onCreateNew, onMan
         </div>
       </div>
 
-      {/* Stats Section */}
+      {/* Stats Section - 3 Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        {/* Primary Identity Card */}
+        <div className="bg-white p-8 rounded-[32px] border border-gray-100 shadow-soft flex flex-col justify-between relative overflow-hidden h-[200px]">
+          <div className="relative z-10">
+            <p className="text-[11px] font-extrabold text-text-sub uppercase tracking-widest mb-3">Primary Identity</p>
+            <h3 className="text-xl font-black text-text-main tracking-tight mb-3">{getPrimaryIdentityName()}</h3>
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="px-2 py-0.5 rounded-md bg-primary/10 text-primary text-[10px] font-bold flex items-center gap-1">
+                <span className="size-1.5 rounded-full bg-primary"></span>
+                Root Identity
+              </span>
+              <span className="px-2 py-0.5 rounded-md bg-green-50 text-green-600 text-[10px] font-bold flex items-center gap-1">
+                <span className="material-symbols-outlined text-xs">check_circle</span>
+                Active
+              </span>
+            </div>
+          </div>
+          <button
+            onClick={() => onManageDID(getPrimaryIdentityName())}
+            className="relative z-10 text-xs font-bold text-primary flex items-center gap-1 hover:gap-2 transition-all"
+          >
+            Configure <span className="material-symbols-outlined text-sm">arrow_forward</span>
+          </button>
+          <div className="absolute top-1/2 right-4 -translate-y-1/2 opacity-5">
+            <span className="material-symbols-outlined text-[80px] text-primary">public</span>
+          </div>
+        </div>
+
         {/* Active Identifiers */}
         <div className="bg-white p-8 rounded-[32px] border border-gray-100 shadow-soft flex flex-col justify-between relative overflow-hidden h-[200px]">
           <div className="relative z-10">
@@ -161,26 +205,6 @@ export const DIDManagement: React.FC<DIDManagementProps> = ({ onCreateNew, onMan
             </p>
           </div>
         </div>
-
-        {/* Backup & Security (Dark Card) */}
-        <div className="bg-[#1A1A2E] p-8 rounded-[32px] shadow-xl text-white flex flex-col justify-between relative overflow-hidden h-[200px]">
-          <div className="relative z-10">
-            <div className="flex items-center justify-between mb-1">
-              <p className="text-[11px] font-bold text-gray-400 uppercase tracking-widest">Backup & Security</p>
-              <span className="material-symbols-outlined text-secondary text-xl icon-filled">verified</span>
-            </div>
-            <h3 className="text-xl font-bold mb-2">Export Keys</h3>
-            <p className="text-xs text-gray-400 font-medium leading-relaxed max-w-[200px]">
-              Securely export your DID documents and private keys for backup.
-            </p>
-          </div>
-          <button
-            onClick={onExportKeys}
-            className="relative z-10 w-full py-3 rounded-2xl bg-white/10 hover:bg-white/20 text-white text-xs font-black transition-all border border-white/5"
-          >
-            Start Export Process
-          </button>
-        </div>
       </div>
 
       {/* Your DIDs Table Section */}
@@ -214,13 +238,13 @@ export const DIDManagement: React.FC<DIDManagementProps> = ({ onCreateNew, onMan
             <tbody className="divide-y divide-gray-50">
               {userData?.did_address ? (
                 <tr
-                  onClick={() => onManageDID(userData.did_address!)}
+                  onClick={() => onManageDID(getPrimaryIdentityName())}
                   className="hover:bg-gray-50/40 transition-colors group cursor-pointer"
                 >
                   <td className="px-8 py-6">
                     <div className="flex flex-col">
-                      <span className="text-sm font-mono font-bold text-text-main">{formatDID(userData.did_address)}</span>
-                      <span className="text-[10px] text-text-sub font-medium">Controller: Self</span>
+                      <span className="text-sm font-black text-text-main">{getPrimaryIdentityName()}</span>
+                      <span className="text-[11px] font-mono font-medium text-text-sub">{formatDID(userData.did_address)}</span>
                     </div>
                   </td>
                   <td className="px-8 py-6">

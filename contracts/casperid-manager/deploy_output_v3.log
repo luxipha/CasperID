@@ -1,0 +1,19 @@
+warning: unused import: `HostEnv`
+ --> bin/deploy_livenet.rs:4:28
+  |
+4 | use odra::host::{Deployer, HostEnv};
+  |                            ^^^^^^^
+  |
+  = note: `#[warn(unused_imports)]` on by default
+
+warning: `casperid_manager` (bin "deploy_livenet") generated 1 warning (run `cargo fix --bin "deploy_livenet"` to apply 1 suggestion)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.66s
+     Running `target/debug/deploy_livenet`
+🚀 Deploying CidNameNFT to Casper testnet...
+📍 Chain: casper-test
+📍 Deployer: Account(AccountHash(40f4301c1faa1ee9393416f1b586e3a0a17019545519490fdbbb0c403276f6ca))
+💁  [1;32mINFO :[0m [32mFound wasm under "/Users/abisoye/Projects/casperId/contracts/casperid-manager/wasm/CidNameNFT.wasm".[0m
+💁  [1;32mINFO :[0m [32mDeploying "CidNameNFT".[0m
+thread 'main' panicked at /Users/abisoye/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/odra-casper-rpc-client-2.4.0/src/casper_client.rs:802:36:
+called `Result::unwrap()` on an `Err` value: ResponseIsRpcError { rpc_id: String("1"), rpc_method: "account_put_transaction", error: Error { code: -32016, message: "Invalid transaction", data: Some(String("the transaction was invalid: Invalid payment amount for Transaction::V1")) } }
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace

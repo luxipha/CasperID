@@ -1,7 +1,7 @@
 // import Link from "next/link";
 import Logo from "./Logo";
 
-export function FooterMarketing({ className }: { className?: string }) {
+export function FooterMarketing({ className, onNavigate }: { className?: string; onNavigate?: (view: string) => void }) {
   const productLinks = [
     { label: "Download", href: "#download" },
     { label: "Product", href: "#product" },
@@ -13,6 +13,7 @@ export function FooterMarketing({ className }: { className?: string }) {
     { label: "Blog", href: "#blogs" },
     { label: "Pricing", href: "#developers" },
     { label: "Use Cases", href: "#use-cases" },
+    { label: "CasperOS", href: "#casperos", onClick: () => onNavigate?.('casperos') },
   ];
 
 
@@ -35,7 +36,17 @@ export function FooterMarketing({ className }: { className?: string }) {
             <div className="font-semibold text-slate-800">Resources</div>
             <div className="space-y-2">
               {resourceLinks.map((link) => (
-                <a key={link.label} href={link.href} className="block hover:text-slate-500">
+                <a
+                  key={link.label}
+                  href={link.href}
+                  onClick={(e) => {
+                    if (link.onClick) {
+                      e.preventDefault();
+                      link.onClick();
+                    }
+                  }}
+                  className="block hover:text-slate-500 cursor-pointer"
+                >
                   {link.label}
                 </a>
               ))}

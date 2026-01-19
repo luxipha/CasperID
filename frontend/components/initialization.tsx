@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { CrossAppVerificationModal } from './CrossAppVerificationModal';
+import { RegisterCIDPromptModal } from './RegisterCidPromptModal';
 
 interface PostOnboardingBannerProps {
   onComplete?: () => void;
@@ -110,11 +110,11 @@ export const PostOnboardingBanner: React.FC<PostOnboardingBannerProps> = ({ onCo
         )}
       </div>
 
-      {/* CrossAppVerificationModal */}
-      <CrossAppVerificationModal
+      {/* Register CID Prompt Modal */}
+      <RegisterCIDPromptModal
         isOpen={showMetaMaskModal}
         onClose={handleMetaMaskSkip}
-        onConnect={handleMetaMaskConnect}
+        onRegister={handleMetaMaskConnect}
       />
     </>
   );

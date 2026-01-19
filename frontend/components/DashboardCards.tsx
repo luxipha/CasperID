@@ -36,7 +36,7 @@ export const IdentityStatusCard: React.FC = () => {
           title: 'Email\nVerified',
           badge: 'Email Verified',
           badgeColor: 'bg-yellow-500',
-          cta: 'Verify Liveness (Layer 2)',
+          cta: 'Get professional with .cid',
           icon: 'mail'
         };
       default:

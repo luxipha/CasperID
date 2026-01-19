@@ -198,7 +198,7 @@ export const LivenessCheck: React.FC<LivenessCheckProps> = ({ onBack, onComplete
           const nosePos = (nose.x - leftCheek.x) / faceWidth;
 
           // Capture frames periodically during head turn (async, non-blocking)
-          if (now - st.lastFrameTime > 200 && st.frames.length < 20 && canvasRef.current && !st.isCapturing) {
+          if (now - st.lastFrameTime > 100 && st.frames.length < 25 && canvasRef.current && !st.isCapturing) {
             st.lastFrameTime = now;
             captureFrame(canvasRef.current, st).then((captured) => {
               if (captured) {
@@ -207,20 +207,27 @@ export const LivenessCheck: React.FC<LivenessCheckProps> = ({ onBack, onComplete
             });
           }
 
-          if (nosePos < 0.3 && !st.isSubmitting) {
-            // Immediately set guard to prevent duplicate submissions
-            st.isSubmitting = true;
-
-            // CAPTURE THE PEAK FRAME (the one that actually triggered the success)
-            if (canvasRef.current) {
-              captureFrame(canvasRef.current, st, true).then(() => {
-                submitLiveness([...st.frames]); // Pass a copy to prevent mutation
-              });
-            } else {
-              submitLiveness([...st.frames]);
+          if (nosePos < 0.3) {
+            if (st.frames.length < 15) {
+              setGuidance("Continue turning slowly...");
+              return;
             }
-          }
 
+            if (!st.isSubmitting) {
+              // Immediately set guard to prevent duplicate submissions
+              st.isSubmitting = true;
+
+              // CAPTURE THE PEAK FRAME (the one that actually triggered the success)
+              if (canvasRef.current) {
+                captureFrame(canvasRef.current, st, true).then(() => {
+                  submitLiveness([...st.frames]); // Pass a copy to prevent mutation
+                });
+              } else {
+                submitLiveness([...st.frames]);
+              }
+            }
+
+          }
         }
       }
     };

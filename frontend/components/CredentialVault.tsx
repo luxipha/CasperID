@@ -1,6 +1,7 @@
-
 import React, { useState, useEffect } from 'react';
 import { apiService } from '../services/api';
+import { CredentialQRModal } from './CredentialQRModal';
+import { UserProfile } from '../types';
 
 interface Credential {
   id: string;
@@ -15,16 +16,27 @@ interface Credential {
 
 export const CredentialVault: React.FC = () => {
   const [credentials, setCredentials] = useState<Credential[]>([]);
+  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [showQRModal, setShowQRModal] = useState(false);
+  const [selectedCredential, setSelectedCredential] = useState<Credential | null>(null);
 
   useEffect(() => {
-    const fetchCredentials = async () => {
+    const fetchData = async () => {
       try {
-        const response = await apiService.getVerificationHistory();
+        // Fetch credentials and profile data in parallel
+        const [historyRes, profileRes] = await Promise.all([
+          apiService.getVerificationHistory(),
+          apiService.getUserProfile().catch(() => null)
+        ]);
 
-        if (response.success && response.history) {
-          const { credentials: creds, currentStatus } = response.history;
+        if (profileRes) {
+          setUserProfile(profileRes);
+        }
+
+        if (historyRes.success && historyRes.history) {
+          const { credentials: creds, currentStatus } = historyRes.history;
 
           // Map backend credentials to display format
           const mappedCredentials: Credential[] = creds.map((cred: any, index: number) => {
@@ -58,7 +70,7 @@ export const CredentialVault: React.FC = () => {
       }
     };
 
-    fetchCredentials();
+    fetchData();
   }, []);
 
   // Helper functions to map tier to display properties
@@ -193,14 +205,15 @@ export const CredentialVault: React.FC = () => {
           {credentials.map((vc) => (
             <div key={vc.id} className="group relative">
               {/* The "Card" UI */}
-              <div className={`aspect-[1.58/1] rounded-[32px] bg-gradient-to-br ${vc.color} p-8 flex flex-col justify-between text-white shadow-xl group-hover:scale-[1.02] transition-all duration-500 overflow-hidden`}>
-                {/* Card Hologram Effect */}
+              <div className={`aspect-[1.58/1] rounded-[32px] bg-gradient-to-br ${vc.color} p-8 flex flex-col justify-between text-white shadow-xl group-hover:scale-[1.02] transition-all duration-500 overflow-hidden border border-white/20`}>
+                {/* Card Hologram & Glass Effect */}
                 <div className="absolute inset-0 opacity-20 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] mix-blend-overlay"></div>
+                <div className="absolute inset-0 bg-white/5 backdrop-blur-[1px]"></div>
                 <div className="absolute -top-20 -right-20 size-64 bg-white/10 rounded-full blur-3xl group-hover:bg-white/20 transition-colors"></div>
 
                 <div className="relative z-10 flex justify-between items-start">
-                  <div className="size-12 rounded-xl bg-white/20 backdrop-blur-md border border-white/20 flex items-center justify-center">
-                    <span className="material-symbols-outlined text-3xl">{vc.icon}</span>
+                  <div className="size-12 rounded-xl bg-white/20 backdrop-blur-xl border border-white/30 flex items-center justify-center shadow-lg">
+                    <span className="material-symbols-outlined text-3xl text-white drop-shadow-sm">{vc.icon}</span>
                   </div>
                   <div className="px-3 py-1 rounded-full bg-white/20 backdrop-blur-md border border-white/20 text-[10px] font-black uppercase tracking-widest">
                     {vc.type}
@@ -231,7 +244,10 @@ export const CredentialVault: React.FC = () => {
               <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/5 rounded-[32px] backdrop-blur-[2px]">
                 <div className="flex gap-3">
                   <button
-                    onClick={() => alert(`QR Code for ${vc.title}\n(Feature coming soon)`)}
+                    onClick={() => {
+                      setSelectedCredential(vc);
+                      setShowQRModal(true);
+                    }}
                     className="size-12 rounded-full bg-white text-primary shadow-xl flex items-center justify-center hover:scale-110 transition-transform"
                     title="Show QR Code"
                   >
@@ -239,7 +255,8 @@ export const CredentialVault: React.FC = () => {
                   </button>
                   <button
                     onClick={() => {
-                      const link = `${window.location.origin}/verify/${vc.id}`;
+                      const identifier = userProfile?.cns_name ? `${userProfile.cns_name}.cid` : userProfile?.wallet;
+                      const link = `${window.location.origin}/verify/${vc.id}?as=${identifier}`;
                       navigator.clipboard.writeText(link);
                       alert('Verification link copied to clipboard!');
                     }}
@@ -262,6 +279,19 @@ export const CredentialVault: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* QR Code Modal */}
+      <CredentialQRModal
+        isOpen={showQRModal}
+        onClose={() => {
+          setShowQRModal(false);
+          setSelectedCredential(null);
+        }}
+        credential={selectedCredential}
+        verificationUrl={selectedCredential ?
+          `${window.location.origin}/verify/${selectedCredential.id}?as=${userProfile?.cns_name ? `${userProfile.cns_name}.cid` : userProfile?.wallet}`
+          : ''}
+      />
     </div>
   );
 };

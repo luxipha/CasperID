@@ -12,6 +12,7 @@ const navItems = [
   { label: 'Credential Vault', icon: 'wallet', id: 'credentials' },
   { label: 'Profile', icon: 'person', id: 'profile' },
   { label: 'DID Management', icon: 'fingerprint', id: 'did-management' },
+  { label: 'Names (.cid)', icon: 'badge', id: 'names' },
   { label: 'KYC & Liveness', icon: 'verified_user', id: 'kyc' },
   { label: 'Integrations', icon: 'extension', id: 'integrations' },
   { label: 'Data Controls', icon: 'lock', id: 'data' },

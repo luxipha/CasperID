@@ -15,24 +15,29 @@ import { ActivityLog } from './components/ActivityLog';
 import { ActivityDetails } from './components/ActivityDetails';
 import { Settings } from './components/Settings';
 import { DIDManagement } from './components/DIDManagement';
+import NameManagement from './components/NameManagement';
+import { RegisterCID } from './components/RegisterCID';
 import { CreateDID } from './components/CreateDID';
 import { ManageDID } from './components/ManageDID';
 import { ExportDID } from './components/ExportDID';
 import { ImportDID } from './components/ImportDID';
+import { MasterIdentitySettings } from './components/MasterIdentitySettings';
 import { Profile } from './components/Profile';
 import { KYCHome } from './components/KYCHome';
 import { CredentialVault } from './components/CredentialVault';
 import { ConsentRequestModal } from './components/ui/ConsentRequestModal';
+import { DIDDetailsModal } from './components/ui/DIDDetailsModal';
 import { AuthEntry } from './components/AuthEntry';
 import { OTPVerify } from './components/OTPVerify';
 import { OnboardingStart } from './components/OnboardingStart';
 import { OnboardingProgress } from './components/OnboardingProgress';
-import { CrossAppVerificationModal } from './components/CrossAppVerificationModal';
+import { RegisterCIDPromptModal } from './components/RegisterCidPromptModal';
 import { CrossDevicePairing } from './components/CrossDevicePairing';
 import { PostOnboardingBanner } from './components/initialization';
 import { VerificationLevelBanner } from './components/VerificationLevelBanner';
 import { MobileLinkingPage } from './components/mobile/mobileLinking';
 import { PublicProfileContainer } from './components/PublicProfileContainer';
+import { VerifyCredentialPage } from './components/VerifyCredentialPage';
 import { useAuth } from './contexts/AuthContext';
 // ApiTest removed - was for debugging
 // import { ApiTest } from './components/ApiTest';
@@ -53,6 +58,12 @@ const App: React.FC = () => {
     if (path === '/admin') return 'admin';
     if (path === '/pair' || path === '/dashboard') return 'loading';
 
+    // Check for credential verification route
+    if (path.startsWith('/verify/')) return 'verify-credential';
+
+    // Check for vanity verification route: e.g. /alice.cid/verify/hash
+    if (path.match(/^\/([^\/]+)\/verify\/([^\/]+)$/)) return 'verify-credential';
+
     // If path has content (e.g. /seme-kure), assume it is a public profile
     if (path.length > 1) {
       // Remove leading slash
@@ -64,21 +75,32 @@ const App: React.FC = () => {
   };
 
   const [currentView, setCurrentView] = useState(getInitialView());
-  const [publicProfileSlug, setPublicProfileSlug] = useState<string | null>(
-    window.location.pathname.length > 1 && window.location.pathname !== '/pair' && window.location.pathname !== '/dashboard' ? window.location.pathname.substring(1) : null
-  );
+  const [publicProfileSlug, setPublicProfileSlug] = useState<string | null>(() => {
+    const path = window.location.pathname;
+    const isSystemPath = path === '/' || path === '/pair' || path === '/dashboard' || path.startsWith('/verify/') || path.match(/^\/([^\/]+)\/verify\/([^\/]+)$/);
+    return (!isSystemPath && path.length > 1) ? path.substring(1) : null;
+  });
+  const [credentialHash, setCredentialHash] = useState<string | null>(() => {
+    const path = window.location.pathname;
+    if (path.startsWith('/verify/')) return path.replace('/verify/', '');
+    const match = path.match(/^\/([^\/]+)\/verify\/([^\/]+)$/);
+    return match ? match[2] : null;
+  });
 
   const [onboardingEmail, setOnboardingEmail] = useState('');
   const [verificationId, setVerificationId] = useState('');
   const [selectedActivityId, setSelectedActivityId] = useState<string | null>(null);
   const [isConsentModalOpen, setIsConsentModalOpen] = useState(false);
+  const [isDIDDetailsModalOpen, setIsDIDDetailsModalOpen] = useState(false);
+  const [selectedIdentityName, setSelectedIdentityName] = useState<string | undefined>(undefined);
   const [showPostOnboardingBanner, setShowPostOnboardingBanner] = useState(false);
+  const [showRegisterCIDPrompt, setShowRegisterCIDPrompt] = useState(false);
   const { user, isLoading, isAuthenticated } = useAuth();
 
   // Set initial view based on authentication and completion state
   React.useEffect(() => {
-    // If we are viewing a public profile or landing page, DO NOT redirect based on auth
-    if (currentView === 'public-profile' || currentView === 'landing' || currentView === 'admin') return;
+    // If we are viewing a public profile, landing page, or credential verification, DO NOT redirect based on auth
+    if (currentView === 'public-profile' || currentView === 'landing' || currentView === 'admin' || currentView === 'verify-credential') return;
 
     if (!isLoading) {
       if (isAuthenticated && user) {
@@ -98,7 +120,7 @@ const App: React.FC = () => {
         // New user - start with email entry
         // If they are not authenticated, they should probably be at auth-entry
         // BUT we should avoid forcing it if they are on a public route (handled at start)
-        const isDashboardView = !['landing', 'public-profile', 'auth-entry', 'otp-verify', 'onboarding-start', 'onboarding-progress', 'pairing'].includes(currentView);
+        const isDashboardView = !['landing', 'public-profile', 'verify-credential', 'auth-entry', 'otp-verify', 'onboarding-start', 'onboarding-progress', 'pairing'].includes(currentView);
         if (isDashboardView) {
           setCurrentView('auth-entry');
         }
@@ -115,6 +137,8 @@ const App: React.FC = () => {
     setCurrentView('overview');
     // Show the post-onboarding banner which will handle MetaMask check
     setShowPostOnboardingBanner(true);
+    // Show the RegisterCID prompt modal after onboarding
+    setShowRegisterCIDPrompt(true);
   };
 
   const handleVerificationUpgrade = (nextLevel: 'layer_1' | 'layer_2' | 'layer_3') => {
@@ -242,16 +266,27 @@ const App: React.FC = () => {
         return (
           <DIDManagement
             onCreateNew={() => setCurrentView('did-create')}
-            onManageDID={(id) => setCurrentView('did-manage')}
+            onManageDID={(id) => {
+              setSelectedIdentityName(undefined); // Default or fetch
+              setIsDIDDetailsModalOpen(true);
+            }}
             onExportKeys={() => setCurrentView('did-export')}
             onImportDID={() => setCurrentView('did-import')}
+            onConfigureIdentity={() => setCurrentView('master-identity-settings')}
           />
         );
+      case 'names':
+        return <RegisterCID onBack={() => setCurrentView('overview')} />;
+      case 'register-cid':
+        return <RegisterCID onBack={() => setCurrentView('overview')} />;
       case 'did-create':
         return (
           <CreateDID
             onBack={() => setCurrentView('did-management')}
-            onViewDetails={(id) => setCurrentView('did-manage')}
+            onViewDetails={(id) => {
+              setSelectedIdentityName(undefined);
+              setIsDIDDetailsModalOpen(true);
+            }}
           />
         );
       case 'did-manage':
@@ -260,8 +295,20 @@ const App: React.FC = () => {
         return <ExportDID onBack={() => setCurrentView('did-management')} />;
       case 'did-import':
         return <ImportDID onBack={() => setCurrentView('did-management')} />;
+      case 'master-identity-settings':
+        return (
+          <MasterIdentitySettings
+            onBack={() => setCurrentView('did-management')}
+            onViewDIDDetails={(name) => {
+              setSelectedIdentityName(name);
+              setIsDIDDetailsModalOpen(true);
+            }}
+          />
+        );
       case 'public-profile':
         return publicProfileSlug ? <PublicProfileContainer walletOrUsername={publicProfileSlug} /> : <div>Invalid Profile</div>;
+      case 'verify-credential':
+        return credentialHash ? <VerifyCredentialPage credentialHash={credentialHash} /> : <div>Invalid Credential</div>;
       case 'admin':
         return <AdminPage />;
       case 'landing':
@@ -315,8 +362,8 @@ const App: React.FC = () => {
                   <span className="material-symbols-outlined text-xl">login</span>
                   Consent Demo
                 </button>
-                <button className="flex items-center gap-2 px-6 py-3.5 bg-bg-dark text-white font-bold text-sm rounded-2xl hover:bg-black transition-all shadow-lg active:scale-95">
-                  <img src="/logos/logo.svg" alt="CasperID" className="w-5 h-5 invert brightness-0" />
+                <button className="flex items-center gap-2 px-6 py-3.5 bg-black text-white font-bold text-sm rounded-2xl transition-all shadow-lg active:scale-95">
+                  <span className="material-symbols-outlined text-xl">fingerprint</span>
                   Login with Casper
                 </button>
               </div>
@@ -353,8 +400,8 @@ const App: React.FC = () => {
     ? 'did-management'
     : currentView;
 
-  // Don't show layout chrome during onboarding, public profile view, landing, or admin
-  const isOnboarding = currentView === 'public-profile' || currentView === 'landing' || currentView === 'admin' || currentView === 'auth-entry' || currentView === 'otp-verify' || currentView === 'onboarding-start' || currentView === 'onboarding-progress' || currentView === 'pairing';
+  // Don't show layout chrome during onboarding, public profile view, landing, admin, or credential verification
+  const isOnboarding = currentView === 'public-profile' || currentView === 'landing' || currentView === 'admin' || currentView === 'verify-credential' || currentView === 'auth-entry' || currentView === 'otp-verify' || currentView === 'onboarding-start' || currentView === 'onboarding-progress' || currentView === 'pairing';
 
   if (isOnboarding) {
     return <main className="bg-bg-light min-h-screen">{renderContent()}</main>;
@@ -379,16 +426,35 @@ const App: React.FC = () => {
 
       <BottomNav currentView={currentView} onNavigate={setCurrentView} />
 
-      {/* ApiTest removed - was for debugging */}
-
-      {/* Consent Demo Modal */}
+      {/* Modal Components */}
       <ConsentRequestModal
         isOpen={isConsentModalOpen}
         onClose={() => setIsConsentModalOpen(false)}
-        appName="Uniswap V4"
-        appLogo="https://cryptologos.cc/logos/uniswap-uni-logo.png"
-        onApprove={() => { }}
-        onDeny={() => { }}
+        appName="CasperSwap"
+        appLogo="https://casperswap.xyz/logo.png"
+        onApprove={() => {
+          console.log('Approved');
+          setIsConsentModalOpen(false);
+        }}
+        onDeny={() => {
+          console.log('Denied');
+          setIsConsentModalOpen(false);
+        }}
+      />
+
+      <DIDDetailsModal
+        isOpen={isDIDDetailsModalOpen}
+        onClose={() => setIsDIDDetailsModalOpen(false)}
+        identityName={selectedIdentityName}
+      />
+
+      <RegisterCIDPromptModal
+        isOpen={showRegisterCIDPrompt}
+        onClose={() => setShowRegisterCIDPrompt(false)}
+        onRegister={() => {
+          setShowRegisterCIDPrompt(false);
+          setCurrentView('register-cid');
+        }}
       />
     </div>
   );
