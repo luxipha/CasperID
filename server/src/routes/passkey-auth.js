@@ -999,6 +999,15 @@ router.post('/did/mint', async (req, res) => {
 
         const userAccount = sessionData.userAccount;
 
+        // Validate wallet exists before attempting DID operations
+        if (!userAccount.wallet) {
+            return res.status(400).json({
+                success: false,
+                error: 'Wallet not yet created. Please wait for wallet generation to complete.',
+                code: 'WALLET_REQUIRED'
+            });
+        }
+
         // Check if DID already exists in database
         if (userAccount.did_address) {
             return res.json({
@@ -1013,6 +1022,7 @@ router.post('/did/mint', async (req, res) => {
         // Real implementation using the Identity Registry
         const casperService = require('../services/casper');
 
+
         // Safety check: Query on-chain state before minting
         // This prevents DIDAlreadyExists errors when DB is out of sync
         const existingOnChain = await casperService.getVerificationStatus(userAccount.wallet);
@@ -1021,7 +1031,7 @@ router.post('/did/mint', async (req, res) => {
             const realDID = `did:casper:${userAccount.wallet}`;
             await UserAccount.updateOne(
                 { user_id: userAccount.user_id },
-                { did_address: realDID }
+                { did_address: realDID, did_minted: true }
             );
             console.log(`[DID] Synced existing on-chain DID to DB for ${userAccount.wallet}`);
             return res.json({
@@ -1031,6 +1041,25 @@ router.post('/did/mint', async (req, res) => {
                 alreadyExists: true
             });
         }
+
+        // Database-level race condition guard: Check did_minted flag
+        // Reload userAccount to get latest state
+        const freshAccount = await UserAccount.findOne({ user_id: userAccount.user_id });
+        if (freshAccount?.did_minted) {
+            console.log(`[DID] Mint already in progress for ${userAccount.wallet} (skipping)`);
+            return res.json({
+                success: true,
+                message: 'DID minting already in progress',
+                did: freshAccount.did_address || `did:casper:${userAccount.wallet}`,
+                alreadyExists: true
+            });
+        }
+
+        // Set did_minted flag IMMEDIATELY to prevent race conditions
+        await UserAccount.updateOne(
+            { user_id: userAccount.user_id },
+            { $set: { did_minted: true } }
+        );
 
         console.log(`[DID] Minting Master DID for ${userAccount.wallet}`);
         const txHash = await casperService.mintDID(userAccount.wallet, userAccount.tier || 'layer_1');

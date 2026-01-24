@@ -31,6 +31,14 @@ const TIER_LABELS = {
     [TIER_LEVELS.LAYER_3]: 'Fully Verified'
 };
 
+// Persona limits per tier
+const PERSONA_LIMITS = {
+    [TIER_LEVELS.LAYER_0]: 0,
+    [TIER_LEVELS.LAYER_1]: 1,
+    [TIER_LEVELS.LAYER_2]: 5,
+    [TIER_LEVELS.LAYER_3]: 10
+};
+
 // Tier progression order
 const TIER_ORDER = [
     TIER_LEVELS.LAYER_0,
@@ -78,13 +86,24 @@ function normalizeTier(tier) {
     return legacyMap[tier] || tier;
 }
 
+/**
+ * Get persona limit for a specific tier
+ * @param {string} tier 
+ * @returns {number}
+ */
+function getPersonaLimit(tier) {
+    return PERSONA_LIMITS[tier] || 0;
+}
+
 module.exports = {
     TIER_LEVELS,
     TIER_ENUM,
     TIER_NUMERIC,
     TIER_LABELS,
     TIER_ORDER,
+    PERSONA_LIMITS,
     getTierIndex,
     compareTiers,
-    normalizeTier
+    normalizeTier,
+    getPersonaLimit
 };

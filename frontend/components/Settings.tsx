@@ -1,17 +1,20 @@
 
 import React, { useState, useEffect } from 'react';
 import { apiService } from '../services/api';
+import { useAuth } from '../contexts/AuthContext';
 
-type Tab = 'General' | 'Security' | 'Notifications' | 'Permissions';
+type Tab = 'General' | 'Wallets' | 'Security' | 'Notifications' | 'Permissions';
 
 /** General Settings Tab */
 const GeneralTab = () => {
+  const { user, refreshUser } = useAuth();
   const [profile, setProfile] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [formData, setFormData] = useState({
     displayName: '',
-    email: ''
+    email: '',
+    dateOfBirth: ''
   });
   const [copied, setCopied] = useState(false);
   const [systemPrefs, setSystemPrefs] = useState({
@@ -34,7 +37,8 @@ const GeneralTab = () => {
           setProfile(data);
           setFormData({
             displayName: (data as any).first_name ? `${(data as any).first_name} ${(data as any).last_name || ''}`.trim() : (data as any).display_name || '',
-            email: (data as any).email || ''
+            email: (data as any).email || '',
+            dateOfBirth: (data as any).date_of_birth ? new Date((data as any).date_of_birth).toISOString().split('T')[0] : ''
           });
         }
       } catch (error) {
@@ -44,7 +48,7 @@ const GeneralTab = () => {
       }
     };
     fetchProfile();
-  }, []);
+  }, [user]);
 
   const handleCopyDID = () => {
     if (profile?.did_address) {
@@ -66,15 +70,16 @@ const GeneralTab = () => {
       const updates: any = {
         email: formData.email,
         first_name: firstName,
-        last_name: lastName
+        last_name: lastName,
+        date_of_birth: formData.dateOfBirth
       };
 
       const response = await apiService.updateUserProfile(updates);
       if (response) {
         alert('Profile updated successfully');
-        // Refresh profile data
-        const data = await apiService.getUserProfile();
-        setProfile(data);
+        // Refresh global user state to sync with persona/disclosure modals
+        await refreshUser();
+        // Local state will be updated by useEffect [user]
       }
     } catch (error: any) {
       console.error('Update failed:', error);
@@ -138,6 +143,15 @@ const GeneralTab = () => {
                   type="email"
                   value={formData.email}
                   onChange={e => setFormData({ ...formData, email: e.target.value })}
+                  className="w-full h-11 px-4 rounded-xl bg-gray-50 border-none text-sm font-bold text-text-main focus:ring-2 focus:ring-primary/20"
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-[10px] font-extrabold text-text-sub uppercase tracking-widest">Date of Birth</label>
+                <input
+                  type="date"
+                  value={formData.dateOfBirth}
+                  onChange={e => setFormData({ ...formData, dateOfBirth: e.target.value })}
                   className="w-full h-11 px-4 rounded-xl bg-gray-50 border-none text-sm font-bold text-text-main focus:ring-2 focus:ring-primary/20"
                 />
               </div>
@@ -450,6 +464,7 @@ const NotificationsTab = () => {
 
 /** Permissions Settings Tab */
 const PermissionsTab = () => {
+  const { user } = useAuth();
   const [profile, setProfile] = useState<any>(null);
   const [permissions, setPermissions] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -473,14 +488,18 @@ const PermissionsTab = () => {
       }
     };
     loadData();
-  }, []);
+  }, [user]);
 
   const handleUnlink = async () => {
     if (!confirm('Are you sure you want to disconnect MetaMask? This will revoke all active permissions.')) return;
 
     setRevoking(true);
     try {
-      await apiService.unlinkMetaMaskAccount();
+      if (profile?.metamask_address) {
+        await apiService.unlinkWallet(profile.metamask_address);
+      } else {
+        await apiService.unlinkMetaMaskAccount();
+      }
       setProfile({ ...profile, metamask_connected: false, metamask_address: null });
       setPermissions([]);
       alert('MetaMask disconnected successfully.');
@@ -618,13 +637,191 @@ const PermissionsTab = () => {
   );
 };
 
+/** Wallets Settings Tab */
+const WalletsTab = () => {
+  const { user } = useAuth();
+  const [profile, setProfile] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [unlinking, setUnlinking] = useState<string | null>(null);
+
+  const fetchProfile = async () => {
+    try {
+      setLoading(true);
+      const data = await apiService.getUserProfile();
+      setProfile(data);
+    } catch (error) {
+      console.error('Failed to fetch profile:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchProfile();
+  }, [user]);
+
+  const handleUnlink = async (address: string) => {
+    if (!confirm(`Are you sure you want to unlink wallet ${address}?`)) return;
+
+    setUnlinking(address);
+    try {
+      await apiService.unlinkWallet(address);
+      await fetchProfile();
+      alert('Wallet unlinked successfully');
+    } catch (error: any) {
+      alert('Failed to unlink: ' + error.message);
+    } finally {
+      setUnlinking(null);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="flex justify-center py-12">
+        <div className="size-8 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
+      </div>
+    );
+  }
+
+  const linkedWallets = profile?.linked_wallets || [];
+
+  // Combine primary wallet with linked wallets
+  const allWallets = React.useMemo(() => {
+    const wallets: any[] = [];
+
+    // Add primary wallet if exists and not already in linked_wallets
+    if (profile?.wallet) {
+      const isPrimaryInLinked = linkedWallets.some((w: any) =>
+        w.address?.toLowerCase() === profile.wallet?.toLowerCase()
+      );
+      if (!isPrimaryInLinked) {
+        wallets.push({
+          chain: 'casper', // Primary passkey-derived wallet
+          address: profile.wallet,
+          verified: true,
+          isPrimary: true
+        });
+      }
+    }
+
+    // Add all linked wallets
+    linkedWallets.forEach((w: any) => wallets.push({ ...w, isPrimary: w.address === profile?.wallet }));
+
+    return wallets;
+  }, [profile?.wallet, linkedWallets]);
+
+  return (
+    <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+      <div className="flex flex-col gap-2">
+        <h2 className="text-2xl font-black text-text-main tracking-tight">Multi-Chain Wallets</h2>
+        <p className="text-text-sub text-sm font-medium max-w-2xl leading-relaxed">
+          Manage your linked wallets across different blockchain ecosystems.
+        </p>
+      </div>
+
+      <section className="bg-white rounded-[32px] border border-gray-100 shadow-soft overflow-hidden">
+        <div className="p-8 border-b border-gray-50 flex justify-between items-center">
+          <h3 className="text-lg font-bold text-text-main">Linked Wallets</h3>
+          <button
+            onClick={() => (window as any).dispatchEvent(new CustomEvent('openConnectWallet'))}
+            className="flex items-center gap-2 px-6 py-2.5 bg-primary text-white text-sm font-bold rounded-xl hover:bg-primary/90 transition-all shadow-lg active:scale-95 shadow-primary/20"
+          >
+            <span className="material-symbols-outlined text-lg">add_link</span>
+            Link New Wallet
+          </button>
+        </div>
+
+        <div className="p-8 space-y-4">
+          {allWallets.length === 0 ? (
+            <div className="text-center py-12 bg-gray-50 rounded-[24px] border-2 border-dashed border-gray-200">
+              <span className="material-symbols-outlined text-4xl text-text-sub/40 mb-3">account_balance_wallet</span>
+              <p className="text-text-sub font-medium">No wallets linked yet.</p>
+            </div>
+          ) : (
+            allWallets.map((wallet: any, i: number) => (
+              <div
+                key={i}
+                className="flex flex-col md:flex-row md:items-center justify-between p-6 rounded-[24px] border border-gray-100 bg-white hover:border-primary/20 hover:shadow-md transition-all group"
+              >
+                <div className="flex items-center gap-5">
+                  <div className={`size-12 rounded-2xl flex items-center justify-center shadow-sm ${wallet.chain === 'ethereum' ? 'bg-indigo-50 text-indigo-600' :
+                    wallet.chain === 'casper' ? 'bg-red-50 text-red-600' :
+                      wallet.chain === 'solana' ? 'bg-purple-50 text-purple-600' :
+                        'bg-gray-100 text-gray-600'
+                    }`}>
+                    <span className="material-symbols-outlined text-[26px]">
+                      {wallet.chain === 'ethereum' ? 'currency_eth' :
+                        wallet.chain === 'casper' ? 'token' : 'wallet'}
+                    </span>
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <h4 className="text-base font-bold text-text-main capitalize">{wallet.chain} Wallet</h4>
+                      {wallet.address === profile?.wallet && (
+                        <span className="px-2 py-0.5 rounded-md bg-primary/10 text-primary text-[9px] font-black uppercase tracking-widest">Master</span>
+                      )}
+                    </div>
+                    <p className="text-sm font-mono text-text-sub mt-0.5">
+                      {wallet.address.slice(0, 8)}...{wallet.address.slice(-8)}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-3 mt-4 md:mt-0 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <button
+                    onClick={() => navigator.clipboard.writeText(wallet.address)}
+                    className="p-3 rounded-xl border border-gray-100 text-text-sub hover:text-primary hover:bg-gray-50 transition-all"
+                    title="Copy Address"
+                  >
+                    <span className="material-symbols-outlined text-[20px]">content_copy</span>
+                  </button>
+                  {wallet.address !== profile?.wallet && (
+                    <button
+                      onClick={() => handleUnlink(wallet.address)}
+                      disabled={unlinking === wallet.address}
+                      className="px-5 py-3 rounded-xl border border-red-100 text-sm font-bold text-red-500 hover:bg-red-50 transition-all disabled:opacity-50"
+                    >
+                      {unlinking === wallet.address ? 'Unlinking...' : 'Unlink'}
+                    </button>
+                  )}
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+      </section>
+    </div>
+  );
+};
+
 export const Settings: React.FC = () => {
+  const { user } = useAuth();
   const [activeTab, setActiveTab] = useState<Tab>('General');
-  const tabs: Tab[] = ['General', 'Security', 'Notifications', 'Permissions'];
+  const [counts, setCounts] = useState({ wallets: 0, permissions: 0 });
+  const tabs: Tab[] = ['General', 'Wallets', 'Security', 'Notifications', 'Permissions'];
+
+  useEffect(() => {
+    const fetchCounts = async () => {
+      try {
+        const [profile, perms] = await Promise.all([
+          apiService.getUserProfile(),
+          apiService.getUserPermissions()
+        ]);
+        setCounts({
+          wallets: profile?.linked_wallets?.length || 0,
+          permissions: perms.userPermissions?.length || 0
+        });
+      } catch (e) {
+        console.error('Failed to fetch counts:', e);
+      }
+    };
+    fetchCounts();
+  }, [activeTab, user]); // Refresh counts when tab changes or initially
 
   const renderTabContent = () => {
     switch (activeTab) {
       case 'General': return <GeneralTab />;
+      case 'Wallets': return <WalletsTab />;
       case 'Security': return <SecurityTab />;
       case 'Notifications': return <NotificationsTab />;
       case 'Permissions': return <PermissionsTab />;
@@ -646,7 +843,16 @@ export const Settings: React.FC = () => {
             className={`pb-4 text-sm font-bold transition-all border-b-2 whitespace-nowrap flex items-center gap-2 ${activeTab === tab ? 'border-primary text-primary' : 'border-transparent text-text-sub hover:text-text-main'}`}
           >
             {tab}
-            {tab === 'Permissions' && <span className="size-5 rounded-full bg-primary/10 text-primary text-[10px] flex items-center justify-center font-black">1</span>}
+            {tab === 'Wallets' && counts.wallets > 0 && (
+              <span className="size-5 rounded-full bg-primary/10 text-primary text-[10px] flex items-center justify-center font-black">
+                {counts.wallets}
+              </span>
+            )}
+            {tab === 'Permissions' && counts.permissions > 0 && (
+              <span className="size-5 rounded-full bg-primary/10 text-primary text-[10px] flex items-center justify-center font-black">
+                {counts.permissions}
+              </span>
+            )}
           </button>
         ))}
       </div>

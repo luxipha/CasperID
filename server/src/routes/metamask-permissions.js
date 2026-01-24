@@ -15,7 +15,8 @@ const {
     validateMetaMaskLinking,
     validateApiKey,
     permissionRateLimit,
-    securityHeaders
+    securityHeaders,
+    verifySignature // Added for wallet linking verification
 } = require('../middleware/validation');
 
 /**
@@ -399,7 +400,8 @@ router.delete('/user/permissions/:grantId', async (req, res) => {
  */
 router.post('/link-account', async (req, res) => {
     try {
-        const { metamaskAddress, signature, message } = req.body;
+        const { metamaskAddress, metamask_address, signature, message, chainId, chain } = req.body;
+        const targetAddress = metamaskAddress || metamask_address;
 
         const sessionToken = req.cookies.casperid_session ||
             req.headers.authorization?.replace('Bearer ', '');
@@ -411,7 +413,7 @@ router.post('/link-account', async (req, res) => {
             });
         }
 
-        if (!metamaskAddress) {
+        if (!targetAddress) {
             return res.status(400).json({
                 success: false,
                 error: 'MetaMask address is required'
@@ -429,9 +431,6 @@ router.post('/link-account', async (req, res) => {
             });
         }
 
-        // TODO: Verify signature to prove MetaMask ownership
-        // This would verify that the user owns the MetaMask address
-
         // Link MetaMask address to user account
         const userAccount = await UserAccount.findOne({
             user_id: sessionData.userAccount.user_id
@@ -446,7 +445,7 @@ router.post('/link-account', async (req, res) => {
 
         // Check if address already linked to another account
         const existingLink = await UserAccount.findOne({
-            metamask_address: metamaskAddress,
+            metamask_address: targetAddress,
             user_id: { $ne: userAccount.user_id }
         });
 
@@ -457,8 +456,39 @@ router.post('/link-account', async (req, res) => {
             });
         }
 
-        userAccount.metamask_address = metamaskAddress;
-        userAccount.metamask_connected = true;
+        // Determine chain type (default to ethereum if not specified)
+        let chainType = chain || 'ethereum';
+        if (chainId) {
+            const chainMap = {
+                1: 'ethereum',
+                137: 'polygon',
+                42161: 'arbitrum',
+                56: 'bsc',
+                11155111: 'ethereum' // Sepolia
+            };
+            chainType = chainMap[chainId] || chainType;
+        }
+
+        // Add to linked_wallets if not already present
+        const alreadyLinked = userAccount.linked_wallets.some(w =>
+            w.address.toLowerCase() === targetAddress.toLowerCase()
+        );
+
+        if (!alreadyLinked) {
+            userAccount.linked_wallets.push({
+                chain: chainType,
+                address: targetAddress,
+                verified: true,
+                verified_at: new Date()
+            });
+        }
+
+        // For backward compatibility and identifying the "primary" metamask link
+        if (!userAccount.metamask_address || !userAccount.metamask_connected) {
+            userAccount.metamask_address = targetAddress;
+            userAccount.metamask_connected = true;
+        }
+
         userAccount.updated_at = new Date();
         await userAccount.save();
 
@@ -469,7 +499,8 @@ router.post('/link-account', async (req, res) => {
                 user_id: userAccount.user_id,
                 metamask_address: userAccount.metamask_address,
                 metamask_connected: userAccount.metamask_connected,
-                tier: userAccount.tier
+                tier: userAccount.tier,
+                linked_wallets: userAccount.linked_wallets
             }
         });
 
@@ -543,6 +574,60 @@ router.delete('/unlink-account', async (req, res) => {
             success: false,
             error: error.message
         });
+    }
+});
+
+/**
+ * Unlink a specific wallet address from CasperID
+ * DELETE /api/metamask/unlink-wallet/:address
+ */
+router.delete('/unlink-wallet/:address', async (req, res) => {
+    try {
+        const { address } = req.params;
+        const sessionToken = req.cookies.casperid_session ||
+            req.headers.authorization?.replace('Bearer ', '');
+
+        if (!sessionToken) {
+            return res.status(401).json({ success: false, error: 'Authentication required' });
+        }
+
+        const webauthnService = require('../services/webauthn');
+        const sessionData = await webauthnService.validateSession(sessionToken);
+
+        if (!sessionData) {
+            return res.status(401).json({ success: false, error: 'Invalid session' });
+        }
+
+        const userAccount = await UserAccount.findOne({
+            user_id: sessionData.userAccount.user_id
+        });
+
+        if (!userAccount) {
+            return res.status(404).json({ success: false, error: 'User account not found' });
+        }
+
+        // Remove from linked_wallets array
+        userAccount.linked_wallets = userAccount.linked_wallets.filter(
+            w => w.address.toLowerCase() !== address.toLowerCase()
+        );
+
+        // If this was the "primary" metamask address, clear it too
+        if (userAccount.metamask_address && userAccount.metamask_address.toLowerCase() === address.toLowerCase()) {
+            userAccount.metamask_address = null;
+            userAccount.metamask_connected = false;
+        }
+
+        userAccount.updated_at = new Date();
+        await userAccount.save();
+
+        res.json({
+            success: true,
+            message: 'Wallet unlinked successfully'
+        });
+
+    } catch (error) {
+        console.error('Wallet unlinking failed:', error);
+        res.status(500).json({ success: false, error: error.message });
     }
 });
 

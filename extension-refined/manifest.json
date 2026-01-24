@@ -6,14 +6,11 @@
     "permissions": [
         "storage",
         "activeTab",
-        "tabs",
-        "scripting",
         "notifications"
     ],
     "host_permissions": [
         "http://localhost:3000/*",
-        "http://localhost:3001/*",
-        "https://*/*"
+        "http://localhost:3001/*"
     ],
     "action": {
         "default_popup": "index.html",

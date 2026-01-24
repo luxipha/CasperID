@@ -6,6 +6,7 @@ import { CreatePersonaModal } from './ui/CreatePersonaModal';
 interface MasterIdentitySettingsProps {
     onBack: () => void;
     onViewDIDDetails?: (name: string) => void;
+    onOpenPersonaModal?: () => void;
 }
 
 interface UserData {
@@ -33,12 +34,15 @@ interface Route {
     redirect_url?: string;
 }
 
-export const MasterIdentitySettings: React.FC<MasterIdentitySettingsProps> = ({ onBack, onViewDIDDetails }) => {
+export const MasterIdentitySettings: React.FC<MasterIdentitySettingsProps> = ({
+    onBack,
+    onViewDIDDetails,
+    onOpenPersonaModal
+}) => {
     const [userData, setUserData] = useState<UserData | null>(null);
     const [myNames, setMyNames] = useState<CidName[]>([]);
     const [routes, setRoutes] = useState<Route[]>([]);
     const [loading, setLoading] = useState(true);
-    const [isPersonaModalOpen, setIsPersonaModalOpen] = useState(false);
 
     useEffect(() => {
         const fetchData = async () => {
@@ -184,7 +188,7 @@ export const MasterIdentitySettings: React.FC<MasterIdentitySettingsProps> = ({ 
                                 <p className="text-text-sub text-xs font-medium mt-1">Contextual identities linked to the root</p>
                             </div>
                             <button
-                                onClick={() => setIsPersonaModalOpen(true)}
+                                onClick={onOpenPersonaModal}
                                 className="flex items-center gap-2 px-5 py-2.5 bg-primary text-white rounded-xl text-xs font-black shadow-lg shadow-primary/20 hover:bg-primary/90 transition-all"
                             >
                                 <span className="material-symbols-outlined text-sm">add</span>
@@ -411,18 +415,6 @@ export const MasterIdentitySettings: React.FC<MasterIdentitySettingsProps> = ({ 
                     </p>
                 </aside>
             </div>
-
-            {/* Create Persona Modal */}
-            <CreatePersonaModal
-                isOpen={isPersonaModalOpen}
-                onClose={() => setIsPersonaModalOpen(false)}
-                primaryIdentity={getPrimaryIdentityName()}
-                onSubmit={(data) => {
-                    console.log('Creating persona:', data);
-                    // TODO: Implement API call to create persona
-                    // Modal stays open to show success screen - closes via onClose when user clicks "Back to Identities Hub"
-                }}
-            />
         </div>
     );
 };

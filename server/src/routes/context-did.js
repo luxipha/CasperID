@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { UserAccount } = require('../database/models');
 const { v4: uuidv4 } = require('uuid');
+const { TIER_LEVELS, getPersonaLimit } = require('../constants/tier-levels');
 
 /**
  * Context DID Management Routes
@@ -40,58 +41,102 @@ const validateSession = async (req, res, next) => {
  */
 router.post('/create', validateSession, async (req, res) => {
     try {
-        const { context, alias } = req.body;
+        const { context, alias, disclosures, routingType, targetWallet } = req.body;
         const { userAccount } = req;
 
         if (!context) {
-            return res.status(400).json({ error: 'Context is required' });
+            return res.status(400).json({ error: 'Context type is required' });
         }
 
-        // TIER GATING LOGIC
-        // Layer 1: No Context DIDs allowed
-        if (userAccount.tier === 'layer_1') {
+        if (!alias) {
+            return res.status(400).json({ error: 'Alias (handle) is required' });
+        }
+
+        // TIER-BASED PERSONA LIMITS
+        const personaCount = userAccount.context_dids?.length || 0;
+        const personaLimit = getPersonaLimit(userAccount.tier);
+
+        if (personaCount >= personaLimit) {
+            const nextTierMap = {
+                [TIER_LEVELS.LAYER_1]: 'Layer 2',
+                [TIER_LEVELS.LAYER_2]: 'Layer 3'
+            };
+            const nextTierName = nextTierMap[userAccount.tier];
+
             return res.status(403).json({
-                error: 'Layer 2 verification required to create Context DIDs',
-                current_tier: userAccount.tier,
-                required_tier: 'layer_2'
+                error: `Persona limit reached for your current tier (${userAccount.tier}). You have ${personaCount}/${personaLimit} personas.`,
+                limit_reached: true,
+                current_count: personaCount,
+                limit: personaLimit,
+                next_tier_required: nextTierName
             });
         }
 
-        // Layer 2: Only pseudonymous contexts allowed (basic)
-        // Layer 3: Unrestricted contexts
+        // CONTEXT TYPE GATING
+        // Layer 1 & 2: Restricted from high-security/business contexts
         const restrictedContexts = ['professional', 'government', 'banking'];
-        if (userAccount.tier === 'layer_2' && restrictedContexts.includes(context)) {
+        if ((userAccount.tier === TIER_LEVELS.LAYER_1 || userAccount.tier === TIER_LEVELS.LAYER_2) && restrictedContexts.includes(context)) {
             return res.status(403).json({
                 error: `Layer 3 verification required for '${context}' context`,
                 current_tier: userAccount.tier,
-                required_tier: 'layer_3'
+                required_tier: TIER_LEVELS.LAYER_3
             });
         }
 
-        // Check if context DID already exists for this context
-        const existingContext = userAccount.context_dids?.find(c => c.context === context);
-        if (existingContext) {
-            return res.status(400).json({ error: `Context DID for '${context}' already exists` });
+        // Check if alias already exists for this user
+        const existingAlias = userAccount.context_dids?.find(c => c.alias === alias);
+        if (existingAlias) {
+            return res.status(400).json({ error: `Persona with alias '${alias}' already exists` });
         }
 
         // Generate Context DID
-        // Format: did:casper:context:<context-name>:<uuid-suffix>
+        const { v4: uuidv4 } = require('uuid');
         const didSuffix = uuidv4().split('-')[0];
-        const contextDID = `did:casper:context:${context}:${didSuffix}`;
+        const contextDID = `did:casper:context:${alias}:${didSuffix}`;
+
+        // Get master name (strip .cid if already present to avoid double suffix)
+        let masterName = userAccount.cns_name || userAccount.human_id;
+        if (masterName && masterName.endsWith('.cid')) {
+            masterName = masterName.slice(0, -4); // Remove trailing .cid
+        }
+
+        // Build the full name: alias.masterName.cid
+        const fullName = masterName ? `${alias}.${masterName}.cid` : null;
+
+        // Prepare context DID object - ALWAYS saved for both identity and wallet types
+        const contextDidObj = {
+            did: contextDID,
+            alias: alias,
+            context: context,
+            routing_type: routingType || 'identity',
+            target_wallet: routingType === 'wallet' ? targetWallet : undefined,
+            disclosures: routingType === 'identity' ? (disclosures || {}) : {},
+            tier_required: userAccount.tier,
+            created_at: new Date()
+        };
+
+        // Prepare the update object with combined $push
+        const updateObj = {
+            $push: {
+                context_dids: contextDidObj
+            }
+        };
+
+        // Also add to cns_routing if we have a master name
+        if (fullName) {
+            const routingEntry = {
+                name: fullName,
+                target_type: routingType === 'wallet' ? 'wallet_only' : 'context_did',
+                target_id: routingType === 'wallet' ? targetWallet : contextDID,
+                active: true
+            };
+            updateObj.$push.cns_routing = routingEntry;
+        }
 
         // Save to UserAccount
         const updatedUser = await UserAccount.findOneAndUpdate(
             { user_id: userAccount.user_id },
-            {
-                $push: {
-                    context_dids: {
-                        did: contextDID,
-                        context: context,
-                        tier_required: userAccount.tier,
-                        created_at: new Date()
-                    }
-                }
-            },
+            updateObj,
             { new: true }
         );
 
@@ -100,7 +145,10 @@ router.post('/create', validateSession, async (req, res) => {
             message: 'Context DID created successfully',
             context_did: {
                 did: contextDID,
+                alias: alias,
                 context: context,
+                routing_type: routingType || 'identity',
+                full_name: fullName,
                 tier: userAccount.tier
             }
         });

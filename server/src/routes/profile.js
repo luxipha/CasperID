@@ -152,6 +152,20 @@ router.get('/user/profile', requireAuth, async (req, res) => {
             revoked: false
         });
 
+        // Check for existence of data in other categories for disclosure validation
+        const [
+            expCount, eduCount, certCount, skillCount, projCount, awardCount, langCount, volCount
+        ] = await Promise.all([
+            Experience.countDocuments({ wallet }),
+            Education.countDocuments({ wallet }),
+            Certification.countDocuments({ wallet }),
+            Skill.countDocuments({ wallet }),
+            Project.countDocuments({ wallet }),
+            Award.countDocuments({ wallet }),
+            Language.countDocuments({ wallet }),
+            Volunteer.countDocuments({ wallet })
+        ]);
+
         // Merge account-level data with profile
         const enrichedProfile = {
             ...profile.toObject(),
@@ -159,7 +173,20 @@ router.get('/user/profile', requireAuth, async (req, res) => {
             tier: userAccount?.tier || 'layer_0',
             email_verified: userAccount?.email_verified || false,
             account_created_at: userAccount?.created_at || null,
-            passkey_count: passkeyCount
+            passkey_count: passkeyCount,
+            context_dids: userAccount?.context_dids || [],
+            cns_routing: userAccount?.cns_routing || [],
+            linked_wallets: userAccount?.linked_wallets || [],
+            data_availability: {
+                experience: expCount > 0,
+                education: eduCount > 0,
+                certifications: certCount > 0,
+                skills: skillCount > 0,
+                projects: projCount > 0,
+                awards: awardCount > 0,
+                languages: langCount > 0,
+                volunteer: volCount > 0
+            }
         };
 
         res.json(enrichedProfile);

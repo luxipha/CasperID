@@ -194,7 +194,7 @@ export const SelectiveDisclosureModal: React.FC<SelectiveDisclosureModalProps> =
                                     </div>
                                 </div>
 
-                                <label className="relative inline-flex items-center cursor-pointer">
+                                <label className={`relative inline-flex items-center ${!hasValue ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'}`}>
                                     <input
                                         type="checkbox"
                                         className="sr-only peer"
@@ -204,6 +204,12 @@ export const SelectiveDisclosureModal: React.FC<SelectiveDisclosureModalProps> =
                                     />
                                     <div className="w-10 h-5 bg-gray-200 rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-primary peer-disabled:opacity-40"></div>
                                 </label>
+                                {!hasValue && (
+                                    <span className="text-[10px] font-bold text-amber-600 flex items-center gap-0.5 animate-pulse mt-1">
+                                        <span className="material-symbols-outlined text-[12px]">warning</span>
+                                        Missing Info
+                                    </span>
+                                )}
                             </div>
                         );
                     })}

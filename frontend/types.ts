@@ -44,6 +44,32 @@ export interface UserProfile {
   pronouns?: string;
   created_at?: string;
   updated_at?: string;
+  did_address?: string;
+  context_dids?: Array<{
+    did: string;
+    alias?: string;
+    context: string;
+    routing_type?: 'identity' | 'wallet';
+    target_wallet?: string;
+    disclosures?: Record<string, boolean>;
+    tier_required?: string;
+    created_at?: string;
+  }>;
+  cns_routing?: Array<{
+    name: string;
+    target_type: 'master_profile' | 'context_did' | 'wallet_only' | 'redirect';
+    target_id?: string;
+    redirect_url?: string;
+    active: boolean;
+  }>;
+  linked_wallets?: Array<{
+    chain: 'casper' | 'ethereum' | 'solana' | 'bitcoin';
+    address: string;
+    verified: boolean;
+    verified_at?: string;
+  }>;
+  passkey_count?: number;
+  account_created_at?: string;
 }
 
 export interface Experience {

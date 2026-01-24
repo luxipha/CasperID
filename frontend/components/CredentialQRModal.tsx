@@ -8,6 +8,8 @@ interface Credential {
     issuer: string;
     status: string;
     date: string;
+    color?: string;
+    icon?: string;
 }
 
 interface CredentialQRModalProps {

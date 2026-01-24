@@ -69,7 +69,7 @@ class ApiService {
             }
           } catch (refreshError) {
             this.logout();
-            window.location.href = '/login';
+            // Removed automatic redirect to /login to prevent routing loops with public profiles
           }
         }
 
@@ -235,12 +235,13 @@ class ApiService {
   // METAMASK INTEGRATION
   // ============================================
 
-  async linkMetaMaskAccount(metamaskAddress: string, signature: string, message: string): Promise<ApiResponse> {
+  async linkMetaMaskAccount(metamaskAddress: string, signature: string, message: string, chainId?: number): Promise<ApiResponse> {
     try {
       const response = await this.client.post('/api/metamask/link-account', {
         metamask_address: metamaskAddress,
         signature,
-        message
+        message,
+        chainId
       });
       return response.data;
     } catch (error) {
@@ -251,6 +252,15 @@ class ApiService {
   async unlinkMetaMaskAccount(): Promise<ApiResponse> {
     try {
       const response = await this.client.delete('/api/metamask/unlink-account');
+      return response.data;
+    } catch (error) {
+      throw this.handleError(error);
+    }
+  }
+
+  async unlinkWallet(address: string): Promise<ApiResponse> {
+    try {
+      const response = await this.client.delete(`/api/metamask/unlink-wallet/${address}`);
       return response.data;
     } catch (error) {
       throw this.handleError(error);
@@ -1244,6 +1254,34 @@ class ApiService {
         { request_id: requestId, approve },
         { headers: { Authorization: `Bearer ${token}` } }
       );
+      return response.data;
+    } catch (error) {
+      throw this.handleError(error);
+    }
+  }
+
+  // ============================================
+  // CONTEXT DID MANAGEMENT
+  // ============================================
+
+  async createContextDID(context: string, alias: string, disclosures: any, routingType?: 'identity' | 'wallet', targetWallet?: string): Promise<ApiResponse> {
+    try {
+      const response = await this.client.post('/api/passkey/context-did/create', {
+        context,
+        alias,
+        disclosures,
+        routingType,
+        targetWallet
+      });
+      return response.data;
+    } catch (error) {
+      throw this.handleError(error);
+    }
+  }
+
+  async getContextDIDs(): Promise<ApiResponse> {
+    try {
+      const response = await this.client.get('/api/passkey/context-did/list');
       return response.data;
     } catch (error) {
       throw this.handleError(error);

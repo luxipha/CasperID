@@ -1,6 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { apiService } from '../services/api';
+import { useAuth } from '../contexts/AuthContext';
 
 interface DIDManagementProps {
   onCreateNew: () => void;
@@ -20,22 +21,40 @@ interface UserData {
   human_id?: string;
 }
 
+interface ContextDID {
+  did: string;
+  alias: string;
+  context: string;
+  routing_type?: 'identity' | 'wallet';
+  target_wallet?: string;
+  tier_required?: string;
+  created_at?: string;
+}
+
 export const DIDManagement: React.FC<DIDManagementProps> = ({ onCreateNew, onManageDID, onExportKeys, onImportDID, onConfigureIdentity }) => {
+  const { user } = useAuth();
   const [userData, setUserData] = useState<UserData | null>(null);
+  const [contextDIDs, setContextDIDs] = useState<ContextDID[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchUserData = async () => {
       try {
-        const profile = await apiService.getUserProfile();
+        setLoading(true);
+        const [profile, contextRes] = await Promise.all([
+          apiService.getUserProfile(),
+          apiService.getContextDIDs().catch(() => ({ context_dids: [] }))
+        ]);
         setUserData(profile as any);
+        setContextDIDs((contextRes as any).context_dids || []);
       } catch (error) {
+        console.error('Failed to fetch DID data:', error);
       } finally {
         setLoading(false);
       }
     };
     fetchUserData();
-  }, []);
+  }, [user]); // Refetch when user changes (e.g., after refreshUser())
 
   const handleMintDID = async () => {
     try {
@@ -110,20 +129,29 @@ export const DIDManagement: React.FC<DIDManagementProps> = ({ onCreateNew, onMan
             </button>
             <button
               onClick={onCreateNew}
-              disabled={!!userData?.did_address}
-              className={`flex items-center justify-center gap-2 px-6 py-3 rounded-2xl text-sm font-bold transition-all shadow-lg active:scale-95 ${userData?.did_address
-                ? 'bg-gray-300 text-gray-500 cursor-not-allowed opacity-60'
+              disabled={userData?.tier === 'layer_1'}
+              className={`flex items-center justify-center gap-2 px-6 py-3 rounded-2xl text-sm font-bold transition-all shadow-lg active:scale-95 ${userData?.tier === 'layer_1'
+                ? 'bg-gray-100 text-text-sub/40 border border-gray-100 cursor-not-allowed'
                 : 'bg-primary text-white hover:bg-primary/90 shadow-primary/20'
                 }`}
             >
-              <span className="material-symbols-outlined text-lg">{userData?.did_address ? 'check_circle' : 'add_circle'}</span>
-              {userData?.did_address ? 'DID Already Created' : 'Create New DID'}
+              <span className="material-symbols-outlined text-lg">add_circle</span>
+              Create Persona
             </button>
           </div>
-          {userData?.did_address && (
-            <p className="text-xs text-text-sub font-medium text-right max-w-xs">
-              You can only have one DID per account. Use Export to backup your existing DID.
-            </p>
+          <p className="text-xs text-text-sub font-medium text-right max-w-xs">
+            Create contextual personas for different aspects of your identity (work, gaming, social).
+          </p>
+          {userData?.tier === 'layer_1' && (
+            <div className="mt-3 p-4 rounded-2xl bg-amber-50 border border-amber-100 flex items-start gap-3 max-w-sm ml-auto animate-in fade-in slide-in-from-top-2 duration-500">
+              <span className="material-symbols-outlined text-amber-600 text-[20px] mt-0.5">verified_user</span>
+              <div className="space-y-1">
+                <p className="text-[11px] font-black text-amber-700 uppercase tracking-widest">Verification Required</p>
+                <p className="text-[11px] text-amber-900 font-medium leading-relaxed">
+                  Layer 2 Verification is required to unlock Personas. Upgrade your profile to start creating contextual identities.
+                </p>
+              </div>
+            </div>
           )}
         </div>
       </div>
@@ -163,9 +191,9 @@ export const DIDManagement: React.FC<DIDManagementProps> = ({ onCreateNew, onMan
             <p className="text-[11px] font-extrabold text-text-sub uppercase tracking-widest mb-4">Active Identifiers</p>
             <div className="flex items-baseline gap-3">
               <span className="text-[44px] font-black text-text-main leading-none tracking-tighter">
-                {userData?.did_address ? '1' : '0'}
+                {(userData?.did_address ? 1 : 0) + contextDIDs.length}
               </span>
-              {userData?.did_address ? (
+              {(userData?.did_address || contextDIDs.length > 0) ? (
                 <span className="px-2 py-0.5 rounded-md bg-green-50 text-green-600 text-[10px] font-bold">Active</span>
               ) : (
                 <span className="px-2 py-0.5 rounded-md bg-gray-50 text-gray-600 text-[10px] font-bold">None</span>
@@ -267,7 +295,50 @@ export const DIDManagement: React.FC<DIDManagementProps> = ({ onCreateNew, onMan
                     </button>
                   </td>
                 </tr>
-              ) : (
+              ) : null}
+              {/* Context DIDs (Personas) */}
+              {contextDIDs.map((ctx) => (
+                <tr
+                  key={ctx.did}
+                  onClick={() => onManageDID(`${ctx.alias || ctx.context}.${getPrimaryIdentityName()}`)}
+                  className="hover:bg-gray-50/40 transition-colors group cursor-pointer"
+                >
+                  <td className="px-8 py-6">
+                    <div className="flex flex-col">
+                      <span className="text-sm font-black text-text-main">{ctx.alias || ctx.context}.{getPrimaryIdentityName()}</span>
+                      <span className="text-[11px] font-mono font-medium text-text-sub">{formatDID(ctx.did)}</span>
+                    </div>
+                  </td>
+                  <td className="px-8 py-6">
+                    <div className="flex items-center gap-2">
+                      <span className="px-2.5 py-1 rounded-lg bg-blue-50 text-blue-600 text-[10px] font-black uppercase tracking-wider border border-blue-100">
+                        {ctx.context}
+                      </span>
+                      {ctx.routing_type === 'wallet' && (
+                        <span className="px-2 py-0.5 rounded-md bg-amber-50 text-amber-600 text-[9px] font-bold">
+                          Wallet
+                        </span>
+                      )}
+                    </div>
+                  </td>
+                  <td className="px-8 py-6">
+                    <span className="text-sm font-bold text-text-main">{formatDate(ctx.created_at)}</span>
+                  </td>
+                  <td className="px-8 py-6">
+                    <div className="flex items-center gap-2">
+                      <span className="size-2 rounded-full bg-green-500"></span>
+                      <span className="text-sm font-bold text-text-main">Active</span>
+                    </div>
+                  </td>
+                  <td className="px-8 py-6 text-right">
+                    <button className="text-text-sub group-hover:text-primary transition-colors">
+                      <span className="material-symbols-outlined">manage_accounts</span>
+                    </button>
+                  </td>
+                </tr>
+              ))}
+              {/* Empty state */}
+              {!userData?.did_address && contextDIDs.length === 0 && (
                 <tr>
                   <td colSpan={5} className="px-8 py-12 text-center">
                     <div className="flex flex-col items-center gap-4">
@@ -297,7 +368,7 @@ export const DIDManagement: React.FC<DIDManagementProps> = ({ onCreateNew, onMan
         {/* Pagination Footer */}
         <div className="px-8 py-6 border-t border-gray-50 flex items-center justify-between">
           <p className="text-sm font-bold text-text-sub">
-            Showing <span className="text-text-main">{userData?.did_address ? '1' : '0'}</span> of <span className="text-text-main">{userData?.did_address ? '1' : '0'}</span> DIDs
+            Showing <span className="text-text-main">{(userData?.did_address ? 1 : 0) + contextDIDs.length}</span> of <span className="text-text-main">{(userData?.did_address ? 1 : 0) + contextDIDs.length}</span> DIDs
           </p>
         </div>
       </section>

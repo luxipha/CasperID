@@ -46,7 +46,7 @@ export default function ProfileDisplay({ data, isPublicView = true }: ProfileDis
                     )}
                 </div>
 
-                <div className="px-8 pb-10 -mt-16 relative z-10 flex flex-col md:flex-row items-end gap-6 md:gap-10">
+                <div className="px-8 pb-10 -mt-16 relative z-10 flex flex-col md:flex-row items-start gap-6 md:gap-10">
                     {/* Profile Image */}
                     <div className="size-32 md:size-44 rounded-[32px] p-1 bg-white shadow-xl relative group">
                         <div className="w-full h-full rounded-[28px] overflow-hidden bg-gray-50 flex items-center justify-center border border-gray-100">
@@ -67,12 +67,14 @@ export default function ProfileDisplay({ data, isPublicView = true }: ProfileDis
                     </div>
 
                     {/* Basic Info */}
-                    <div className="flex-1 space-y-3 pb-2 text-center md:text-left w-full">
+                    <div className="flex-1 space-y-3 pt-20 pb-2 text-center md:text-left w-full">
                         <div className="space-y-1">
                             <h1 className="text-3xl md:text-5xl font-black text-text-main tracking-tight">{fullName}</h1>
-                            <p className="text-lg md:text-xl font-bold text-[#8652E2] flex items-center justify-center md:justify-start gap-2 italic">
-                                {profile.headline || 'CasperID Professional'}
-                            </p>
+                            {profile.headline && (
+                                <p className="text-lg md:text-xl font-bold text-[#8652E2] flex items-center justify-center md:justify-start gap-2 italic">
+                                    {profile.headline}
+                                </p>
+                            )}
                             {profile.open_to_work?.enabled && (
                                 <div className="mt-2 inline-flex items-center gap-2 px-3 py-1 bg-green-50 border border-green-100 rounded-full text-[11px] font-black text-green-600 uppercase tracking-wider">
                                     <span className="material-symbols-outlined text-[16px]">work</span>

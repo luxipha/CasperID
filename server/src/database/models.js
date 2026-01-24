@@ -160,6 +160,7 @@ const userProfileSchema = new mongoose.Schema({
     // === HEADER INFO ===
     first_name: { type: String },
     last_name: { type: String },
+    date_of_birth: { type: Date },
     pronouns: { type: String },
     headline: { type: String, maxlength: 220 },
     profile_image_url: { type: String },
@@ -651,7 +652,33 @@ const userAccountSchema = new mongoose.Schema({
     // Context DIDs (Domain-specific pseudonyms)
     context_dids: [{
         did: { type: String, required: true },
-        context: { type: String, required: true }, // e.g. 'professional', 'gaming', 'social'
+        alias: { type: String, required: true }, // User-defined name (e.g., 'pay', 'work')
+        context: { type: String, required: true }, // Type: 'professional', 'gaming', 'social', 'financial'
+        routing_type: { type: String, enum: ['identity', 'wallet'], default: 'identity' },
+        target_wallet: { type: String }, // Only for wallet routing
+        disclosures: {
+            // Basic Profile
+            firstName: { type: Boolean, default: false },
+            lastName: { type: Boolean, default: false },
+            dateOfBirth: { type: Boolean, default: false },
+            ageVerification: { type: Boolean, default: false },
+            email: { type: Boolean, default: false },
+            phone: { type: Boolean, default: false },
+            headline: { type: Boolean, default: false },
+            about: { type: Boolean, default: false },
+            location: { type: Boolean, default: false },
+
+            // Categories
+            experience: { type: Boolean, default: false },
+            education: { type: Boolean, default: false },
+            skills: { type: Boolean, default: false },
+            certifications: { type: Boolean, default: false },
+            projects: { type: Boolean, default: false },
+            awards: { type: Boolean, default: false },
+            languages: { type: Boolean, default: false },
+            volunteer: { type: Boolean, default: false },
+            socials: { type: Boolean, default: false }
+        },
         tier_required: { type: String, default: 'layer_2' },
         created_at: { type: Date, default: Date.now }
     }],

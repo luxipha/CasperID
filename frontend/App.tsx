@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Sidebar } from './components/Sidebar';
 import { Header } from './components/Header';
 import { MobileHeader } from './components/MobileHeader';
@@ -17,7 +17,6 @@ import { Settings } from './components/Settings';
 import { DIDManagement } from './components/DIDManagement';
 import NameManagement from './components/NameManagement';
 import { RegisterCID } from './components/RegisterCID';
-import { CreateDID } from './components/CreateDID';
 import { ManageDID } from './components/ManageDID';
 import { ExportDID } from './components/ExportDID';
 import { ImportDID } from './components/ImportDID';
@@ -27,6 +26,9 @@ import { KYCHome } from './components/KYCHome';
 import { CredentialVault } from './components/CredentialVault';
 import { ConsentRequestModal } from './components/ui/ConsentRequestModal';
 import { DIDDetailsModal } from './components/ui/DIDDetailsModal';
+import { CreatePersonaModal } from './components/ui/CreatePersonaModal';
+import { ConnectWalletModal } from './components/ui/ConnectWalletModal';
+import { QuickActionsRail } from './components/ui/QuickActionsRail';
 import { AuthEntry } from './components/AuthEntry';
 import { OTPVerify } from './components/OTPVerify';
 import { OnboardingStart } from './components/OnboardingStart';
@@ -50,10 +52,17 @@ const App: React.FC = () => {
      We check the URL path to determine if we are visiting a specific page (like a public profile).
      System paths (dashboard, internal pages) are ignored here and handled by Auth check below.
   */
+  // Check if a path is a reserved system path and should NOT be treated as a public profile
+  const isReservedPath = (path: string) => {
+    const sysPaths = ['/', '/admin', '/pair', '/dashboard', '/login', '/auth', '/settings', '/integrations', '/verify'];
+    const p = path.toLowerCase();
+    return sysPaths.includes(p) || p.startsWith('/verify/');
+  };
+
   const getInitialView = () => {
     const path = window.location.pathname;
 
-    // Check for explicit system routes to ignore or handle specific logic
+    // Check for explicit system routes
     if (path === '/') return 'landing';
     if (path === '/admin') return 'admin';
     if (path === '/pair' || path === '/dashboard') return 'loading';
@@ -64,10 +73,8 @@ const App: React.FC = () => {
     // Check for vanity verification route: e.g. /alice.cid/verify/hash
     if (path.match(/^\/([^\/]+)\/verify\/([^\/]+)$/)) return 'verify-credential';
 
-    // If path has content (e.g. /seme-kure), assume it is a public profile
-    if (path.length > 1) {
-      // Remove leading slash
-      const slug = path.substring(1);
+    // If path has content and IS NOT a reserved system path, assume it is a public profile
+    if (path.length > 1 && !isReservedPath(path)) {
       return 'public-profile';
     }
 
@@ -77,8 +84,7 @@ const App: React.FC = () => {
   const [currentView, setCurrentView] = useState(getInitialView());
   const [publicProfileSlug, setPublicProfileSlug] = useState<string | null>(() => {
     const path = window.location.pathname;
-    const isSystemPath = path === '/' || path === '/pair' || path === '/dashboard' || path.startsWith('/verify/') || path.match(/^\/([^\/]+)\/verify\/([^\/]+)$/);
-    return (!isSystemPath && path.length > 1) ? path.substring(1) : null;
+    return (path.length > 1 && !isReservedPath(path)) ? path.substring(1) : null;
   });
   const [credentialHash, setCredentialHash] = useState<string | null>(() => {
     const path = window.location.pathname;
@@ -91,11 +97,19 @@ const App: React.FC = () => {
   const [verificationId, setVerificationId] = useState('');
   const [selectedActivityId, setSelectedActivityId] = useState<string | null>(null);
   const [isConsentModalOpen, setIsConsentModalOpen] = useState(false);
+  const [isPersonaModalOpen, setIsPersonaModalOpen] = useState(false);
   const [isDIDDetailsModalOpen, setIsDIDDetailsModalOpen] = useState(false);
   const [selectedIdentityName, setSelectedIdentityName] = useState<string | undefined>(undefined);
   const [showPostOnboardingBanner, setShowPostOnboardingBanner] = useState(false);
   const [showRegisterCIDPrompt, setShowRegisterCIDPrompt] = useState(false);
+  const [isConnectWalletOpen, setIsConnectWalletOpen] = useState(false);
   const { user, isLoading, isAuthenticated } = useAuth();
+
+  React.useEffect(() => {
+    const handleOpenWallet = () => setIsConnectWalletOpen(true);
+    window.addEventListener('openConnectWallet', handleOpenWallet);
+    return () => window.removeEventListener('openConnectWallet', handleOpenWallet);
+  }, []);
 
   // Set initial view based on authentication and completion state
   React.useEffect(() => {
@@ -127,6 +141,15 @@ const App: React.FC = () => {
       }
     }
   }, [isLoading, isAuthenticated, user, currentView]);
+
+  useEffect(() => {
+    const handleOpenKYC = () => {
+      setCurrentView('kyc');
+      setIsPersonaModalOpen(false); // Close modal if open
+    };
+    window.addEventListener('openKYC', handleOpenKYC);
+    return () => window.removeEventListener('openKYC', handleOpenKYC);
+  }, []);
 
   const handleViewActivityDetail = (id: string) => {
     setSelectedActivityId(id);
@@ -265,9 +288,9 @@ const App: React.FC = () => {
       case 'did-management':
         return (
           <DIDManagement
-            onCreateNew={() => setCurrentView('did-create')}
+            onCreateNew={() => setIsPersonaModalOpen(true)}
             onManageDID={(id) => {
-              setSelectedIdentityName(undefined); // Default or fetch
+              setSelectedIdentityName(id);
               setIsDIDDetailsModalOpen(true);
             }}
             onExportKeys={() => setCurrentView('did-export')}
@@ -280,15 +303,9 @@ const App: React.FC = () => {
       case 'register-cid':
         return <RegisterCID onBack={() => setCurrentView('overview')} />;
       case 'did-create':
-        return (
-          <CreateDID
-            onBack={() => setCurrentView('did-management')}
-            onViewDetails={(id) => {
-              setSelectedIdentityName(undefined);
-              setIsDIDDetailsModalOpen(true);
-            }}
-          />
-        );
+        // Redirect to DID Management if somehow reached
+        setCurrentView('did-management');
+        return null;
       case 'did-manage':
         return <ManageDID onBack={() => setCurrentView('did-management')} />;
       case 'did-export':
@@ -303,6 +320,7 @@ const App: React.FC = () => {
               setSelectedIdentityName(name);
               setIsDIDDetailsModalOpen(true);
             }}
+            onOpenPersonaModal={() => setIsPersonaModalOpen(true)}
           />
         );
       case 'public-profile':
@@ -412,6 +430,15 @@ const App: React.FC = () => {
       {/* Desktop Sidebar */}
       <Sidebar currentView={activeSidebarTab} onNavigate={setCurrentView} />
 
+      {/* Quick Actions Rail - Only visible on large screens */}
+      <QuickActionsRail
+        onCreatePersona={() => setIsPersonaModalOpen(true)}
+        onConnectWallet={() => setIsConnectWalletOpen(true)}
+        onRegisterCID={() => setCurrentView('register-cid')}
+        onImportDID={() => setCurrentView('did-import')}
+        onNavigate={setCurrentView}
+      />
+
       <div className="flex-1 md:pl-64 flex flex-col min-w-0">
         {/* Responsive Headers */}
         <Header />
@@ -448,12 +475,32 @@ const App: React.FC = () => {
         identityName={selectedIdentityName}
       />
 
+      <CreatePersonaModal
+        isOpen={isPersonaModalOpen}
+        onClose={() => setIsPersonaModalOpen(false)}
+        primaryIdentity={user?.cns_name || user?.human_id || 'Primary Identity'}
+        userTier={user?.tier || 'layer_2'}
+        onSubmit={(data) => {
+          console.log('Creating persona:', data);
+          // Success handled within modal
+        }}
+      />
+
       <RegisterCIDPromptModal
         isOpen={showRegisterCIDPrompt}
         onClose={() => setShowRegisterCIDPrompt(false)}
         onRegister={() => {
           setShowRegisterCIDPrompt(false);
           setCurrentView('register-cid');
+        }}
+      />
+
+      <ConnectWalletModal
+        isOpen={isConnectWalletOpen}
+        onClose={() => setIsConnectWalletOpen(false)}
+        onWalletLinked={(address, chain) => {
+          console.log('Wallet linked:', address, chain);
+          // Could refresh user data here
         }}
       />
     </div>

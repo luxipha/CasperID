@@ -41,16 +41,37 @@ async function mintCredential(request) {
         .update(credential_json)
         .digest('hex');
 
-    // Call Casper contract to set verification (for L1: mints Master DID)
-    const tx_hash = await casperService.setVerification(
-        request.wallet,
-        request.tier,
-        now,
-        now,
-        process.env.ISSUER_ID || 'CasperID-Demo',
-        credential_hash,
-        true
-    );
+    // Check if DID is already being minted (database-level race condition guard)
+    const existingAccount = await UserAccount.findOne({ wallet: request.wallet });
+    let tx_hash = null;
+
+    if (existingAccount?.did_minted) {
+        console.log(`[Credential-Minter] DID already minted for ${request.wallet.slice(0, 20)}... (skipping chain call)`);
+        tx_hash = existingAccount.onchain_did_tx || 'already_minted';
+    } else {
+        // Set did_minted flag IMMEDIATELY to prevent race conditions
+        await UserAccount.updateOne(
+            { wallet: request.wallet },
+            { $set: { did_minted: true } }
+        );
+
+        // Call Casper contract to set verification (for L1: mints Master DID)
+        tx_hash = await casperService.setVerification(
+            request.wallet,
+            request.tier,
+            now,
+            now,
+            process.env.ISSUER_ID || 'CasperID-Demo',
+            credential_hash,
+            true
+        );
+
+        // Update with actual transaction hash
+        await UserAccount.updateOne(
+            { wallet: request.wallet },
+            { $set: { onchain_did_tx: tx_hash } }
+        );
+    }
 
     // Generate human-friendly ID
     const { humanId } = walletToHuman(request.wallet);

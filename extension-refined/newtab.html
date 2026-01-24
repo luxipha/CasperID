@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html class="light" lang="en">
+<html lang="en">
 
 <head>
     <meta charset="utf-8" />
@@ -14,18 +14,13 @@
 </head>
 
 <body
-    class="bg-background-light dark:bg-background-dark text-text-main-light dark:text-text-main-dark min-h-screen transition-colors duration-200">
+    class="bg-background-light text-text-main-light min-h-screen transition-colors duration-200">
     <nav class="flex justify-between items-center px-8 py-6 max-w-7xl mx-auto w-full">
         <div class="flex items-center gap-2">
             <img src="logo.png" alt="CasperID" class="w-8 h-8 rounded-lg" />
             <span class="font-bold text-xl tracking-tight">CasperID</span>
         </div>
         <div class="flex items-center gap-6">
-            <button class="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-800 transition-colors"
-                onclick="toggleDarkMode()">
-                <span class="material-icons-round block dark:hidden">dark_mode</span>
-                <span class="material-icons-round hidden dark:block">light_mode</span>
-            </button>
             <div class="flex items-center gap-3">
                 <span class="text-sm font-medium opacity-70">Status: Secure</span>
                 <div class="w-2 h-2 rounded-full bg-green-500"></div>
@@ -37,28 +32,28 @@
             <!-- Left Column - User Card -->
             <div class="lg:col-span-4 space-y-6">
                 <div
-                    class="bg-card-light dark:bg-card-dark rounded-3xl p-8 shadow-xl shadow-purple-500/5 border border-gray-100 dark:border-gray-800">
+                    class="bg-card-light rounded-3xl p-8 shadow-xl shadow-purple-500/5 border border-gray-100">
                     <div class="flex flex-col items-center text-center">
                         <div class="relative mb-6">
                             <div class="w-24 h-24 rounded-full bg-gradient-to-br from-primary to-indigo-600 p-1">
                                 <div
-                                    class="w-full h-full rounded-full bg-white dark:bg-gray-900 flex items-center justify-center overflow-hidden">
+                                    class="w-full h-full rounded-full bg-white flex items-center justify-center overflow-hidden">
                                     <span class="material-icons-round text-5xl text-primary">face</span>
                                 </div>
                             </div>
                             <div id="verified-badge"
-                                class="absolute -bottom-1 -right-1 bg-gray-400 border-4 border-white dark:border-gray-900 w-8 h-8 rounded-full flex items-center justify-center">
+                                class="absolute -bottom-1 -right-1 bg-gray-400 border-4 border-white w-8 h-8 rounded-full flex items-center justify-center">
                                 <span class="material-icons-round text-white text-xs">link_off</span>
                             </div>
                         </div>
                         <h2 id="user-cns" class="text-2xl font-bold mb-1">Not Connected</h2>
                         <p id="user-tier" class="text-gray-400 font-medium text-sm mb-6">Click extension to connect</p>
-                        <div class="w-full space-y-3 pt-6 border-t border-gray-100 dark:border-gray-800">
+                        <div class="w-full space-y-3 pt-6 border-t border-gray-100">
                             <div class="flex justify-between items-center">
                                 <span class="text-sm opacity-60">Connection Status</span>
                                 <span id="user-score" class="text-sm font-semibold text-gray-400">Offline</span>
                             </div>
-                            <div class="w-full bg-gray-100 dark:bg-gray-800 h-2 rounded-full overflow-hidden">
+                            <div class="w-full bg-gray-100 h-2 rounded-full overflow-hidden">
                                 <div id="score-bar" class="bg-primary h-full w-[0%] transition-all duration-500"></div>
                             </div>
                         </div>
@@ -70,7 +65,7 @@
                     </div>
                 </div>
                 <!-- Quote Block - Inside Left Column -->
-                <div class="p-6 bg-primary/5 dark:bg-primary/10 rounded-2xl border border-primary/10">
+                <div class="p-6 bg-primary/5 rounded-2xl border border-primary/10">
                     <p class="text-sm italic opacity-80 leading-relaxed">
                         "Your identity, your data, your control. Sign in anywhere with one verified credential."
                     </p>
@@ -83,10 +78,10 @@
                     <p class="text-lg opacity-60">Manage your decentralized presence and explore opportunities.</p>
                 </div>
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <a class="group p-8 bg-card-light dark:bg-card-dark rounded-3xl border border-gray-100 dark:border-gray-800 hover:border-primary/50 dark:hover:border-primary/50 transition-all hover:shadow-2xl hover:shadow-primary/5"
+                    <a class="group p-8 bg-card-light rounded-3xl border border-gray-100 hover:border-primary/50 transition-all hover:shadow-2xl hover:shadow-primary/5"
                         href="#">
                         <div
-                            class="w-14 h-14 rounded-2xl bg-orange-100 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
+                            class="w-14 h-14 rounded-2xl bg-orange-100 text-orange-600 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
                             <span class="material-icons-round text-3xl">work_outline</span>
                         </div>
                         <h3 class="text-xl font-bold mb-2">Find Jobs</h3>
@@ -97,10 +92,10 @@
                             Browse roles <span class="material-icons-round text-base ml-1">arrow_forward</span>
                         </div>
                     </a>
-                    <a class="group p-8 bg-card-light dark:bg-card-dark rounded-3xl border border-gray-100 dark:border-gray-800 hover:border-primary/50 dark:hover:border-primary/50 transition-all hover:shadow-2xl hover:shadow-primary/5"
+                    <a class="group p-8 bg-card-light rounded-3xl border border-gray-100 hover:border-primary/50 transition-all hover:shadow-2xl hover:shadow-primary/5"
                         href="#">
                         <div
-                            class="w-14 h-14 rounded-2xl bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
+                            class="w-14 h-14 rounded-2xl bg-blue-100 text-blue-600 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
                             <span class="material-icons-round text-3xl">dashboard_customize</span>
                         </div>
                         <h3 class="text-xl font-bold mb-2">Manage Identity</h3>
@@ -111,10 +106,10 @@
                             Open Dashboard <span class="material-icons-round text-base ml-1">arrow_forward</span>
                         </div>
                     </a>
-                    <a class="group p-8 bg-card-light dark:bg-card-dark rounded-3xl border border-gray-100 dark:border-gray-800 hover:border-primary/50 dark:hover:border-primary/50 transition-all hover:shadow-2xl hover:shadow-primary/5"
+                    <a class="group p-8 bg-card-light rounded-3xl border border-gray-100 hover:border-primary/50 transition-all hover:shadow-2xl hover:shadow-primary/5"
                         href="#">
                         <div
-                            class="w-14 h-14 rounded-2xl bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
+                            class="w-14 h-14 rounded-2xl bg-purple-100 text-purple-600 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
                             <span class="material-icons-round text-3xl">account_circle</span>
                         </div>
                         <h3 class="text-xl font-bold mb-2">Share Profile</h3>
@@ -125,10 +120,10 @@
                             Public Profile <span class="material-icons-round text-base ml-1">arrow_forward</span>
                         </div>
                     </a>
-                    <a class="group p-8 bg-card-light dark:bg-card-dark rounded-3xl border border-gray-100 dark:border-gray-800 hover:border-primary/50 dark:hover:border-primary/50 transition-all hover:shadow-2xl hover:shadow-primary/5"
+                    <a class="group p-8 bg-card-light rounded-3xl border border-gray-100 hover:border-primary/50 transition-all hover:shadow-2xl hover:shadow-primary/5"
                         href="#">
                         <div
-                            class="w-14 h-14 rounded-2xl bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
+                            class="w-14 h-14 rounded-2xl bg-gray-100 text-gray-600 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
                             <span class="material-icons-round text-3xl">settings</span>
                         </div>
                         <h3 class="text-xl font-bold mb-2">Extension Settings</h3>
@@ -144,30 +139,11 @@
         </div>
     </main>
     <footer
-        class="fixed bottom-0 w-full py-6 bg-background-light dark:bg-background-dark border-t border-gray-100 dark:border-gray-800 text-center text-xs opacity-50">
+        class="fixed bottom-0 w-full py-6 bg-background-light border-t border-gray-100 text-center text-xs opacity-50">
         <p>Powered by CasperID • Decentralized Identity on Casper Network</p>
     </footer>
 
     <script>
-        // Dark mode toggle with persistence
-        function toggleDarkMode() {
-            const html = document.documentElement;
-            html.classList.toggle('dark');
-            localStorage.setItem('casperid-theme', html.classList.contains('dark') ? 'dark' : 'light');
-        }
-
-        // Apply saved theme on page load
-        (function () {
-            const savedTheme = localStorage.getItem('casperid-theme');
-            if (savedTheme === 'dark') {
-                document.documentElement.classList.add('dark');
-                document.documentElement.classList.remove('light');
-            } else {
-                document.documentElement.classList.add('light');
-                document.documentElement.classList.remove('dark');
-            }
-        })();
-
         // Load real user data from chrome.storage
         if (typeof chrome !== 'undefined' && chrome.storage) {
             chrome.storage.local.get(['connected', 'userData'], (result) => {

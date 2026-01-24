@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { ProfilePreview } from './ProfilePreview';
 import { apiService } from '../services/api';
+import { useAuth } from '../contexts/AuthContext';
 import {
   UserProfile,
   Experience,
@@ -30,6 +31,7 @@ import { ATSScoreCard } from './ATSScoreCard';
 // }
 
 export const Profile: React.FC = () => {
+  const { refreshUser } = useAuth();
   const [openToWork, setOpenToWork] = useState(false);
   const [activeTab, setActiveTab] = useState('Profile');
   const [showPreview, setShowPreview] = useState(false);
@@ -1790,12 +1792,29 @@ export const Profile: React.FC = () => {
                           profile?.human_id}
                       </h2>
                       <div className="flex items-center gap-3 mt-1">
-                        <div className="flex items-center gap-1.5 px-3 py-1 bg-blue-50/50 rounded-full border border-blue-100/50">
-                          <span className="material-symbols-outlined text-[14px] text-blue-600 icon-filled">shield</span>
-                          <span className="text-[11px] font-bold text-blue-700 uppercase tracking-wider">
-                            Basic Verified
-                          </span>
-                        </div>
+                        {(() => {
+                          const getTierBadgeProps = (tier?: string) => {
+                            switch (tier) {
+                              case 'layer_3':
+                                return { label: 'Full KYC Verified', color: 'bg-green-50 text-green-600 border-green-100' };
+                              case 'layer_2':
+                                return { label: 'Liveness Verified', color: 'bg-purple-50 text-purple-600 border-purple-100' };
+                              case 'layer_1':
+                                return { label: 'Basic Verified', color: 'bg-blue-50 text-blue-600 border-blue-100' };
+                              default:
+                                return { label: 'Identity Active', color: 'bg-gray-50 text-gray-600 border-gray-100' };
+                            }
+                          };
+                          const badge = getTierBadgeProps(profile?.tier);
+                          return (
+                            <div className={`flex items-center gap-1.5 px-3 py-1 rounded-full border ${badge.color}`}>
+                              <span className="material-symbols-outlined text-[14px] icon-filled">shield</span>
+                              <span className="text-[11px] font-bold uppercase tracking-wider">
+                                {badge.label}
+                              </span>
+                            </div>
+                          );
+                        })()}
                       </div>
                     </div>
 
@@ -1809,15 +1828,25 @@ export const Profile: React.FC = () => {
                           onChange={async () => {
                             const newValue = !openToWork;
                             setOpenToWork(newValue);
+
                             // Auto-save logic
                             if (profile) {
                               try {
-                                await apiService.updateUserProfile({
+                                const updatedProfile = {
                                   ...profile,
                                   open_to_work: { ...profile.open_to_work, enabled: newValue }
-                                });
-                                // Optional: toast success
-                              } catch (e) { console.error(e); }
+                                };
+
+                                // Update local profile state immediately for instant UI feedback (previews, etc)
+                                setProfile(updatedProfile);
+
+                                await apiService.updateUserProfile(updatedProfile);
+
+                                // Sync global auth context
+                                await refreshUser();
+                              } catch (e) {
+                                console.error('Error toggling open to work:', e);
+                              }
                             }
                           }}
                         />

@@ -14,6 +14,9 @@ export const OnboardingProgress: React.FC<OnboardingProgressProps> = ({ email, o
   const [didMinted, setDidMinted] = useState(false);
   const { refreshUser } = useAuth();
 
+  // Use a ref to track wallet readiness across the interval closure
+  const walletReadyRef = React.useRef(false);
+
   useEffect(() => {
     let walletCreated = false;
     let securitySetupCompleted = false;
@@ -40,8 +43,8 @@ export const OnboardingProgress: React.FC<OnboardingProgressProps> = ({ email, o
           }
         } else {
           setStep(2);
-          // Trigger DID minting and security setup at 75% progress
-          if (!securitySetupCompleted && next >= 75) {
+          // Trigger DID minting ONLY if wallet is ready (prevents race condition)
+          if (!securitySetupCompleted && next >= 75 && walletReadyRef.current) {
             securitySetupCompleted = true;
             setupSecurityAndMintDID();
           }
@@ -54,6 +57,7 @@ export const OnboardingProgress: React.FC<OnboardingProgressProps> = ({ email, o
     return () => clearInterval(interval);
   }, [onComplete]);
 
+
   const generateWallet = async () => {
     try {
       // Import API service dynamically to avoid circular dependencies
@@ -64,9 +68,11 @@ export const OnboardingProgress: React.FC<OnboardingProgressProps> = ({ email, o
 
       if (walletResponse.success) {
         setWalletGenerated(true);
+        walletReadyRef.current = true; // Signal that DID minting can now proceed
 
         // Refresh user data to get the new wallet address
         await refreshUser();
+
       } else {
         console.error('❌ Wallet generation failed:', walletResponse.error);
         // Continue with the animation even if wallet generation fails

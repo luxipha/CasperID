@@ -45,8 +45,51 @@ export interface User {
   cns_name?: string;
   kyc_completed_at?: string;
   liveness_completed_at?: string;
+  linked_wallets?: Array<{
+    chain: 'casper' | 'ethereum' | 'solana' | 'bitcoin';
+    address: string;
+    verified: boolean;
+    verified_at?: string;
+  }>;
+  first_name?: string;
+  last_name?: string;
+  date_of_birth?: string;
+  headline?: string;
+  about?: string;
+  city?: string;
+  country?: string;
+  phone_number?: string;
+  website?: string;
+  pronouns?: string;
+  socials?: {
+    linkedin?: string;
+    twitter?: string;
+    github?: string;
+    instagram?: string;
+    youtube?: string;
+    tiktok?: string;
+    website?: string;
+  };
+  data_availability?: {
+    experience: boolean;
+    education: boolean;
+    certifications: boolean;
+    skills: boolean;
+    projects: boolean;
+    awards: boolean;
+    languages: boolean;
+    volunteer: boolean;
+  };
   created_at: string;
   last_login: string;
+  did_address?: string;
+  context_dids?: Array<{
+    did: string;
+    alias?: string;
+    context: string;
+    disclosures?: Record<string, boolean>;
+    created_at?: string;
+  }>;
 }
 
 export interface AuthContextType {
@@ -140,10 +183,18 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           }
         }
 
+        // Fetch full profile for data disclosure checks
+        let profileData: any = {};
+        try {
+          profileData = await apiService.getUserProfile();
+        } catch (e) {
+          console.warn('Failed to fetch full profile:', e);
+        }
+
         const user: User = {
           user_id: userAccount.user_id,
           email: userAccount.recovery_email,
-          display_name: humanId || userAccount.recovery_email.split('@')[0],
+          display_name: humanId || userAccount.display_name || userAccount.recovery_email.split('@')[0],
           human_id: humanId,
           tier: userAccount.tier,
           wallet: userAccount.wallet,
@@ -151,6 +202,21 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           cns_name: userAccount.cns_name || '',
           kyc_completed_at: userAccount.kyc_completed_at || '',
           liveness_completed_at: userAccount.liveness_completed_at || '',
+          linked_wallets: userAccount.linked_wallets || [],
+          first_name: profileData?.first_name,
+          last_name: profileData?.last_name,
+          date_of_birth: profileData?.date_of_birth,
+          headline: profileData?.headline,
+          about: profileData?.about,
+          city: profileData?.city,
+          country: profileData?.country,
+          phone_number: profileData?.phone_number,
+          website: profileData?.website,
+          pronouns: profileData?.pronouns,
+          socials: profileData?.socials,
+          data_availability: profileData?.data_availability || {},
+          did_address: userAccount.did_address || profileData?.did_address,
+          context_dids: userAccount.context_dids || profileData?.context_dids || [],
           created_at: new Date().toISOString(), // Backend doesn't return this
           last_login: new Date().toISOString()   // Backend doesn't return this
         };

@@ -43,7 +43,8 @@ if (CONTRACT_HASH) {
  * @returns {Promise<Object|null>} Verification record with tier, or null if not found
  */
 async function getVerificationStatus(walletAddress) {
-    if (!CONTRACT_HASH) return null;
+    if (!CONTRACT_HASH || !walletAddress) return null;
+
 
     try {
         // Convert wallet to account hash bytes
