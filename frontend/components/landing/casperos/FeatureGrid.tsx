@@ -5,18 +5,18 @@ import { QrCode, BarChart3, ShieldCheck } from 'lucide-react';
 const features = [
   {
     icon: QrCode,
-    title: 'No App Required',
-    desc: 'Customers scan a QR code and connect via Zalo or Web instantly. Zero friction, 100% conversion rate at the table.'
+    title: 'No Apps, Just Orders',
+    desc: 'Guests scan and order in seconds. No downloads, no passwords, no "will do it later." It just works.'
   },
   {
     icon: BarChart3,
-    title: 'Real-time Analytics',
-    desc: 'Track diner behavior and spend in real-time. See exactly who is dining and what they love through our intuitive dashboard.'
+    title: 'Know Your VIPs',
+    desc: 'See exactly who is sitting at Table 4. Track their favorite dishes, average spend, and visit frequency before they even pay.'
   },
   {
     icon: ShieldCheck,
-    title: 'CasperID Integration',
-    desc: 'Turn every transaction into a loyalty milestone with secure blockchain-backed points and unified digital identity.'
+    title: 'Rewards That Stick',
+    desc: 'Turn transactions into relationships. Points are automatically saved to their digital identity, giving them a reason to return next week.'
   }
 ];
 
@@ -29,7 +29,7 @@ export const FeatureGrid: React.FC = () => {
             The "Invisible" Waiter for Physical Dining
           </h2>
           <p className="text-gray-500 max-w-xl">
-            Our technology bridges the gap between physical interaction and digital loyalty without the friction of app store downloads.
+            Service is faster, staff is happier, and guests never have to wave to order or for the check.
           </p>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">

@@ -2,6 +2,7 @@ import React from 'react';
 import { QueryProvider } from './contexts/QueryProvider';
 import { AuthProvider } from './contexts/AuthContext';
 import { WalletConnectProvider } from './contexts/WalletConnectProvider';
+import { CasperProvider } from './contexts/casper-context';
 import App from './App';
 
 /**
@@ -10,13 +11,15 @@ import App from './App';
  */
 const AppRoot: React.FC = () => {
   return (
-    <WalletConnectProvider>
-      <QueryProvider>
-        <AuthProvider>
-          <App />
-        </AuthProvider>
-      </QueryProvider>
-    </WalletConnectProvider>
+    <CasperProvider>
+      <WalletConnectProvider>
+        <QueryProvider>
+          <AuthProvider>
+            <App />
+          </AuthProvider>
+        </QueryProvider>
+      </WalletConnectProvider>
+    </CasperProvider>
   );
 };
 

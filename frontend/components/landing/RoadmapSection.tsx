@@ -82,7 +82,7 @@ const RoadmapSection: React.FC = () => {
   ];
 
   return (
-    <section className="py-16 md:py-24 lg:py-32 bg-white border-t border-slate-200 overflow-hidden relative">
+    <section className="py-12 md:py-24 lg:py-32 bg-white border-t border-slate-200 overflow-hidden relative">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex flex-col md:flex-row md:items-end justify-between mb-12 md:mb-20 gap-6 md:gap-8">
           <div className="max-w-2xl">
@@ -94,7 +94,7 @@ const RoadmapSection: React.FC = () => {
           </div>
           <button
             onClick={() => setIsDrawerOpen(true)}
-            className="inline-flex px-8 py-4 rounded-full border-2 border-slate-200 text-slate-900 font-bold hover:bg-purple-600 hover:text-white dark:hover:bg-purple-600 transition-all items-center gap-3 shadow-lg group"
+            className="inline-flex w-full md:w-auto px-8 py-4 rounded-full border-2 border-slate-200 text-slate-900 font-bold hover:bg-purple-600 hover:text-white dark:hover:bg-purple-600 transition-all items-center justify-center gap-3 shadow-lg group"
           >
             View Detailed Plans <span className="group-hover:translate-x-1 transition-transform text-xl">→</span>
           </button>
@@ -107,8 +107,8 @@ const RoadmapSection: React.FC = () => {
             <div className="relative bg-gradient-to-br from-purple-600 via-purple-700 to-blue-600 rounded-[1.5rem] md:rounded-[2.5rem] p-6 sm:p-10 md:p-14 text-white shadow-2xl overflow-hidden min-h-[350px] md:min-h-[450px] flex flex-col justify-center">
               <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent"></div>
               <div className="relative z-10 w-full">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-8 md:mb-12 gap-4">
-                  <h3 className="text-3xl md:text-4xl lg:text-5xl font-black tracking-tight">Current Sprint</h3>
+                <div className="flex flex-col xs:flex-row xs:items-center justify-between mb-8 md:mb-12 gap-4">
+                  <h3 className="text-2xl xs:text-3xl md:text-4xl lg:text-5xl font-black tracking-tight">Current Sprint</h3>
                   <div className="flex items-center gap-3 px-4 py-2 bg-white/10 backdrop-blur-xl rounded-full border border-white/20">
                     <span className="relative flex h-3 w-3">
                       <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-500 opacity-75"></span>
@@ -121,7 +121,7 @@ const RoadmapSection: React.FC = () => {
                 <div className="mb-14">
                   <div className="flex justify-between items-end mb-4">
                     <span className="text-xs font-black text-white/70 uppercase tracking-[0.2em]">Overall Progress</span>
-                    <span className="text-4xl font-black font-mono text-blue-400">40%</span>
+                    <span className="text-3xl md:text-4xl font-black font-mono text-blue-400">40%</span>
                   </div>
                   <div className="h-4 bg-black/40 rounded-full overflow-hidden backdrop-blur-md border border-white/5 p-1">
                     <div
@@ -131,18 +131,18 @@ const RoadmapSection: React.FC = () => {
                   </div>
                 </div>
 
-                <div className="bg-black/20 rounded-3xl p-8 border border-white/10 backdrop-blur-xl group-hover:bg-black/30 transition-all">
+                <div className="bg-black/20 rounded-2xl md:rounded-3xl p-6 md:p-8 border border-white/10 backdrop-blur-xl group-hover:bg-black/30 transition-all">
                   <div className="text-[10px] text-white/50 font-black uppercase tracking-[0.3em] mb-4">Current Focus</div>
                   <div className="flex items-start justify-between">
                     <div>
-                      <div className="font-black text-2xl mb-2">Core Identity System</div>
+                      <div className="font-black text-xl md:text-2xl mb-2">Core Identity System</div>
                       <div className="text-white/70 font-medium leading-relaxed">
                         A simple, auditable identity foundation designed for real-world adoption—starting with hospitality and local businesses.
                       </div>
                     </div>
                     <div className="text-right shrink-0 ml-4">
                       <div className="text-[10px] text-white/50 font-black uppercase tracking-[0.2em] mb-1">Target</div>
-                      <div className="font-black text-2xl text-blue-400">Q1 2026</div>
+                      <div className="font-black text-xl md:text-2xl text-blue-400">Q1 2026</div>
                     </div>
                   </div>
                 </div>

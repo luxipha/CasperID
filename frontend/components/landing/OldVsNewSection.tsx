@@ -149,16 +149,16 @@ const OldVsNewSection: React.FC = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
 
   return (
-    <div className="w-full max-w-7xl mx-auto py-12 px-4 md:px-8">
-      <div className="grid grid-cols-1 lg:grid-cols-11 gap-8 items-center bg-white backdrop-blur-2xl p-6 md:p-12 lg:p-16 rounded-[3rem] border border-slate-200 shadow-2xl relative overflow-hidden">
+    <div className="w-full max-w-7xl mx-auto py-8 md:py-12 px-4 md:px-8">
+      <div className="grid grid-cols-1 lg:grid-cols-11 gap-8 items-center bg-white backdrop-blur-2xl px-4 py-8 md:p-12 lg:p-16 rounded-[2.5rem] md:rounded-[3rem] border border-slate-200 shadow-2xl relative overflow-hidden">
 
         {/* Visual Background Elements */}
         <div className="absolute -top-24 -left-24 w-96 h-96 bg-indigo-600/10 rounded-full blur-[100px] pointer-events-none"></div>
         <div className="absolute -bottom-24 -right-24 w-96 h-96 bg-blue-500/10 rounded-full blur-[100px] pointer-events-none"></div>
 
         {/* LEFT: The Old Way */}
-        <div className="lg:col-span-4 flex flex-col items-center text-center space-y-12">
-          <div className="relative w-64 h-64 flex items-center justify-center group">
+        <div className="lg:col-span-4 flex flex-col items-center text-center space-y-8 md:space-y-12">
+          <div className="relative w-48 h-48 md:w-64 md:h-64 flex items-center justify-center group scale-90 sm:scale-100">
             <div className="absolute inset-0 border-2 border-dashed border-slate-300 rounded-full animate-[spin_20s_linear_infinite] group-hover:animate-[spin_3s_linear_infinite]"></div>
 
             {/* Clunky Labels */}
@@ -166,13 +166,13 @@ const OldVsNewSection: React.FC = () => {
             <div className="absolute top-1/2 -right-8 -translate-y-1/2 bg-slate-100 px-3 py-1.5 rounded-xl shadow-md border border-slate-200 text-[9px] font-black text-slate-400 uppercase tracking-tighter transform rotate-6">Manual Review</div>
             <div className="absolute -bottom-4 left-1/2 -translate-x-1/2 bg-slate-100 px-3 py-1.5 rounded-xl shadow-md border border-slate-200 text-[9px] font-black text-slate-400 uppercase tracking-tighter transform rotate-3">Wait 3-5 Days</div>
 
-            <div className="w-24 h-24 rounded-full bg-slate-100 flex items-center justify-center text-slate-400">
-              <RefreshCw className="w-12 h-12 animate-spin" />
+            <div className="w-20 h-20 md:w-24 md:h-24 rounded-full bg-slate-100 flex items-center justify-center text-slate-400">
+              <RefreshCw className="w-10 h-10 md:w-12 md:h-12 animate-spin" />
             </div>
           </div>
           <div className="space-y-3">
-            <h3 className="text-[10px] font-black tracking-[0.3em] uppercase text-slate-500">Traditional Systems</h3>
-            <p className="text-3xl font-extrabold text-slate-900 tracking-tight">Endless Repetition</p>
+            <h3 className="text-[9px] md:text-[10px] font-black tracking-[0.3em] uppercase text-slate-500">Traditional Systems</h3>
+            <p className="text-2xl md:text-3xl font-extrabold text-slate-900 tracking-tight">Endless Repetition</p>
           </div>
         </div>
 

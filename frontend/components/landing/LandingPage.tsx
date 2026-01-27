@@ -10,10 +10,13 @@ import RoadmapSection from "./RoadmapSection";
 import OldVsNewSection from "./OldVsNewSection";
 import ContextualSection from "./ContextsAware";
 import { CasperOSFlow } from "./CasperOSFlow";
+import { ScrollToTop } from "./casperos/ScrollToTop";
 
 export default function LandingPage() {
   const [currentLandingView, setCurrentLandingView] = React.useState<'main' | 'casperos'>('main');
   const [isScrolled, setIsScrolled] = useState(false);
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [showScrollTop, setShowScrollTop] = useState(false);
 
   // Scroll listener for header blur effect
   useEffect(() => {
@@ -120,7 +123,7 @@ export default function LandingPage() {
         <div className="absolute inset-0 bg-[radial-gradient(1px_1px_at_10%_20%,rgba(0,0,0,0.12),transparent),radial-gradient(1px_1px_at_40%_80%,rgba(0,0,0,0.08),transparent)] opacity-30" />
       </div>
 
-      <main className={`relative z-20 w-full ${currentLandingView === 'main' ? 'max-w-[1905px] mx-auto px-10 pt-24 pb-24' : ''}`}>
+      <main className={`relative z-20 w-full ${currentLandingView === 'main' ? 'max-w-[1905px] mx-auto px-4 sm:px-6 md:px-10 pt-16 sm:pt-24 pb-16 sm:pb-24' : ''}`}>
         <header id="site-header" className={`site-header fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${isScrolled ? 'backdrop-blur-md bg-white/80 shadow-sm' : ''}`}>
           <div className="w-full max-w-[1905px] mx-auto px-4 md:px-10 flex items-center justify-between py-4 md:py-6">
             <div className="flex items-center gap-4 md:gap-6">
@@ -164,10 +167,19 @@ export default function LandingPage() {
                 Download
               </button>
               {/* Mobile menu button */}
-              <button className="md:hidden p-2 rounded-lg hover:bg-slate-100">
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-                </svg>
+              <button
+                onClick={() => setIsMenuOpen(!isMenuOpen)}
+                className="md:hidden p-2 rounded-lg hover:bg-slate-100 z-50 relative"
+              >
+                {isMenuOpen ? (
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                ) : (
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+                  </svg>
+                )}
               </button>
             </div>
           </div>
@@ -298,16 +310,16 @@ export default function LandingPage() {
                   </a>
                 </div>
 
-                <div className="w-full mt-8 md:mt-10">
-                  <div className="flex flex-col sm:flex-row gap-6 lg:gap-8 justify-start items-start">
+                <div className="w-full mt-8 md:mt-10 overflow-hidden">
+                  <div className="flex flex-row gap-6 lg:gap-8 justify-start items-start overflow-x-auto pb-6 sm:pb-0 no-scrollbar snap-x snap-mandatory sm:snap-none px-1">
                     {/* Blog 1: Identity is Not an App */}
                     <a
                       href="https://medium.com/@luxipha/identity-is-not-an-app-the-case-for-a-neutral-internet-identity-layer-6f6e38b9e188"
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="space-y-4 w-full sm:w-[384px] group"
+                      className="space-y-4 w-[85%] sm:w-[384px] group flex-shrink-0 snap-start"
                     >
-                      <div className="w-full aspect-square sm:w-[384px] sm:h-[384px] rounded-2xl overflow-hidden border border-slate-200 shadow-sm group-hover:shadow-xl transition-shadow">
+                      <div className="w-full aspect-square md:w-[384px] md:h-[384px] rounded-2xl overflow-hidden border border-slate-200 shadow-sm group-hover:shadow-xl transition-shadow">
                         <img src="/images/1.png" alt="Identity is Not an App" className="w-full h-full object-cover" />
                       </div>
                       <div className="space-y-2">
@@ -329,9 +341,9 @@ export default function LandingPage() {
                       href="https://medium.com/@luxipha/5-surprising-ways-casperid-is-fixing-our-broken-digital-identity-66993cbcf474"
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="space-y-4 w-full sm:w-[384px] group"
+                      className="space-y-4 w-[85%] sm:w-[384px] group flex-shrink-0 snap-start"
                     >
-                      <div className="w-full aspect-square sm:w-[384px] sm:h-[384px] rounded-2xl overflow-hidden border border-slate-200 shadow-sm group-hover:shadow-xl transition-shadow">
+                      <div className="w-full aspect-square md:w-[384px] md:h-[384px] rounded-2xl overflow-hidden border border-slate-200 shadow-sm group-hover:shadow-xl transition-shadow">
                         <img src="/images/2.png" alt="5 Ways CasperID Fixes Identity" className="w-full h-full object-cover" />
                       </div>
                       <div className="space-y-2">
@@ -393,9 +405,39 @@ export default function LandingPage() {
           <CasperOSFlow />
         )}
 
-        <FooterMarketing className="scroll-mt-24" onNavigate={setCurrentLandingView} />
+        <FooterMarketing className="scroll-mt-24" onNavigate={(view) => {
+          if (view === 'main' || view === 'casperos') {
+            setCurrentLandingView(view);
+          }
+        }} />
         {/* ChatAssistant disabled - using Crisp chatbot instead */}
         {/* <ChatAssistant /> */}
+
+        <ScrollToTop />
+
+        {/* Mobile Navigation Overlay - High Z-index and Solid Background */}
+        <div className={`fixed inset-0 bg-white z-[60] md:hidden transition-transform duration-300 ease-in-out ${isMenuOpen ? 'translate-x-0' : 'translate-x-full'}`}>
+          <div className="flex flex-col items-center justify-center h-full gap-8 text-2xl font-bold text-slate-900 px-6">
+            <a onClick={() => { setIsMenuOpen(false); setCurrentLandingView('main'); }} href="#product" className="hover:text-indigo-600 transition">Product</a>
+            <a onClick={() => setIsMenuOpen(false)} href="#download" className="hover:text-indigo-600 transition">Download</a>
+            <a onClick={() => setIsMenuOpen(false)} href="#resources" className="hover:text-indigo-600 transition">Resources</a>
+            <a onClick={() => setIsMenuOpen(false)} href="#developers" className="hover:text-indigo-600 transition">Developers</a>
+            <a onClick={() => { setIsMenuOpen(false); setCurrentLandingView('casperos'); }} className="hover:text-indigo-600 transition cursor-pointer">CasperOS</a>
+            <div className="flex flex-col gap-4 mt-8 w-full max-w-sm">
+              <a href="/dashboard" className="w-full text-center py-4 bg-indigo-100 text-indigo-700 rounded-2xl text-lg font-bold">Get CasperID</a>
+              <button className="w-full py-4 bg-slate-900 text-white rounded-2xl text-lg font-bold shadow-xl shadow-slate-900/20">Download App</button>
+            </div>
+          </div>
+          {/* Close button inside overlay for better accessibility */}
+          <button
+            onClick={() => setIsMenuOpen(false)}
+            className="absolute top-6 right-6 p-2 rounded-lg hover:bg-slate-100 text-slate-900"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
       </main>
     </div>
   );

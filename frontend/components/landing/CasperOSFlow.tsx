@@ -47,7 +47,6 @@ export const CasperOSFlow: React.FC = () => {
             <CTASection onDemoClick={handleDemoRequest} />
             <TestimonialSection />
 
-            <ScrollToTop />
 
             <DemoModal
                 isOpen={isDemoModalOpen}

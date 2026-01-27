@@ -9,22 +9,22 @@ export const StatsSection: React.FC = () => {
           <div className="flex flex-col gap-6">
             <span className="text-7xl font-extrabold text-primary">40%</span>
             <div>
-              <h3 className="text-xl font-bold mb-3">Faster Turnover</h3>
-              <p className="text-gray-400 leading-relaxed">Social group carts eliminate 'waiter-waiting' time, increasing peak hour capacity.</p>
+              <h3 className="text-xl font-bold mb-3">Faster Table Turnover</h3>
+              <p className="text-gray-400 leading-relaxed">Guests order simultaneously from their own phones. No waiting for menus, no waiting for staff. Turn tables faster during peak hours.</p>
             </div>
           </div>
           <div className="flex flex-col gap-6 md:border-x border-white/10 px-8">
             <span className="text-7xl font-extrabold text-primary">3.5x</span>
             <div>
-              <h3 className="text-xl font-bold mb-3">Higher LTV</h3>
-              <p className="text-gray-400 leading-relaxed">CasperID Identity profiles allow for personalized Zalo re-engagement that converts regulars.</p>
+              <h3 className="text-xl font-bold mb-3">More Repeat Visits</h3>
+              <p className="text-gray-400 leading-relaxed">Don’t let guests leave anonymous. CasperID captures their info so you can automatically re-engage them via whatsapp,Zalo, or email and bring them back.</p>
             </div>
           </div>
           <div className="flex flex-col gap-6">
             <span className="text-7xl font-extrabold text-primary">100%</span>
             <div>
               <h3 className="text-xl font-bold mb-3">Data Ownership</h3>
-              <p className="text-gray-400 leading-relaxed">Stop losing customers to delivery apps. Reclaim the relationship and own the data.</p>
+              <p className="text-gray-400 leading-relaxed">Stop renting your own customers from delivery apps. Build your own database, reclaim the relationship, and keep the commission..</p>
             </div>
           </div>
         </div>

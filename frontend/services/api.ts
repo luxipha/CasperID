@@ -249,6 +249,20 @@ class ApiService {
     }
   }
 
+  async linkCasperAccount(public_key: string, signature: string, message: string): Promise<ApiResponse> {
+    try {
+      const response = await this.client.post('/api/metamask/link-account', {
+        metamask_address: public_key, // Reusing field for convenience or we can add new ones
+        signature,
+        message,
+        chain: 'casper'
+      });
+      return response.data;
+    } catch (error) {
+      throw this.handleError(error);
+    }
+  }
+
   async unlinkMetaMaskAccount(): Promise<ApiResponse> {
     try {
       const response = await this.client.delete('/api/metamask/unlink-account');

@@ -15,9 +15,10 @@ const {
     validateMetaMaskLinking,
     validateApiKey,
     permissionRateLimit,
-    securityHeaders,
-    verifySignature // Added for wallet linking verification
+    securityHeaders
 } = require('../middleware/validation');
+
+const { verifyWalletSignature } = require('../utils/signature-verifier');
 
 /**
  * MetaMask Advanced Permissions API Routes
@@ -429,6 +430,17 @@ router.post('/link-account', async (req, res) => {
                 success: false,
                 error: 'Invalid session'
             });
+        }
+
+        // Verify signature if provided
+        if (signature && message) {
+            const isValid = verifyWalletSignature(message, signature, targetAddress);
+            if (!isValid) {
+                return res.status(401).json({
+                    success: false,
+                    error: 'Invalid signature. Proof of ownership failed.'
+                });
+            }
         }
 
         // Link MetaMask address to user account

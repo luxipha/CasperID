@@ -8,6 +8,7 @@ interface CasperContextType {
     publicKey: string | null;
     connect: () => Promise<void>;
     disconnect: () => void;
+    signMessage: (message: string) => Promise<string>;
 }
 
 const CasperContext = createContext<CasperContextType | undefined>(undefined);
@@ -85,6 +86,28 @@ export function CasperProvider({ children }: { children: ReactNode }) {
         }
     };
 
+    const signMessage = async (message: string): Promise<string> => {
+        try {
+            if (typeof window === 'undefined' || !(window as any).CasperWalletProvider) {
+                throw new Error('Casper Wallet not detected');
+            }
+
+            const provider = (window as any).CasperWalletProvider();
+            const activeKey = await provider.getActivePublicKey();
+
+            if (!activeKey) {
+                throw new Error('Please connect your Casper Wallet first');
+            }
+
+            // Casper Wallet signMessage returns a signature hex string
+            const signature = await provider.signMessage(message, activeKey);
+            return signature;
+        } catch (error: any) {
+            console.error('Error signing message with Casper wallet:', error);
+            throw error;
+        }
+    };
+
     const disconnect = () => {
         setIsConnected(false);
         setAccount(null);
@@ -99,6 +122,7 @@ export function CasperProvider({ children }: { children: ReactNode }) {
                 publicKey,
                 connect,
                 disconnect,
+                signMessage,
             }}
         >
             {children}

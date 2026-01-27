@@ -1,10 +1,6 @@
-/**
- * Connect Wallet Modal
- * Uses Web3Modal to connect to 300+ wallets
- */
-
 import React, { useEffect, useState } from 'react';
 import { useWeb3Modal, useAccount, useDisconnect, useSignMessage } from '../../contexts/WalletConnectProvider';
+import { useCasper } from '../../contexts/casper-context';
 import { apiService } from '../../services/api';
 import { useAuth } from '../../contexts/AuthContext';
 
@@ -12,33 +8,42 @@ interface ConnectWalletModalProps {
     isOpen: boolean;
     onClose: () => void;
     onWalletLinked?: (address: string, chain: string) => void;
+    initialWalletType?: 'evm' | 'casper';
 }
 
 // Chain ID to name mapping
-const chainNames: Record<number, string> = {
+const chainNames: Record<number | string, string> = {
     1: 'Ethereum',
     137: 'Polygon',
     42161: 'Arbitrum',
     56: 'BSC',
     11155111: 'Sepolia',
+    'casper': 'Casper',
 };
 
 export const ConnectWalletModal: React.FC<ConnectWalletModalProps> = ({
     isOpen,
     onClose,
-    onWalletLinked
+    onWalletLinked,
+    initialWalletType
 }) => {
     const { open } = useWeb3Modal();
-    const { address, isConnected, chainId } = useAccount();
-    const { disconnect } = useDisconnect();
+    const { address: evmAddress, isConnected: isEvmConnected, chainId } = useAccount();
+    const { disconnect: disconnectEvm } = useDisconnect();
     const { signMessageAsync } = useSignMessage();
-    const { refreshUser } = useAuth(); // Get refreshUser from context
+
+    const { connect: connectCasper, disconnect: disconnectCasper, isConnected: isCasperConnected, publicKey: casperPublicKey, signMessage: signCasperMessage } = useCasper();
+    const { refreshUser } = useAuth();
 
     const [isLinking, setIsLinking] = useState(false);
     const [linkStatus, setLinkStatus] = useState<'idle' | 'signing' | 'linking' | 'success' | 'error'>('idle');
     const [errorMessage, setErrorMessage] = useState('');
     const [isExiting, setIsExiting] = useState(false);
     const [shouldRender, setShouldRender] = useState(isOpen);
+    const [activeWalletType, setActiveWalletType] = useState<'evm' | 'casper' | null>(null);
+
+    const isConnected = isEvmConnected || isCasperConnected;
+    const address = activeWalletType === 'casper' ? casperPublicKey : evmAddress;
 
     useEffect(() => {
         if (isOpen) {
@@ -46,6 +51,11 @@ export const ConnectWalletModal: React.FC<ConnectWalletModalProps> = ({
             setIsExiting(false);
             setLinkStatus('idle');
             setErrorMessage('');
+            if (initialWalletType) {
+                setActiveWalletType(initialWalletType);
+                if (initialWalletType === 'evm' && !isEvmConnected) open();
+                if (initialWalletType === 'casper' && !isCasperConnected) handleConnectCasper();
+            }
         } else if (shouldRender) {
             setIsExiting(true);
             const timer = setTimeout(() => {
@@ -56,6 +66,12 @@ export const ConnectWalletModal: React.FC<ConnectWalletModalProps> = ({
         }
     }, [isOpen]);
 
+    // Automatically set active wallet type when connection status changes
+    useEffect(() => {
+        if (isEvmConnected && !isCasperConnected) setActiveWalletType('evm');
+        if (isCasperConnected && !isEvmConnected) setActiveWalletType('casper');
+    }, [isEvmConnected, isCasperConnected]);
+
     if (!shouldRender) return null;
 
     const handleClose = () => {
@@ -64,34 +80,50 @@ export const ConnectWalletModal: React.FC<ConnectWalletModalProps> = ({
     };
 
     const handleOpenWeb3Modal = () => {
+        setActiveWalletType('evm');
         open();
     };
 
+    const handleConnectCasper = async () => {
+        try {
+            setActiveWalletType('casper');
+            await connectCasper();
+        } catch (error: any) {
+            console.error('Casper connection error:', error);
+            setErrorMessage(error.message || 'Failed to connect Casper Wallet');
+            setLinkStatus('error');
+        }
+    };
+
     const handleLinkWallet = async () => {
-        if (!address || !chainId) return;
+        if (!address) return;
 
         try {
             setIsLinking(true);
             setLinkStatus('signing');
 
-            // Create verification message
-            const message = `Link this wallet to CasperID\n\nWallet: ${address}\nChain: ${chainNames[chainId] || 'Unknown'}\nTimestamp: ${new Date().toISOString()}`;
+            const chainName = activeWalletType === 'casper' ? 'Casper' : (chainNames[chainId!] || 'Unknown');
+            const message = `Link this wallet to CasperID\n\nWallet: ${address}\nChain: ${chainName}\nTimestamp: ${new Date().toISOString()}`;
 
-            // Request signature (wagmi v2 requires account)
-            const signature = await signMessageAsync({ account: address, message });
+            let signature = '';
+            if (activeWalletType === 'casper') {
+                signature = await signCasperMessage(message);
+            } else {
+                signature = await signMessageAsync({ account: address as any, message });
+            }
 
             setLinkStatus('linking');
 
-            // Send to backend
-            await apiService.linkMetaMaskAccount(address, signature, message, chainId);
+            if (activeWalletType === 'casper') {
+                await apiService.linkCasperAccount(address, signature, message);
+            } else {
+                await apiService.linkMetaMaskAccount(address, signature, message, chainId);
+            }
 
-            // Refresh global user state
             await refreshUser();
-
             setLinkStatus('success');
-            onWalletLinked?.(address, chainNames[chainId] || 'ethereum');
+            onWalletLinked?.(address, chainName);
 
-            // Close modal after success
             setTimeout(() => {
                 handleClose();
             }, 1500);
@@ -106,11 +138,17 @@ export const ConnectWalletModal: React.FC<ConnectWalletModalProps> = ({
     };
 
     const handleDisconnect = () => {
-        disconnect();
+        if (activeWalletType === 'casper') {
+            disconnectCasper();
+        } else {
+            disconnectEvm();
+        }
         setLinkStatus('idle');
+        setActiveWalletType(null);
     };
 
-    const getChainIcon = (id: number) => {
+    const getChainIcon = () => {
+        if (activeWalletType === 'casper') return '👻';
         const icons: Record<number, string> = {
             1: '⟠',
             137: '🟣',
@@ -118,7 +156,7 @@ export const ConnectWalletModal: React.FC<ConnectWalletModalProps> = ({
             56: '🟡',
             11155111: '🔶',
         };
-        return icons[id] || '🔗';
+        return icons[chainId!] || '🔗';
     };
 
     return (
@@ -157,23 +195,38 @@ export const ConnectWalletModal: React.FC<ConnectWalletModalProps> = ({
                 {/* Content */}
                 <div className="space-y-6">
                     {!isConnected ? (
-                        // Not connected - show connect button
-                        <button
-                            onClick={handleOpenWeb3Modal}
-                            className="w-full h-14 rounded-2xl bg-primary text-white font-bold text-[15px] hover:bg-primary/90 transition-all shadow-lg shadow-primary/20 flex items-center justify-center gap-3"
-                        >
-                            <span className="material-symbols-outlined text-[20px]">link</span>
-                            Connect Wallet
-                        </button>
+                        // Not connected - show connection buttons
+                        <div className="space-y-3">
+                            <button
+                                onClick={handleOpenWeb3Modal}
+                                className="w-full h-14 rounded-2xl bg-gray-50 border border-gray-100 text-text-main font-bold text-[15px] hover:bg-gray-100 transition-all flex items-center justify-between px-6 group"
+                            >
+                                <div className="flex items-center gap-3">
+                                    <span className="text-xl">⟠</span>
+                                    <span>MetaMask / EVM Wallets</span>
+                                </div>
+                                <span className="material-symbols-outlined text-[20px] opacity-20 group-hover:opacity-100 transition-opacity">chevron_right</span>
+                            </button>
+                            <button
+                                onClick={handleConnectCasper}
+                                className="w-full h-14 rounded-2xl bg-gray-50 border border-gray-100 text-text-main font-bold text-[15px] hover:bg-gray-100 transition-all flex items-center justify-between px-6 group"
+                            >
+                                <div className="flex items-center gap-3">
+                                    <span className="text-xl">👻</span>
+                                    <span>Casper Wallet / Signer</span>
+                                </div>
+                                <span className="material-symbols-outlined text-[20px] opacity-20 group-hover:opacity-100 transition-opacity">chevron_right</span>
+                            </button>
+                        </div>
                     ) : linkStatus === 'success' ? (
                         // Success state
                         <div className="text-center py-6">
-                            <div className="size-16 mx-auto mb-4 rounded-full bg-green-100 flex items-center justify-center">
-                                <span className="material-symbols-outlined text-[32px] text-green-600">check_circle</span>
+                            <div className="size-14 mx-auto mb-4 rounded-full bg-green-100 flex items-center justify-center">
+                                <span className="material-symbols-outlined text-[28px] text-green-600">check_circle</span>
                             </div>
                             <h3 className="text-lg font-bold text-text-main">Wallet Linked!</h3>
                             <p className="text-text-sub text-sm mt-1">
-                                {address?.slice(0, 6)}...{address?.slice(-4)} on {chainNames[chainId!] || 'Unknown'}
+                                {address?.slice(0, 6)}...{address?.slice(-4)} linked successfully
                             </p>
                         </div>
                     ) : linkStatus === 'error' ? (
@@ -198,78 +251,35 @@ export const ConnectWalletModal: React.FC<ConnectWalletModalProps> = ({
                     ) : (
                         // Connected - show wallet info and link button
                         <div className="space-y-4">
-                            {/* Connected Wallet Card */}
-                            <div className="p-5 rounded-2xl bg-gray-50 border border-gray-100">
+                            <div className="p-5 rounded-2xl bg-gray-50 border border-gray-100 relative">
                                 <div className="flex items-center gap-4">
                                     <div className="size-12 rounded-xl bg-white border border-gray-100 flex items-center justify-center text-2xl">
-                                        {getChainIcon(chainId!)}
+                                        {getChainIcon()}
                                     </div>
                                     <div className="flex-1 min-w-0">
                                         <p className="text-[11px] font-black text-text-sub uppercase tracking-widest opacity-60">
-                                            Connected Wallet
+                                            {activeWalletType === 'casper' ? 'Casper' : 'EVM'} Wallet
                                         </p>
                                         <p className="text-[15px] font-bold text-text-main font-mono truncate">
                                             {address?.slice(0, 8)}...{address?.slice(-6)}
-                                        </p>
-                                        <p className="text-[12px] text-primary font-semibold mt-0.5">
-                                            {chainNames[chainId!] || `Chain ${chainId}`}
                                         </p>
                                     </div>
                                     <button
                                         onClick={handleDisconnect}
                                         className="p-2 rounded-xl hover:bg-gray-100 transition-colors"
-                                        title="Disconnect"
                                     >
                                         <span className="material-symbols-outlined text-text-sub text-[20px]">logout</span>
                                     </button>
                                 </div>
                             </div>
 
-                            {/* Link Button */}
                             <button
                                 onClick={handleLinkWallet}
                                 disabled={isLinking}
-                                className="w-full h-14 rounded-2xl bg-primary text-white font-bold text-[15px] hover:bg-primary/90 transition-all shadow-lg shadow-primary/20 flex items-center justify-center gap-3 disabled:opacity-50 disabled:cursor-not-allowed"
+                                className="w-full h-14 rounded-2xl bg-primary text-white font-bold text-[15px] hover:bg-primary/90 transition-all shadow-lg shadow-primary/20 flex items-center justify-center gap-3"
                             >
-                                {linkStatus === 'signing' ? (
-                                    <>
-                                        <span className="material-symbols-outlined text-[20px] animate-pulse">edit</span>
-                                        Sign Message...
-                                    </>
-                                ) : linkStatus === 'linking' ? (
-                                    <>
-                                        <span className="material-symbols-outlined text-[20px] animate-spin">sync</span>
-                                        Linking...
-                                    </>
-                                ) : (
-                                    <>
-                                        <span className="material-symbols-outlined text-[20px]">verified</span>
-                                        Link to CasperID
-                                    </>
-                                )}
+                                {linkStatus === 'signing' ? 'Signing...' : linkStatus === 'linking' ? 'Linking...' : 'Link to CasperID'}
                             </button>
-
-                            {/* Info Text */}
-                            <p className="text-xs text-text-sub text-center font-medium">
-                                You'll sign a message to verify ownership. No gas required.
-                            </p>
-                        </div>
-                    )}
-
-                    {/* Supported Chains */}
-                    {!isConnected && (
-                        <div className="pt-4 border-t border-gray-100">
-                            <p className="text-[11px] font-black text-text-sub uppercase tracking-widest opacity-60 text-center mb-3">
-                                Supported Chains
-                            </p>
-                            <div className="flex justify-center gap-4">
-                                {Object.entries(chainNames).slice(0, 4).map(([id, name]) => (
-                                    <div key={id} className="flex flex-col items-center gap-1">
-                                        <span className="text-xl">{getChainIcon(Number(id))}</span>
-                                        <span className="text-[10px] text-text-sub font-medium">{name}</span>
-                                    </div>
-                                ))}
-                            </div>
                         </div>
                     )}
                 </div>

@@ -51,14 +51,14 @@ export const ZaloIntegration: React.FC = () => {
           <div className="space-y-12">
             <div className="relative pl-8 border-l-2 border-white/10 space-y-10">
               {/* Progress Indicator Line */}
-              <div 
+              <div
                 className="absolute left-[-2px] top-0 w-[2px] bg-primary transition-all duration-700 ease-in-out"
                 style={{ height: `${((step + 1) / totalSteps) * 100}%` }}
               ></div>
 
               {steps.map((s, i) => (
-                <div 
-                  key={i} 
+                <div
+                  key={i}
                   className={`transition-all duration-700 transform ${step === i ? 'opacity-100 translate-x-4 scale-105' : 'opacity-20 translate-x-0 scale-100'}`}
                 >
                   <h3 className={`text-2xl font-bold mb-2 flex items-center gap-3 ${step === i ? s.color : 'text-white'}`}>
@@ -69,12 +69,12 @@ export const ZaloIntegration: React.FC = () => {
                 </div>
               ))}
             </div>
-            
+
             <div className="pt-8">
               <div className="flex gap-2">
                 {steps.map((_, i) => (
-                  <div 
-                    key={i} 
+                  <div
+                    key={i}
                     className={`h-1.5 rounded-full transition-all duration-700 ${step === i ? 'w-12 bg-primary' : 'w-4 bg-white/10'}`}
                   ></div>
                 ))}
@@ -87,7 +87,7 @@ export const ZaloIntegration: React.FC = () => {
             <div className="relative w-full max-w-[340px] group">
               {/* Phone Frame */}
               <div className="w-full aspect-[9/18.5] bg-black rounded-[3.5rem] border-[10px] border-gray-800 overflow-hidden shadow-[0_50px_100px_-20px_rgba(0,0,0,0.6)] relative">
-                
+
                 {/* Notch */}
                 <div className="absolute top-0 inset-x-0 h-7 bg-black z-50 flex justify-center items-end pb-1">
                   <div className="w-20 h-4 bg-gray-900 rounded-b-2xl"></div>
@@ -104,22 +104,22 @@ export const ZaloIntegration: React.FC = () => {
 
                 {/* CONTENT LAYER */}
                 <div className="h-full w-full bg-[#F8F9FA] relative pt-20 overflow-hidden text-midnight">
-                  
+
                   {/* STEP 1: IDENTIFY */}
                   <div className={`absolute inset-x-0 top-20 bottom-0 px-6 transition-all duration-1000 ease-[cubic-bezier(0.23,1,0.32,1)] ${step === 0 ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-20 pointer-events-none'}`}>
                     <div className="bg-white rounded-3xl p-6 shadow-sm mb-6 mt-4">
                       <p className="text-[10px] font-bold text-gray-400 mb-1 uppercase tracking-widest">Welcome Back</p>
                       <p className="text-xl font-extrabold">Alex Nguyen</p>
                     </div>
-                    
+
                     <div className="aspect-square bg-white rounded-3xl border-2 border-dashed border-gray-200 flex flex-col items-center justify-center p-8 relative overflow-hidden">
-                       <div className="absolute top-10 left-10 w-8 h-8 border-t-4 border-l-4 border-primary rounded-tl-xl animate-pulse"></div>
-                       <div className="absolute top-10 right-10 w-8 h-8 border-t-4 border-r-4 border-primary rounded-tr-xl animate-pulse"></div>
-                       <div className="absolute bottom-10 left-10 w-8 h-8 border-b-4 border-l-4 border-primary rounded-bl-xl animate-pulse"></div>
-                       <div className="absolute bottom-10 right-10 w-8 h-8 border-b-4 border-r-4 border-primary rounded-br-xl animate-pulse"></div>
-                       
-                       <Scan className="text-primary w-12 h-12 mb-4" strokeWidth={1.5} />
-                       <p className="text-center text-xs font-bold leading-tight px-4 opacity-60">Scanning Table 14...</p>
+                      <div className="absolute top-10 left-10 w-8 h-8 border-t-4 border-l-4 border-primary rounded-tl-xl animate-pulse"></div>
+                      <div className="absolute top-10 right-10 w-8 h-8 border-t-4 border-r-4 border-primary rounded-tr-xl animate-pulse"></div>
+                      <div className="absolute bottom-10 left-10 w-8 h-8 border-b-4 border-l-4 border-primary rounded-bl-xl animate-pulse"></div>
+                      <div className="absolute bottom-10 right-10 w-8 h-8 border-b-4 border-r-4 border-primary rounded-br-xl animate-pulse"></div>
+
+                      <Scan className="text-primary w-12 h-12 mb-4" strokeWidth={1.5} />
+                      <p className="text-center text-xs font-bold leading-tight px-4 opacity-60">Scanning Table 14...</p>
                     </div>
 
                     <button className="w-full bg-[#007BFF] text-white text-[10px] font-black py-4 rounded-2xl mt-8 shadow-lg shadow-blue-500/20 uppercase tracking-widest">
@@ -137,7 +137,7 @@ export const ZaloIntegration: React.FC = () => {
 
                     <div className="space-y-4">
                       <div className="bg-white p-3 rounded-2xl shadow-sm border border-gray-50 flex gap-4">
-                        <div className="size-20 rounded-xl bg-cover bg-center shrink-0" style={{backgroundImage: 'url(https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&q=80&w=200)'}}></div>
+                        <div className="size-20 rounded-xl bg-cover bg-center shrink-0" style={{ backgroundImage: 'url(https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&q=80&w=200)' }}></div>
                         <div className="flex flex-col justify-center flex-grow">
                           <p className="font-bold text-sm">Wagyu Ribeye</p>
                           <p className="text-xs text-gray-400 mb-2">A5 Japanese Grade</p>
@@ -197,26 +197,26 @@ export const ZaloIntegration: React.FC = () => {
 
                   {/* STEP 4: SUCCESS */}
                   <div className={`absolute inset-0 transition-all duration-1000 ease-[cubic-bezier(0.23,1,0.32,1)] ${step === 3 ? 'opacity-100 scale-100' : 'opacity-0 scale-90 pointer-events-none'}`}>
-                     <div className="h-full bg-blue-600 flex flex-col items-center justify-center p-8 text-white text-center">
-                        <div className="size-20 bg-white/20 rounded-full flex items-center justify-center mb-6 animate-bounce">
-                           <Check size={40} strokeWidth={4} />
-                        </div>
-                        <h4 className="text-xl font-black mb-2">Payment Complete</h4>
-                        <p className="text-xs text-white/60 mb-8 leading-relaxed">Receipt sent to your Zalo message</p>
-                        
-                        <div className="bg-white/10 w-full p-5 rounded-[2rem] border border-white/20 mb-8 backdrop-blur-md">
-                           <p className="text-[9px] font-black uppercase opacity-60 mb-2">Loyalty Points Earned</p>
-                           <p className="text-3xl font-black mb-1">+450 CSPR</p>
-                           <div className="w-full h-1.5 bg-white/10 rounded-full overflow-hidden mt-4">
-                              <div className="h-full bg-white w-3/4"></div>
-                           </div>
-                           <p className="text-[8px] mt-2 opacity-60">Next reward: Free Cocktail at 500 CSPR</p>
-                        </div>
+                    <div className="h-full bg-blue-600 flex flex-col items-center justify-center p-8 text-white text-center">
+                      <div className="size-20 bg-white/20 rounded-full flex items-center justify-center mb-6 animate-bounce">
+                        <Check size={40} strokeWidth={4} />
+                      </div>
+                      <h4 className="text-xl font-black mb-2">Payment Complete</h4>
+                      <p className="text-xs text-white/60 mb-8 leading-relaxed">Receipt sent to your Zalo message</p>
 
-                        <button className="w-full bg-white text-blue-600 py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest">
-                           Return to Home
-                        </button>
-                     </div>
+                      <div className="bg-white/10 w-full p-5 rounded-[2rem] border border-white/20 mb-8 backdrop-blur-md">
+                        <p className="text-[9px] font-black uppercase opacity-60 mb-2">Loyalty Points Earned</p>
+                        <p className="text-3xl font-black mb-1">+450 Pts</p>
+                        <div className="w-full h-1.5 bg-white/10 rounded-full overflow-hidden mt-4">
+                          <div className="h-full bg-white w-3/4"></div>
+                        </div>
+                        <p className="text-[8px] mt-2 opacity-60">Next reward: Free Cocktail at 500 Pts</p>
+                      </div>
+
+                      <button className="w-full bg-white text-blue-600 py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest">
+                        Return to Home
+                      </button>
+                    </div>
                   </div>
 
                 </div>
@@ -229,12 +229,12 @@ export const ZaloIntegration: React.FC = () => {
 
               {/* Floaties around the phone */}
               <div className="absolute -right-8 top-1/4 size-16 bg-white/10 backdrop-blur-md rounded-2xl border border-white/10 shadow-xl flex flex-col items-center justify-center animate-float-delayed p-2 text-center">
-                 <MapPin className="text-primary size-5 mb-1" />
-                 <span className="text-[8px] font-black">TABLE 14</span>
+                <MapPin className="text-primary size-5 mb-1" />
+                <span className="text-[8px] font-black">TABLE 14</span>
               </div>
               <div className="absolute -left-10 bottom-1/4 size-20 bg-primary/20 backdrop-blur-md rounded-full border border-primary/20 shadow-xl flex flex-col items-center justify-center animate-float p-2 text-center">
-                 <ShoppingCart className="text-white size-6 mb-1" />
-                 <span className="text-[9px] font-black text-white">SYNCING</span>
+                <ShoppingCart className="text-white size-6 mb-1" />
+                <span className="text-[9px] font-black text-white">SYNCING</span>
               </div>
             </div>
           </div>
