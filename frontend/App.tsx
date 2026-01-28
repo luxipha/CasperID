@@ -1,5 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
+import { Routes, Route, useLocation, useNavigate, Navigate } from 'react-router-dom';
 import { Sidebar } from './components/Sidebar';
 import { Header } from './components/Header';
 import { MobileHeader } from './components/MobileHeader';
@@ -59,13 +60,17 @@ const App: React.FC = () => {
     return sysPaths.includes(p) || p.startsWith('/verify/');
   };
 
+  const location = useLocation();
+  const navigate = useNavigate();
+
   const getInitialView = () => {
-    const path = window.location.pathname;
+    const path = location.pathname;
 
     // Check for explicit system routes
     if (path === '/') return 'landing';
+    if (path === '/casperos') return 'landing';
     if (path === '/admin') return 'admin';
-    if (path === '/pair' || path === '/dashboard') return 'loading';
+    if (path === '/pair' || path === '/dashboard') return 'dashboard-home';
 
     // Check for credential verification route
     if (path.startsWith('/verify/')) return 'verify-credential';
@@ -81,7 +86,7 @@ const App: React.FC = () => {
     return 'landing'; // Default to landing for root or unknown
   };
 
-  const [currentView, setCurrentView] = useState(getInitialView());
+  const [currentView, setCurrentView] = useState('loading'); // Initialize with loading
   const [publicProfileSlug, setPublicProfileSlug] = useState<string | null>(() => {
     const path = window.location.pathname;
     return (path.length > 1 && !isReservedPath(path)) ? path.substring(1) : null;
@@ -111,10 +116,37 @@ const App: React.FC = () => {
     return () => window.removeEventListener('openConnectWallet', handleOpenWallet);
   }, []);
 
+  // Synchronize currentView with URL on initial load and navigation
+  useEffect(() => {
+    const initialView = getInitialView();
+    if (initialView === 'dashboard-home') {
+      // If on dashboard path, we let the auth effect handle it or default to overview
+      if (isAuthenticated && user) {
+        setCurrentView('overview');
+      } else {
+        setCurrentView('auth-entry');
+      }
+    } else {
+      setCurrentView(initialView);
+    }
+
+    // Update slugs/hashes based on URL
+    const path = location.pathname;
+    if (path.length > 1 && !isReservedPath(path)) {
+      setPublicProfileSlug(path.substring(1));
+    }
+    if (path.startsWith('/verify/')) {
+      setCredentialHash(path.replace('/verify/', ''));
+    } else {
+      const match = path.match(/^\/([^\/]+)\/verify\/([^\/]+)$/);
+      if (match) setCredentialHash(match[2]);
+    }
+  }, [location.pathname]);
+
   // Set initial view based on authentication and completion state
   React.useEffect(() => {
     // If we are viewing a public profile, landing page, or credential verification, DO NOT redirect based on auth
-    if (currentView === 'public-profile' || currentView === 'landing' || currentView === 'admin' || currentView === 'verify-credential') return;
+    if (['public-profile', 'landing', 'admin', 'verify-credential'].includes(currentView)) return;
 
     if (!isLoading) {
       if (isAuthenticated && user) {
@@ -132,9 +164,7 @@ const App: React.FC = () => {
         }
       } else {
         // New user - start with email entry
-        // If they are not authenticated, they should probably be at auth-entry
-        // BUT we should avoid forcing it if they are on a public route (handled at start)
-        const isDashboardView = !['landing', 'public-profile', 'verify-credential', 'auth-entry', 'otp-verify', 'onboarding-start', 'onboarding-progress', 'pairing'].includes(currentView);
+        const isDashboardView = !['landing', 'public-profile', 'verify-credential', 'auth-entry', 'otp-verify', 'onboarding-start', 'onboarding-progress', 'pairing', 'loading'].includes(currentView);
         if (isDashboardView) {
           setCurrentView('auth-entry');
         }
@@ -421,37 +451,60 @@ const App: React.FC = () => {
   // Don't show layout chrome during onboarding, public profile view, landing, admin, or credential verification
   const isOnboarding = currentView === 'public-profile' || currentView === 'landing' || currentView === 'admin' || currentView === 'verify-credential' || currentView === 'auth-entry' || currentView === 'otp-verify' || currentView === 'onboarding-start' || currentView === 'onboarding-progress' || currentView === 'pairing';
 
-  if (isOnboarding) {
-    return <main className="bg-bg-light min-h-screen">{renderContent()}</main>;
-  }
-
   return (
-    <div className="flex min-h-screen bg-bg-light font-sans selection:bg-primary/20">
-      {/* Desktop Sidebar */}
-      <Sidebar currentView={activeSidebarTab} onNavigate={setCurrentView} />
+    <>
+      <Routes>
+        <Route path="/" element={<LandingPage />} />
+        <Route path="/casperos" element={<LandingPage initialView="casperos" />} />
+        <Route path="/admin" element={<AdminPage />} />
 
-      {/* Quick Actions Rail - Only visible on large screens */}
-      <QuickActionsRail
-        onCreatePersona={() => setIsPersonaModalOpen(true)}
-        onConnectWallet={() => setIsConnectWalletOpen(true)}
-        onRegisterCID={() => setCurrentView('register-cid')}
-        onImportDID={() => setCurrentView('did-import')}
-        onNavigate={setCurrentView}
-      />
+        {/* Vanity Profile Catch-all */}
+        <Route path="/:slug" element={
+          !isReservedPath(location.pathname) ? (
+            <PublicProfileContainer walletOrUsername={location.pathname.substring(1)} />
+          ) : (
+            <Navigate to="/" replace />
+          )
+        } />
 
-      <div className="flex-1 md:pl-64 flex flex-col min-w-0">
-        {/* Responsive Headers */}
-        <Header />
-        <MobileHeader />
+        {/* Main App Dashboard / Catch-all for reserved paths */}
+        <Route path="*" element={
+          <div className="flex min-h-screen bg-bg-light font-sans selection:bg-primary/20">
+            {/* Dashboard Chrome logic here - but for now we renderContent based on currentView */}
+            {!isOnboarding ? (
+              <>
+                {/* Desktop Sidebar */}
+                <Sidebar currentView={activeSidebarTab} onNavigate={setCurrentView} />
 
-        <main className="flex-1 px-5 md:px-10 py-6 md:py-10 overflow-y-auto pb-32">
-          <div className="max-w-md mx-auto md:max-w-7xl">
-            {renderContent()}
+                {/* Quick Actions Rail - Only visible on large screens */}
+                <QuickActionsRail
+                  onCreatePersona={() => setIsPersonaModalOpen(true)}
+                  onConnectWallet={() => setIsConnectWalletOpen(true)}
+                  onRegisterCID={() => setCurrentView('register-cid')}
+                  onImportDID={() => setCurrentView('did-import')}
+                  onNavigate={setCurrentView}
+                />
+
+                <div className="flex-1 md:pl-64 flex flex-col min-w-0">
+                  {/* Responsive Headers */}
+                  <Header />
+                  <MobileHeader />
+
+                  <main className="flex-1 px-5 md:px-10 py-6 md:py-10 overflow-y-auto pb-32">
+                    <div className="max-w-md mx-auto md:max-w-7xl">
+                      {renderContent()}
+                    </div>
+                  </main>
+                </div>
+
+                <BottomNav currentView={currentView} onNavigate={setCurrentView} />
+              </>
+            ) : (
+              <main className="bg-bg-light min-h-screen w-full">{renderContent()}</main>
+            )}
           </div>
-        </main>
-      </div>
-
-      <BottomNav currentView={currentView} onNavigate={setCurrentView} />
+        } />
+      </Routes>
 
       {/* Modal Components */}
       <ConsentRequestModal
@@ -503,7 +556,7 @@ const App: React.FC = () => {
           // Could refresh user data here
         }}
       />
-    </div>
+    </>
   );
 };
 

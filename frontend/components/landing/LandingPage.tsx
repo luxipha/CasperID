@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { FooterMarketing } from "../FooterMarketing";
 import StickyScrollSection from "./sticky-scroll";
 import Logo from "../Logo";
@@ -12,11 +13,35 @@ import ContextualSection from "./ContextsAware";
 import { CasperOSFlow } from "./CasperOSFlow";
 import { ScrollToTop } from "./casperos/ScrollToTop";
 
-export default function LandingPage() {
-  const [currentLandingView, setCurrentLandingView] = React.useState<'main' | 'casperos'>('main');
+interface LandingPageProps {
+  initialView?: 'main' | 'casperos';
+}
+
+export default function LandingPage({ initialView = 'main' }: LandingPageProps) {
+  const navigate = useNavigate();
+  const location = useLocation();
+  const [currentLandingView, setCurrentLandingView] = React.useState<'main' | 'casperos'>(initialView);
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [showScrollTop, setShowScrollTop] = useState(false);
+
+  // Sync internal view with URL
+  useEffect(() => {
+    if (location.pathname === '/casperos') {
+      setCurrentLandingView('casperos');
+    } else if (location.pathname === '/') {
+      setCurrentLandingView('main');
+    }
+  }, [location.pathname]);
+
+  const handleNavigate = (view: 'main' | 'casperos') => {
+    setCurrentLandingView(view);
+    if (view === 'casperos') {
+      navigate('/casperos');
+    } else {
+      navigate('/');
+    }
+  };
 
   // Scroll listener for header blur effect
   useEffect(() => {
@@ -127,12 +152,12 @@ export default function LandingPage() {
         <header id="site-header" className={`site-header fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${isScrolled ? 'backdrop-blur-md bg-white/80 shadow-sm' : ''}`}>
           <div className="w-full max-w-[1905px] mx-auto px-4 md:px-10 flex items-center justify-between py-4 md:py-6">
             <div className="flex items-center gap-4 md:gap-6">
-              <div onClick={() => setCurrentLandingView('main')} className="cursor-pointer">
+              <div onClick={() => handleNavigate('main')} className="cursor-pointer">
                 <Logo variant="png" />
               </div>
               <nav className="hidden md:flex items-center gap-4 text-sm text-slate-600">
                 <a
-                  onClick={() => setCurrentLandingView('main')}
+                  onClick={() => handleNavigate('main')}
                   href="#product"
                   className="hover:text-slate-900 transition"
                 >
@@ -148,7 +173,7 @@ export default function LandingPage() {
                   Developers
                 </a>
                 <a
-                  onClick={() => setCurrentLandingView('casperos')}
+                  onClick={() => handleNavigate('casperos')}
                   className={`hover:text-slate-900 transition cursor-pointer ${currentLandingView === 'casperos' ? 'text-indigo-600 font-bold' : ''}`}
                 >
                   CasperOS
@@ -407,7 +432,7 @@ export default function LandingPage() {
 
         <FooterMarketing className="scroll-mt-24" onNavigate={(view) => {
           if (view === 'main' || view === 'casperos') {
-            setCurrentLandingView(view);
+            handleNavigate(view);
           }
         }} />
         {/* ChatAssistant disabled - using Crisp chatbot instead */}
@@ -418,11 +443,11 @@ export default function LandingPage() {
         {/* Mobile Navigation Overlay - High Z-index and Solid Background */}
         <div className={`fixed inset-0 bg-white z-[60] md:hidden transition-transform duration-300 ease-in-out ${isMenuOpen ? 'translate-x-0' : 'translate-x-full'}`}>
           <div className="flex flex-col items-center justify-center h-full gap-8 text-2xl font-bold text-slate-900 px-6">
-            <a onClick={() => { setIsMenuOpen(false); setCurrentLandingView('main'); }} href="#product" className="hover:text-indigo-600 transition">Product</a>
+            <a onClick={() => { setIsMenuOpen(false); handleNavigate('main'); }} href="#product" className="hover:text-indigo-600 transition">Product</a>
             <a onClick={() => setIsMenuOpen(false)} href="#download" className="hover:text-indigo-600 transition">Download</a>
             <a onClick={() => setIsMenuOpen(false)} href="#resources" className="hover:text-indigo-600 transition">Resources</a>
             <a onClick={() => setIsMenuOpen(false)} href="#developers" className="hover:text-indigo-600 transition">Developers</a>
-            <a onClick={() => { setIsMenuOpen(false); setCurrentLandingView('casperos'); }} className="hover:text-indigo-600 transition cursor-pointer">CasperOS</a>
+            <a onClick={() => { setIsMenuOpen(false); handleNavigate('casperos'); }} className="hover:text-indigo-600 transition cursor-pointer">CasperOS</a>
             <div className="flex flex-col gap-4 mt-8 w-full max-w-sm">
               <a href="/dashboard" className="w-full text-center py-4 bg-indigo-100 text-indigo-700 rounded-2xl text-lg font-bold">Get CasperID</a>
               <button className="w-full py-4 bg-slate-900 text-white rounded-2xl text-lg font-bold shadow-xl shadow-slate-900/20">Download App</button>

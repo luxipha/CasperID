@@ -1,4 +1,5 @@
 import React from 'react';
+import { BrowserRouter } from 'react-router-dom';
 import { QueryProvider } from './contexts/QueryProvider';
 import { AuthProvider } from './contexts/AuthContext';
 import { WalletConnectProvider } from './contexts/WalletConnectProvider';
@@ -11,15 +12,17 @@ import App from './App';
  */
 const AppRoot: React.FC = () => {
   return (
-    <CasperProvider>
-      <WalletConnectProvider>
-        <QueryProvider>
-          <AuthProvider>
-            <App />
-          </AuthProvider>
-        </QueryProvider>
-      </WalletConnectProvider>
-    </CasperProvider>
+    <BrowserRouter>
+      <CasperProvider>
+        <WalletConnectProvider>
+          <QueryProvider>
+            <AuthProvider>
+              <App />
+            </AuthProvider>
+          </QueryProvider>
+        </WalletConnectProvider>
+      </CasperProvider>
+    </BrowserRouter>
   );
 };
 
