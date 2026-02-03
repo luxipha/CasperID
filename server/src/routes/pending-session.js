@@ -50,16 +50,12 @@ router.post('/create', async (req, res) => {
         const sessionToken = crypto.randomBytes(32).toString('hex');
         const expiresAt = Date.now() + (5 * 60 * 1000); // 5 minutes
 
-        // Build QR payload
-        const qrPayload = {
-            type: 'casperid_mobile_register',
-            sessionId,
-            serverUrl: process.env.FRONTEND_URL || 'http://localhost:5173',
-            expiresAt
-        };
+        // Build the mobile registration URL (this is what phones can scan and open)
+        const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+        const mobileRegisterUrl = `${frontendUrl}/mobile/register/${sessionId}`;
 
-        // Generate QR code
-        const qrCodeDataURL = await QRCode.toDataURL(JSON.stringify(qrPayload), {
+        // Generate QR code with URL (not JSON - phones can open URLs directly)
+        const qrCodeDataURL = await QRCode.toDataURL(mobileRegisterUrl, {
             width: 280,
             margin: 2,
             color: {
@@ -85,7 +81,7 @@ router.post('/create', async (req, res) => {
             sessionId,
             qrCode: {
                 dataURL: qrCodeDataURL,
-                payload: qrPayload
+                mobileUrl: mobileRegisterUrl
             },
             expiresAt,
             expiresIn: 5 * 60 * 1000
