@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
+import { MobilePasskeyHandoff } from './onboarding/MobilePasskeyHandoff';
 
 interface OnboardingStartProps {
   email: string; // Email verified from OTP flow
@@ -10,6 +11,7 @@ interface OnboardingStartProps {
 export const OnboardingStart: React.FC<OnboardingStartProps> = ({ email, onContinue, onLogin }) => {
   const { register, isLoading, error, clearError } = useAuth();
   const [isRegistering, setIsRegistering] = useState(false);
+  const [showMobileHandoff, setShowMobileHandoff] = useState(false);
 
   const handleCreatePasskey = async () => {
     try {
@@ -36,6 +38,24 @@ export const OnboardingStart: React.FC<OnboardingStartProps> = ({ email, onConti
       setIsRegistering(false);
     }
   };
+
+  // Mobile Handoff view
+  if (showMobileHandoff) {
+    return (
+      <div className="min-h-screen bg-[#F8F9FF] flex flex-col items-center justify-center p-6 animate-in fade-in duration-700">
+        <div className="w-full max-w-[540px] bg-white rounded-[44px] border border-gray-100 shadow-[0_40px_80px_-20px_rgba(134,82,226,0.12)] overflow-hidden">
+          <MobilePasskeyHandoff
+            email={email}
+            onComplete={(sessionData) => {
+              // Session is already set in API service, move to next step
+              onContinue(email);
+            }}
+            onBack={() => setShowMobileHandoff(false)}
+          />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-[#F8F9FF] flex flex-col items-center justify-center p-6 animate-in fade-in duration-700">
@@ -104,7 +124,7 @@ export const OnboardingStart: React.FC<OnboardingStartProps> = ({ email, onConti
               </div>
             </div>
 
-            {/* Action Button */}
+            {/* Action Buttons */}
             <div className="w-full space-y-4">
               <button
                 onClick={handleCreatePasskey}
@@ -122,6 +142,16 @@ export const OnboardingStart: React.FC<OnboardingStartProps> = ({ email, onConti
                     Create My Passkey
                   </>
                 )}
+              </button>
+
+              {/* Use Phone Option */}
+              <button
+                onClick={() => setShowMobileHandoff(true)}
+                disabled={isRegistering || isLoading}
+                className="w-full h-14 bg-gray-50 text-text-main rounded-2xl font-bold text-base flex items-center justify-center gap-3 border border-gray-200 hover:bg-gray-100 transition-all active:scale-[0.98] disabled:opacity-50"
+              >
+                <span className="material-symbols-outlined text-primary">smartphone</span>
+                Use my phone instead
               </button>
 
               {error && (

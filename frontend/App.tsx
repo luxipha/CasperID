@@ -39,6 +39,7 @@ import { CrossDevicePairing } from './components/CrossDevicePairing';
 import { PostOnboardingBanner } from './components/initialization';
 import { VerificationLevelBanner } from './components/VerificationLevelBanner';
 import { MobileLinkingPage } from './components/mobile/mobileLinking';
+import { MobilePasskeyCapture } from './components/mobile/MobilePasskeyCapture';
 import { PublicProfileContainer } from './components/PublicProfileContainer';
 import { VerifyCredentialPage } from './components/VerifyCredentialPage';
 import { useAuth } from './contexts/AuthContext';
@@ -55,9 +56,9 @@ const App: React.FC = () => {
   */
   // Check if a path is a reserved system path and should NOT be treated as a public profile
   const isReservedPath = (path: string) => {
-    const sysPaths = ['/', '/admin', '/pair', '/dashboard', '/login', '/auth', '/settings', '/integrations', '/verify'];
+    const sysPaths = ['/', '/admin', '/pair', '/dashboard', '/login', '/auth', '/settings', '/integrations', '/verify', '/mobile'];
     const p = path.toLowerCase();
-    return sysPaths.includes(p) || p.startsWith('/verify/');
+    return sysPaths.includes(p) || p.startsWith('/verify/') || p.startsWith('/mobile/');
   };
 
   const location = useLocation();
@@ -213,6 +214,12 @@ const App: React.FC = () => {
   };
 
   const renderContent = () => {
+    // Check if this is a mobile passkey registration URL
+    if (window.location.pathname.startsWith('/mobile/register/')) {
+      const sessionId = window.location.pathname.replace('/mobile/register/', '');
+      return <MobilePasskeyCapture />;
+    }
+
     // Check if this is a mobile pairing URL
     if (window.location.pathname === '/pair' || window.location.search.includes('data=')) {
       return (
@@ -458,7 +465,36 @@ const App: React.FC = () => {
         <Route path="/casperos" element={<LandingPage initialView="casperos" />} />
         <Route path="/admin" element={<AdminPage />} />
 
-        {/* Vanity Profile Catch-all */}
+        {/* Dashboard Route - must be before /:slug catch-all */}
+        <Route path="/dashboard" element={
+          <div className="flex min-h-screen bg-bg-light font-sans selection:bg-primary/20">
+            {!isOnboarding ? (
+              <>
+                <Sidebar currentView={activeSidebarTab} onNavigate={setCurrentView} />
+                <QuickActionsRail
+                  onCreatePersona={() => setIsPersonaModalOpen(true)}
+                  onConnectWallet={() => setIsConnectWalletOpen(true)}
+                  onRegisterCID={() => setCurrentView('register-cid')}
+                  onImportDID={() => setCurrentView('did-import')}
+                  onNavigate={setCurrentView}
+                />
+                <div className="flex-1 md:pl-64 flex flex-col min-w-0">
+                  <Header />
+                  <MobileHeader />
+                  <main className="flex-1 px-5 md:px-10 py-6 md:py-10 overflow-y-auto pb-32">
+                    <div className="max-w-md mx-auto md:max-w-7xl">
+                      {renderContent()}
+                    </div>
+                  </main>
+                </div>
+                <BottomNav currentView={currentView} onNavigate={setCurrentView} />
+              </>
+            ) : (
+              <main className="bg-bg-light min-h-screen w-full">{renderContent()}</main>
+            )}
+          </div>
+        } />
+
         <Route path="/:slug" element={
           !isReservedPath(location.pathname) ? (
             <PublicProfileContainer walletOrUsername={location.pathname.substring(1)} />

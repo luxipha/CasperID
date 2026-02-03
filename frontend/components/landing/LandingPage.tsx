@@ -188,9 +188,14 @@ export default function LandingPage({ initialView = 'main' }: LandingPageProps) 
                 <span className="h-2 w-2 rounded-full bg-indigo-500" />
                 Get CasperID
               </a>
-              <button className="inline-flex items-center gap-2 rounded-full bg-slate-900 px-3 md:px-4 py-2 text-xs font-semibold text-white shadow-sm hover:-translate-y-0.5 transition">
-                Download
-              </button>
+              <a
+                href="https://chromewebstore.google.com/detail/oecccgmhmojgniechnclmffchodmdjmd"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-2 rounded-full bg-slate-900 px-3 md:px-4 py-2 text-xs font-semibold text-white shadow-sm hover:-translate-y-0.5 transition"
+              >
+                Add to Chrome
+              </a>
               {/* Mobile menu button */}
               <button
                 onClick={() => setIsMenuOpen(!isMenuOpen)}
@@ -300,9 +305,14 @@ export default function LandingPage({ initialView = 'main' }: LandingPageProps) 
                   <div className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-semibold text-slate-600">
                     A verified identity you can reuse everywhere
                   </div>
-                  <button className="mt-4 px-5 md:px-6 py-2.5 md:py-3 rounded-full bg-slate-300 text-slate-500 text-sm font-semibold shadow-lg shadow-slate-300/40 cursor-not-allowed" disabled>
+                  <a
+                    href="https://chromewebstore.google.com/detail/oecccgmhmojgniechnclmffchodmdjmd"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="mt-4 px-5 md:px-6 py-2.5 md:py-3 rounded-full bg-slate-900 text-white text-sm font-semibold shadow-lg shadow-slate-900/40 hover:-translate-y-0.5 transition"
+                  >
                     Download for Chrome
-                  </button>
+                  </a>
                 </div>
                 <div className="flex-1 flex flex-col items-center text-center space-y-3 md:space-y-4">
                   <div className="text-xs uppercase tracking-[0.2em] text-slate-400">
@@ -414,9 +424,14 @@ export default function LandingPage({ initialView = 'main' }: LandingPageProps) 
                       Stop re-verifying, <br />Start reusing
                     </h2>
                     <div className="flex flex-wrap gap-3 md:gap-4 pt-2">
-                      <button className="px-4 md:px-6 py-2.5 md:py-3 rounded-full bg-slate-300 text-slate-500 text-sm font-semibold shadow-lg shadow-slate-800/30 cursor-not-allowed" disabled>
+                      <a
+                        href="https://chromewebstore.google.com/detail/oecccgmhmojgniechnclmffchodmdjmd"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="px-4 md:px-6 py-2.5 md:py-3 rounded-full bg-white text-slate-900 text-sm font-semibold shadow-lg shadow-white/30 hover:-translate-y-0.5 transition"
+                      >
                         Add To Chrome
-                      </button>
+                      </a>
                       <a href="/dashboard" className="px-4 md:px-6 py-2.5 md:py-3 rounded-full bg-slate-800 text-white text-sm font-semibold shadow-lg shadow-slate-900/40">
                         Create CasperID
                       </a>
@@ -450,7 +465,14 @@ export default function LandingPage({ initialView = 'main' }: LandingPageProps) 
             <a onClick={() => { setIsMenuOpen(false); handleNavigate('casperos'); }} className="hover:text-indigo-600 transition cursor-pointer">CasperOS</a>
             <div className="flex flex-col gap-4 mt-8 w-full max-w-sm">
               <a href="/dashboard" className="w-full text-center py-4 bg-indigo-100 text-indigo-700 rounded-2xl text-lg font-bold">Get CasperID</a>
-              <button className="w-full py-4 bg-slate-900 text-white rounded-2xl text-lg font-bold shadow-xl shadow-slate-900/20">Download App</button>
+              <a
+                href="https://chromewebstore.google.com/detail/oecccgmhmojgniechnclmffchodmdjmd"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="w-full text-center py-4 bg-slate-900 text-white rounded-2xl text-lg font-bold shadow-xl shadow-slate-900/20"
+              >
+                Add to Chrome
+              </a>
             </div>
           </div>
           {/* Close button inside overlay for better accessibility */}

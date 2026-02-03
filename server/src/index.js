@@ -137,6 +137,7 @@ app.use('/api', activityRoutes); // Activity log routes
 app.use('/api', verifiedProfilesRoutes); // Verified profiles for sitemap
 app.use('/api/notifications', require('./routes/notifications'));
 app.use('/api', require('./routes/cns')); // CNS Name Resolution & Registration
+app.use('/api/pending-session', require('./routes/pending-session')); // Mobile Passkey Handoff
 
 // Error handling middleware
 app.use((err, req, res, next) => {

@@ -232,6 +232,46 @@ class ApiService {
   }
 
   // ============================================
+  // PENDING SESSION (Mobile Passkey Handoff)
+  // ============================================
+
+  async createPendingSession(email: string): Promise<ApiResponse> {
+    try {
+      const response = await this.client.post('/api/pending-session/create', { email });
+      return response.data;
+    } catch (error) {
+      throw this.handleError(error);
+    }
+  }
+
+  async getPendingSession(sessionId: string): Promise<ApiResponse> {
+    try {
+      const response = await this.client.get(`/api/pending-session/${sessionId}`);
+      return response.data;
+    } catch (error) {
+      throw this.handleError(error);
+    }
+  }
+
+  async completePendingSession(sessionId: string, credentialData: any): Promise<ApiResponse> {
+    try {
+      const response = await this.client.post(`/api/pending-session/${sessionId}/complete`, credentialData);
+      return response.data;
+    } catch (error) {
+      throw this.handleError(error);
+    }
+  }
+
+  async getPendingSessionStatus(sessionId: string): Promise<ApiResponse> {
+    try {
+      const response = await this.client.get(`/api/pending-session/${sessionId}/status`);
+      return response.data;
+    } catch (error) {
+      throw this.handleError(error);
+    }
+  }
+
+  // ============================================
   // METAMASK INTEGRATION
   // ============================================
 
