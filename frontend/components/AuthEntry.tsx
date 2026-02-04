@@ -6,7 +6,7 @@ import Logo from './Logo';
 interface AuthEntryProps {
   onEmailSubmit: (email: string, verificationId: string) => void;
   onReturningUser: (email: string) => void;
-  onBiometricLogin: () => void;
+  onBiometricLogin: (email?: string) => void;
 }
 
 export const AuthEntry: React.FC<AuthEntryProps> = ({ onEmailSubmit, onReturningUser, onBiometricLogin }) => {
@@ -29,14 +29,21 @@ export const AuthEntry: React.FC<AuthEntryProps> = ({ onEmailSubmit, onReturning
 
       if (response.success) {
         if ((response as any).userExists && (response as any).hasPasskey) {
-          // Returning user - trigger native passkey/fingerprint prompt
+          // Returning user - check for device type hint first
           try {
-            await login(email);
-            // If successful, onReturningUser will handle navigation
-            onReturningUser(email);
+            const { deviceType } = await login(email, true);
+
+            if (deviceType === 'mobile') {
+              // Priority: Mobile user - trigger QR code handoff flow
+              onBiometricLogin(email);
+            } else {
+              // Desktop user - trigger native passkey/fingerprint prompt
+              await login(email);
+              onReturningUser(email);
+            }
           } catch (loginError: any) {
-            console.error('Passkey authentication failed:', loginError);
-            setError('Passkey authentication failed. Please try again.');
+            console.error('Sign-in failed:', loginError);
+            setError(loginError.message || 'Sign-in failed. Please try again.');
           }
         } else {
           // New user - continue with OTP verification

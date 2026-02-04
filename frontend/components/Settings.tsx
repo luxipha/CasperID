@@ -7,7 +7,7 @@ type Tab = 'General' | 'Wallets' | 'Security' | 'Notifications' | 'Permissions';
 
 /** General Settings Tab */
 const GeneralTab = () => {
-  const { user, refreshUser } = useAuth();
+  const { user, refreshUser, isAuthenticated, isLoading } = useAuth();
   const [profile, setProfile] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -30,6 +30,10 @@ const GeneralTab = () => {
     });
 
     const fetchProfile = async () => {
+      if (!isAuthenticated || !user) {
+        setLoading(false);
+        return;
+      }
       try {
         setLoading(true);
         const data = await apiService.getUserProfile();
@@ -47,8 +51,13 @@ const GeneralTab = () => {
         setLoading(false);
       }
     };
-    fetchProfile();
-  }, [user]);
+
+    if (isAuthenticated && user) {
+      fetchProfile();
+    } else if (!isLoading) {
+      setLoading(false);
+    }
+  }, [user, isAuthenticated, isLoading]);
 
   const handleCopyDID = () => {
     if (profile?.did_address) {
@@ -218,6 +227,7 @@ interface Device {
 
 /** Security Settings Tab */
 const SecurityTab = () => {
+  const { isAuthenticated, isLoading, user } = useAuth();
   const [devices, setDevices] = useState<Device[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -256,8 +266,12 @@ const SecurityTab = () => {
       }
     };
 
-    fetchDevices();
-  }, []);
+    if (isAuthenticated && user) {
+      fetchDevices();
+    } else if (!isLoading) {
+      setLoading(false);
+    }
+  }, [isAuthenticated, user, isLoading]);
 
   const handleRevokeDevice = async (credentialId: string, deviceName: string) => {
     if (!confirm(`Are you sure you want to revoke access for "${deviceName || 'this device'}"? You'll need to register this device again to use it.`)) {
@@ -387,6 +401,7 @@ const SecurityTab = () => {
 
 /** Notifications Settings Tab */
 const NotificationsTab = () => {
+  const { isAuthenticated, isLoading, user } = useAuth();
   const [prefs, setPrefs] = useState({
     security_alerts: true,
     kyc_updates: true,
@@ -407,8 +422,13 @@ const NotificationsTab = () => {
         setLoading(false);
       }
     };
-    loadPrefs();
-  }, []);
+
+    if (isAuthenticated && user) {
+      loadPrefs();
+    } else if (!isLoading) {
+      setLoading(false);
+    }
+  }, [isAuthenticated, user, isLoading]);
 
   const handleToggle = async (key: string) => {
     const newVal = !prefs[key as keyof typeof prefs];
@@ -464,7 +484,7 @@ const NotificationsTab = () => {
 
 /** Permissions Settings Tab */
 const PermissionsTab = () => {
-  const { user } = useAuth();
+  const { user, isAuthenticated, isLoading } = useAuth();
   const [profile, setProfile] = useState<any>(null);
   const [permissions, setPermissions] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -487,8 +507,13 @@ const PermissionsTab = () => {
         setLoading(false);
       }
     };
-    loadData();
-  }, [user]);
+
+    if (isAuthenticated && user) {
+      loadData();
+    } else if (!isLoading) {
+      setLoading(false);
+    }
+  }, [user, isAuthenticated, isLoading]);
 
   const handleUnlink = async () => {
     if (!confirm('Are you sure you want to disconnect MetaMask? This will revoke all active permissions.')) return;
@@ -639,7 +664,7 @@ const PermissionsTab = () => {
 
 /** Wallets Settings Tab */
 const WalletsTab = () => {
-  const { user } = useAuth();
+  const { isAuthenticated, isLoading, user } = useAuth();
   const [profile, setProfile] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [unlinking, setUnlinking] = useState<string | null>(null);
@@ -657,8 +682,12 @@ const WalletsTab = () => {
   };
 
   useEffect(() => {
-    fetchProfile();
-  }, [user]);
+    if (isAuthenticated && user) {
+      fetchProfile();
+    } else if (!isLoading) {
+      setLoading(false);
+    }
+  }, [user, isAuthenticated, isLoading]);
 
   const handleUnlink = async (address: string) => {
     if (!confirm(`Are you sure you want to unlink wallet ${address}?`)) return;

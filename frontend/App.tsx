@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Routes, Route, useLocation, useNavigate, Navigate } from 'react-router-dom';
 import { Sidebar } from './components/Sidebar';
 import { Header } from './components/Header';
@@ -34,12 +34,15 @@ import { AuthEntry } from './components/AuthEntry';
 import { OTPVerify } from './components/OTPVerify';
 import { OnboardingStart } from './components/OnboardingStart';
 import { OnboardingProgress } from './components/OnboardingProgress';
+import { MobilePasskeyHandoff } from './components/onboarding/MobilePasskeyHandoff';
 import { RegisterCIDPromptModal } from './components/RegisterCidPromptModal';
 import { CrossDevicePairing } from './components/CrossDevicePairing';
 import { PostOnboardingBanner } from './components/initialization';
 import { VerificationLevelBanner } from './components/VerificationLevelBanner';
 import { MobileLinkingPage } from './components/mobile/mobileLinking';
 import { MobilePasskeyCapture } from './components/mobile/MobilePasskeyCapture';
+import { AppLoadingSplash } from './components/AppLoadingSplash';
+import { BusinessPlatform } from './business/BusinessPlatform';
 import { PublicProfileContainer } from './components/PublicProfileContainer';
 import { VerifyCredentialPage } from './components/VerifyCredentialPage';
 import { useAuth } from './contexts/AuthContext';
@@ -56,9 +59,9 @@ const App: React.FC = () => {
   */
   // Check if a path is a reserved system path and should NOT be treated as a public profile
   const isReservedPath = (path: string) => {
-    const sysPaths = ['/', '/admin', '/pair', '/dashboard', '/login', '/auth', '/settings', '/integrations', '/verify', '/mobile'];
+    const sysPaths = ['/', '/admin', '/pair', '/dashboard', '/login', '/auth', '/settings', '/integrations', '/verify', '/mobile', '/null', '/business'];
     const p = path.toLowerCase();
-    return sysPaths.includes(p) || p.startsWith('/verify/') || p.startsWith('/mobile/');
+    return sysPaths.includes(p) || p.startsWith('/verify/') || p.startsWith('/mobile/') || p.startsWith('/business/') || p === '/null';
   };
 
   const location = useLocation();
@@ -90,7 +93,8 @@ const App: React.FC = () => {
   const [currentView, setCurrentView] = useState('loading'); // Initialize with loading
   const [publicProfileSlug, setPublicProfileSlug] = useState<string | null>(() => {
     const path = window.location.pathname;
-    return (path.length > 1 && !isReservedPath(path)) ? path.substring(1) : null;
+    const slug = path.substring(1);
+    return (path.length > 1 && !isReservedPath(path) && slug !== 'null' && slug !== 'undefined') ? slug : null;
   });
   const [credentialHash, setCredentialHash] = useState<string | null>(() => {
     const path = window.location.pathname;
@@ -119,6 +123,8 @@ const App: React.FC = () => {
 
   // Synchronize currentView with URL on initial load and navigation
   useEffect(() => {
+    if (isLoading) return;
+
     const initialView = getInitialView();
     if (initialView === 'dashboard-home') {
       // If on dashboard path, we let the auth effect handle it or default to overview
@@ -133,8 +139,9 @@ const App: React.FC = () => {
 
     // Update slugs/hashes based on URL
     const path = location.pathname;
-    if (path.length > 1 && !isReservedPath(path)) {
-      setPublicProfileSlug(path.substring(1));
+    const slug = path.substring(1);
+    if (path.length > 1 && !isReservedPath(path) && slug !== 'null' && slug !== 'undefined') {
+      setPublicProfileSlug(slug);
     }
     if (path.startsWith('/verify/')) {
       setCredentialHash(path.replace('/verify/', ''));
@@ -142,17 +149,21 @@ const App: React.FC = () => {
       const match = path.match(/^\/([^\/]+)\/verify\/([^\/]+)$/);
       if (match) setCredentialHash(match[2]);
     }
-  }, [location.pathname]);
+  }, [location.pathname, isLoading]);
 
   // Set initial view based on authentication and completion state
   React.useEffect(() => {
+    if (isLoading) return;
+
     // If we are viewing a public profile, landing page, or credential verification, DO NOT redirect based on auth
-    if (['public-profile', 'landing', 'admin', 'verify-credential'].includes(currentView)) return;
+    if (['public-profile', 'landing', 'admin', 'verify-credential'].includes(currentView)) {
+      return;
+    }
 
     if (!isLoading) {
       if (isAuthenticated && user) {
         // Only redirect to overview if we're currently in an auth-related view or loading
-        const isAuthView = ['auth-entry', 'otp-verify', 'onboarding-start', 'onboarding-progress', 'pairing', 'loading'].includes(currentView);
+        const isAuthView = ['auth-entry', 'otp-verify', 'onboarding-start', 'pairing', 'loading', 'handoff'].includes(currentView);
 
         if (isAuthView) {
           if (user.wallet && user.human_id) {
@@ -165,7 +176,7 @@ const App: React.FC = () => {
         }
       } else {
         // New user - start with email entry
-        const isDashboardView = !['landing', 'public-profile', 'verify-credential', 'auth-entry', 'otp-verify', 'onboarding-start', 'onboarding-progress', 'pairing', 'loading'].includes(currentView);
+        const isDashboardView = !['landing', 'public-profile', 'verify-credential', 'auth-entry', 'otp-verify', 'onboarding-start', 'onboarding-progress', 'pairing', 'loading', 'handoff'].includes(currentView);
         if (isDashboardView) {
           setCurrentView('auth-entry');
         }
@@ -182,21 +193,51 @@ const App: React.FC = () => {
     return () => window.removeEventListener('openKYC', handleOpenKYC);
   }, []);
 
-  const handleViewActivityDetail = (id: string) => {
+  const handleViewActivityDetail = useCallback((id: string) => {
     setSelectedActivityId(id);
     setCurrentView('activity-detail');
-  };
+  }, []);
 
-  const handleFinishOnboarding = () => {
+  const handleFinishOnboarding = useCallback(() => {
     setCurrentView('overview');
     // Show the post-onboarding banner which will handle MetaMask check
     setShowPostOnboardingBanner(true);
-    // Show the RegisterCID prompt modal after onboarding
-    setShowRegisterCIDPrompt(true);
-  };
+  }, []);
 
-  const handleVerificationUpgrade = (nextLevel: 'layer_1' | 'layer_2' | 'layer_3') => {
+  const handleBackToAuth = useCallback(() => {
+    setCurrentView('auth-entry');
+  }, []);
 
+  const handleToOverview = useCallback(() => {
+    setCurrentView('overview');
+  }, []);
+
+  const handleStartOnboarding = useCallback((email: string) => {
+    setOnboardingEmail(email);
+    setCurrentView('onboarding-progress');
+  }, []);
+
+  const handleVerificationSuccess = useCallback((email: string) => {
+    setOnboardingEmail(email);
+    setCurrentView('onboarding-start');
+  }, []);
+
+  const handleEmailSubmit = useCallback((email: string, vid: string) => {
+    setOnboardingEmail(email);
+    setVerificationId(vid);
+    setCurrentView('otp-verify');
+  }, []);
+
+  const handleBiometricLogin = useCallback((email: string) => {
+    if (email) {
+      setOnboardingEmail(email);
+      setCurrentView('handoff');
+    } else {
+      setCurrentView('overview');
+    }
+  }, []);
+
+  const handleVerificationUpgrade = useCallback((nextLevel: 'layer_1' | 'layer_2' | 'layer_3') => {
     switch (nextLevel) {
       case 'layer_1':
         // Navigate to email verification flow
@@ -211,12 +252,11 @@ const App: React.FC = () => {
         setCurrentView('kyc');
         break;
     }
-  };
+  }, []);
 
   const renderContent = () => {
-    // Check if this is a mobile passkey registration URL
-    if (window.location.pathname.startsWith('/mobile/register/')) {
-      const sessionId = window.location.pathname.replace('/mobile/register/', '');
+    // Check if this is a mobile passkey registration or login URL
+    if (window.location.pathname.startsWith('/mobile/register/') || window.location.pathname.startsWith('/mobile/login/')) {
       return <MobilePasskeyCapture />;
     }
 
@@ -237,26 +277,13 @@ const App: React.FC = () => {
 
     switch (currentView) {
       case 'loading':
-        return (
-          <div className="min-h-screen bg-[#F8F9FF] flex flex-col items-center justify-center">
-            <div className="text-center space-y-4">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
-              <p className="text-text-sub font-medium">Loading CasperID...</p>
-            </div>
-          </div>
-        );
+        return <AppLoadingSplash />;
       case 'auth-entry':
         return (
           <AuthEntry
-            onEmailSubmit={(email, verificationId) => {
-              setOnboardingEmail(email);
-              setVerificationId(verificationId);
-              setCurrentView('otp-verify');
-            }}
-            onReturningUser={(email) => {
-              setCurrentView('overview');
-            }}
-            onBiometricLogin={() => setCurrentView('overview')}
+            onEmailSubmit={handleEmailSubmit}
+            onReturningUser={handleToOverview}
+            onBiometricLogin={handleBiometricLogin}
           />
         );
       case 'otp-verify':
@@ -264,32 +291,36 @@ const App: React.FC = () => {
           <OTPVerify
             email={onboardingEmail}
             verificationId={verificationId}
-            onSuccess={(email) => {
-              setOnboardingEmail(email);
-              setCurrentView('onboarding-start');
-            }}
-            onBack={() => setCurrentView('auth-entry')}
+            onSuccess={handleVerificationSuccess}
+            onBack={handleBackToAuth}
           />
         );
       case 'onboarding-start':
         return (
           <OnboardingStart
             email={onboardingEmail}
-            onContinue={(email) => {
-              setOnboardingEmail(email);
-              setCurrentView('onboarding-progress');
-            }}
-            onLogin={() => setCurrentView('overview')}
+            onContinue={handleStartOnboarding}
+            onLogin={handleToOverview}
           />
+        );
+      case 'handoff':
+        return (
+          <div className="min-h-screen bg-[#F8F9FF] flex flex-col items-center justify-center p-6">
+            <div className="w-full max-w-[540px] bg-white rounded-[44px] border border-gray-100 shadow-[0_40px_80px_-20px_rgba(134,82,226,0.12)] overflow-hidden">
+              <MobilePasskeyHandoff
+                email={onboardingEmail}
+                type="login"
+                onComplete={handleToOverview}
+                onBack={handleBackToAuth}
+              />
+            </div>
+          </div>
         );
       case 'pairing':
         return (
           <CrossDevicePairing
             onBack={() => setCurrentView('onboarding-start')}
-            onPaired={(email) => {
-              setOnboardingEmail(email);
-              setCurrentView('onboarding-progress');
-            }}
+            onPaired={handleStartOnboarding}
           />
         );
       case 'onboarding-progress':
@@ -374,7 +405,10 @@ const App: React.FC = () => {
             {/* Post-Onboarding Banner */}
             {showPostOnboardingBanner && (
               <PostOnboardingBanner
-                onComplete={() => setShowPostOnboardingBanner(false)}
+                onComplete={() => {
+                  setShowPostOnboardingBanner(false);
+                  setShowRegisterCIDPrompt(true);
+                }}
               />
             )}
 
@@ -456,7 +490,11 @@ const App: React.FC = () => {
     : currentView;
 
   // Don't show layout chrome during onboarding, public profile view, landing, admin, or credential verification
-  const isOnboarding = currentView === 'public-profile' || currentView === 'landing' || currentView === 'admin' || currentView === 'verify-credential' || currentView === 'auth-entry' || currentView === 'otp-verify' || currentView === 'onboarding-start' || currentView === 'onboarding-progress' || currentView === 'pairing';
+  const isOnboarding = currentView === 'public-profile' || currentView === 'landing' || currentView === 'admin' || currentView === 'verify-credential' || currentView === 'auth-entry' || currentView === 'otp-verify' || currentView === 'onboarding-start' || currentView === 'onboarding-progress' || currentView === 'pairing' || currentView === 'handoff' || currentView.startsWith('business');
+
+  if (isLoading) {
+    return <AppLoadingSplash />;
+  }
 
   return (
     <>
@@ -464,6 +502,7 @@ const App: React.FC = () => {
         <Route path="/" element={<LandingPage />} />
         <Route path="/casperos" element={<LandingPage initialView="casperos" />} />
         <Route path="/admin" element={<AdminPage />} />
+        <Route path="/business/*" element={<BusinessPlatform />} />
 
         {/* Dashboard Route - must be before /:slug catch-all */}
         <Route path="/dashboard" element={

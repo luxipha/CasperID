@@ -460,6 +460,7 @@ router.post('/auth/begin', async (req, res) => {
             success: true,
             challengeId: result.challengeId,
             options: result.options,
+            deviceType: result.deviceType,
             expiresIn: result.expiresIn
         });
 

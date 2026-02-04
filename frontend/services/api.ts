@@ -24,7 +24,12 @@ class ApiService {
   private baseURL: string;
 
   constructor() {
-    this.baseURL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+    // In development, we use the VITE_API_URL (usually localhost:3001).
+    // On mobile via ngrok, we must use relative paths to go through the proxy.
+    const isLocalhost = typeof window !== 'undefined' &&
+      (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+
+    this.baseURL = import.meta.env.VITE_API_URL || (isLocalhost ? 'http://localhost:3001' : '');
 
     this.client = axios.create({
       baseURL: this.baseURL,
@@ -91,6 +96,19 @@ class ApiService {
     localStorage.setItem('casperid_token_expires', tokens.expiresAt.toString());
   }
 
+  public getTokens(): AuthTokens | null {
+    const sessionToken = this.getStoredToken();
+    const expiresAtStr = localStorage.getItem('casperid_token_expires');
+
+    if (sessionToken && expiresAtStr) {
+      return {
+        sessionToken,
+        expiresAt: parseInt(expiresAtStr, 10)
+      };
+    }
+    return null;
+  }
+
   private clearTokens() {
     localStorage.removeItem('casperid_session_token');
     localStorage.removeItem('casperid_token_expires');
@@ -101,8 +119,14 @@ class ApiService {
     throw new Error('Session expired - please log in again');
   }
 
-  public logout() {
-    this.clearTokens();
+  public async logout() {
+    try {
+      await this.client.post('/api/passkey/logout');
+    } catch (error) {
+      console.warn('Backend logout failed:', error);
+    } finally {
+      this.clearTokens();
+    }
   }
 
   public isAuthenticated(): boolean {
@@ -235,9 +259,9 @@ class ApiService {
   // PENDING SESSION (Mobile Passkey Handoff)
   // ============================================
 
-  async createPendingSession(email: string): Promise<ApiResponse> {
+  async createPendingSession(email: string, type: 'registration' | 'login' = 'registration'): Promise<ApiResponse> {
     try {
-      const response = await this.client.post('/api/pending-session/create', { email });
+      const response = await this.client.post('/api/pending-session/create', { email, type });
       return response.data;
     } catch (error) {
       throw this.handleError(error);
@@ -1052,6 +1076,8 @@ class ApiService {
       return response.data;
     } catch (error) {
       throw this.handleError(error);
+    } finally {
+      this.clearTokens();
     }
   }
 
@@ -1342,6 +1368,14 @@ class ApiService {
     }
   }
 
+  async checkHealth(): Promise<boolean> {
+    try {
+      const response = await this.client.get('/health');
+      return response.status === 200;
+    } catch (error) {
+      return false;
+    }
+  }
 }
 
 // Export singleton instance

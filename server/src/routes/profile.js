@@ -103,16 +103,16 @@ router.delete('/profile/:wallet/batch-clear/:category', async (req, res) => {
 router.get('/user/profile', requireAuth, async (req, res) => {
     try {
         const { wallet } = req.user;
-        console.log(`GET /user/profile for ${wallet}`);
-
-        if (!wallet) {
-            console.warn(`⚠️ User ${req.user.email} (ID: ${req.user.userId}) has no wallet - cannot fetch/create profile.`);
-            return res.status(400).json({
+        if (!wallet || wallet === 'pending_wallet' || wallet === 'undefined') {
+            // Don't log as warning/error since this is expected for Layer 0 users
+            return res.status(200).json({
                 success: false,
                 error: 'Wallet not created. Please complete onboarding.',
                 code: 'NO_WALLET'
             });
         }
+
+        console.log(`GET /user/profile for ${wallet}`);
 
         // Atomic Get-Or-Create to prevent race conditions
         let profile = await UserProfile.findOneAndUpdate(
@@ -1158,11 +1158,15 @@ router.delete('/profile/:wallet/volunteer/:id', async (req, res) => {
 router.get('/profile/human-id/:walletAddress', async (req, res) => {
     try {
         const { walletAddress } = req.params;
-        console.log(`GET /human-id/${walletAddress}`);
-
-        if (!walletAddress) {
-            return res.status(400).json({ error: 'Wallet address is required' });
+        if (!walletAddress || walletAddress === 'pending_wallet' || walletAddress === 'undefined') {
+            return res.status(200).json({
+                success: false,
+                error: 'Wallet address is required',
+                humanId: null
+            });
         }
+
+        console.log(`GET /human-id/${walletAddress}`);
 
         const humanId = await getHumanIdForWallet(walletAddress, { UserProfile, Credential });
 

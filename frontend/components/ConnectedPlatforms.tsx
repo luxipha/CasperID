@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { apiService } from '../services/api';
+import { useAuth } from '../contexts/AuthContext';
 
 const formatTimeAgo = (dateString: string) => {
   const date = new Date(dateString);
@@ -17,12 +18,18 @@ interface ConnectedPlatformsProps {
 }
 
 export const ConnectedPlatforms: React.FC<ConnectedPlatformsProps> = ({ onAddNew }) => {
+  const { user, isAuthenticated } = useAuth();
   const [platforms, setPlatforms] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetchPlatforms();
-  }, []);
+    if (isAuthenticated && user) {
+      fetchPlatforms();
+    } else if (!isAuthenticated) {
+      setLoading(false);
+      setPlatforms([]);
+    }
+  }, [isAuthenticated, user]);
 
   const fetchPlatforms = async () => {
     try {

@@ -99,13 +99,13 @@ export interface AuthContextType {
   error: string | null;
 
   // Authentication methods
-  login: (email: string) => Promise<void>;
-  logout: () => void;
+  login: (email?: string, skipNativePrompt?: boolean) => Promise<{ success: boolean; deviceType?: string; user?: User }>;
+  logout: () => Promise<void>;
   register: (email: string, displayName: string) => Promise<void>;
 
   // Profile methods
   updateProfile: (data: Partial<User>) => Promise<void>;
-  refreshUser: () => Promise<void>;
+  refreshUser: () => Promise<User | null>;
 
   // MetaMask integration
   linkMetaMask: (address: string, signature: string, message: string) => Promise<void>;
@@ -161,7 +161,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   };
 
-  const refreshUser = async () => {
+  const refreshUser = async (): Promise<User | null> => {
     try {
       // Get session status from backend
       const sessionResponse = await apiService.getSessionStatus();
@@ -171,7 +171,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
         // Fetch human-id if wallet exists
         let humanId;
-        if (userAccount.wallet) {
+        if (userAccount.wallet && userAccount.wallet !== 'pending_wallet' && userAccount.wallet !== 'undefined') {
           try {
             // console.log('🔍 Fetching human-id for wallet:', userAccount.wallet);
             const humanIdResponse = await apiService.getHumanId(userAccount.wallet);
@@ -183,12 +183,14 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           }
         }
 
-        // Fetch full profile for data disclosure checks
+        // Fetch full profile for data disclosure checks (only if wallet exists)
         let profileData: any = {};
-        try {
-          profileData = await apiService.getUserProfile();
-        } catch (e) {
-          console.warn('Failed to fetch full profile:', e);
+        if (userAccount.wallet && userAccount.wallet !== 'pending_wallet' && userAccount.wallet !== 'undefined') {
+          try {
+            profileData = await apiService.getUserProfile();
+          } catch (e) {
+            console.warn('Failed to fetch full profile:', e);
+          }
         }
 
         const user: User = {
@@ -223,6 +225,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
         setUser(user);
         setError(null);
+        return user;
         // console.log('✅ User session restored:', user);
       } else {
         throw new Error('No valid session');
@@ -231,7 +234,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       console.error('Failed to refresh user:', error);
       setUser(null);
       apiService.logout();
-      throw error;
+      return null;
     }
   };
 
@@ -348,7 +351,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   };
 
-  const login = async (email?: string): Promise<void> => {
+  const login = async (email?: string, skipNativePrompt: boolean = false): Promise<{ success: boolean, deviceType?: string, user?: User }> => {
     try {
       setIsLoading(true);
       setError(null);
@@ -358,6 +361,14 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
       if (!initResponse.success || !(initResponse as any).options) {
         throw new Error(initResponse.error || 'Failed to initialize authentication');
+      }
+
+      const deviceType = (initResponse as any).deviceType;
+
+      // If skipping native prompt (e.g. for mobile handoff hint), return early with the hint
+      if (skipNativePrompt) {
+        setIsLoading(false);
+        return { success: true, deviceType };
       }
 
       // Extract challengeId from init response
@@ -419,7 +430,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       }
 
       // Authentication successful - fetch user profile
-      await refreshUser();
+      const user = await refreshUser();
+
+      return { success: true, deviceType, user: user || undefined };
 
     } catch (error: any) {
       console.error('Login failed:', error);
@@ -431,8 +444,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   };
 
-  const logout = () => {
-    apiService.logout();
+  const logout = async () => {
+    await apiService.logout();
     setUser(null);
     setError(null);
   };
@@ -524,11 +537,11 @@ export const useAuth = (): AuthContextType => {
       isLoading: false,
       isAuthenticated: false,
       error: null,
-      login: async () => { },
-      logout: () => { },
+      login: async () => ({ success: false, deviceType: undefined, user: undefined }),
+      logout: async () => { },
       register: async () => { },
       updateProfile: async () => { },
-      refreshUser: async () => { },
+      refreshUser: async () => null,
       linkMetaMask: async () => { },
       unlinkMetaMask: async () => { },
       clearError: () => { },

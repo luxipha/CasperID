@@ -50,12 +50,24 @@ router.post('/create', async (req, res) => {
         const sessionToken = crypto.randomBytes(32).toString('hex');
         const expiresAt = Date.now() + (5 * 60 * 1000); // 5 minutes
 
-        // Build the mobile registration URL (this is what phones can scan and open)
+        // Build QR payload (same pattern as mobileLinking.tsx)
         const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
-        const mobileRegisterUrl = `${frontendUrl}/mobile/register/${sessionId}`;
 
-        // Generate QR code with URL (not JSON - phones can open URLs directly)
-        const qrCodeDataURL = await QRCode.toDataURL(mobileRegisterUrl, {
+        const qrPayload = {
+            type: req.body.type === 'login' ? 'casperid_mobile_login' : 'casperid_mobile_register',
+            sessionId,
+            email,
+            serverUrl: frontendUrl,
+            expiresAt
+        };
+
+        // Encode payload and build URL
+        const encodedData = encodeURIComponent(JSON.stringify(qrPayload));
+        const mobilePath = req.body.type === 'login' ? 'login' : 'register';
+        const mobileUrl = `${frontendUrl}/mobile/${mobilePath}/${sessionId}?data=${encodedData}`;
+
+        // Generate QR code with URL
+        const qrCodeDataURL = await QRCode.toDataURL(mobileUrl, {
             width: 280,
             margin: 2,
             color: {
@@ -67,6 +79,7 @@ router.post('/create', async (req, res) => {
         // Store pending session
         pendingSessions.set(sessionId, {
             email,
+            type: req.body.type || 'registration',
             sessionToken,
             expiresAt,
             status: 'pending', // pending -> completed
@@ -81,7 +94,7 @@ router.post('/create', async (req, res) => {
             sessionId,
             qrCode: {
                 dataURL: qrCodeDataURL,
-                mobileUrl: mobileRegisterUrl
+                mobileUrl: mobileUrl
             },
             expiresAt,
             expiresIn: 5 * 60 * 1000
@@ -152,7 +165,6 @@ router.get('/:sessionId', async (req, res) => {
 router.post('/:sessionId/complete', async (req, res) => {
     try {
         const { sessionId } = req.params;
-        const { credentialId, publicKey, counter, transports, deviceInfo } = req.body;
 
         const session = pendingSessions.get(sessionId);
 
@@ -178,47 +190,51 @@ router.post('/:sessionId/complete', async (req, res) => {
             });
         }
 
-        if (!credentialId || !publicKey) {
+        if (session.type === 'login') {
+            // Login flow: mobile already authenticated, just providing session token for desktop
+            const { userId, sessionToken, expiresAt, userAccount } = req.body;
+
+            if (!sessionToken || !userAccount) {
+                return res.status(400).json({
+                    success: false,
+                    error: 'Session info is required for login completion'
+                });
+            }
+
+            session.status = 'completed';
+            session.completedData = {
+                userId,
+                sessionToken,
+                expiresAt,
+                userAccount
+            };
+
+            console.log(`[PendingSession] Login session ${sessionId} completed successfully`);
+            return res.json({ success: true, message: 'Login completed successfully' });
+        }
+
+        // Registration flow (Standardized)
+        // User has ALREADY completed apiService.passkeyRegisterComplete() on mobile
+        // We just need to receive the signal and user info to log the desktop in
+        const { userId, credentialId, deviceInfo } = req.body;
+
+        if (!userId) {
             return res.status(400).json({
                 success: false,
-                error: 'Credential data is required'
+                error: 'User ID is required for completion'
             });
         }
 
-        // Find or create user account
-        let userAccount = await UserAccount.findOne({ recovery_email: session.email });
-
+        // Find the user account that was just created/updated
+        const userAccount = await UserAccount.findOne({ user_id: userId });
         if (!userAccount) {
-            // Create new user account
-            const userId = uuidv4();
-            userAccount = new UserAccount({
-                user_id: userId,
-                recovery_email: session.email,
-                email_verified: true, // OTP was already verified
-                tier: 'layer_1',
-                created_at: new Date()
+            return res.status(404).json({
+                success: false,
+                error: 'User not found after registration'
             });
-            await userAccount.save();
-            console.log(`[PendingSession] Created new user account for ${session.email}`);
         }
 
-        // Create passkey credential
-        const passkeyCredential = new PasskeyCredential({
-            user_id: userAccount.user_id,
-            credential_id: credentialId,
-            credential_public_key: Buffer.from(publicKey, 'base64'),
-            counter: counter || 0,
-            device_type: deviceInfo?.deviceType || 'mobile',
-            device_name: deviceInfo?.deviceName || 'Mobile Device',
-            transports: transports || ['internal'],
-            backup_eligible: true,
-            backup_state: false,
-            is_primary: true,
-            created_at: new Date()
-        });
-
-        await passkeyCredential.save();
-        console.log(`[PendingSession] Created passkey for user ${userAccount.user_id}`);
+        console.log(`[PendingSession] Standard registration completed for user ${userAccount.user_id}`);
 
         // Create device session for desktop
         const desktopSessionId = uuidv4();
@@ -228,7 +244,7 @@ router.post('/:sessionId/complete', async (req, res) => {
         const deviceSession = new DeviceSession({
             session_id: desktopSessionId,
             user_id: userAccount.user_id,
-            credential_id: credentialId,
+            credential_id: credentialId || userAccount.active_passkey_id || 'mobile-handoff',
             session_token: desktopSessionToken,
             device_fingerprint: 'desktop-via-mobile-handoff',
             expires_at: sessionExpiresAt

@@ -71,7 +71,7 @@ class WebAuthnService {
                 authenticatorSelection: {
                     residentKey: 'preferred',
                     userVerification: 'preferred',
-                    authenticatorAttachment: 'platform',
+                    // Removed authenticatorAttachment: 'platform' to support legacy devices (USB keys, etc.)
                 },
                 supportedAlgorithmIDs: [-7, -257],
             });
@@ -235,6 +235,7 @@ class WebAuthnService {
     async generateAuthenticationOptions(userIdentifier = null) {
         try {
             let allowCredentials = [];
+            let deviceTypeHint = 'desktop';
 
             // If user identifier provided (email), get their credentials
             if (userIdentifier) {
@@ -243,20 +244,22 @@ class WebAuthnService {
                 });
 
                 if (userAccount) {
-                    const userCredentials = await PasskeyCredential.find({
+                    // Get device type hint for the primary passkey
+                    const primaryPasskey = await PasskeyCredential.findOne({
                         user_id: userAccount.user_id,
-                        revoked: false
+                        revoked: false,
+                        is_primary: true
                     });
 
+                    if (primaryPasskey) {
+                        deviceTypeHint = primaryPasskey.device_type;
+                    }
 
                     // For email-based auth, DON'T send allowCredentials to avoid conditional UI
                     // This forces the browser to use modal UI and directly prompt Touch ID
                     allowCredentials = [];
-                } else {
                 }
-            } else {
             }
-
 
             const finalAllowCredentials = allowCredentials.length > 0 ? allowCredentials : undefined;
 
@@ -266,7 +269,6 @@ class WebAuthnService {
                 userVerification: 'preferred',
                 rpID: this.rpID,
             });
-
 
             // Store challenge temporarily
             const challengeId = uuidv4();
@@ -281,6 +283,7 @@ class WebAuthnService {
             return {
                 challengeId,
                 options,
+                deviceType: deviceTypeHint,
                 expiresIn: this.timeout,
             };
 
@@ -480,7 +483,8 @@ class WebAuthnService {
 
             let verification;
             try {
-                // Try the v13 API format - maybe authenticator should be called credential
+                // Use standard v13 API format
+                // The library expects 'credential' object with id, publicKey, and counter
                 const verificationOptions = {
                     response: convertedResponse,
                     expectedChallenge: storedChallenge.challenge,
@@ -494,38 +498,17 @@ class WebAuthnService {
                     requireUserVerification: true,
                 };
 
-                console.log('🔍 Trying credential format:', {
-                    id: verificationOptions.credential.id,
-                    publicKey: verificationOptions.credential.publicKey,
+                console.log('🔍 Verifying with options:', {
+                    credentialId: verificationOptions.credential.id,
+                    publicKeyLength: verificationOptions.credential.publicKey?.length,
                     counter: verificationOptions.credential.counter
                 });
 
                 verification = await verifyAuthenticationResponse(verificationOptions);
                 console.log('✅ Authentication verification successful!');
             } catch (verificationError) {
-                console.log('❌ Credential format failed, trying authenticator format...');
-
-                // Fallback to authenticator format
-                try {
-                    verification = await verifyAuthenticationResponse({
-                        response: convertedResponse,
-                        expectedChallenge: storedChallenge.challenge,
-                        expectedOrigin: this.origin,
-                        expectedRPID: this.rpID,
-                        authenticator: authenticatorObj,
-                        requireUserVerification: true,
-                    });
-                    console.log('✅ Authentication verification successful with authenticator format!');
-                } catch (fallbackError) {
-                    console.error('❌ Both formats failed:', {
-                        credentialFormatError: verificationError.message,
-                        authenticatorFormatError: fallbackError.message,
-                        authenticatorCounter: authenticatorObj?.counter,
-                        authenticatorCredentialID: authenticatorObj?.credentialID,
-                        authenticatorPublicKey: authenticatorObj?.credentialPublicKey?.length
-                    });
-                    throw fallbackError;
-                }
+                console.error('❌ Authentication verification failed:', verificationError);
+                throw verificationError;
             }
 
             if (!verification.verified) {

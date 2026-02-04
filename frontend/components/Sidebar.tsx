@@ -22,9 +22,9 @@ const navItems = [
 export const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate }) => {
   const { user, logout } = useAuth();
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
     console.log('🚪 Logging out user...');
-    logout();
+    await logout();
     // Navigation back to onboarding will be handled by App.tsx useEffect
   };
 

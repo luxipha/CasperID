@@ -1,32 +1,31 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { apiService } from '../../services/api';
+import { useAuth } from '../../contexts/AuthContext';
 
 interface MobilePasskeyHandoffProps {
     email: string;
+    type?: 'registration' | 'login';
     onComplete: (sessionData: {
         sessionToken: string;
         expiresAt: string;
         userAccount: any;
     }) => void;
     onBack: () => void;
+    onRefresh?: () => void;
 }
 
 /**
  * MobilePasskeyHandoff Component
  * 
  * Displays a QR code for users to scan with their mobile device
- * and register a passkey there instead of on the current desktop.
- * 
- * Flow:
- * 1. Creates a pending session linked to the user's verified email
- * 2. Displays QR code for mobile scanning
- * 3. Polls for completion
- * 4. Calls onComplete when mobile registration is done
+ * to complete passkey setup or login there instead of on the current desktop.
  */
 export const MobilePasskeyHandoff: React.FC<MobilePasskeyHandoffProps> = ({
     email,
+    type = 'registration',
     onComplete,
-    onBack
+    onBack,
+    onRefresh
 }) => {
     const [status, setStatus] = useState<'initializing' | 'waiting' | 'success' | 'error' | 'expired'>('initializing');
     const [qrCodeUrl, setQrCodeUrl] = useState<string>('');
@@ -35,13 +34,28 @@ export const MobilePasskeyHandoff: React.FC<MobilePasskeyHandoffProps> = ({
     const [expiresAt, setExpiresAt] = useState<number>(0);
     const [timeLeft, setTimeLeft] = useState<number>(300);
 
+    // Guard against React StrictMode double-mounting
+    const hasInitialized = useRef(false);
+
+    // Get refreshUser from AuthContext to sync auth state
+    const { refreshUser } = useAuth();
+
+    const isLogin = type === 'login';
+
     // Initialize pending session
     const initSession = useCallback(async () => {
+        // Prevent duplicate session creation (React StrictMode double-mount)
+        if (hasInitialized.current && status !== 'expired' && status !== 'error') {
+            return;
+        }
+        hasInitialized.current = true;
+
+
         try {
             setStatus('initializing');
             setError('');
 
-            const response = await apiService.createPendingSession(email);
+            const response = await apiService.createPendingSession(email, type);
 
             if (response.success && response.qrCode) {
                 setQrCodeUrl(response.qrCode.dataURL);
@@ -56,8 +70,9 @@ export const MobilePasskeyHandoff: React.FC<MobilePasskeyHandoffProps> = ({
             console.error('[MobileHandoff] Init error:', err);
             setError(err.message || 'Failed to initialize mobile handoff');
             setStatus('error');
+            hasInitialized.current = false; // Allow retry on error
         }
-    }, [email]);
+    }, [email, type, status]);
 
     useEffect(() => {
         initSession();
@@ -101,6 +116,10 @@ export const MobilePasskeyHandoff: React.FC<MobilePasskeyHandoffProps> = ({
                             });
                         }
 
+                        // CRITICAL: Refresh auth state BEFORE notifying parent
+                        // This ensures isAuthenticated=true when view changes
+                        await refreshUser();
+
                         // Notify parent after brief success animation
                         setTimeout(() => {
                             onComplete({
@@ -120,7 +139,7 @@ export const MobilePasskeyHandoff: React.FC<MobilePasskeyHandoffProps> = ({
         }, 2000);
 
         return () => clearInterval(pollInterval);
-    }, [status, sessionId, onComplete]);
+    }, [status, sessionId, onComplete, refreshUser]);
 
     const formatTime = (seconds: number) => {
         const minutes = Math.floor(seconds / 60);
@@ -202,24 +221,26 @@ export const MobilePasskeyHandoff: React.FC<MobilePasskeyHandoffProps> = ({
             {/* Header */}
             <div className="text-center space-y-2">
                 <h3 className="text-2xl font-black text-text-main">
-                    Scan with your phone
+                    {isLogin ? 'Sign in with your phone' : 'Scan with your phone'}
                 </h3>
                 <p className="text-text-sub">
-                    Open your camera app and scan the QR code to continue setup on your mobile device.
+                    {isLogin
+                        ? 'Open your camera app and scan the QR code to verify your identity on mobile.'
+                        : 'Open your camera app and scan the QR code to continue setup on your mobile device.'}
                 </p>
             </div>
 
             {/* QR Code Container */}
             <div className={`relative p-8 bg-white rounded-3xl border-2 transition-all duration-500 ${status === 'success'
-                    ? 'border-green-400 shadow-lg shadow-green-100'
-                    : 'border-gray-100 shadow-lg'
+                ? 'border-green-400 shadow-lg shadow-green-100'
+                : 'border-gray-100 shadow-lg'
                 }`}>
                 {/* QR Code */}
                 <div className={`transition-all duration-500 ${status === 'success' ? 'opacity-20 blur-sm' : 'opacity-100'
                     }`}>
                     <img
                         src={qrCodeUrl}
-                        alt="Scan to register passkey"
+                        alt={isLogin ? "Scan to login" : "Scan to register passkey"}
                         className="size-64 object-contain"
                     />
                 </div>
@@ -231,7 +252,7 @@ export const MobilePasskeyHandoff: React.FC<MobilePasskeyHandoffProps> = ({
                             <span className="material-symbols-outlined text-[40px]">check</span>
                         </div>
                         <p className="text-green-600 font-black text-sm uppercase tracking-widest">
-                            Passkey Registered
+                            {isLogin ? 'Successfully Verified' : 'Passkey Registered'}
                         </p>
                     </div>
                 )}
@@ -267,7 +288,7 @@ export const MobilePasskeyHandoff: React.FC<MobilePasskeyHandoffProps> = ({
                         3
                     </div>
                     <p className="text-sm text-text-sub">
-                        Use <strong className="text-text-main">Face ID</strong> or <strong className="text-text-main">Touch ID</strong> to create your passkey
+                        Use <strong className="text-text-main">Face ID</strong> {isLogin ? 'to sign in' : 'to create your passkey'}
                     </p>
                 </div>
             </div>

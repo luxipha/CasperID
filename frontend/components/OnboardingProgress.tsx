@@ -16,46 +16,46 @@ export const OnboardingProgress: React.FC<OnboardingProgressProps> = ({ email, o
 
   // Use a ref to track wallet readiness across the interval closure
   const walletReadyRef = React.useRef(false);
+  const hasCompletedRef = React.useRef(false);
 
   useEffect(() => {
-    let walletCreated = false;
-    let securitySetupCompleted = false;
-
     const interval = setInterval(() => {
       setProgress(prev => {
         if (prev >= 100) {
           clearInterval(interval);
-          setTimeout(onComplete, 1000);
           return 100;
         }
-
-        const next = prev + 1.2; // Speed controlled by the decimal
-
-        // Update steps based on progress
-        if (next < 35) {
-          setStep(0);
-        } else if (next < 75) {
-          setStep(1);
-          // Trigger wallet generation at 35% progress
-          if (!walletCreated && next >= 35) {
-            walletCreated = true;
-            generateWallet();
-          }
-        } else {
-          setStep(2);
-          // Trigger DID minting ONLY if wallet is ready (prevents race condition)
-          if (!securitySetupCompleted && next >= 75 && walletReadyRef.current) {
-            securitySetupCompleted = true;
-            setupSecurityAndMintDID();
-          }
-        }
-
-        return next;
+        return Math.min(prev + 1.2, 100);
       });
     }, 50);
 
     return () => clearInterval(interval);
-  }, [onComplete]);
+  }, []);
+  // Separate Effect to handle milestones & side effects
+  useEffect(() => {
+    // 0. Update Steps based on progress
+    if (progress < 35) setStep(0);
+    else if (progress < 75) setStep(1);
+    else setStep(2);
+
+    // 1. Trigger wallet generation at 35%
+    if (progress >= 35 && !walletGenerated) {
+      setWalletGenerated(true);
+      generateWallet();
+    }
+
+    // 2. Trigger DID minting at 75% (requires wallet)
+    if (progress >= 75 && walletReadyRef.current && !didMinted) {
+      setDidMinted(true);
+      setupSecurityAndMintDID();
+    }
+
+    // 3. Completion at 100%
+    if (progress >= 100 && !hasCompletedRef.current) {
+      hasCompletedRef.current = true;
+      onComplete();
+    }
+  }, [progress, walletGenerated, didMinted, onComplete]);
 
 
   const generateWallet = async () => {

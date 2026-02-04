@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import { apiService } from '../../services/api';
+import { useAuth } from '../../contexts/AuthContext';
+import Logo from '../Logo';
 
 // Utility function to convert ArrayBuffer to base64url
 function arrayBufferToBase64url(buffer: ArrayBuffer): string {
@@ -35,19 +37,19 @@ function base64urlToArrayBuffer(base64url: string): ArrayBuffer {
 interface SessionData {
     email: string;
     expiresAt: number;
+    type?: 'casperid_mobile_register' | 'casperid_mobile_login';
 }
 
 /**
  * MobilePasskeyCapture Component
  * 
  * Mobile-only page accessed via QR code scan.
- * Allows users to register a passkey on their mobile device
- * to complete desktop registration.
- * 
- * URL: /mobile/register/:sessionId
+ * Allows users to register or login a passkey on their mobile device
+ * to complete desktop setup/login.
  */
 export const MobilePasskeyCapture: React.FC = () => {
     const { sessionId } = useParams<{ sessionId: string }>();
+    const { login } = useAuth(); // Access login from AuthContext
 
     const [status, setStatus] = useState<'loading' | 'ready' | 'registering' | 'success' | 'error' | 'expired'>('loading');
     const [sessionData, setSessionData] = useState<SessionData | null>(null);
@@ -59,6 +61,9 @@ export const MobilePasskeyCapture: React.FC = () => {
         const path = window.location.pathname;
         if (path.startsWith('/mobile/register/')) {
             return path.replace('/mobile/register/', '');
+        }
+        if (path.startsWith('/mobile/login/')) {
+            return path.replace('/mobile/login/', '');
         }
         return null;
     };
@@ -74,10 +79,40 @@ export const MobilePasskeyCapture: React.FC = () => {
             }
 
             try {
+                // First, try to parse data from URL query param (embedded in QR code)
+                const urlParams = new URLSearchParams(window.location.search);
+                const dataParam = urlParams.get('data');
+
+                if (dataParam) {
+                    try {
+                        const parsedData = JSON.parse(decodeURIComponent(dataParam));
+                        if ((parsedData.type === 'casperid_mobile_register' || parsedData.type === 'casperid_mobile_login') && parsedData.email) {
+                            // Check if expired
+                            if (Date.now() > parsedData.expiresAt) {
+                                setStatus('expired');
+                                return;
+                            }
+                            setSessionData({
+                                email: parsedData.email,
+                                expiresAt: parsedData.expiresAt,
+                                type: parsedData.type
+                            });
+                            setStatus('ready');
+                            return;
+                        }
+                    } catch (parseErr) {
+                        console.warn('[MobileCapture] Failed to parse data param, falling back to API');
+                    }
+                }
+
+                // Fallback: fetch from API
                 const response = await apiService.getPendingSession(sid);
 
                 if (response.success && response.session) {
-                    setSessionData(response.session);
+                    setSessionData({
+                        ...response.session,
+                        type: response.session.type === 'login' ? 'casperid_mobile_login' : 'casperid_mobile_register'
+                    });
                     setStatus('ready');
                 } else {
                     throw new Error(response.error || 'Session not found');
@@ -96,79 +131,128 @@ export const MobilePasskeyCapture: React.FC = () => {
         fetchSession();
     }, [sessionId]);
 
-    // Handle passkey registration using native WebAuthn API
-    const handleRegister = async () => {
+    // Handle passkey action (register or login) using native WebAuthn API
+    const handleAction = async () => {
         const sid = getSessionId();
         if (!sid || !sessionData) return;
 
         setStatus('registering');
 
         try {
-            // Get WebAuthn registration options from server
-            const optionsResponse = await apiService.passkeyRegisterInit(
-                sessionData.email,
-                'CasperID User',
-                false
-            );
+            if (sessionData.type === 'casperid_mobile_login') {
+                // Login flow using AuthContext
+                const result = await login(sessionData.email);
 
-            if (!optionsResponse.success || !optionsResponse.options) {
-                throw new Error('Failed to get registration options');
-            }
+                if (result.success && result.user) {
+                    const tokens = apiService.getTokens();
+                    const userAccount = result.user;
 
-            const options = optionsResponse.options;
+                    if (!tokens) {
+                        throw new Error('Failed to retrieve session tokens');
+                    }
 
-            // Convert base64url to ArrayBuffer for WebAuthn API
-            const challenge = base64urlToArrayBuffer(options.challenge);
+                    const completeResponse = await apiService.completePendingSession(sid, {
+                        userId: userAccount.user_id,
+                        sessionToken: tokens.sessionToken,
+                        expiresAt: new Date(tokens.expiresAt).toISOString(),
+                        userAccount: userAccount
+                    });
 
-            const publicKeyCredentialCreationOptions: CredentialCreationOptions = {
-                publicKey: {
-                    ...options,
-                    challenge,
-                    user: {
-                        ...options.user,
-                        id: base64urlToArrayBuffer(options.user.id),
-                    },
-                },
-            };
-
-            // Create credential using native WebAuthn API
-            const credential = await navigator.credentials.create(publicKeyCredentialCreationOptions) as PublicKeyCredential;
-
-            if (!credential) {
-                throw new Error('Failed to create credential');
-            }
-
-            const response = credential.response as AuthenticatorAttestationResponse;
-
-            // Format credential for backend
-            const formattedCredential = {
-                id: credential.id,
-                rawId: arrayBufferToBase64url(credential.rawId),
-                type: credential.type,
-                clientExtensionResults: {},
-                response: {
-                    attestationObject: arrayBufferToBase64url(response.attestationObject),
-                    clientDataJSON: arrayBufferToBase64url(response.clientDataJSON),
-                },
-            };
-
-            // Complete the pending session with credential data
-            const completeResponse = await apiService.completePendingSession(sid, {
-                credentialId: credential.id,
-                publicKey: arrayBufferToBase64url(response.getPublicKey?.() || new ArrayBuffer(0)),
-                counter: 0,
-                transports: response.getTransports?.() || ['internal'],
-                deviceInfo: {
-                    deviceType: 'mobile',
-                    deviceName: getMobileDeviceName(),
-                    userAgent: navigator.userAgent
+                    if (completeResponse.success) {
+                        setStatus('success');
+                    } else {
+                        throw new Error(completeResponse.error || 'Failed to sync with desktop');
+                    }
+                } else {
+                    throw new Error('Authentication failed');
                 }
-            });
-
-            if (completeResponse.success) {
-                setStatus('success');
             } else {
-                throw new Error(completeResponse.error || 'Registration failed');
+                // Registration flow
+                const optionsResponse = await apiService.passkeyRegisterInit(
+                    sessionData.email,
+                    'CasperID User',
+                    false
+                );
+
+                if (!optionsResponse.success || !optionsResponse.options) {
+                    throw new Error('Failed to get registration options');
+                }
+
+                // Store userId for the complete call
+                const userId = (optionsResponse as any).userId;
+                if (!userId) {
+                    throw new Error('No user ID received from registration init');
+                }
+
+                const options = optionsResponse.options;
+                const challenge = base64urlToArrayBuffer(options.challenge);
+
+                const publicKeyCredentialCreationOptions: CredentialCreationOptions = {
+                    publicKey: {
+                        ...options,
+                        challenge,
+                        user: {
+                            ...options.user,
+                            id: base64urlToArrayBuffer(options.user.id),
+                        },
+                    },
+                };
+
+                const credential = await navigator.credentials.create(publicKeyCredentialCreationOptions) as PublicKeyCredential;
+
+                if (!credential) {
+                    throw new Error('Failed to create credential');
+                }
+
+                const response = credential.response as AuthenticatorAttestationResponse;
+
+                // 1. Convert response to format expected by SimpleWebAuthn
+                const credentialResponse = {
+                    id: credential.id,
+                    rawId: arrayBufferToBase64url(credential.rawId),
+                    response: {
+                        attestationObject: arrayBufferToBase64url(response.attestationObject),
+                        clientDataJSON: arrayBufferToBase64url(response.clientDataJSON),
+                        transports: response.getTransports?.() || []
+                    },
+                    type: credential.type,
+                    clientExtensionResults: credential.getClientExtensionResults(),
+                    authenticatorAttachment: credential.authenticatorAttachment
+                };
+
+                // 2. Perform standard server-side verification/registration
+                // Include userId in the request payload!
+                const completeResponse = await apiService.passkeyRegisterComplete({
+                    userId,
+                    credential: credentialResponse,
+                    deviceInfo: {
+                        deviceType: 'mobile',
+                        deviceName: getMobileDeviceName(),
+                        userAgent: navigator.userAgent
+                    }
+                });
+
+                if (!completeResponse.success) {
+                    throw new Error(completeResponse.error || 'Server registration failed');
+                }
+
+                // 3. Signal desktop that registration is done
+                // We only need to send metadata, not the key itself
+                const handoffResponse = await apiService.completePendingSession(sid, {
+                    credentialId: credential.id,
+                    userId: completeResponse.userId, // returned from standard register complete
+                    deviceInfo: {
+                        deviceType: 'mobile',
+                        deviceName: getMobileDeviceName(),
+                        userAgent: navigator.userAgent
+                    }
+                });
+
+                if (handoffResponse.success) {
+                    setStatus('success');
+                } else {
+                    throw new Error(handoffResponse.error || 'Failed to sync with desktop');
+                }
             }
 
         } catch (err: any) {
@@ -241,16 +325,18 @@ export const MobilePasskeyCapture: React.FC = () => {
         return (
             <div className="min-h-screen bg-gradient-to-b from-green-50 to-white flex flex-col items-center justify-center p-6 text-center">
                 <div className="size-24 rounded-full bg-green-500 flex items-center justify-center mb-6 animate-in zoom-in duration-500">
-                    <span className="material-symbols-outlined text-white text-[48px]">check</span>
+                    <span className="material-symbols-outlined text-white text-[48px]">check_circle</span>
                 </div>
-                <h1 className="text-2xl font-black text-text-main mb-2">Passkey Created!</h1>
+                <h1 className="text-2xl font-black text-text-main mb-2">Setup Complete!</h1>
                 <p className="text-text-sub mb-8 max-w-xs">
-                    You can now close this page. Your desktop will log you in automatically.
+                    Your passkey has been safely created. You can now close this tab and return to your desktop.
                 </p>
-                <div className="flex items-center gap-2 text-green-600 font-bold text-sm">
-                    <span className="material-symbols-outlined text-lg animate-spin">sync</span>
-                    Syncing with desktop...
-                </div>
+                <button
+                    onClick={() => window.close()}
+                    className="w-full max-w-xs py-4 bg-primary text-white font-bold rounded-2xl shadow-lg active:scale-[0.98] transition-all"
+                >
+                    Done
+                </button>
             </div>
         );
     }
@@ -269,40 +355,40 @@ export const MobilePasskeyCapture: React.FC = () => {
     return (
         <div className="min-h-screen bg-gradient-to-b from-primary/5 to-white flex flex-col items-center justify-center p-6">
             {/* Logo */}
-            <div className="mb-8">
-                <div className="size-16 rounded-2xl bg-primary flex items-center justify-center">
-                    <span className="text-white font-black text-2xl">C</span>
-                </div>
+            <div className="mb-10">
+                <Logo showName={false} className="scale-150" />
             </div>
 
             {/* Content */}
             <div className="text-center mb-8">
                 <h1 className="text-2xl font-black text-text-main mb-2">
-                    Complete Your Setup
+                    {sessionData?.type === 'casperid_mobile_login' ? 'Confirm Sign In' : 'Complete Your Setup'}
                 </h1>
                 <p className="text-text-sub max-w-xs">
-                    Create a passkey for <strong className="text-text-main">{sessionData?.email}</strong> using Face ID or Touch ID.
+                    {sessionData?.type === 'casperid_mobile_login'
+                        ? <>Security check for <strong className="text-text-main">{sessionData?.email}</strong>. Use Face ID or Touch ID to verify.</>
+                        : <>Create a passkey for <strong className="text-text-main">{sessionData?.email}</strong> using Face ID or Touch ID.</>}
                 </p>
             </div>
 
-            {/* Register Button */}
+            {/* Action Button */}
             <button
-                onClick={handleRegister}
+                onClick={handleAction}
                 disabled={status === 'registering'}
                 className={`w-full max-w-xs py-4 rounded-2xl font-bold text-lg transition-all flex items-center justify-center gap-3 ${status === 'registering'
-                        ? 'bg-gray-100 text-text-sub'
-                        : 'bg-primary text-white hover:bg-primary/90 active:scale-[0.98]'
+                    ? 'bg-gray-100 text-text-sub'
+                    : 'bg-primary text-white hover:bg-primary/90 active:scale-[0.98]'
                     }`}
             >
                 {status === 'registering' ? (
                     <>
                         <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-current"></div>
-                        Registering...
+                        {sessionData?.type === 'casperid_mobile_login' ? 'Verifying...' : 'Registering...'}
                     </>
                 ) : (
                     <>
-                        <span className="material-symbols-outlined">fingerprint</span>
-                        Create Passkey
+                        <span className="material-symbols-outlined">{sessionData?.type === 'casperid_mobile_login' ? 'verified_user' : 'fingerprint'}</span>
+                        {sessionData?.type === 'casperid_mobile_login' ? 'Sign In Now' : 'Create Passkey'}
                     </>
                 )}
             </button>

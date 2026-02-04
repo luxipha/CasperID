@@ -59,6 +59,16 @@ const config: Config = {
           "alert": "#FF4D4D", // Coral Red
           disabled: "#33334D",
         },
+        // Business Platform (casper-b) Colors
+        business: {
+          primary: "#8651e1",
+          secondary: "#00F0FF",
+          "bg-light": "#F8F9FF",
+          "bg-dark": "#171220",
+          "border-muted": "#dfdce5",
+          "text-main": "#141217",
+          "text-muted": "#716586",
+        },
       },
       keyframes: {
         drift: {

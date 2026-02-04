@@ -26,7 +26,7 @@ export const PublicProfileContainer: React.FC<PublicProfileContainerProps> = ({ 
     const [volunteers, setVolunteers] = useState<Volunteer[]>([]);
 
     useEffect(() => {
-        if (walletOrUsername) {
+        if (walletOrUsername && walletOrUsername !== 'null' && walletOrUsername !== 'undefined') {
             loadProfile();
         }
     }, [walletOrUsername]);

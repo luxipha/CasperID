@@ -4,7 +4,6 @@ import { apiService } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 
 // Get network name from environment
-const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001';
 
 interface Notification {
   _id: string;
@@ -25,12 +24,8 @@ export const Header: React.FC = () => {
   // Check server status on mount
   useEffect(() => {
     const checkServer = async () => {
-      try {
-        const response = await fetch(`${apiUrl}/health`, { method: 'GET' });
-        setServerOnline(response.ok);
-      } catch {
-        setServerOnline(false);
-      }
+      const isOnline = await apiService.checkHealth();
+      setServerOnline(isOnline);
     };
     checkServer();
     const interval = setInterval(checkServer, 30000);
@@ -176,14 +171,16 @@ export const Header: React.FC = () => {
           )}
         </div>
 
-        {/* Add to Chrome button (muted/disabled) */}
-        <button
-          disabled
-          className="flex items-center gap-2 px-4 py-2 bg-gray-200 text-gray-400 rounded-xl font-semibold cursor-not-allowed"
+        {/* Add to Chrome Link */}
+        <a
+          href="https://chromewebstore.google.com/detail/oecccgmhmojgniechnclmffchodmdjmd?utm_source=item-share-cb"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-xl font-semibold hover:opacity-90 active:scale-95 transition-all shadow-md shadow-primary/20"
         >
           <span className="material-symbols-outlined text-[20px]">extension</span>
           <span className="text-sm">Add to Chrome</span>
-        </button>
+        </a>
       </div>
     </header>
   );

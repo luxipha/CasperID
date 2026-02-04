@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { RevokeModal } from './RevokeModal';
 import { apiService } from '../services/api';
+import { useAuth } from '../contexts/AuthContext';
 
 // Helper to map backend actions to UI labels
 const PERMISSION_MAP: Record<string, { label: string; sub: string; icon: string }> = {
@@ -16,6 +17,7 @@ const getPermissionDetails = (action: string) => {
 };
 
 export const DataControls: React.FC = () => {
+  const { user, isAuthenticated } = useAuth();
   const [apps, setApps] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [revokingApp, setRevokingApp] = useState<any | null>(null);
@@ -27,8 +29,12 @@ export const DataControls: React.FC = () => {
   });
 
   useEffect(() => {
-    fetchData();
-  }, []);
+    if (isAuthenticated && user) {
+      fetchData();
+    } else if (!isAuthenticated) {
+      setLoading(false);
+    }
+  }, [isAuthenticated, user]);
 
   const fetchData = async () => {
     try {

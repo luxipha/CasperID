@@ -1,7 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { RegisterCIDPromptModal } from './RegisterCidPromptModal';
 
 interface PostOnboardingBannerProps {
   onComplete?: () => void;
@@ -9,7 +8,6 @@ interface PostOnboardingBannerProps {
 
 export const PostOnboardingBanner: React.FC<PostOnboardingBannerProps> = ({ onComplete }) => {
   const [showBanner, setShowBanner] = useState(true);
-  const [showMetaMaskModal, setShowMetaMaskModal] = useState(false);
   const [progress, setProgress] = useState(0);
   const { user } = useAuth();
 
@@ -21,9 +19,9 @@ export const PostOnboardingBanner: React.FC<PostOnboardingBannerProps> = ({ onCo
       setProgress(prev => {
         if (prev >= 100) {
           clearInterval(interval);
-          // After progress completes, check MetaMask status
+          // After progress completes, mark as finished
           setTimeout(() => {
-            checkMetaMaskStatus();
+            completeBanner();
           }, 500);
           return 100;
         }
@@ -34,28 +32,9 @@ export const PostOnboardingBanner: React.FC<PostOnboardingBannerProps> = ({ onCo
     return () => clearInterval(interval);
   }, [showBanner]);
 
-  const checkMetaMaskStatus = () => {
-    if (!user?.metamask_connected) {
-      setShowMetaMaskModal(true);
-    } else {
-      completeBanner();
-    }
-  };
-
   const completeBanner = () => {
     setShowBanner(false);
     onComplete?.();
-  };
-
-  const handleMetaMaskConnect = () => {
-    // TODO: Implement MetaMask connection logic
-    setShowMetaMaskModal(false);
-    completeBanner();
-  };
-
-  const handleMetaMaskSkip = () => {
-    setShowMetaMaskModal(false);
-    completeBanner();
   };
 
   if (!showBanner) return null;
@@ -109,13 +88,6 @@ export const PostOnboardingBanner: React.FC<PostOnboardingBannerProps> = ({ onCo
           </div>
         )}
       </div>
-
-      {/* Register CID Prompt Modal */}
-      <RegisterCIDPromptModal
-        isOpen={showMetaMaskModal}
-        onClose={handleMetaMaskSkip}
-        onRegister={handleMetaMaskConnect}
-      />
     </>
   );
 };

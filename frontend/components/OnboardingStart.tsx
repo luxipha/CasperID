@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { MobilePasskeyHandoff } from './onboarding/MobilePasskeyHandoff';
+import Logo from './Logo';
 
 interface OnboardingStartProps {
   email: string; // Email verified from OTP flow
@@ -12,6 +13,32 @@ export const OnboardingStart: React.FC<OnboardingStartProps> = ({ email, onConti
   const { register, isLoading, error, clearError } = useAuth();
   const [isRegistering, setIsRegistering] = useState(false);
   const [showMobileHandoff, setShowMobileHandoff] = useState(false);
+  const [platformBiometricsAvailable, setPlatformBiometricsAvailable] = useState<boolean | null>(null);
+
+  // Check for platform biometric support (Face ID, Touch ID, Windows Hello)
+  React.useEffect(() => {
+    const checkBiometrics = async () => {
+      if (window.PublicKeyCredential &&
+        PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable) {
+        try {
+          const available = await PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable();
+          setPlatformBiometricsAvailable(available);
+
+          // Trigger friendly Casper bot message if legacy
+          if (available === false && (window as any).$crisp) {
+            (window as any).$crisp.push(["do", "chat:open"]);
+            (window as any).$crisp.push(["do", "message:show", ["text", "Hey there! Casper here. 👻 I noticed your device doesn't have a biometric scanner (Face ID/Fingerprint). No worries! You can use your phone to secure your account. Just click 'Use my phone instead' and I'll help you sync up! 📱"]]);
+          }
+        } catch (err) {
+          console.error('Error checking biometrics:', err);
+          setPlatformBiometricsAvailable(false);
+        }
+      } else {
+        setPlatformBiometricsAvailable(false);
+      }
+    };
+    checkBiometrics();
+  }, []);
 
   const handleCreatePasskey = async () => {
     try {
@@ -46,8 +73,9 @@ export const OnboardingStart: React.FC<OnboardingStartProps> = ({ email, onConti
         <div className="w-full max-w-[540px] bg-white rounded-[44px] border border-gray-100 shadow-[0_40px_80px_-20px_rgba(134,82,226,0.12)] overflow-hidden">
           <MobilePasskeyHandoff
             email={email}
-            onComplete={(sessionData) => {
-              // Session is already set in API service, move to next step
+            onComplete={async () => {
+              // For REGISTRATION: wallet minting happens async in the background
+              // Go through onboarding-progress which shows minting progress and waits for wallet
               onContinue(email);
             }}
             onBack={() => setShowMobileHandoff(false)}
@@ -82,11 +110,12 @@ export const OnboardingStart: React.FC<OnboardingStartProps> = ({ email, onConti
             {/* Biometric Icon */}
             <div className="relative">
               <div className={`size-28 rounded-3xl bg-primary flex items-center justify-center text-white shadow-2xl transition-transform duration-500 ${isRegistering ? 'scale-110 shadow-primary/40' : ''}`}>
-                {isRegistering ? (
-                  <img src="/logos/logo.svg" alt="Registering" className="w-14 h-14 animate-pulse" />
-                ) : (
-                  <span className="material-symbols-outlined text-[56px]">lock</span>
-                )}
+                <Logo
+                  showName={false}
+                  className={`scale-150 ${isRegistering ? 'animate-pulse' : ''}`}
+                  variant="svg"
+                  href={null as any}
+                />
               </div>
               {isRegistering && (
                 <div className="absolute inset-0 rounded-3xl border-4 border-primary/20 animate-ping"></div>
@@ -128,8 +157,11 @@ export const OnboardingStart: React.FC<OnboardingStartProps> = ({ email, onConti
             <div className="w-full space-y-4">
               <button
                 onClick={handleCreatePasskey}
-                disabled={isRegistering || isLoading}
-                className="w-full h-16 bg-primary text-white rounded-2xl font-black text-lg flex items-center justify-center gap-3 shadow-xl shadow-primary/30 hover:bg-primary/90 transition-all active:scale-[0.98] disabled:opacity-50"
+                disabled={isRegistering || isLoading || platformBiometricsAvailable === false}
+                className={`w-full h-16 rounded-2xl font-black text-lg flex items-center justify-center gap-3 shadow-xl transition-all active:scale-[0.98] disabled:opacity-30 disabled:grayscale ${platformBiometricsAvailable === false
+                  ? 'bg-gray-200 text-gray-400 shadow-none border border-gray-100'
+                  : 'bg-primary text-white shadow-primary/30 hover:bg-primary/90'
+                  }`}
               >
                 {isRegistering || isLoading ? (
                   <>
@@ -148,7 +180,10 @@ export const OnboardingStart: React.FC<OnboardingStartProps> = ({ email, onConti
               <button
                 onClick={() => setShowMobileHandoff(true)}
                 disabled={isRegistering || isLoading}
-                className="w-full h-14 bg-gray-50 text-text-main rounded-2xl font-bold text-base flex items-center justify-center gap-3 border border-gray-200 hover:bg-gray-100 transition-all active:scale-[0.98] disabled:opacity-50"
+                className={`w-full h-14 rounded-2xl font-bold text-base flex items-center justify-center gap-3 border transition-all active:scale-[0.98] disabled:opacity-50 ${platformBiometricsAvailable === false
+                  ? 'bg-primary/5 border-primary/20 text-primary shadow-lg shadow-primary/5 animate-pulse ring-2 ring-primary/10'
+                  : 'bg-gray-50 text-text-main border-gray-200 hover:bg-gray-100'
+                  }`}
               >
                 <span className="material-symbols-outlined text-primary">smartphone</span>
                 Use my phone instead
