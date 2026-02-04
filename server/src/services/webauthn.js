@@ -27,7 +27,19 @@ class WebAuthnService {
     constructor() {
         this.rpID = process.env.WEBAUTHN_RP_ID || 'localhost';
         this.rpName = process.env.WEBAUTHN_RP_NAME || 'CasperID';
-        this.origin = process.env.WEBAUTHN_ORIGIN || 'http://localhost:3000';
+
+        // Support multiple origins (comma-separated or single)
+        const baseOrigin = process.env.WEBAUTHN_ORIGIN || 'http://localhost:3000';
+        this.origins = baseOrigin.split(',').map(o => o.trim());
+
+        // Automatically add 'www' counterpart if it's a production domain and not already present
+        if (this.origins.some(o => o.includes('casperid.com')) && !this.origins.some(o => o.includes('www.casperid.com'))) {
+            this.origins.push('https://www.casperid.com');
+        }
+        if (this.origins.some(o => o.includes('www.casperid.com')) && !this.origins.some(o => o === 'https://casperid.com')) {
+            this.origins.push('https://casperid.com');
+        }
+
         this.timeout = parseInt(process.env.WEBAUTHN_CHALLENGE_TIMEOUT) || 60000;
 
         // Temporary storage for registration/authentication challenges
@@ -114,7 +126,7 @@ class WebAuthnService {
             const verification = await verifyRegistrationResponse({
                 response: registrationResponse,
                 expectedChallenge: storedChallenge.challenge,
-                expectedOrigin: this.origin,
+                expectedOrigin: this.origins,
                 expectedRPID: this.rpID,
                 requireUserVerification: true,
             });
@@ -393,7 +405,7 @@ class WebAuthnService {
                 responseType: typeof authenticationResponse,
                 responseKeys: Object.keys(authenticationResponse),
                 challengeType: typeof storedChallenge.challenge,
-                origin: this.origin,
+                origins: this.origins,
                 rpID: this.rpID
             });
 
@@ -473,7 +485,7 @@ class WebAuthnService {
 
             console.log('🔍 About to call verifyAuthenticationResponse with:');
             console.log('   expectedChallenge:', storedChallenge.challenge);
-            console.log('   expectedOrigin:', this.origin);
+            console.log('   expectedOrigins:', this.origins);
             console.log('   expectedRPID:', this.rpID);
             console.log('   authenticator:', {
                 credentialID: authenticatorObj.credentialID,
@@ -488,7 +500,7 @@ class WebAuthnService {
                 const verificationOptions = {
                     response: convertedResponse,
                     expectedChallenge: storedChallenge.challenge,
-                    expectedOrigin: this.origin,
+                    expectedOrigin: this.origins,
                     expectedRPID: this.rpID,
                     credential: {
                         id: authenticatorObj.credentialID,
