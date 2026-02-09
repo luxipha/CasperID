@@ -1,0 +1,128 @@
+[
+  {
+    "version": "2.1.0",
+    "title": "Identity & Branding",
+    "date": "February 2026",
+    "status": "Active Version",
+    "highlight": {
+      "title": "The Brand Refinement",
+      "description": "Unified styling, mobile handoff integration, and enhanced passkey security.",
+      "type": "folder"
+    },
+    "summary": "This release focuses on aligning the visual identity across the landing page and dashboard while hardening the WebAuthn security layer.",
+    "categories": [
+      {
+        "id": "v210-imp",
+        "title": "Improvements",
+        "items": [
+          "Complete redesign of the Changelog page with brand-consistent typography and icons.",
+          "Integrated mobile liveness handoff for enhanced biometric verification.",
+          "Enhanced typewriter animations and scroll effects for a premium landing experience."
+        ]
+      },
+      {
+        "id": "v210-fix",
+        "title": "Fixes",
+        "items": [
+          "sitemap issues",
+          "media pipe issues",
+          "base directory issue",
+          "image path",
+          "avatar file",
+          "issue with optimization",
+          "force Docker rebuild without cache to resolve dependency issues",
+          "force Docker rebuild without cache to resolve dependency issuesl",
+          "force Docker rebuild without cache to resolve dependency issues2",
+          "remove PORT env var - Cloud Run sets this automatically",
+          "remove PORT env var - Cloud Run sets this automatically frontend",
+          "Add casperid.com to CORS allowed origins",
+          "Add Web Crypto API polyfill for Alpine Linux",
+          "Use apiService for identity-status endpoint calls",
+          "Add /api prefix to identity-status endpoint calls",
+          "Import apiService in KYCHome component",
+          "Replace fetch with apiService in liveness components",
+          "FormData upload for liveness verification",
+          "add vercel.json for SPA routing",
+          "QR code now embeds URL for mobile scanning",
+          "Resolved WebAuthn origin mismatch issue affecting registration across subdomains.",
+          "Corrected text contrast and background gradients for improved accessibility."
+        ]
+      },
+      {
+        "id": "v210-pat",
+        "title": "Patches",
+        "items": [
+          "Internal dependency updates to resolve React compatibility issues."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "2.0.0",
+    "title": "Core Infrastructure",
+    "date": "December 2025",
+    "status": "Product Milestone",
+    "summary": "Stable release featuring the complete scanning engine and automated deployment pipelines.",
+    "categories": [
+      {
+        "id": "v200-imp",
+        "title": "Improvements",
+        "items": [
+          "Implemented real-time screen and card scanner engines.",
+          "Integrated Gemini AI for intelligent parsing of identification documents.",
+          "Enhanced landing page with high-quality assets and pictures."
+        ]
+      },
+      {
+        "id": "v200-fix",
+        "title": "Fixes",
+        "items": [
+          "Resolved critical JWT validation issues for secure user sessions.",
+          "Fixed npm web3 storage and sitemap generation errors.",
+          "Resolved media pipe and navigator compatibility issues in Chrome."
+        ]
+      },
+      {
+        "id": "v200-pat",
+        "title": "Patches",
+        "items": [
+          "Added Docker configurations for Google Cloud Run deployment.",
+          "Setup Railway deployment and CICD pipelines for rapid iteration.",
+          "Automated Netlify environment configuration.",
+          "Optimized image assets and removed obsolete configuration files."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "1.0.0",
+    "title": "Project Genesis",
+    "date": "November 2025",
+    "status": "Initial Launch",
+    "summary": "Initial architecture setup, base component library, and community blog integration.",
+    "categories": [
+      {
+        "id": "v100-imp",
+        "title": "Improvements",
+        "items": [
+          "Established the CasperID project architecture and repository structure.",
+          "Integrated the initial Blog section and landing page wireframes."
+        ]
+      },
+      {
+        "id": "v100-fix",
+        "title": "Fixes",
+        "items": [
+          "Resolved initial routing and component loading issues."
+        ]
+      },
+      {
+        "id": "v100-pat",
+        "title": "Patches",
+        "items": [
+          "Setup basic ESLint and Prettier configurations for code consistency."
+        ]
+      }
+    ]
+  }
+]

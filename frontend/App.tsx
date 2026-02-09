@@ -49,6 +49,7 @@ import { useAuth } from './contexts/AuthContext';
 // ApiTest removed - was for debugging
 // import { ApiTest } from './components/ApiTest';
 import LandingPage from './components/landing/LandingPage';
+import ChangelogPage from './components/landing/casperos/changelog';
 import AdminPage from './admin/page';
 
 const App: React.FC = () => {
@@ -502,6 +503,7 @@ const App: React.FC = () => {
         <Route path="/" element={<LandingPage />} />
         <Route path="/casperos" element={<LandingPage initialView="casperos" />} />
         <Route path="/admin" element={<AdminPage />} />
+        <Route path="/changelog" element={<ChangelogPage />} />
         <Route path="/business/*" element={<BusinessPlatform />} />
 
         {/* Dashboard Route - must be before /:slug catch-all */}
