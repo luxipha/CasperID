@@ -216,10 +216,6 @@ We welcome contributions! Please see our [Contributing Guidelines](CONTRIBUTING.
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
-## 🏆 Hackathon Submissions
-
-- **Datadog Challenge**: Innovative LLM observability with Gemini integration
-- **Google Cloud**: AI-powered identity verification using Vertex AI/Gemini
 
 ## 📞 Support
 
