@@ -37,6 +37,7 @@ class ApiService {
       withCredentials: true,
       headers: {
         'Content-Type': 'application/json',
+        'ngrok-skip-browser-warning': 'true', // Bypass ngrok warning page for API calls
       },
     });
 

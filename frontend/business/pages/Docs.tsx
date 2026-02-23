@@ -1,57 +1,162 @@
-
 import React, { useState } from 'react';
 
-type DocSection = 'Quickstart' | 'Architecture Overview' | 'Javascript / Node.js' | 'React Hooks' | 'Python' | 'Go' | 'Authentication' | 'Identity Verifications' | 'Webhooks API' | 'Onboarding with Web3' | 'KYC Compliance Flow';
+type DocSection = 'Quickstart' | 'Registration Flow' | 'Authentication Flow' | 'User Profile' | 'Token Verification' | 'Webhooks';
 
 const Docs: React.FC = () => {
   const [activeDoc, setActiveDoc] = useState<DocSection>('Quickstart');
 
-  const docContent: Record<DocSection, { title: string; description: string; code?: string; filename?: string }> = {
+  const docContent: Record<DocSection, { title: string; description: string; code?: string; filename?: string; endpoints?: Array<{ method: string; path: string; desc: string }> }> = {
     'Quickstart': {
       title: 'Quickstart Guide',
-      description: 'Get up and running with CasperID in less than 5 minutes. This guide covers the basic setup and your first verification flow.',
-      filename: 'quickstart.js',
-      code: `import { CasperID } from '@casperid/business-sdk';\n\nconst client = new CasperID({\n  apiKey: 'sk_test_51...',\n  environment: 'sandbox'\n});`
+      description: 'Get up and running with CasperID Business Platform. This guide covers the basic setup to start accepting passkey logins in your application.',
+      filename: 'integration-steps.md',
+      code: `// 1. Get your credentials from the Dashboard
+const APP_ID = 'app_...';
+const API_SECRET = 'sk_...';
+
+// 2. Add headers to your API calls
+const headers = {
+  'Content-Type': 'application/json',
+  'X-App-ID': APP_ID,
+  'X-Api-Secret': API_SECRET
+};
+
+// 3. Trigger registration (see Registration Flow)`
     },
-    'Architecture Overview': {
-      title: 'Architecture Overview',
-      description: 'CasperID uses a decentralized identity framework. Our platform acts as an abstraction layer between your app and the blockchain.',
-      code: `// The B-Platform handles the complex zero-knowledge proof generation\n// and returns simple verification results to your backend.`
+    'Registration Flow': {
+      title: 'Passkey Registration',
+      description: 'Register a new user with a passkey. This is a two-step process: Begin (get options) -> Finish (verify credential).',
+      filename: 'register.js',
+      code: `// Step 1: Start Registration
+const beginRes = await fetch('/api/passkey/register/begin', {
+  method: 'POST',
+  headers,
+  body: JSON.stringify({ email: 'user@example.com', name: 'John Doe' })
+});
+const { options } = await beginRes.json();
+
+// Step 2: Create Credential (client-side)
+// Use simplewebauthn/browser or navigator.credentials.create()
+const credential = await navigator.credentials.create({ publicKey: options });
+
+// Step 3: Finish Registration
+const finishRes = await fetch('/api/passkey/register/finish', {
+  method: 'POST',
+  headers,
+  body: JSON.stringify({
+    userId: options.user.id,
+    credential,
+    deviceInfo: { deviceType: 'desktop', os: 'mac' }
+  })
+});
+const { business_token } = await finishRes.json();
+// Store business_token for future requests!`
     },
-    'Javascript / Node.js': {
-      title: 'Javascript SDK',
-      description: 'The official Javascript/Typescript library for CasperID. Perfect for both frontend and backend integrations.',
-      filename: 'npm-install.sh',
-      code: `npm install @casperid/business-sdk`
+    'Authentication Flow': {
+      title: 'Passkey Authentication',
+      description: 'Log in an existing user. Similar to registration, this is a two-step process: Begin (get challenge) -> Finish (verify signature).',
+      filename: 'login.js',
+      code: `// Step 1: Start Auth
+const beginRes = await fetch('/api/passkey/auth/begin', {
+  method: 'POST',
+  headers,
+  body: JSON.stringify({ email: 'user@example.com' })
+});
+const { options, challengeId } = await beginRes.json();
+
+// Step 2: Get Assertion (client-side)
+const credential = await navigator.credentials.get({ publicKey: options });
+
+// Step 3: Finish Auth
+const finishRes = await fetch('/api/passkey/auth/finish', {
+  method: 'POST',
+  headers,
+  body: JSON.stringify({ challengeId, credential, deviceInfo: { ... } })
+});
+const { business_token } = await finishRes.json();`
     },
-    'React Hooks': {
-      title: 'React Hooks Library',
-      description: 'Ready-to-use React hooks for managing verification states and UI components.',
-      filename: 'App.tsx',
-      code: `const { verify, status } = useCasperID();\n\nreturn <button onClick={verify}>Verify Identity</button>;`
+    'User Profile': {
+      title: 'Get User Profile',
+      description: 'Retrieve the authenticated user\'s profile using the business_token obtained during login.',
+      filename: 'get-profile.sh',
+      code: `curl -X GET https://casperid.com/api/passkey/me \\
+  -H "Authorization: Bearer <business_token>"
+
+# Response:
+# {
+#   "success": true,
+#   "profile": {
+#     "user_id": "user_...",
+#     "verified": true,
+#     "tier": "layer_1",
+#     "email": "user@example.com"  // Only if sharedData includes 'email'
+#   },
+#   "scoped_to_app": "app_...",
+#   "token_type": "business"
+# }`
     },
-    'Authentication': {
-      title: 'Authentication API',
-      description: 'Securely authenticate users using their CasperID credentials without ever storing sensitive data.',
-      code: `GET /v1/auth/session`
+    'Token Verification': {
+      title: 'Verify Tokens (JWKS)',
+      description: 'Verify the RS256 business_token on your backend using our JWKS endpoint. You do NOT need to call our API to verify tokens.',
+      filename: 'verify-token.js',
+      code: `const jwt = require('jsonwebtoken');
+const jwksClient = require('jwks-rsa');
+
+const client = jwksClient({
+  jwksUri: 'https://casperid.com/.well-known/jwks.json'
+});
+
+function getKey(header, callback) {
+  client.getSigningKey(header.kid, function(err, key) {
+    const signingKey = key.getPublicKey();
+    callback(null, signingKey);
+  });
+}
+
+jwt.verify(business_token, getKey, { algorithms: ['RS256'] }, (err, decoded) => {
+  if (err) console.error('Token invalid');
+  else console.log('User ID:', decoded.sub);
+});`
     },
-    'Identity Verifications': {
-      title: 'Identity Verifications',
-      description: 'Configure and trigger deep identity checks including Liveness, Age, and Document verification.',
-      code: `client.verifications.create({\n  type: 'L2',\n  userId: 'user_99'\n});`
-    },
-    'Webhooks API': {
-      title: 'Webhooks API',
-      description: 'Subscribe to real-time events. We recommend verifying the signature on every payload.',
-      code: `// Example verification of webhook signature\nconst isValid = client.webhooks.verifySignature(payload, signature);`
-    },
-    'Python': { title: 'Python SDK', description: 'Integrate CasperID into your Python/Django/Flask applications.', code: 'pip install casperid-sdk' },
-    'Go': { title: 'Go Client', description: 'High-performance Go client for high-throughput verification needs.', code: 'go get github.com/casperid/sdk-go' },
-    'Onboarding with Web3': { title: 'Web3 Onboarding', description: 'Streamline the onboarding of wallet users with pre-verified identity proofs.' },
-    'KYC Compliance Flow': { title: 'KYC Compliance', description: 'Automated compliance flows for institutional requirements.' }
+    'Webhooks': {
+      title: 'Real-time Webhooks',
+      description: 'Subscribe to events like user.verified and kyc.completed to trigger workflows in your app. We sign every request so you can verify its authenticity.',
+      filename: 'verify-webhook.js',
+      code: `const crypto = require('crypto');
+const express = require('express');
+const app = express();
+
+// 1. Get your Signing Secret from the Dashboard
+const SIGNING_SECRET = 'whsec_...';
+
+app.post('/webhook', express.raw({type: 'application/json'}), (req, res) => {
+  const signature = req.headers['x-casperid-signature'];
+  const timestamp = signature.split(',')[0].split('=')[1];
+  const hash = signature.split(',')[1].split('=')[1];
+
+  // 2. Reconstruct the payload string
+  const payload = \`\${timestamp}.\${req.body.toString()}\`;
+
+  // 3. Calculate expected signature
+  const expected = crypto
+    .createHmac('sha256', SIGNING_SECRET)
+    .update(payload)
+    .digest('hex');
+
+  // 4. Compare (constant-time)
+  if (hash !== expected) {
+    return res.status(400).send('Invalid signature');
+  }
+
+  // 5. Process event
+  const event = JSON.parse(req.body);
+  console.log('Received event:', event.type);
+  res.send('Received');
+});`
+    }
   };
 
-  const activeContent = docContent[activeDoc];
+  const activeContent = docContent[activeDoc] || docContent['Quickstart'];
 
   return (
     <div className="flex h-full max-w-[1400px] mx-auto bg-white border border-border-muted rounded-2xl overflow-hidden shadow-sm">
@@ -59,21 +164,17 @@ const Docs: React.FC = () => {
         <div className="flex flex-col gap-8">
           {[
             {
-              title: 'Introduction',
-              items: ['Quickstart', 'Architecture Overview'],
+              title: 'Getting Started',
+              items: ['Quickstart'],
             },
             {
-              title: 'SDKs & Libraries',
-              items: ['Javascript / Node.js', 'React Hooks', 'Python', 'Go'],
+              title: 'Passkey API',
+              items: ['Registration Flow', 'Authentication Flow', 'User Profile'],
             },
             {
-              title: 'API Reference',
-              items: ['Authentication', 'Identity Verifications', 'Webhooks API'],
-            },
-            {
-              title: 'Tutorials',
-              items: ['Onboarding with Web3', 'KYC Compliance Flow'],
-            },
+              title: 'Backend Integration',
+              items: ['Token Verification', 'Webhooks'],
+            }
           ].map((section, idx) => (
             <div key={idx} className="flex flex-col gap-2">
               <h4 className="text-xs font-bold text-text-muted uppercase tracking-wider px-2">{section.title}</h4>
@@ -82,9 +183,8 @@ const Docs: React.FC = () => {
                   <button
                     key={item}
                     onClick={() => setActiveDoc(item as DocSection)}
-                    className={`flex items-center px-3 py-2 rounded-lg text-sm text-left transition-all ${
-                      activeDoc === item ? 'bg-primary text-white font-bold shadow-md shadow-primary/20' : 'text-text-main hover:bg-background-light font-medium'
-                    }`}
+                    className={`flex items-center px-3 py-2 rounded-lg text-sm text-left transition-all ${activeDoc === item ? 'bg-primary text-white font-bold shadow-md shadow-primary/20' : 'text-text-main hover:bg-background-light font-medium'
+                      }`}
                   >
                     {item}
                   </button>
@@ -102,13 +202,13 @@ const Docs: React.FC = () => {
               <h2 className="text-text-main text-4xl font-black tracking-tight">{activeContent.title}</h2>
               <p className="text-lg text-text-muted leading-relaxed">{activeContent.description}</p>
             </div>
-            
+
             <section className="prose prose-slate max-w-none animate-in fade-in slide-in-from-bottom-4 duration-500">
               {activeContent.code && (
                 <div className="flex flex-col gap-0 mb-8 group">
                   <div className="flex items-center justify-between bg-[#1e1e2e] rounded-t-xl px-4 py-3 border-b border-white/10">
-                    <span className="text-xs font-mono text-white/50">{activeContent.filename || 'code-snippet.ts'}</span>
-                    <button 
+                    <span className="text-xs font-mono text-white/50">{activeContent.filename || 'example.js'}</span>
+                    <button
                       onClick={() => navigator.clipboard.writeText(activeContent.code || '')}
                       className="text-white/30 hover:text-white transition-colors"
                     >
@@ -125,7 +225,8 @@ const Docs: React.FC = () => {
 
               <h3 className="text-2xl font-bold text-text-main mb-4">Implementation Details</h3>
               <p className="text-text-muted mb-6 leading-relaxed">
-                When implementing the {activeContent.title}, ensure your application handles both synchronous and asynchronous callbacks correctly. Use our dashboard to monitor integration health in real-time.
+                Ensure you handle errors gracefully. Standard HTTP 4xx and 5xx codes are used.
+                For Passkey flows, the <code>deviceInfo</code> object helps us track sessions securely.
               </p>
             </section>
           </div>

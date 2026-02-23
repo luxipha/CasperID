@@ -194,7 +194,7 @@ const RoadmapSection: React.FC = () => {
               <div className="p-8 border-b border-slate-200 flex justify-between items-center sticky top-0 bg-white/95 backdrop-blur-lg z-10">
                 <div>
                   <h3 className="text-3xl font-black text-slate-900 tracking-tight">2026 Roadmap</h3>
-                  <p className="text-sm font-bold text-purple-600 uppercase tracking-[0.2em] mt-1">Adevar / CasperID Detail Plan</p>
+                  <p className="text-sm font-bold text-purple-600 uppercase tracking-[0.2em] mt-1">anra / CasperID Detail Plan</p>
                 </div>
                 <button
                   onClick={() => setIsDrawerOpen(false)}

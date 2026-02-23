@@ -16,6 +16,9 @@ const {
     securityHeaders
 } = require('../middleware/validation');
 const { extractViewer } = require('../middleware/auth');
+const { extractApp } = require('../middleware/app-auth');
+const { generateBusinessToken } = require('../utils/jwt-manager');
+const { dispatchEvent } = require('../utils/webhook-dispatcher');
 
 /**
  * Passkey Authentication Routes
@@ -118,7 +121,7 @@ router.post('/register/begin', passkeyRateLimit, extractViewer, validatePasskeyR
  * Complete passkey registration
  * POST /api/passkey/register/finish
  */
-router.post('/register/finish', passkeyRateLimit, validatePasskeyAuth, async (req, res) => {
+router.post('/register/finish', passkeyRateLimit, validatePasskeyAuth, extractApp, async (req, res) => {
     try {
         const { userId, credential, deviceInfo } = req.body;
 
@@ -158,6 +161,29 @@ router.post('/register/finish', passkeyRateLimit, validatePasskeyAuth, async (re
             maxAge: 24 * 60 * 60 * 1000 // 24 hours
         });
 
+        // If a BusinessApp sent X-App-ID + X-Api-Secret, also issue an RS256 business token
+        // External clients can verify this token locally using /.well-known/jwks.json
+        let businessToken = null;
+        if (req.businessApp && registrationResult.userAccount) {
+            const ua = registrationResult.userAccount;
+            businessToken = generateBusinessToken({
+                userId: ua.user_id,
+                wallet: ua.wallet,
+                humanId: ua.human_id || null,
+                verified: ua.email_verified || false,
+                tier: ua.tier || 'layer_0',
+                email: ua.recovery_email,
+                sharedData: []
+            }, req.businessApp.app_id);
+
+            // Dispatch webhook
+            dispatchEvent(req.businessApp.app_id, 'user.registered', {
+                user_id: ua.user_id,
+                wallet: ua.wallet,
+                registered_at: new Date().toISOString()
+            }).catch(err => console.error('Webhook dispatch error:', err));
+        }
+
         res.json({
             success: true,
             message: 'Account created and logged in successfully',
@@ -167,7 +193,9 @@ router.post('/register/finish', passkeyRateLimit, validatePasskeyAuth, async (re
             sessionToken: registrationResult.sessionToken,
             expiresAt: registrationResult.expiresAt,
             emailVerificationId: registrationResult.emailVerificationId,
-            userAccount: registrationResult.userAccount
+            userAccount: registrationResult.userAccount,
+            // Only present when X-App-ID was provided:
+            ...(businessToken && { business_token: businessToken, app_id: req.businessApp.app_id })
         });
 
     } catch (error) {
@@ -477,7 +505,7 @@ router.post('/auth/begin', async (req, res) => {
  * Complete passkey authentication
  * POST /api/passkey/auth/finish
  */
-router.post('/auth/finish', async (req, res) => {
+router.post('/auth/finish', extractApp, async (req, res) => {
     try {
         const { challengeId, credential, deviceInfo } = req.body;
 
@@ -516,13 +544,37 @@ router.post('/auth/finish', async (req, res) => {
             maxAge: 24 * 60 * 60 * 1000 // 24 hours
         });
 
+        // If a BusinessApp sent X-App-ID + X-Api-Secret, also issue an RS256 business token
+        let businessToken = null;
+        if (req.businessApp && authResult.userAccount) {
+            const ua = authResult.userAccount;
+            businessToken = generateBusinessToken({
+                userId: ua.user_id,
+                wallet: ua.wallet,
+                humanId: ua.human_id || null,
+                verified: ua.email_verified || false,
+                tier: ua.tier || 'layer_0',
+                email: ua.recovery_email,
+                sharedData: []
+            }, req.businessApp.app_id);
+
+            // Dispatch webhook
+            dispatchEvent(req.businessApp.app_id, 'user.verified', {
+                user_id: ua.user_id,
+                wallet: ua.wallet,
+                verified_at: new Date().toISOString()
+            }).catch(err => console.error('Webhook dispatch error:', err));
+        }
+
         res.json({
             success: true,
             message: 'Authentication successful',
             sessionId: authResult.sessionId,
             sessionToken: authResult.sessionToken,
             expiresAt: authResult.expiresAt,
-            userAccount: authResult.userAccount
+            userAccount: authResult.userAccount,
+            // Only present when X-App-ID was provided
+            ...(businessToken && { business_token: businessToken, app_id: req.businessApp.app_id })
         });
 
     } catch (error) {
@@ -1418,6 +1470,110 @@ router.post('/recovery/verify', async (req, res) => {
             success: false,
             error: error.message
         });
+    }
+});
+
+// ============================================
+// BUSINESS SCOPED PROFILE ENDPOINT (Day 3)
+// ============================================
+
+/**
+ * GET /api/passkey/me
+ *
+ * Returns the authenticated user's profile, scoped to what the business app
+ * is allowed to see. Works with BOTH token types:
+ *
+ *   1. Device session token (CasperID native) — returns full profile
+ *   2. RS256 business_token (X-App-ID flow)   — returns only whitelisted fields
+ *
+ * External clients should pass the business_token from auth/finish:
+ *   Authorization: Bearer <business_token>
+ *
+ * Optionally also accepts origin scoping via X-App-ID header.
+ */
+router.get('/me', async (req, res) => {
+    try {
+        const authHeader = req.headers.authorization;
+        if (!authHeader || !authHeader.startsWith('Bearer ')) {
+            return res.status(401).json({ success: false, error: 'Authorization token required' });
+        }
+        const token = authHeader.split(' ')[1];
+
+        const { verifyAnyToken } = require('../utils/jwt-manager');
+        const { DeviceSession, UserAccount } = require('../database/models');
+
+        let userAccount = null;
+        let isBusinessToken = false;
+        let sharedData = [];
+        let scopedAppId = null;
+
+        // Strategy 1: RS256 business token or HS256 JWT
+        const decoded = verifyAnyToken(token);
+        if (decoded) {
+            isBusinessToken = decoded._alg === 'RS256';
+            sharedData = decoded.sharedData || [];
+            scopedAppId = decoded.app_id || null;
+
+            if (isBusinessToken) {
+                const userId = decoded.sub || decoded.userId;
+                userAccount = await UserAccount.findOne({
+                    $or: [{ user_id: userId }, { wallet: decoded.wallet }].filter(c => Object.values(c)[0])
+                });
+            } else {
+                userAccount = await UserAccount.findOne({ user_id: decoded.userId });
+            }
+        }
+
+        // Strategy 2: Opaque device session token (32-byte hex, not a JWT)
+        if (!userAccount) {
+            const deviceSession = await DeviceSession.findOne({
+                session_token: token,
+                revoked: false,
+                expires_at: { $gt: new Date() }
+            });
+            if (deviceSession) {
+                userAccount = await UserAccount.findOne({ user_id: deviceSession.user_id });
+            } else if (!decoded) {
+                return res.status(401).json({ success: false, error: 'Invalid or expired token' });
+            }
+        }
+
+        if (!userAccount) {
+            return res.status(404).json({ success: false, error: 'User not found' });
+        }
+
+        // Build scoped profile
+        // For business tokens, only expose fields listed in sharedData claim
+
+        const profile = {
+            user_id: userAccount.user_id,
+            verified: userAccount.email_verified,
+            tier: userAccount.tier,
+            ...((!isBusinessToken || sharedData.includes('email')) && userAccount.recovery_email && {
+                email: userAccount.recovery_email
+            }),
+            ...((!isBusinessToken || sharedData.includes('wallet')) && userAccount.wallet && {
+                wallet: userAccount.wallet
+            }),
+            ...((!isBusinessToken || sharedData.includes('human_id')) && userAccount.human_id && {
+                human_id: userAccount.human_id
+            })
+        };
+
+        res.json({
+            success: true,
+            profile,
+            ...(isBusinessToken && {
+                scoped_to_app: scopedAppId,
+                token_type: 'business',
+                alg: 'RS256'
+            })
+        });
+    } catch (error) {
+        console.error('[Passkey/me] Error:', error.message);
+        if (!res.headersSent) {
+            res.status(500).json({ success: false, error: 'Failed to retrieve profile' });
+        }
     }
 });
 

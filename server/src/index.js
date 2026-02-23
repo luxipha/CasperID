@@ -74,6 +74,10 @@ mongoose.connect(process.env.MONGODB_URI, {
         const { initializeJWTRotation } = require('./utils/jwt-rotation-db');
         await initializeJWTRotation();
 
+        // Initialize RSA key pair for business-scoped RS256 tokens
+        const { initializeRsaKeys } = require('./utils/rsa-key-manager');
+        await initializeRsaKeys();
+
         // Schedule rate limit cleanup
         const { cleanupOldRecords } = require('./utils/rate-limiter');
         setInterval(cleanupOldRecords, 60 * 60 * 1000); // Cleanup every hour
@@ -138,6 +142,10 @@ app.use('/api', verifiedProfilesRoutes); // Verified profiles for sitemap
 app.use('/api/notifications', require('./routes/notifications'));
 app.use('/api', require('./routes/cns')); // CNS Name Resolution & Registration
 app.use('/api/pending-session', require('./routes/pending-session')); // Mobile Passkey Handoff
+app.use('/api/business', require('./routes/business')); // Business Platform (Identity-as-a-Service)
+app.use('/.well-known', require('./routes/well-known')); // JWKS + OpenID Connect Discovery
+app.use('/api/careers', require('./routes/careers')); // Career applications
+app.use('/api/affiliates', require('./routes/affiliates')); // Affiliate applications
 
 // Error handling middleware
 app.use((err, req, res, next) => {

@@ -45,35 +45,6 @@ export const ConnectWalletModal: React.FC<ConnectWalletModalProps> = ({
     const isConnected = isEvmConnected || isCasperConnected;
     const address = activeWalletType === 'casper' ? casperPublicKey : evmAddress;
 
-    useEffect(() => {
-        if (isOpen) {
-            setShouldRender(true);
-            setIsExiting(false);
-            setLinkStatus('idle');
-            setErrorMessage('');
-            if (initialWalletType) {
-                setActiveWalletType(initialWalletType);
-                if (initialWalletType === 'evm' && !isEvmConnected) open();
-                if (initialWalletType === 'casper' && !isCasperConnected) handleConnectCasper();
-            }
-        } else if (shouldRender) {
-            setIsExiting(true);
-            const timer = setTimeout(() => {
-                setShouldRender(false);
-                setIsExiting(false);
-            }, 400);
-            return () => clearTimeout(timer);
-        }
-    }, [isOpen]);
-
-    // Automatically set active wallet type when connection status changes
-    useEffect(() => {
-        if (isEvmConnected && !isCasperConnected) setActiveWalletType('evm');
-        if (isCasperConnected && !isEvmConnected) setActiveWalletType('casper');
-    }, [isEvmConnected, isCasperConnected]);
-
-    if (!shouldRender) return null;
-
     const handleClose = () => {
         setIsExiting(true);
         setTimeout(onClose, 400);
@@ -94,6 +65,35 @@ export const ConnectWalletModal: React.FC<ConnectWalletModalProps> = ({
             setLinkStatus('error');
         }
     };
+
+    useEffect(() => {
+        if (isOpen) {
+            setShouldRender(true);
+            setIsExiting(false);
+            setLinkStatus('idle');
+            setErrorMessage('');
+            if (initialWalletType) {
+                setActiveWalletType(initialWalletType);
+                if (initialWalletType === 'evm' && !isEvmConnected) handleOpenWeb3Modal();
+                if (initialWalletType === 'casper' && !isCasperConnected) handleConnectCasper();
+            }
+        } else if (shouldRender) {
+            setIsExiting(true);
+            const timer = setTimeout(() => {
+                setShouldRender(false);
+                setIsExiting(false);
+            }, 400);
+            return () => clearTimeout(timer);
+        }
+    }, [isOpen]);
+
+    // Automatically set active wallet type when connection status changes
+    useEffect(() => {
+        if (isEvmConnected && !isCasperConnected) setActiveWalletType('evm');
+        if (isCasperConnected && !isEvmConnected) setActiveWalletType('casper');
+    }, [isEvmConnected, isCasperConnected]);
+
+    if (!shouldRender) return null;
 
     const handleLinkWallet = async () => {
         if (!address) return;

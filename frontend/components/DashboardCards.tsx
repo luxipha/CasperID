@@ -53,7 +53,7 @@ export const IdentityStatusCard: React.FC = () => {
   const statusInfo = getStatusInfo();
 
   return (
-    <section className="relative overflow-hidden rounded-[32px] bg-gradient-to-br from-[#8652E2] to-[#6D36D6] text-white shadow-soft p-7 h-full flex flex-col justify-between group">
+    <section className="relative overflow-hidden rounded-[32px] bg-gradient-to-br from-[#8652E2] to-[#6D36D6] text-white shadow-soft p-5 md:p-7 h-full flex flex-col justify-between group">
       {/* Infinity Symbol Background Decoration */}
       <div className="absolute top-1/2 right-[-20%] -translate-y-1/2 opacity-10 pointer-events-none select-none">
         <svg width="240" height="120" viewBox="0 0 240 120" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -62,19 +62,19 @@ export const IdentityStatusCard: React.FC = () => {
       </div>
 
       <div className="relative z-10">
-        <div className="flex items-center gap-2 mb-6">
-          <span className="material-symbols-outlined text-[18px] opacity-80">{statusInfo.icon}</span>
-          <span className="text-[11px] font-bold tracking-[0.1em] uppercase opacity-80">IDENTITY STATUS</span>
+        <div className="flex items-center gap-2 mb-4 md:mb-6">
+          <span className="material-symbols-outlined text-[16px] md:text-[18px] opacity-80">{statusInfo.icon}</span>
+          <span className="text-[10px] md:text-[11px] font-bold tracking-[0.1em] uppercase opacity-80">IDENTITY STATUS</span>
         </div>
-        <h2 className="text-[32px] font-bold leading-[1.1] mb-8 tracking-tight whitespace-pre-line">{statusInfo.title}</h2>
+        <h2 className="text-[28px] md:text-[32px] font-bold leading-[1.1] mb-6 md:mb-8 tracking-tight whitespace-pre-line">{statusInfo.title}</h2>
       </div>
 
-      <div className="relative z-10 space-y-3">
+      <div className="relative z-10 space-y-4">
         <div className={`inline-flex items-center gap-2 backdrop-blur-md px-4 py-2 rounded-full border border-white/10 ${statusInfo.badgeColor}`}>
-          <span className="material-symbols-outlined text-[16px]">key</span>
-          <span className="text-[12px] font-bold">{statusInfo.badge}</span>
+          <span className="material-symbols-outlined text-[14px] md:text-[16px]">key</span>
+          <span className="text-[11px] md:text-[12px] font-bold">{statusInfo.badge}</span>
         </div>
-        <button className="w-full bg-white text-primary hover:bg-white/90 py-3.5 rounded-2xl text-[14px] font-bold transition-all shadow-lg active:scale-[0.98]">
+        <button className="w-full bg-white text-primary hover:bg-white/90 py-3 md:py-3.5 rounded-2xl text-[13px] md:text-[14px] font-bold transition-all shadow-lg active:scale-[0.98]">
           {statusInfo.cta}
         </button>
       </div>

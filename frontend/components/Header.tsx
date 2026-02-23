@@ -82,7 +82,7 @@ export const Header: React.FC = () => {
         <span className="font-bold text-lg text-text-main">CasperID</span>
       </div>
 
-      <div className="hidden lg:flex items-center gap-4 w-full max-w-xl">
+      <div className="hidden md:flex items-center gap-4 w-full max-w-xl">
         <div className="relative w-full group">
           <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
             <span className="material-symbols-outlined text-text-sub group-focus-within:text-primary transition-colors">search</span>
@@ -171,12 +171,12 @@ export const Header: React.FC = () => {
           )}
         </div>
 
-        {/* Add to Chrome Link */}
+        {/* Add to Chrome Link - Hidden on Mobile */}
         <a
           href="https://chromewebstore.google.com/detail/oecccgmhmojgniechnclmffchodmdjmd?utm_source=item-share-cb"
           target="_blank"
           rel="noopener noreferrer"
-          className="flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-xl font-semibold hover:opacity-90 active:scale-95 transition-all shadow-md shadow-primary/20"
+          className="hidden md:flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-xl font-semibold hover:opacity-90 active:scale-95 transition-all shadow-md shadow-primary/20"
         >
           <span className="material-symbols-outlined text-[20px]">extension</span>
           <span className="text-sm">Add to Chrome</span>

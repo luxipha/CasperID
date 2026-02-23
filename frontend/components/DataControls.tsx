@@ -162,26 +162,26 @@ export const DataControls: React.FC = () => {
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 md:gap-6">
         {statCards.map((s, idx) => (
-          <div key={idx} className="bg-white p-6 rounded-[32px] border border-gray-100 shadow-soft flex flex-col gap-4">
+          <div key={idx} className="bg-white p-5 md:p-6 rounded-[28px] md:rounded-[32px] border border-gray-100 shadow-soft flex flex-col gap-3 md:gap-4">
             <div className="flex items-center justify-between">
-              <p className="text-text-sub text-[11px] font-bold uppercase tracking-widest">{s.label}</p>
-              <span className={`material-symbols-outlined ${s.color} text-[22px] ${idx === 0 ? 'icon-filled' : ''}`}>{s.icon}</span>
+              <p className="text-text-sub text-[10px] md:text-[11px] font-black uppercase tracking-widest opacity-60">{s.label}</p>
+              <span className={`material-symbols-outlined ${s.color} text-[20px] md:text-[22px] ${idx === 0 ? 'icon-filled' : ''}`}>{s.icon}</span>
             </div>
             <div className="flex items-end gap-2">
-              <p className="text-text-main text-3xl font-extrabold leading-none tracking-tight">
-                {s.value}{s.total && <span className="text-lg text-text-sub font-bold">/{s.total}</span>}
+              <p className="text-text-main text-2xl md:text-3xl font-black leading-none tracking-tight">
+                {s.value}{s.total && <span className="text-base md:text-lg text-text-sub font-bold">/{s.total}</span>}
               </p>
-              {s.trend && <span className="text-green-600 text-[10px] font-bold mb-1 uppercase tracking-tight">{s.trend}</span>}
-              {s.sub && <span className="text-text-sub text-[11px] font-bold mb-1 uppercase tracking-tight">{s.sub}</span>}
+              {s.trend && <span className="text-green-600 text-[9px] md:text-[10px] font-black mb-1 uppercase tracking-tight">{s.trend}</span>}
+              {s.sub && <span className="text-text-sub text-[10px] md:text-[11px] font-black mb-1 uppercase tracking-tight">{s.sub}</span>}
             </div>
             {s.progress !== undefined ? (
-              <div className="w-full bg-gray-100 rounded-full h-1.5 mt-2">
+              <div className="w-full bg-gray-100 rounded-full h-1.5 mt-1 md:mt-2">
                 <div className="bg-green-500 h-1.5 rounded-full transition-all duration-1000" style={{ width: `${s.progress}%` }}></div>
               </div>
             ) : (
-              <div className="h-1.5 mt-2"></div>
+              <div className="h-1.5 mt-1 md:mt-2"></div>
             )}
           </div>
         ))}
@@ -213,26 +213,26 @@ export const DataControls: React.FC = () => {
             <p>No connected applications found.</p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 xl:grid-cols-2 gap-4 md:gap-6">
             {apps.map((app, idx) => (
-              <div key={idx} className="bg-white rounded-[32px] border border-gray-100 p-7 shadow-soft flex flex-col gap-6">
+              <div key={idx} className="bg-white rounded-[28px] md:rounded-[32px] border border-gray-100 p-5 md:p-7 shadow-soft flex flex-col gap-5 md:gap-6">
                 <div className="flex justify-between items-start">
-                  <div className="flex gap-4">
-                    <div className={`w-14 h-14 rounded-2xl ${app.logoBg} flex items-center justify-center shadow-sm`}>
+                  <div className="flex gap-3 md:gap-4">
+                    <div className={`size-12 md:size-14 rounded-2xl ${app.logoBg} flex items-center justify-center shadow-sm border border-white/20`}>
                       {app.logoIsIcon ? (
-                        <span className="material-symbols-outlined text-[32px]">{app.logo}</span>
+                        <span className="material-symbols-outlined text-2xl md:text-[32px]">{app.logo}</span>
                       ) : (
-                        <span className="font-extrabold text-2xl">{app.logo}</span>
+                        <span className="font-black text-xl md:text-2xl">{app.logo}</span>
                       )}
                     </div>
                     <div>
-                      <div className="flex items-center gap-2">
-                        <h3 className="text-lg font-extrabold text-text-main tracking-tight">{app.name}</h3>
-                        <span className="bg-blue-50 text-blue-600 text-[9px] font-extrabold px-2 py-0.5 rounded-full uppercase tracking-widest border border-blue-100/50">
+                      <div className="flex flex-col md:flex-row md:items-center gap-1 md:gap-2">
+                        <h3 className="text-base md:text-lg font-black text-text-main tracking-tight leading-tight">{app.name}</h3>
+                        <span className="w-fit bg-blue-50 text-blue-600 text-[8px] md:text-[9px] font-black px-2 py-0.5 rounded-md uppercase tracking-widest border border-blue-100/50">
                           {app.type}
                         </span>
                       </div>
-                      <p className="text-[13px] text-text-sub font-medium">{app.category}</p>
+                      <p className="text-[12px] md:text-[13px] text-text-sub font-bold opacity-60">{app.category}</p>
                     </div>
                   </div>
                   <button className="text-text-sub hover:text-primary transition-colors p-1">
@@ -240,27 +240,27 @@ export const DataControls: React.FC = () => {
                   </button>
                 </div>
 
-                <div className="space-y-1">
+                <div className="space-y-0.5 md:space-y-1">
                   {app.permissions.map((p: any) => (
-                    <div key={p.id} className={`flex items-center justify-between py-3.5 border-b border-gray-50 last:border-0 ${p.revoked ? 'opacity-40' : ''}`}>
-                      <div className="flex items-center gap-4">
-                        <div className="w-10 h-10 rounded-full bg-gray-50 flex items-center justify-center text-text-sub">
-                          <span className="material-symbols-outlined text-[20px]">{p.icon}</span>
+                    <div key={p.id} className={`flex items-center justify-between py-3 md:py-3.5 border-b border-gray-50 last:border-0 ${p.revoked ? 'opacity-40' : ''}`}>
+                      <div className="flex items-center gap-3 md:gap-4">
+                        <div className="size-9 md:size-10 rounded-xl bg-gray-50 flex items-center justify-center text-text-sub shadow-sm border border-gray-100">
+                          <span className="material-symbols-outlined text-[18px] md:text-[20px]">{p.icon}</span>
                         </div>
                         <div className="flex flex-col">
-                          <span className="text-sm font-bold text-text-main">{p.label}</span>
-                          <span className={`text-[11px] font-medium flex items-center gap-1 ${p.revoked ? 'text-red-500' : 'text-text-sub'}`}>
+                          <span className="text-[13px] md:text-sm font-black text-text-main leading-tight">{p.label}</span>
+                          <span className={`text-[10px] md:text-[11px] font-bold flex items-center gap-1 leading-tight mt-0.5 ${p.revoked ? 'text-red-500' : 'text-text-sub/60'}`}>
                             {p.sub} {p.revoked && '(Revoked)'}
                           </span>
                         </div>
                       </div>
-                      <label className="relative inline-flex items-center cursor-pointer">
+                      <label className="relative inline-flex items-center cursor-pointer scale-90 md:scale-100">
                         <input
                           type="checkbox"
                           className="sr-only peer"
                           checked={p.enabled && !p.revoked}
                           onChange={(e) => handleTogglePermission(idx, p.id, e.target.checked)}
-                          disabled={p.revoked} // Once revoked, disabled for now
+                          disabled={p.revoked}
                         />
                         <div className="w-11 h-6 bg-gray-200 rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
                       </label>
@@ -268,13 +268,13 @@ export const DataControls: React.FC = () => {
                   ))}
                 </div>
 
-                <div className="flex gap-3 pt-2">
-                  <button className="flex-1 py-3 px-4 rounded-2xl bg-gray-50 text-sm font-bold text-text-main hover:bg-gray-100 transition-colors">View Logs</button>
+                <div className="flex gap-2.5 pt-2">
+                  <button className="flex-1 h-11 rounded-2xl bg-gray-50 text-[13px] font-black text-text-main hover:bg-gray-100 transition-all active:scale-95 shadow-sm border border-gray-100">View Logs</button>
                   <button
                     onClick={() => setRevokingApp(app)}
-                    className="flex-1 py-3 px-4 rounded-2xl border border-red-100 text-sm font-bold text-red-600 hover:bg-red-50 transition-colors"
+                    className="flex-1 h-11 rounded-2xl border border-red-100 text-[13px] font-black text-red-600 hover:bg-red-50 transition-all active:scale-95"
                   >
-                    Revoke Access
+                    Revoke
                   </button>
                 </div>
               </div>
@@ -300,19 +300,19 @@ export const DataControls: React.FC = () => {
       {/* Audit Log */}
       <section className="space-y-6">
         <h2 className="text-xl font-bold text-text-main">Access Audit Log</h2>
-        <div className="bg-white rounded-[32px] border border-gray-100 shadow-soft overflow-hidden">
-          <div className="overflow-x-auto">
+        <div className="bg-white rounded-[28px] md:rounded-[32px] border border-gray-100 shadow-soft overflow-hidden">
+          <div className="overflow-x-auto no-scrollbar">
             {auditLog.length === 0 ? (
               <div className="p-8 text-center text-text-sub text-sm">No recent access activity.</div>
             ) : (
-              <table className="w-full text-left text-sm whitespace-nowrap">
+              <table className="w-full text-left text-sm whitespace-nowrap min-w-[600px] md:min-w-0">
                 <thead className="bg-gray-50/50 border-b border-gray-100">
                   <tr>
-                    <th className="px-6 py-5 text-[10px] font-extrabold text-text-sub uppercase tracking-widest">Application</th>
-                    <th className="px-6 py-5 text-[10px] font-extrabold text-text-sub uppercase tracking-widest">Data Point</th>
-                    <th className="px-6 py-5 text-[10px] font-extrabold text-text-sub uppercase tracking-widest">Type</th>
-                    <th className="px-6 py-5 text-[10px] font-extrabold text-text-sub uppercase tracking-widest">Time</th>
-                    <th className="px-6 py-5 text-[10px] font-extrabold text-text-sub uppercase tracking-widest">Status</th>
+                    <th className="px-6 py-5 text-[10px] font-black text-text-sub uppercase tracking-widest opacity-60">Application</th>
+                    <th className="px-6 py-5 text-[10px] font-black text-text-sub uppercase tracking-widest opacity-60">Data Point</th>
+                    <th className="px-6 py-5 text-[10px] font-black text-text-sub uppercase tracking-widest opacity-60 hidden sm:table-cell">Type</th>
+                    <th className="px-6 py-5 text-[10px] font-black text-text-sub uppercase tracking-widest opacity-60 hidden md:table-cell">Time</th>
+                    <th className="px-6 py-5 text-[10px] font-black text-text-sub uppercase tracking-widest opacity-60">Status</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-50">
@@ -320,20 +320,23 @@ export const DataControls: React.FC = () => {
                     <tr key={i} className="hover:bg-gray-50/30 transition-colors group">
                       <td className="px-6 py-5">
                         <div className="flex items-center gap-3">
-                          <div className={`w-8 h-8 rounded-lg ${row.logoBg} flex items-center justify-center text-[11px] font-bold shadow-sm`}>{row.logo}</div>
-                          <span className="font-bold text-text-main">{row.app}</span>
+                          <div className={`w-8 h-8 rounded-lg ${row.logoBg} flex items-center justify-center text-[11px] font-black shadow-sm`}>{row.logo}</div>
+                          <div>
+                            <span className="font-black text-text-main block">{row.app}</span>
+                            <span className="text-[10px] text-text-sub font-bold opacity-60 md:hidden">{row.time.split(',')[0]}</span>
+                          </div>
                         </div>
                       </td>
-                      <td className="px-6 py-5 text-text-sub font-semibold">{row.data}</td>
-                      <td className="px-6 py-5">
-                        <span className={`inline-flex items-center px-2.5 py-1 rounded-lg text-[10px] font-bold border uppercase tracking-wider ${row.typeColor}`}>
+                      <td className="px-6 py-5 text-text-sub font-bold text-[13px]">{row.data}</td>
+                      <td className="px-6 py-5 hidden sm:table-cell">
+                        <span className={`inline-flex items-center px-2.5 py-1 rounded-lg text-[9px] font-black border uppercase tracking-widest ${row.typeColor}`}>
                           {row.type}
                         </span>
                       </td>
-                      <td className="px-6 py-5 text-text-sub font-medium">{row.time}</td>
+                      <td className="px-6 py-5 text-text-sub font-bold text-[13px] hidden md:table-cell">{row.time}</td>
                       <td className="px-6 py-5">
-                        <span className="flex items-center gap-2 text-[11px] font-bold text-text-main">
-                          <span className={`h-2 w-2 rounded-full ${row.statusColor} animate-pulse`}></span>
+                        <span className="flex items-center gap-2 text-[11px] font-black text-text-main uppercase tracking-tight">
+                          <span className={`h-1.5 w-1.5 rounded-full ${row.statusColor} animate-pulse`}></span>
                           {row.status}
                         </span>
                       </td>

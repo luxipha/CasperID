@@ -15,7 +15,7 @@ import { ScrollToTop } from './casperos/ScrollToTop';
 import { DashboardView } from './casperos/DashboardView';
 import { DemoModal } from './casperos/DemoModal';
 
-export const CasperOSFlow: React.FC = () => {
+export const AdevarOSFlow: React.FC = () => {
     const [showDashboard, setShowDashboard] = useState(false);
     const [isDemoModalOpen, setIsDemoModalOpen] = useState(false);
 

@@ -1367,6 +1367,99 @@ const ViewEvent = mongoose.model('ViewEvent', viewEventSchema);
 const Notification = mongoose.model('Notification', notificationSchema);
 const VerificationEvent = mongoose.model('VerificationEvent', verificationEventSchema);
 
+// ============================================
+// BUSINESS PLATFORM (Identity-as-a-Service)
+// ============================================
+
+const businessAppSchema = new mongoose.Schema({
+    app_id: {
+        type: String,
+        required: true,
+        unique: true,
+        index: true
+    }, // e.g. "app_xxxxxxxxxxxxxxxxxxxxxxxx"
+    name: {
+        type: String,
+        required: true,
+        maxlength: 100
+    },
+    owner_user_id: {
+        type: String,
+        required: true,
+        index: true
+    }, // links to UserAccount.user_id
+    api_secret_hash: {
+        type: String,
+        required: true
+    }, // bcrypt hash — plaintext is never stored
+    allowed_origins: [{ type: String }], // CORS allowlist
+    environment: {
+        type: String,
+        enum: ['sandbox', 'production'],
+        default: 'sandbox'
+    },
+    active: {
+        type: Boolean,
+        default: true
+    },
+    request_count: {
+        type: Number,
+        default: 0
+    },
+    last_used_at: {
+        type: Date
+    },
+    created_at: {
+        type: Date,
+        default: Date.now
+    },
+    updated_at: {
+        type: Date,
+        default: Date.now
+    }
+});
+
+businessAppSchema.pre('save', function (next) {
+    this.updated_at = Date.now();
+    next();
+});
+
+const webhookSubscriptionSchema = new mongoose.Schema({
+    app_id: {
+        type: String,
+        required: true,
+        index: true
+    },
+    url: {
+        type: String,
+        required: true
+    },
+    events: [{
+        type: String,
+        enum: ['user.verified', 'user.registered', 'kyc.completed', 'session.revoked', 'user.created', 'test.ping']
+    }],
+    signing_secret: {
+        type: String,
+        required: true
+    }, // HMAC-SHA256 secret for payload signing
+    active: {
+        type: Boolean,
+        default: true
+    },
+    failure_count: {
+        type: Number,
+        default: 0
+    },
+    last_delivered_at: { type: Date },
+    created_at: {
+        type: Date,
+        default: Date.now
+    }
+});
+
+const BusinessApp = mongoose.model('BusinessApp', businessAppSchema);
+const WebhookSubscription = mongoose.model('WebhookSubscription', webhookSubscriptionSchema);
+
 module.exports = {
     // Verification & Credentials
     VerificationRequest,
@@ -1408,5 +1501,9 @@ module.exports = {
     Notification,
 
     // Blockchain Event Indexing
-    VerificationEvent
+    VerificationEvent,
+
+    // Business Platform (Identity-as-a-Service)
+    BusinessApp,
+    WebhookSubscription
 };

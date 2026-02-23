@@ -3,9 +3,10 @@ import Logo from "./Logo";
 
 export function FooterMarketing({ className, onNavigate }: { className?: string; onNavigate?: (view: string) => void }) {
   const productLinks = [
+    { label: "anra 🔥", href: "/anra" },
     { label: "Download", href: "#download" },
     { label: "Product", href: "#product" },
-    { label: "Docs", href: "/docs" },
+    { label: "White Paper", href: "https://docs.google.com/document/d/1XxpYRW5Dz4vV5G_3rIublF-lwqxPHnQ7quAhiDFaKgo/edit?usp=drive_link" },
     { label: "Changelog", href: "/changelog" },
   ];
 
@@ -13,7 +14,8 @@ export function FooterMarketing({ className, onNavigate }: { className?: string;
     { label: "Blog", href: "#blogs" },
     { label: "Pricing", href: "#developers" },
     { label: "Use Cases", href: "#use-cases" },
-    { label: "CasperOS", href: "#casperos", onClick: () => onNavigate?.('casperos') },
+    { label: "Careers", href: "/careers" },
+    { label: "Relationship Managers", href: "/affiliate" },
   ];
 
 
@@ -39,12 +41,6 @@ export function FooterMarketing({ className, onNavigate }: { className?: string;
                 <a
                   key={link.label}
                   href={link.href}
-                  onClick={(e) => {
-                    if (link.onClick) {
-                      e.preventDefault();
-                      link.onClick();
-                    }
-                  }}
                   className="block hover:text-slate-500 cursor-pointer"
                 >
                   {link.label}

@@ -33,7 +33,7 @@ export const DemoModal: React.FC<DemoModalProps> = ({ isOpen, onClose, onComplet
             notes: `Restaurant: ${formData.restaurantName} | Type: ${formData.restaurantType} | Locations: ${formData.locations} | Volume: ${formData.monthlyVolume}`,
             'layout': 'month_view'
         });
-        return `https://cal.com/casperid/OS?${params.toString()}`;
+        return `https://cal.com/anra/OS?${params.toString()}`;
     };
 
 
@@ -221,7 +221,7 @@ export const DemoModal: React.FC<DemoModalProps> = ({ isOpen, onClose, onComplet
                             </div>
                             <div className="space-y-3">
                                 <h2 className="text-4xl font-black tracking-tight">Demo Booked!</h2>
-                                <p className="text-gray-500 font-medium">You'll receive a calendar invite shortly. We're excited to show you CasperOS!</p>
+                                <p className="text-gray-500 font-medium">You'll receive a calendar invite shortly. We're excited to show you anra!</p>
                             </div>
 
                             <div className="p-8 bg-os-primary/10 rounded-3xl border border-os-primary/20 space-y-4">

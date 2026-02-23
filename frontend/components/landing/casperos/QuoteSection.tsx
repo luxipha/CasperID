@@ -12,7 +12,7 @@ export const QuoteSection: React.FC = () => {
         </blockquote>
         <div className="w-16 h-px bg-primary/30 mx-auto mb-12"></div>
         <p className="text-lg lg:text-xl text-charcoal dark:text-gray-400 leading-relaxed font-medium">
-          In the modern dining landscape, the friction between a mobile order and the restaurant’s legacy POS system often leaves guests feeling like data points rather than diners. We built CasperOS to fix that.
+          In the modern dining landscape, the friction between a mobile order and the restaurant’s legacy POS system often leaves guests feeling like data points rather than diners. We built anra to fix that.
         </p>
       </div>
     </section>

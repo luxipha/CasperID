@@ -82,24 +82,33 @@ export const ConnectedPlatforms: React.FC<ConnectedPlatformsProps> = ({ onAddNew
       ) : (
         <>
           {/* Mobile List View */}
-          <div className="md:hidden space-y-3">
+          <div className="md:hidden space-y-4">
             {platforms.map((p, i) => (
-              <div key={i} className="bg-white p-4 rounded-2xl shadow-soft flex items-center justify-between group border border-gray-50">
+              <div key={i} className="bg-white p-5 rounded-[24px] shadow-soft flex items-center justify-between group border border-gray-50 active:scale-[0.98] transition-transform">
                 <div className="flex items-center gap-4">
-                  <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm overflow-hidden bg-indigo-50 text-indigo-500`}>
-                    <span className="material-icons-outlined text-lg">{p.icon}</span>
+                  <div className="relative">
+                    <div className={`w-12 h-12 rounded-xl flex items-center justify-center font-bold text-sm overflow-hidden bg-indigo-50 text-indigo-500 shadow-sm border border-gray-100`}>
+                      <span className="material-icons-outlined text-xl">{p.icon}</span>
+                    </div>
+                    <div className={`absolute -bottom-1 -right-1 w-3.5 h-3.5 rounded-full border-2 border-white ${p.status === 'online' ? 'bg-green-500' : 'bg-gray-300'}`}></div>
                   </div>
                   <div>
-                    <h4 className="font-bold text-sm text-text-main flex items-center gap-2">
-                      {p.title}
-                      <span className={`text-[9px] px-1.5 py-0.5 rounded font-extrabold uppercase tracking-widest ${p.badgeColor}`}>
+                    <div className="flex items-center gap-2 mb-0.5">
+                      <h4 className="font-black text-[15px] text-text-main leading-tight tracking-tight">
+                        {p.title}
+                      </h4>
+                      <span className={`text-[8px] px-1.5 py-0.5 rounded-md font-black uppercase tracking-widest ${p.badgeColor} border border-current opacity-60`}>
                         {p.badge}
                       </span>
-                    </h4>
-                    <p className="text-xs text-text-sub font-medium truncate w-32">{p.id}</p>
+                    </div>
+                    <div className="flex items-center gap-2 text-[10px] text-text-sub font-bold opacity-70 italic">
+                      <span>{p.lastActive}</span>
+                      <span className="size-0.5 rounded-full bg-gray-300"></span>
+                      <span className="font-mono uppercase">{p.id}</span>
+                    </div>
                   </div>
                 </div>
-                <div className={`w-2 h-2 rounded-full ${p.status === 'online' ? 'bg-green-500' : 'bg-gray-300'}`}></div>
+                <span className="material-icons-outlined text-text-sub/30 text-lg">chevron_right</span>
               </div>
             ))}
           </div>

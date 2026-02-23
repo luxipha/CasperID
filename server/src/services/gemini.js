@@ -310,11 +310,16 @@ Only mark as passed if you're confident this is a live human performing the requ
             }
         }));
 
+        console.log(`[Gemini] Sending liveness check to AI:`, {
+            expectedSteps,
+            sampleFrameCount: sampleFrames.length,
+            totalFrames,
+            promptLength: prompt.length
+        });
+
         const aiResult = await model.generateContent([prompt, ...imageParts]);
         const response = await aiResult.response;
         const text = response.text();
-
-
 
         // Extract JSON from the response
         const jsonMatch = text.match(/\{[\s\S]*\}/);
@@ -344,23 +349,13 @@ Only mark as passed if you're confident this is a live human performing the requ
                     faceDetectionPass: analysis.faceDetectedInAllFrames
                 }
             };
-
-            if (!finalPassed) {
-                console.log(`[Gemini] Liveness verification FAILED for session. Reasoning: ${analysis.reasoning}`);
-            }
-
         } else {
             throw new Error('Failed to parse AI response');
         }
 
-        // Datadog LLM trace removed - not using Datadog anymore
-
         return result;
     } catch (err) {
         console.error('[Gemini] Liveness sequence verification error:', err);
-
-        // Datadog error trace removed - not using Datadog anymore
-
         return {
             passed: false,
             confidence: 0,

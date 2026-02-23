@@ -6,7 +6,7 @@ class EmailService {
     constructor() {
         // Handle different port configurations
         const port = parseInt(process.env.SUPPORT_EMAIL_PORT) || 993;
-        
+
         // Port 587 is typically SMTP STARTTLS, convert to IMAP
         // Port 465 is SMTP SSL, convert to IMAP SSL (993)
         // Port 143 is IMAP STARTTLS
@@ -14,7 +14,7 @@ class EmailService {
         let imapPort = port;
         let useSSL = false;
         let useSTARTTLS = false;
-        
+
         if (port === 587) {
             // SMTP STARTTLS -> IMAP STARTTLS
             imapPort = 143;
@@ -28,7 +28,7 @@ class EmailService {
         } else if (port === 143) {
             useSTARTTLS = true;
         }
-        
+
         console.log('🔧 Email config setup:', {
             originalPort: port,
             imapPort: imapPort,
@@ -36,7 +36,7 @@ class EmailService {
             useSTARTTLS: useSTARTTLS,
             host: process.env.SUPPORT_EMAIL_HOST
         });
-        
+
         this.imapConfig = {
             user: process.env.SUPPORT_EMAIL || 'support@ile.africa',
             password: process.env.SUPPORT_EMAIL_PASSWORD,
@@ -229,7 +229,7 @@ class EmailService {
         return emails.map((email, index) => {
             const fromAddress = email.envelope?.from?.[0] || email.from?.value?.[0];
             const toAddress = email.envelope?.to?.[0] || email.to?.value?.[0];
-            
+
             return {
                 id: email.id || index.toString(),
                 subject: email.envelope?.subject || email.subject || 'No Subject',
@@ -281,7 +281,7 @@ class EmailService {
     async sendOTP(email, otp) {
         try {
             console.log(`📧 Sending OTP ${otp} to ${email}`);
-            
+
             const mailOptions = {
                 from: `"CasperID Security" <${process.env.SUPPORT_EMAIL}>`,
                 to: email,
@@ -338,6 +338,95 @@ class EmailService {
         } catch (error) {
             console.error('❌ SMTP server connection failed:', error);
             return false;
+        }
+    }
+
+    async sendJobApplication({ jobTitle, applicantEmail, applicantName, applicantId, resumeLink }) {
+        try {
+            console.log(`📧 Sending Job Application for ${jobTitle} from ${applicantEmail}`);
+
+            const mailOptions = {
+                from: `"CasperID Careers" <careers@casperid.com>`,
+                to: 'careers@casperid.com', // Send to careers team
+                replyTo: applicantEmail,
+                subject: `New Application: ${jobTitle} - ${applicantName}`,
+                html: `
+                    <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f8f9ff;">
+                        <div style="background: white; border-radius: 16px; padding: 40px; border: 1px solid #e5e7eb;">
+                            <h2 style="color: #1f2937; margin: 0 0 16px 0;">New Job Application</h2>
+                            <p style="color: #4b5563; font-size: 16px;"><strong>Role:</strong> ${jobTitle}</p>
+                            
+                            <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 24px 0;" />
+                            
+                            <h3 style="color: #1f2937; font-size: 18px; margin-bottom: 12px;">Applicant Details</h3>
+                            <ul style="list-style: none; padding: 0; color: #4b5563;">
+                                <li style="margin-bottom: 8px;"><strong>Name:</strong> ${applicantName}</li>
+                                <li style="margin-bottom: 8px;"><strong>Email:</strong> ${applicantEmail}</li>
+                                <li style="margin-bottom: 8px;"><strong>CasperID:</strong> ${applicantId || 'N/A'}</li>
+                            </ul>
+
+                            <div style="margin-top: 32px; text-align: center;">
+                                <a href="mailto:${applicantEmail}" style="background-color: #8652e2; color: white; padding: 12px 24px; border-radius: 8px; text-decoration: none; font-weight: bold; display: inline-block;">Reply to Applicant</a>
+                            </div>
+                        </div>
+                    </div>
+                `
+            };
+
+            const result = await this.transporter.sendMail(mailOptions);
+            console.log('✅ Job Application email sent successfully:', result.messageId);
+            return { success: true, messageId: result.messageId };
+        } catch (error) {
+            console.error('❌ Failed to send Job Application email:', error);
+            throw error;
+        }
+    }
+
+    async sendAffiliateApplication({ applicantEmail, applicantName, applicantId, location }) {
+        try {
+            console.log(`📧 Sending Affiliate Application from ${applicantEmail}`);
+
+            const mailOptions = {
+                from: `"CasperID Partners" <careers@casperid.com>`,
+                to: 'careers@casperid.com',
+                replyTo: applicantEmail,
+                subject: `New Affiliate Application - ${applicantName}`,
+                html: `
+                    <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f8f9ff;">
+                        <div style="background: white; border-radius: 16px; padding: 40px; border: 1px solid #e5e7eb;">
+                            <div style="text-align: center; margin-bottom: 24px;">
+                                <span style="background-color: #ecfdf5; color: #059669; padding: 4px 12px; border-radius: 999px; font-size: 12px; font-weight: bold; text-transform: uppercase;">New Partner Lead</span>
+                            </div>
+                            <h2 style="color: #1f2937; margin: 0 0 16px 0; text-align: center;">Affiliate Program Application</h2>
+                            
+                            <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 24px 0;" />
+                            
+                            <h3 style="color: #1f2937; font-size: 18px; margin-bottom: 12px;">Applicant Details</h3>
+                            <ul style="list-style: none; padding: 0; color: #4b5563;">
+                                <li style="margin-bottom: 8px;"><strong>Name:</strong> ${applicantName}</li>
+                                <li style="margin-bottom: 8px;"><strong>Email:</strong> ${applicantEmail}</li>
+                                <li style="margin-bottom: 8px;"><strong>CasperID:</strong> ${applicantId || 'N/A'}</li>
+                                <li style="margin-bottom: 8px;"><strong>Location/Region:</strong> ${location || 'Not Specified'}</li>
+                            </ul>
+
+                            <div style="background-color: #f3f4f6; padding: 16px; border-radius: 8px; margin-top: 24px;">
+                                <p style="margin: 0; font-size: 14px; color: #6b7280;">This user has applied via the "Relationship Manager" landing page.</p>
+                            </div>
+
+                            <div style="margin-top: 32px; text-align: center;">
+                                <a href="mailto:${applicantEmail}" style="background-color: #059669; color: white; padding: 12px 24px; border-radius: 8px; text-decoration: none; font-weight: bold; display: inline-block;">Approve & Reply</a>
+                            </div>
+                        </div>
+                    </div>
+                `
+            };
+
+            const result = await this.transporter.sendMail(mailOptions);
+            console.log('✅ Affiliate Application email sent successfully:', result.messageId);
+            return { success: true, messageId: result.messageId };
+        } catch (error) {
+            console.error('❌ Failed to send Affiliate Application email:', error);
+            throw error;
         }
     }
 }

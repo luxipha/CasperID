@@ -152,11 +152,11 @@ export const Integrations: React.FC = () => {
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
             {activeConnections.map((app, i) => (
-              <div key={i} className="group flex flex-col p-6 rounded-[24px] bg-white border border-gray-100 hover:border-secondary/50 transition-all shadow-soft hover:shadow-glow relative overflow-hidden">
+              <div key={i} className="group flex flex-col p-5 md:p-6 rounded-[28px] bg-white border border-gray-100 hover:border-secondary/50 transition-all shadow-soft hover:shadow-glow relative overflow-hidden">
                 <div className="absolute top-0 right-0 w-24 h-24 bg-gradient-to-br from-primary/5 to-secondary/5 rounded-bl-full -mr-4 -mt-4 transition-transform group-hover:scale-110"></div>
                 <div className="flex justify-between items-start mb-5 relative z-10">
                   <div className="flex gap-4 items-center">
-                    <div className={`size-14 rounded-xl ${app.logoBg} flex items-center justify-center text-white font-bold text-2xl shadow-lg border border-gray-50 overflow-hidden`}>
+                    <div className={`size-12 md:size-14 rounded-2xl ${app.logoBg} flex items-center justify-center text-white font-black text-xl md:text-2xl shadow-lg border border-white/20 overflow-hidden`}>
                       {app.logoIsIcon ? (
                         <span className="material-symbols-outlined !text-3xl">{app.logo}</span>
                       ) : (
@@ -164,37 +164,37 @@ export const Integrations: React.FC = () => {
                       )}
                     </div>
                     <div>
-                      <div className="flex items-center gap-2">
-                        <h3 className="text-lg font-bold text-text-main">{app.name}</h3>
-                        <span className={`flex items-center justify-center ${app.type === 'Web3' ? 'bg-primary/10 text-primary' : 'bg-blue-50 text-blue-600'} text-[10px] font-bold px-2 py-0.5 rounded uppercase tracking-wider border border-current opacity-50`}>
+                      <div className="flex flex-col md:flex-row md:items-center gap-1 md:gap-2">
+                        <h3 className="text-base md:text-lg font-black text-text-main leading-tight tracking-tight">{app.name}</h3>
+                        <span className={`w-fit inline-flex items-center justify-center ${app.type === 'Web3' ? 'bg-primary/10 text-primary' : 'bg-blue-50 text-blue-600'} text-[9px] font-black px-2 py-0.5 rounded-md uppercase tracking-wider border border-current/20`}>
                           {app.type}
                         </span>
                       </div>
-                      <p className="text-xs text-text-sub mt-1 font-medium">Last active: {app.lastActive}</p>
+                      <p className="text-[11px] text-text-sub mt-1 font-bold opacity-60">Last seen {app.lastActive}</p>
                     </div>
                   </div>
-                  <div className="size-2.5 rounded-full bg-secondary shadow-[0_0_10px_rgba(0,240,255,0.6)] animate-pulse"></div>
+                  <div className="size-2 md:size-2.5 rounded-full bg-secondary shadow-[0_0_10px_rgba(0,240,255,0.6)] animate-pulse mt-2 md:mt-0"></div>
                 </div>
 
                 <div className="flex-1 relative z-10">
-                  <p className="text-[10px] font-extrabold text-text-sub mb-3 uppercase tracking-widest">Permissions Granted</p>
+                  <p className="text-[9px] font-black text-text-sub mb-3 uppercase tracking-widest opacity-60">Permissions Granted</p>
                   <div className="flex flex-wrap gap-2 mb-4">
                     {app.permissions.map((p: any, j: number) => (
-                      <div key={j} className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg ${p.bg || 'bg-gray-50'} ${p.text || 'text-text-sub'} text-xs font-semibold border ${p.border || 'border-gray-100'}`}>
-                        <span className={`material-symbols-outlined text-[16px] ${p.color}`}>{p.icon}</span>
+                      <div key={j} className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl ${p.bg || 'bg-gray-50'} ${p.text || 'text-text-sub'} text-[11px] font-bold border ${p.border || 'border-gray-100 shadow-sm'}`}>
+                        <span className={`material-symbols-outlined text-[15px] ${p.color}`}>{p.icon}</span>
                         {p.label}
                       </div>
                     ))}
                   </div>
                 </div>
 
-                <div className="flex gap-3 mt-4 pt-5 border-t border-gray-100 relative z-10">
-                  <button className="flex-1 h-10 rounded-xl bg-white border border-gray-200 hover:border-primary hover:text-primary text-text-main text-sm font-bold transition-all shadow-sm">
-                    Manage
+                <div className="flex gap-2.5 mt-4 pt-5 border-t border-gray-100 relative z-10">
+                  <button className="flex-1 h-11 rounded-2xl bg-white border border-gray-200 hover:border-primary hover:text-primary text-text-main text-xs font-black transition-all shadow-sm active:scale-95">
+                    Manage Access
                   </button>
                   <button
                     onClick={() => handleRevoke(app)}
-                    className="flex items-center justify-center size-10 rounded-xl bg-red-50 text-alerts border border-transparent hover:border-alerts/30 hover:bg-red-100 transition-colors"
+                    className="flex items-center justify-center size-11 rounded-2xl bg-red-50 text-alerts border border-transparent hover:border-alerts/30 hover:bg-red-100 transition-colors active:scale-95"
                   >
                     <span className="material-symbols-outlined text-[20px]">link_off</span>
                   </button>

@@ -83,6 +83,7 @@ export interface User {
   created_at: string;
   last_login: string;
   did_address?: string;
+  profile_image_url?: string;
   context_dids?: Array<{
     did: string;
     alias?: string;
@@ -218,6 +219,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           socials: profileData?.socials,
           data_availability: profileData?.data_availability || {},
           did_address: userAccount.did_address || profileData?.did_address,
+          profile_image_url: profileData?.profile_image_url,
           context_dids: userAccount.context_dids || profileData?.context_dids || [],
           created_at: new Date().toISOString(), // Backend doesn't return this
           last_login: new Date().toISOString()   // Backend doesn't return this
@@ -240,7 +242,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   const register = async (email: string, displayName: string): Promise<void> => {
     try {
-      setIsLoading(true);
       setError(null);
 
       // Step 1: Initialize passkey registration
@@ -346,14 +347,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       const errorMessage = error.message || 'Registration failed';
       setError(errorMessage);
       throw new Error(errorMessage);
-    } finally {
-      setIsLoading(false);
     }
   };
 
   const login = async (email?: string, skipNativePrompt: boolean = false): Promise<{ success: boolean, deviceType?: string, user?: User }> => {
     try {
-      setIsLoading(true);
       setError(null);
 
       // Step 1: Initialize authentication
@@ -439,8 +437,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       const errorMessage = error.message || 'Authentication failed';
       setError(errorMessage);
       throw new Error(errorMessage);
-    } finally {
-      setIsLoading(false);
     }
   };
 

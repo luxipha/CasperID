@@ -1,0 +1,27 @@
+@import "tailwindcss";
+@config "./tailwind.config.js";
+
+/* Global Styles */
+:root {
+    --primary: #8652E2;
+    --secondary: #6DE8EC;
+    --bg-light: #F8F9FF;
+    --text-main: #1A1A2E;
+    --text-sub: #626D85;
+}
+
+body {
+    margin: 0;
+    font-family: 'Plus Jakarta Sans', 'Inter', sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+.no-scrollbar::-webkit-scrollbar {
+    display: none;
+}
+
+.no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+}

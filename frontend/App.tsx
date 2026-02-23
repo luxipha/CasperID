@@ -4,6 +4,7 @@ import { Routes, Route, useLocation, useNavigate, Navigate } from 'react-router-
 import { Sidebar } from './components/Sidebar';
 import { Header } from './components/Header';
 import { MobileHeader } from './components/MobileHeader';
+import { MobileNavigationDrawer } from './components/MobileNavigationDrawer';
 import { BottomNav } from './components/BottomNav';
 import { IdentityStatusCard, ReusableKYCCard, TrustScoreCard } from './components/DashboardCards';
 import { ConnectedPlatforms } from './components/ConnectedPlatforms';
@@ -45,10 +46,15 @@ import { AppLoadingSplash } from './components/AppLoadingSplash';
 import { BusinessPlatform } from './business/BusinessPlatform';
 import { PublicProfileContainer } from './components/PublicProfileContainer';
 import { VerifyCredentialPage } from './components/VerifyCredentialPage';
+import { QRScannerModal } from './components/QRScannerModal';
 import { useAuth } from './contexts/AuthContext';
 // ApiTest removed - was for debugging
 // import { ApiTest } from './components/ApiTest';
 import LandingPage from './components/landing/LandingPage';
+import CareersPage from './components/landing/CareerPage';
+import CareerDetailPage from './components/landing/CareerDetailPage';
+import ApplySuccessPage from './components/landing/ApplySuccess';
+import AffiliatePage from './components/landing/AffiliatePage';
 import ChangelogPage from './components/landing/casperos/changelog';
 import AdminPage from './admin/page';
 
@@ -60,9 +66,9 @@ const App: React.FC = () => {
   */
   // Check if a path is a reserved system path and should NOT be treated as a public profile
   const isReservedPath = (path: string) => {
-    const sysPaths = ['/', '/admin', '/pair', '/dashboard', '/login', '/auth', '/settings', '/integrations', '/verify', '/mobile', '/null', '/business'];
+    const sysPaths = ['/', '/admin', '/pair', '/dashboard', '/login', '/auth', '/settings', '/integrations', '/verify', '/mobile', '/null', '/business', '/anra', '/adevaros', '/casperos', '/careers', '/apply-success', '/affiliate'];
     const p = path.toLowerCase();
-    return sysPaths.includes(p) || p.startsWith('/verify/') || p.startsWith('/mobile/') || p.startsWith('/business/') || p === '/null';
+    return sysPaths.includes(p) || p.startsWith('/verify/') || p.startsWith('/mobile/') || p.startsWith('/business/') || p.startsWith('/careers/') || p === '/null';
   };
 
   const location = useLocation();
@@ -73,9 +79,12 @@ const App: React.FC = () => {
 
     // Check for explicit system routes
     if (path === '/') return 'landing';
-    if (path === '/casperos') return 'landing';
+    if (path === '/anra' || path === '/adevaros' || path === '/casperos') return 'landing';
     if (path === '/admin') return 'admin';
     if (path === '/pair' || path === '/dashboard') return 'dashboard-home';
+    if (path === '/careers' || path.startsWith('/careers/')) return 'careers';
+    if (path === '/apply-success') return 'apply-success';
+    if (path === '/affiliate') return 'affiliate';
 
     // Check for credential verification route
     if (path.startsWith('/verify/')) return 'verify-credential';
@@ -114,6 +123,8 @@ const App: React.FC = () => {
   const [showPostOnboardingBanner, setShowPostOnboardingBanner] = useState(false);
   const [showRegisterCIDPrompt, setShowRegisterCIDPrompt] = useState(false);
   const [isConnectWalletOpen, setIsConnectWalletOpen] = useState(false);
+  const [isMobileDrawerOpen, setIsMobileDrawerOpen] = useState(false);
+  const [isScannerOpen, setIsScannerOpen] = useState(false);
   const { user, isLoading, isAuthenticated } = useAuth();
 
   React.useEffect(() => {
@@ -151,6 +162,21 @@ const App: React.FC = () => {
       if (match) setCredentialHash(match[2]);
     }
   }, [location.pathname, isLoading]);
+
+  // Toggle Crisp chat visibility on mobile after login
+  useEffect(() => {
+    // Only run if Crisp is loaded
+    const crisp = (window as any).$crisp;
+    if (crisp) {
+      const isMobile = window.innerWidth < 768; // Standard mobile breakpoint
+      // User specifically requested to remove chat support on mobile after login
+      if (user && isMobile) {
+        crisp.push(["do", "chat:hide"]);
+      } else {
+        crisp.push(["do", "chat:show"]);
+      }
+    }
+  }, [user]);
 
   // Set initial view based on authentication and completion state
   React.useEffect(() => {
@@ -398,6 +424,23 @@ const App: React.FC = () => {
         return credentialHash ? <VerifyCredentialPage credentialHash={credentialHash} /> : <div>Invalid Credential</div>;
       case 'admin':
         return <AdminPage />;
+      case 'careers':
+        return (
+          <CareersPage
+            onJobClick={(slug) => navigate(`/careers/${slug}`)}
+          />
+        );
+      case 'career-detail':
+        return (
+          <CareerDetailPage
+            onBack={() => navigate('/careers')}
+            onApplySuccess={() => navigate('/apply-success')}
+          />
+        );
+      case 'apply-success':
+        return <ApplySuccessPage onReturnToCareers={() => navigate('/careers')} />;
+      case 'affiliate':
+        return <AffiliatePage />;
       case 'landing':
         return <LandingPage />;
       default:
@@ -500,11 +543,16 @@ const App: React.FC = () => {
   return (
     <>
       <Routes>
-        <Route path="/" element={<LandingPage />} />
-        <Route path="/casperos" element={<LandingPage initialView="casperos" />} />
+        <Route path="/anra" element={<LandingPage initialView="anra" />} />
+        <Route path="/adevaros" element={<Navigate to="/anra" replace />} />
+        <Route path="/casperos" element={<Navigate to="/anra" replace />} />
         <Route path="/admin" element={<AdminPage />} />
         <Route path="/changelog" element={<ChangelogPage />} />
         <Route path="/business/*" element={<BusinessPlatform />} />
+        <Route path="/careers" element={<CareersPage onJobClick={(slug) => navigate(`/careers/${slug}`)} />} />
+        <Route path="/careers/:id" element={<CareerDetailPage onBack={() => navigate('/careers')} onApplySuccess={() => navigate('/apply-success')} />} />
+        <Route path="/apply-success" element={<ApplySuccessPage onReturnToCareers={() => navigate('/careers')} />} />
+        <Route path="/affiliate" element={<AffiliatePage />} />
 
         {/* Dashboard Route - must be before /:slug catch-all */}
         <Route path="/dashboard" element={
@@ -520,8 +568,15 @@ const App: React.FC = () => {
                   onNavigate={setCurrentView}
                 />
                 <div className="flex-1 md:pl-64 flex flex-col min-w-0">
-                  <Header />
-                  <MobileHeader />
+                  <div className="hidden md:block">
+                    <Header />
+                  </div>
+                  <MobileHeader
+                    currentView={currentView}
+                    onNavigate={setCurrentView}
+                    onOpenDrawer={() => setIsMobileDrawerOpen(true)}
+                    onOpenScanner={() => setIsScannerOpen(true)}
+                  />
                   <main className="flex-1 px-5 md:px-10 py-6 md:py-10 overflow-y-auto pb-32">
                     <div className="max-w-md mx-auto md:max-w-7xl">
                       {renderContent()}
@@ -564,8 +619,15 @@ const App: React.FC = () => {
 
                 <div className="flex-1 md:pl-64 flex flex-col min-w-0">
                   {/* Responsive Headers */}
-                  <Header />
-                  <MobileHeader />
+                  <div className="hidden md:block">
+                    <Header />
+                  </div>
+                  <MobileHeader
+                    currentView={currentView}
+                    onNavigate={setCurrentView}
+                    onOpenDrawer={() => setIsMobileDrawerOpen(true)}
+                    onOpenScanner={() => setIsScannerOpen(true)}
+                  />
 
                   <main className="flex-1 px-5 md:px-10 py-6 md:py-10 overflow-y-auto pb-32">
                     <div className="max-w-md mx-auto md:max-w-7xl">
@@ -632,6 +694,18 @@ const App: React.FC = () => {
           console.log('Wallet linked:', address, chain);
           // Could refresh user data here
         }}
+      />
+
+      <MobileNavigationDrawer
+        isOpen={isMobileDrawerOpen}
+        onClose={() => setIsMobileDrawerOpen(false)}
+        currentView={currentView}
+        onNavigate={setCurrentView}
+      />
+
+      <QRScannerModal
+        isOpen={isScannerOpen}
+        onClose={() => setIsScannerOpen(false)}
       />
     </>
   );

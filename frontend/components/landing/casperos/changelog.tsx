@@ -166,7 +166,10 @@ const ChangelogPage: React.FC = () => {
                                 <a href="/#download" className="hover:text-slate-900 transition">Download</a>
                                 <a href="/#resources" className="hover:text-slate-900 transition">Resources</a>
                                 <a href="/#developers" className="hover:text-slate-900 transition">Developers</a>
-                                <a href="/casperos" className="hover:text-slate-900 transition cursor-pointer">CasperOS</a>
+                                <a href="/anra" className="hover:text-primary transition-colors flex items-center gap-0.5">
+                                    anra
+                                    <span className="animate-pulse" title="Trending">🔥</span>
+                                </a>
                             </nav>
                         </div>
                         <div className="flex items-center gap-2 md:gap-3">
@@ -203,9 +206,9 @@ const ChangelogPage: React.FC = () => {
                 <div className="max-w-7xl mx-auto py-12 md:py-24">
                     <header className="mb-20">
                         <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-8 mb-12">
-                            <h1 className="text-6xl md:text-8xl font-medium text-slate-900 tracking-tight leading-[1.1] flex flex-col">
-                                <span>CasperID</span>
-                                <span>Changelog</span>
+                            <h1 className="text-6xl md:text-8xl font-black text-slate-900 tracking-tight leading-[1.1] flex flex-col">
+                                <span>anra</span>
+                                <span className="text-primary">Changelog</span>
                             </h1>
                             <div className="flex items-center gap-3">
                                 <a href="https://x.com/AdevarID/" target="_blank" rel="noopener noreferrer" className="px-8 py-3 bg-white border border-gray-200 rounded-full text-sm font-semibold text-slate-900 hover:bg-gray-50 transition-all shadow-sm active:scale-95">
@@ -216,7 +219,7 @@ const ChangelogPage: React.FC = () => {
 
                         <div className="flex items-center gap-4 p-5 bg-primary/5 border border-primary/10 rounded-[1.5rem] text-primary">
                             <Info className="w-6 h-6 text-primary" />
-                            <p className="text-base font-medium">New versions are rolled out gradually and may take a few days to reach all users.</p>
+                            <p className="text-base font-medium">We care about your privacy and security. Read our <a href="/privacy" className="text-primary hover:underline">privacy policy</a> and <a href="/terms" className="text-primary hover:underline">terms of service</a> for more information.</p>
                         </div>
                     </header>
 
@@ -326,7 +329,7 @@ const ChangelogPage: React.FC = () => {
                         <a href="/#download" className="hover:text-indigo-600 transition">Download</a>
                         <a href="/#resources" className="hover:text-indigo-600 transition">Resources</a>
                         <a href="/#developers" className="hover:text-indigo-600 transition">Developers</a>
-                        <a href="/casperos" className="hover:text-indigo-600 transition cursor-pointer">CasperOS</a>
+                        <a href="/anra" className="hover:text-indigo-600 transition cursor-pointer">anra</a>
                         <div className="flex flex-col gap-4 mt-8 w-full max-w-sm">
                             <a href="/dashboard" className="w-full text-center py-4 bg-indigo-100 text-indigo-700 rounded-2xl text-lg font-bold">Get CasperID</a>
                             <a

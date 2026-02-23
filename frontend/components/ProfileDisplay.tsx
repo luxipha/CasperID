@@ -1,5 +1,6 @@
 import React from 'react';
 import { UserProfile, Experience, Education, Certification, Skill, Project, Award, Language, Volunteer } from '../types';
+import { apiService } from '../services/api';
 
 interface ProfileDisplayProps {
     data: {
@@ -27,7 +28,7 @@ export default function ProfileDisplay({ data, isPublicView = true }: ProfileDis
     const resolveImageUrl = (url?: string) => {
         if (!url) return undefined;
         if (url.startsWith('http')) return url;
-        const baseUrl = 'http://localhost:3001'; // Default fallback
+        const baseUrl = apiService.getBaseURL() || '';
         return `${baseUrl}${url.startsWith('/') ? '' : '/'}${url}`;
     };
 

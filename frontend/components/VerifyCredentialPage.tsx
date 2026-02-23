@@ -29,7 +29,10 @@ export const VerifyCredentialPage: React.FC<VerifyCredentialPageProps> = ({ cred
 
         const verifyCredential = async () => {
             try {
-                const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+                const isLocalhost = typeof window !== 'undefined' &&
+                    (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+                const apiUrl = import.meta.env.VITE_API_URL || (isLocalhost ? 'http://localhost:3001' : '');
+
                 const response = await fetch(`${apiUrl}/api/verify/${credentialHash}`);
                 const data = await response.json();
 

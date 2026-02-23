@@ -173,10 +173,10 @@ export const ActivityLog: React.FC<ActivityLogProps> = ({ onViewDetail }) => {
             <table className="w-full text-left border-collapse min-w-[700px]">
               <thead>
                 <tr className="border-b border-gray-50 bg-gray-50/30">
-                  <th className="px-6 py-5 text-[10px] font-extrabold text-text-sub uppercase tracking-widest w-20">Type</th>
+                  <th className="px-6 py-5 text-[10px] font-extrabold text-text-sub uppercase tracking-widest w-20 hidden sm:table-cell">Type</th>
                   <th className="px-6 py-5 text-[10px] font-extrabold text-text-sub uppercase tracking-widest">Action</th>
                   <th className="px-6 py-5 text-[10px] font-extrabold text-text-sub uppercase tracking-widest">Entity / App</th>
-                  <th className="px-6 py-5 text-[10px] font-extrabold text-text-sub uppercase tracking-widest">Date & Time</th>
+                  <th className="px-6 py-5 text-[10px] font-extrabold text-text-sub uppercase tracking-widest hidden lg:table-cell">Date & Time</th>
                   <th className="px-6 py-5 text-[10px] font-extrabold text-text-sub uppercase tracking-widest">Status</th>
                   <th className="px-6 py-5 text-[10px] font-extrabold text-text-sub uppercase tracking-widest w-12"></th>
                 </tr>
@@ -188,27 +188,33 @@ export const ActivityLog: React.FC<ActivityLogProps> = ({ onViewDetail }) => {
                     onClick={() => onViewDetail?.(item.id)}
                     className="hover:bg-gray-50/40 transition-colors group cursor-pointer"
                   >
-                    <td className="px-6 py-5">
+                    <td className="px-6 py-5 hidden sm:table-cell">
                       <div className={`size-10 rounded-full flex items-center justify-center ${item.typeColor}`}>
                         <span className="material-symbols-outlined text-[20px]">{item.type}</span>
                       </div>
                     </td>
                     <td className="px-6 py-5">
-                      <p className="text-sm font-bold text-text-main">{item.action}</p>
-                      <p className="text-[11px] text-text-sub font-medium">{item.subText}</p>
+                      <p className="text-sm font-bold text-text-main line-clamp-1">{item.action}</p>
+                      <p className="text-[11px] text-text-sub font-medium line-clamp-1">{item.subText}</p>
+                      {/* Date visible only on smaller screens here */}
+                      <p className="text-[10px] text-text-sub/60 mt-1 lg:hidden">{item.date} • {item.time}</p>
                     </td>
                     <td className="px-6 py-5">
-                      <div className="flex flex-col">
-                        <span className="text-sm font-bold text-text-main">{item.entity}</span>
-                        {item.entitySub && <span className="text-[10px] bg-gray-100 px-1.5 py-0.5 rounded text-text-sub font-mono w-fit mt-1">{item.entitySub}</span>}
+                      <div className="flex flex-col max-w-[120px] sm:max-w-none">
+                        <span className="text-sm font-bold text-text-main truncate">{item.entity}</span>
+                        {item.entitySub && (
+                          <span className="text-[10px] bg-gray-100 px-1.5 py-0.5 rounded text-text-sub font-mono w-fit mt-1 truncate">
+                            {item.entitySub}
+                          </span>
+                        )}
                       </div>
                     </td>
-                    <td className="px-6 py-5">
+                    <td className="px-6 py-5 hidden lg:table-cell">
                       <p className="text-sm font-bold text-text-main">{item.date}</p>
                       <p className="text-[11px] text-text-sub font-medium">{item.time}</p>
                     </td>
                     <td className="px-6 py-5">
-                      <span className={`inline-flex items-center px-3 py-1 rounded-full text-[10px] font-extrabold uppercase tracking-wider ${item.statusClass}`}>
+                      <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-[9px] font-extrabold uppercase tracking-wider ${item.statusClass}`}>
                         {item.status}
                       </span>
                     </td>
@@ -226,11 +232,11 @@ export const ActivityLog: React.FC<ActivityLogProps> = ({ onViewDetail }) => {
 
         {/* Pagination */}
         {!loading && !error && activities.length > 0 && (
-          <div className="px-8 py-5 border-t border-gray-50 flex items-center justify-between bg-white">
-            <span className="text-xs font-bold text-text-sub">
+          <div className="px-6 md:px-8 py-6 border-t border-gray-50 flex flex-col md:flex-row items-center justify-between gap-6 bg-white">
+            <span className="text-xs font-bold text-text-sub order-2 md:order-1">
               Showing <span className="text-text-main">{(pagination.page - 1) * pagination.limit + 1}</span> to <span className="text-text-main">{Math.min(pagination.page * pagination.limit, pagination.total)}</span> of <span className="text-text-main">{pagination.total}</span> results
             </span>
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center justify-center gap-2 order-1 md:order-2">
               <button
                 onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
                 disabled={currentPage === 1}

@@ -12,7 +12,7 @@ interface LivenessCheckProps {
 }
 
 type VerificationState = "INITIALIZING" | "POSITIONING" | "CHALLENGE" | "MINTING" | "SUCCESS" | "COMPLETED";
-type ChallengeType = "BLINK" | "TURN_LEFT";
+type ChallengeType = "BLINK" | "OPEN_MOUTH";
 
 export const LivenessCheck: React.FC<LivenessCheckProps> = ({ onBack, onComplete, layer = 2 }) => {
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -169,64 +169,57 @@ export const LivenessCheck: React.FC<LivenessCheckProps> = ({ onBack, onComplete
 
               // Capture frame when blink completes (async, non-blocking)
               if (canvasRef.current && st.frames.length < 20) {
-
-                captureFrame(canvasRef.current, st).then((captured) => {
-                  if (captured) {
-                    console.log(`[Liveness] Captured frame ${st.frames.length} after blink ${st.blinkCount}`);
-                  }
-                });
+                captureFrame(canvasRef.current, st);
               }
 
               setProgress((st.blinkCount / 3) * 100);
               if (st.blinkCount >= 3) {
-                setChallenge("TURN_LEFT");
-                setGuidance("Slowly turn head to the LEFT");
+                setChallenge("OPEN_MOUTH");
+                setGuidance("Now, OPEN your mouth");
                 setProgress(0);
-                st.lastFrameTime = now; // Reset timer for turn phase
+                st.lastFrameTime = now; // Reset timer for next phase
               }
             }
           }
         }
 
-        if (challenge === "TURN_LEFT") {
-          const nose = landmarks[1];
-          const leftCheek = landmarks[234];
-          const rightCheek = landmarks[454];
-          const faceWidth = rightCheek.x - leftCheek.x;
+        if (challenge === "OPEN_MOUTH") {
+          // Inner Lip landmarks: 13 (top), 14 (bottom)
+          const mouthOpen = euclideanDist(landmarks[13], landmarks[14]);
 
-          // Nose percent from left cheek (0.0 to 1.0)
-          const nosePos = (nose.x - leftCheek.x) / faceWidth;
+          // Use eye width or face height as a scale-invariant denominator
+          // Landmark 10 (top) to 152 (chin) is face height
+          const faceHeight = euclideanDist(landmarks[10], landmarks[152]);
+          const mouthRatio = mouthOpen / faceHeight;
 
-          // Capture frames periodically during head turn (async, non-blocking)
+          // Capture frames periodically during mouth opening
           if (now - st.lastFrameTime > 100 && st.frames.length < 25 && canvasRef.current && !st.isCapturing) {
             st.lastFrameTime = now;
-            captureFrame(canvasRef.current, st).then((captured) => {
-              if (captured) {
-                console.log(`[Liveness] Captured frame ${st.frames.length} during head turn (nosePos: ${nosePos.toFixed(3)})`);
-              }
-            });
+            captureFrame(canvasRef.current, st);
           }
 
-          if (nosePos < 0.3) {
+          // Progress based on ratio (approx 0.05 to 0.15 range)
+          const mouthProgress = Math.min(100, Math.max(0, (mouthRatio - 0.05) / 0.1 * 100));
+          setProgress(mouthProgress);
+
+          if (mouthRatio > 0.15) {
             if (st.frames.length < 15) {
-              setGuidance("Continue turning slowly...");
+              setGuidance("Keep mouth open...");
               return;
             }
 
             if (!st.isSubmitting) {
-              // Immediately set guard to prevent duplicate submissions
               st.isSubmitting = true;
 
-              // CAPTURE THE PEAK FRAME (the one that actually triggered the success)
+              // Capture PEAK frame
               if (canvasRef.current) {
                 captureFrame(canvasRef.current, st, true).then(() => {
-                  submitLiveness([...st.frames]); // Pass a copy to prevent mutation
+                  submitLiveness([...st.frames]);
                 });
               } else {
                 submitLiveness([...st.frames]);
               }
             }
-
           }
         }
       }
@@ -298,12 +291,19 @@ export const LivenessCheck: React.FC<LivenessCheckProps> = ({ onBack, onComplete
         formData.append(`frame_${index}`, blob, `frame_${index}.jpg`);
       });
       formData.append('totalFrames', frames.length.toString());
-      formData.append('stepSequence', JSON.stringify(['blink', 'turn_left']));
+      formData.append('stepSequence', JSON.stringify(['blink', 'open_mouth']));
 
-      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+      const isLocalhost = typeof window !== 'undefined' &&
+        (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+      const apiUrl = import.meta.env.VITE_API_URL || (isLocalhost ? 'http://localhost:3001' : '');
+      const token = localStorage.getItem('casperid_session_token');
+
       const response = await fetch(`${apiUrl}/api/ai/verify-liveness-sequence`, {
         method: 'POST',
         credentials: 'include',
+        headers: token ? {
+          'Authorization': `Bearer ${token}`
+        } : {},
         body: formData,
       });
 

@@ -10,34 +10,34 @@ import RoadmapSection from "./RoadmapSection";
 // import ChatAssistant from "./ChatAssistant";
 import OldVsNewSection from "./OldVsNewSection";
 import ContextualSection from "./ContextsAware";
-import { CasperOSFlow } from "./CasperOSFlow";
+import { AdevarOSFlow } from "./AdevarOSFlow";
 import { ScrollToTop } from "./casperos/ScrollToTop";
 
 interface LandingPageProps {
-  initialView?: 'main' | 'casperos';
+  initialView?: 'main' | 'anra';
 }
 
 export default function LandingPage({ initialView = 'main' }: LandingPageProps) {
   const navigate = useNavigate();
   const location = useLocation();
-  const [currentLandingView, setCurrentLandingView] = React.useState<'main' | 'casperos'>(initialView);
+  const [currentLandingView, setCurrentLandingView] = React.useState<'main' | 'anra'>(initialView);
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [showScrollTop, setShowScrollTop] = useState(false);
 
   // Sync internal view with URL
   useEffect(() => {
-    if (location.pathname === '/casperos') {
-      setCurrentLandingView('casperos');
+    if (location.pathname === '/anra' || location.pathname === '/adevaros') {
+      setCurrentLandingView('anra');
     } else if (location.pathname === '/') {
       setCurrentLandingView('main');
     }
   }, [location.pathname]);
 
-  const handleNavigate = (view: 'main' | 'casperos') => {
+  const handleNavigate = (view: 'main' | 'anra') => {
     setCurrentLandingView(view);
-    if (view === 'casperos') {
-      navigate('/casperos');
+    if (view === 'anra') {
+      navigate('/anra');
     } else {
       navigate('/');
     }
@@ -60,10 +60,9 @@ export default function LandingPage({ initialView = 'main' }: LandingPageProps) 
     script.async = true;
     document.body.appendChild(script);
 
-    // Initializer
     const scriptInit = document.createElement('script');
     scriptInit.textContent = `
-      const loadParticles = () => {
+      window.loadParticles = () => {
         if (!window.tsParticles) return;
         window.tsParticles.load({
           id: "tsparticles",
@@ -93,9 +92,9 @@ export default function LandingPage({ initialView = 'main' }: LandingPageProps) 
         });
       };
       if (document.readyState === "complete") {
-        setTimeout(loadParticles, 1000); 
+        setTimeout(() => window.loadParticles && window.loadParticles(), 1000); 
       } else {
-        window.addEventListener("load", loadParticles);
+        window.addEventListener("load", () => window.loadParticles && window.loadParticles());
       }
     `;
     document.body.appendChild(scriptInit);
@@ -122,22 +121,23 @@ export default function LandingPage({ initialView = 'main' }: LandingPageProps) 
 
     // Header scroll
     const header = document.getElementById('site-header');
+    const toggle = () => {
+      if (window.scrollY > 10) {
+        header?.classList.add('scrolled');
+      } else {
+        header?.classList.remove('scrolled');
+      }
+    };
+
     if (header) {
-      const toggle = () => {
-        if (window.scrollY > 10) {
-          header.classList.add('scrolled');
-        } else {
-          header.classList.remove('scrolled');
-        }
-      };
       toggle();
       window.addEventListener('scroll', toggle, { passive: true });
-      return () => window.removeEventListener('scroll', toggle);
     }
 
     return () => {
-      document.body.removeChild(script);
-      document.body.removeChild(scriptInit);
+      if (header) window.removeEventListener('scroll', toggle);
+      if (document.body.contains(script)) document.body.removeChild(script);
+      if (document.body.contains(scriptInit)) document.body.removeChild(scriptInit);
     };
   }, []);
 
@@ -173,10 +173,11 @@ export default function LandingPage({ initialView = 'main' }: LandingPageProps) 
                   Developers
                 </a>
                 <a
-                  onClick={() => handleNavigate('casperos')}
-                  className={`hover:text-slate-900 transition cursor-pointer ${currentLandingView === 'casperos' ? 'text-indigo-600 font-bold' : ''}`}
+                  onClick={() => handleNavigate('anra')}
+                  className={`hover:text-slate-900 transition cursor-pointer flex items-center gap-0.5 ${currentLandingView === 'anra' ? 'text-indigo-600 font-bold' : ''}`}
                 >
-                  CasperOS
+                  anra
+                  <span className="animate-pulse" title="Trending">🔥</span>
                 </a>
               </nav>
             </div>
@@ -442,12 +443,12 @@ export default function LandingPage({ initialView = 'main' }: LandingPageProps) 
             </section>
           </>
         ) : (
-          <CasperOSFlow />
+          <AdevarOSFlow />
         )}
 
         <FooterMarketing className="scroll-mt-24" onNavigate={(view) => {
-          if (view === 'main' || view === 'casperos') {
-            handleNavigate(view);
+          if (view === 'main' || (view as any) === 'anra') {
+            handleNavigate(view as any);
           }
         }} />
         {/* ChatAssistant disabled - using Crisp chatbot instead */}
@@ -462,7 +463,7 @@ export default function LandingPage({ initialView = 'main' }: LandingPageProps) 
             <a onClick={() => setIsMenuOpen(false)} href="#download" className="hover:text-indigo-600 transition">Download</a>
             <a onClick={() => setIsMenuOpen(false)} href="#resources" className="hover:text-indigo-600 transition">Resources</a>
             <a onClick={() => setIsMenuOpen(false)} href="#developers" className="hover:text-indigo-600 transition">Developers</a>
-            <a onClick={() => { setIsMenuOpen(false); handleNavigate('casperos'); }} className="hover:text-indigo-600 transition cursor-pointer">CasperOS</a>
+            <a onClick={() => { setIsMenuOpen(false); handleNavigate('anra'); }} className="hover:text-indigo-600 transition cursor-pointer">anra</a>
             <div className="flex flex-col gap-4 mt-8 w-full max-w-sm">
               <a href="/dashboard" className="w-full text-center py-4 bg-indigo-100 text-indigo-700 rounded-2xl text-lg font-bold">Get CasperID</a>
               <a

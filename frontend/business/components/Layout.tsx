@@ -34,7 +34,7 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isSandbox, setIsSandbox] = useState(false);
   const [isNotificationOpen, setIsNotificationOpen] = useState(false);
-  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  // Removed Global Modal state and logic in favor of centralized APIManagement modal
   const notificationRef = useRef<HTMLDivElement>(null);
 
   const notifications = [
@@ -68,48 +68,6 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
 
   return (
     <div className="flex h-screen overflow-hidden bg-background-light">
-      {/* Create Modal */}
-      {isCreateModalOpen && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="bg-white rounded-3xl w-full max-w-lg shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
-            <div className="p-8 border-b border-border-muted flex justify-between items-center bg-background-light/30">
-              <div className="flex flex-col gap-1">
-                <h3 className="text-xl font-black text-text-main">Create Integration</h3>
-                <p className="text-sm text-text-muted">Set up a new CasperID connection.</p>
-              </div>
-              <button onClick={() => setIsCreateModalOpen(false)} className="text-text-muted hover:text-text-main p-2 rounded-full hover:bg-background-light">
-                <span className="material-symbols-outlined">close</span>
-              </button>
-            </div>
-            <div className="p-8 space-y-6">
-              <div className="space-y-2">
-                <label className="text-sm font-bold text-text-main">Application Name</label>
-                <input className="w-full rounded-xl border-border-muted bg-background-light p-3 focus:ring-primary focus:border-primary text-sm" placeholder="e.g. My Awesome Dapp" />
-              </div>
-              <div className="space-y-2">
-                <label className="text-sm font-bold text-text-main">Main Website URL</label>
-                <input className="w-full rounded-xl border-border-muted bg-background-light p-3 focus:ring-primary focus:border-primary text-sm" placeholder="https://example.com" />
-              </div>
-              <div className="space-y-2">
-                <label className="text-sm font-bold text-text-main">Integration Type</label>
-                <div className="grid grid-cols-2 gap-4 mt-2">
-                  <button className="flex items-center justify-center gap-3 p-4 rounded-xl border-2 border-primary bg-primary/5 text-primary font-bold transition-all">
-                    <span className="material-symbols-outlined">web</span> Web App
-                  </button>
-                  <button className="flex items-center justify-center gap-3 p-4 rounded-xl border border-border-muted text-text-muted font-bold hover:border-primary/50 transition-all">
-                    <span className="material-symbols-outlined">smartphone</span> Mobile App
-                  </button>
-                </div>
-              </div>
-            </div>
-            <div className="p-8 pt-0 flex gap-4">
-              <button onClick={() => setIsCreateModalOpen(false)} className="flex-1 py-3 text-sm font-bold text-text-muted hover:text-text-main transition-colors">Cancel</button>
-              <button onClick={() => { setIsCreateModalOpen(false); navigate('/business/integrations'); }} className="flex-[2] py-3 bg-primary text-white font-bold rounded-xl shadow-lg shadow-primary/20 hover:opacity-90 transition-all">Create Integration</button>
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* Mobile Sidebar Overlay */}
       <div
         className={`fixed inset-0 bg-black/40 backdrop-blur-sm z-40 transition-opacity duration-300 md:hidden ${isSidebarOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
@@ -254,7 +212,7 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
             </div>
 
             <button
-              onClick={() => setIsCreateModalOpen(true)}
+              onClick={() => navigate('/business/api-management?create=true')}
               className="flex items-center justify-center rounded-xl h-10 px-4 md:px-6 bg-primary text-white text-sm font-bold hover:bg-primary/90 shadow-sm shadow-primary/20 transition-all active:scale-95"
             >
               <span className="hidden sm:inline">+ Create New</span>
