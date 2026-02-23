@@ -2,6 +2,9 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { FaceMesh } from '@mediapipe/face_mesh';
 import { Camera } from '@mediapipe/camera_utils';
+import { MobileLivenessPage, MobileStep } from './MobileLiveness';
+
+const euclideanDist = (p1: any, p2: any) => Math.sqrt(Math.pow(p1.x - p2.x, 2) + Math.pow(p1.y - p2.y, 2));
 
 interface L3LivenessCheckProps {
     onComplete?: () => void;
@@ -15,6 +18,17 @@ type ChallengeType = "BLINK" | "TURN_LEFT";
  * NO minting - just verifies liveness and stores result for admin review
  */
 export const L3LivenessCheck: React.FC<L3LivenessCheckProps> = ({ onComplete }) => {
+    const [isMobile, setIsMobile] = useState(false);
+
+    useEffect(() => {
+        const checkMobile = () => {
+            setIsMobile(window.innerWidth < 1024);
+        };
+        checkMobile();
+        window.addEventListener('resize', checkMobile);
+        return () => window.removeEventListener('resize', checkMobile);
+    }, []);
+
     const videoRef = useRef<HTMLVideoElement>(null);
     const canvasRef = useRef<HTMLCanvasElement>(null);
 
@@ -220,6 +234,18 @@ export const L3LivenessCheck: React.FC<L3LivenessCheckProps> = ({ onComplete }) 
         };
 
         const init = async () => {
+            // Wait for refs to be available (max 2 seconds)
+            let attempts = 0;
+            while ((!videoRef.current || !canvasRef.current) && attempts < 20) {
+                await new Promise(r => setTimeout(r, 100));
+                attempts++;
+            }
+
+            if (!videoRef.current || !canvasRef.current || !isActive) {
+                console.warn("[L3LivenessCheck] Refs not ready after timeout");
+                return;
+            }
+
             try {
                 faceMesh = new FaceMesh({
                     locateFile: (file: string) => `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/${file}`
@@ -263,7 +289,7 @@ export const L3LivenessCheck: React.FC<L3LivenessCheckProps> = ({ onComplete }) 
             if (camera) camera.stop();
             if (faceMesh) faceMesh.close();
         };
-    }, [state, challenge]);
+    }, [state, challenge, isMobile]);
 
     const submitLiveness = async (frames: Blob[]) => {
         if (state === "VERIFYING") return;
@@ -311,14 +337,39 @@ export const L3LivenessCheck: React.FC<L3LivenessCheckProps> = ({ onComplete }) 
                 setState("POSITIONING");
             }
         } catch (error) {
-            console.error('Liveness error:', error);
-            setGuidance("Error. Try again.");
+            if (error.message?.includes('503') || error.details?.includes('503') || error.message?.includes('high demand')) {
+                setGuidance("Our Neural engine is busy. retry again later.");
+            } else {
+                setGuidance("Error. Try again.");
+            }
             resetLivenessState();
             setState("POSITIONING");
         }
     };
 
-    const euclideanDist = (p1: any, p2: any) => Math.sqrt(Math.pow(p1.x - p2.x, 2) + Math.pow(p1.y - p2.y, 2));
+
+    const getMobileStep = (): MobileStep => {
+        if (state === "SUCCESS") return "success";
+        if (state === "VERIFYING") return "processing";
+        if (state === "CHALLENGE" && challenge === "TURN_LEFT") return "smile";
+        if (state === "CHALLENGE" && challenge === "BLINK") return "blink";
+        return "position";
+    };
+
+    if (isMobile) {
+        return (
+            <MobileLivenessPage
+                onCancel={() => window.location.reload()}
+                onComplete={() => { if (onComplete) onComplete(); }}
+                videoRef={videoRef}
+                canvasRef={canvasRef}
+                step={getMobileStep()}
+                progress={progress}
+                instruction={guidance}
+                isApiComplete={state === "SUCCESS"}
+            />
+        );
+    }
 
     return (
         <div className="w-full max-w-7xl mx-auto animate-in fade-in slide-in-from-bottom-4 duration-700 pb-20">

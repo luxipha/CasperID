@@ -41,7 +41,27 @@ If you cannot extract certain information, use null for that field. Be very care
             }
         };
 
-        const aiResult = await model.generateContent([prompt, imagePart]);
+        let aiResult;
+        let retries = 0;
+        const maxRetries = 3;
+
+        while (retries < maxRetries) {
+            try {
+                aiResult = await model.generateContent([prompt, imagePart]);
+                break; // Success
+            } catch (err) {
+                retries++;
+                // 503 Service Unavailable is the common "High Demand" error
+                if (err.status === 503 && retries < maxRetries) {
+                    const delay = Math.pow(2, retries) * 1000; // Exponential backoff
+                    console.warn(`[Gemini] Model busy (503). Retrying ${retries}/${maxRetries} in ${delay}ms...`);
+                    await new Promise(r => setTimeout(r, delay));
+                    continue;
+                }
+                throw err;
+            }
+        }
+
         const response = await aiResult.response;
         const text = response.text();
 
@@ -317,7 +337,26 @@ Only mark as passed if you're confident this is a live human performing the requ
             promptLength: prompt.length
         });
 
-        const aiResult = await model.generateContent([prompt, ...imageParts]);
+        let aiResult;
+        let retries = 0;
+        const maxRetries = 3;
+
+        while (retries < maxRetries) {
+            try {
+                aiResult = await model.generateContent([prompt, ...imageParts]);
+                break; // Success
+            } catch (err) {
+                retries++;
+                if (err.status === 503 && retries < maxRetries) {
+                    const delay = Math.pow(2, retries) * 1000;
+                    console.warn(`[Gemini] Liveness Model busy (503). Retrying ${retries}/${maxRetries} in ${delay}ms...`);
+                    await new Promise(r => setTimeout(r, delay));
+                    continue;
+                }
+                throw err;
+            }
+        }
+
         const response = await aiResult.response;
         const text = response.text();
 
