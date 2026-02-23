@@ -356,7 +356,7 @@ export default function LandingPage({ initialView = 'main' }: LandingPageProps) 
                       className="space-y-4 w-[85%] sm:w-[384px] group flex-shrink-0 snap-start"
                     >
                       <div className="w-full aspect-square md:w-[384px] md:h-[384px] rounded-2xl overflow-hidden border border-slate-200 shadow-sm group-hover:shadow-xl transition-shadow">
-                        <img src="/images/1.png" alt="Identity is Not an App" className="w-full h-full object-cover" />
+                        <img src="/images/frag.webp" alt="Identity is Not an App" className="w-full h-full object-cover" />
                       </div>
                       <div className="space-y-2">
                         <div className="text-lg md:text-xl font-semibold text-slate-900 group-hover:text-indigo-600 transition-colors">
@@ -380,7 +380,7 @@ export default function LandingPage({ initialView = 'main' }: LandingPageProps) 
                       className="space-y-4 w-[85%] sm:w-[384px] group flex-shrink-0 snap-start"
                     >
                       <div className="w-full aspect-square md:w-[384px] md:h-[384px] rounded-2xl overflow-hidden border border-slate-200 shadow-sm group-hover:shadow-xl transition-shadow">
-                        <img src="/images/2.png" alt="5 Ways CasperID Fixes Identity" className="w-full h-full object-cover" />
+                        <img src="/images/CID.webp" alt="5 Ways CasperID Fixes Identity" className="w-full h-full object-cover" />
                       </div>
                       <div className="space-y-2">
                         <div className="text-lg md:text-xl font-semibold text-slate-900 group-hover:text-indigo-600 transition-colors">
