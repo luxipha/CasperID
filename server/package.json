@@ -21,6 +21,7 @@
         "@datadog/browser-core": "^6.25.1",
         "@datadog/browser-logs": "^6.25.1",
         "@google/generative-ai": "^0.24.1",
+        "@imagekit/nodejs": "^7.3.0",
         "@openfeature/core": "^1.9.1",
         "@paddlejs-models/ocr": "^1.2.4",
         "@simplewebauthn/server": "^13.2.2",
