@@ -21,19 +21,8 @@ const { logViewEvent } = require('../utils/view-logger');
 const { requireAuth } = require('../middleware/auth');
 
 // Configure File Upload
-const storage = multer.diskStorage({
-    destination: (req, file, cb) => {
-        const uploadDir = path.join(__dirname, '../../uploads');
-        if (!fs.existsSync(uploadDir)) {
-            fs.mkdirSync(uploadDir, { recursive: true });
-        }
-        cb(null, uploadDir);
-    },
-    filename: (req, file, cb) => {
-        const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-        cb(null, 'avatar-' + uniqueSuffix + path.extname(file.originalname));
-    }
-});
+// Configure File Upload - Use memory storage for ImageKit
+const storage = multer.memoryStorage();
 
 const upload = multer({
     storage: storage,
@@ -45,6 +34,8 @@ const upload = multer({
         cb(null, true);
     }
 });
+
+const imagekit = require('../services/imagekit');
 
 // ============================================
 // PROFILE CATEGORY BATCH CLEAR (For Resume Overwrite)
@@ -515,7 +506,7 @@ router.get('/random-banner', async (req, res) => {
 
 /**
  * POST /api/profile/:wallet/upload-avatar
- * Upload profile picture
+ * Upload profile picture to ImageKit
  */
 router.post('/profile/:wallet/upload-avatar', upload.single('avatar'), async (req, res) => {
     try {
@@ -524,9 +515,16 @@ router.post('/profile/:wallet/upload-avatar', upload.single('avatar'), async (re
         }
 
         const { wallet } = req.params;
-        // Construct URL based on server configuration (assuming /uploads is served statically)
-        // In local dev, this is strictly relative path, frontend should prepend backend URL
-        const imageUrl = `/uploads/${req.file.filename}`;
+
+        // Upload to ImageKit
+        const uploadResponse = await imagekit.upload({
+            file: req.file.buffer, // required, buffer or base64
+            fileName: `avatar-${wallet}-${Date.now()}`, // required
+            folder: '/avatars',
+            useUniqueFileName: true
+        });
+
+        const imageUrl = uploadResponse.url;
 
         const profile = await UserProfile.findOneAndUpdate(
             { wallet },
@@ -534,7 +532,12 @@ router.post('/profile/:wallet/upload-avatar', upload.single('avatar'), async (re
             { new: true, upsert: true }
         );
 
-        res.json({ profile, imageUrl });
+        res.json({
+            success: true,
+            profile,
+            imageUrl,
+            fileId: uploadResponse.fileId
+        });
     } catch (error) {
         console.error('Upload avatar error:', error);
         res.status(500).json({ error: error.message || 'Failed to upload image' });
