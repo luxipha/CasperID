@@ -1,22 +1,11 @@
 const express = require('express');
 const router = express.Router();
 const { v4: uuidv4 } = require('uuid');
-const { UserAccount, LoginSession, UserProfile, Credential } = require('../database/models');
+const { UserAccount, LoginSession, UserProfile, Credential, EmailVerification } = require('../database/models');
 const { generateToken } = require('../utils/jwt-manager');
 const emailService = require('../services/emailService');
 
-// In-memory OTP storage (in production, use Redis or database)
-const otpStorage = new Map();
-
-// Clean up expired OTPs every minute
-setInterval(() => {
-    const now = Date.now();
-    for (const [key, value] of otpStorage.entries()) {
-        if (now > value.expiresAt) {
-            otpStorage.delete(key);
-        }
-    }
-}, 60000);
+// Note: OTP storage now uses MongoDB EmailVerification model with TTL index for auto-cleanup
 
 // Environment variables for OAuth
 const LINKEDIN_CLIENT_ID = process.env.LINKEDIN_CLIENT_ID || 'YOUR_LINKEDIN_CLIENT_ID';
@@ -80,17 +69,18 @@ router.post('/send-otp', async (req, res) => {
         // Generate OTP and verification ID
         const otp = emailService.generateOTP();
         const verificationId = uuidv4();
-        const expiresAt = Date.now() + (10 * 60 * 1000); // 10 minutes
+        const expiresAt = new Date(Date.now() + (10 * 60 * 1000)); // 10 minutes
 
-        // Store OTP with expiration
-        otpStorage.set(verificationId, {
+        // Store OTP in database (MongoDB with TTL auto-cleanup)
+        await EmailVerification.create({
+            verification_id: verificationId,
             email,
-            otp,
-            expiresAt,
+            verification_code: otp,
+            type: 'otp_auth',
+            verified: false,
             attempts: 0,
-            verified: false
+            expires_at: expiresAt
         });
-
 
         // Send OTP email
         await emailService.sendOTP(email, otp);
@@ -126,7 +116,7 @@ router.post('/verify-otp', async (req, res) => {
             });
         }
 
-        const storedData = otpStorage.get(verificationId);
+        const storedData = await EmailVerification.findOne({ verification_id: verificationId });
 
         if (!storedData) {
             return res.status(400).json({
@@ -135,11 +125,11 @@ router.post('/verify-otp', async (req, res) => {
             });
         }
 
-        const now = Date.now();
+        const now = new Date();
 
         // Check if expired
-        if (now > storedData.expiresAt) {
-            otpStorage.delete(verificationId);
+        if (now > storedData.expires_at) {
+            await EmailVerification.deleteOne({ verification_id: verificationId });
             return res.status(400).json({
                 success: false,
                 error: 'OTP has expired. Please request a new one.'
@@ -156,10 +146,11 @@ router.post('/verify-otp', async (req, res) => {
 
         // Increment attempt count
         storedData.attempts += 1;
+        await storedData.save();
 
         // Check attempt limit
         if (storedData.attempts > 5) {
-            otpStorage.delete(verificationId);
+            await EmailVerification.deleteOne({ verification_id: verificationId });
             return res.status(400).json({
                 success: false,
                 error: 'Too many failed attempts. Please request a new OTP.'
@@ -167,7 +158,7 @@ router.post('/verify-otp', async (req, res) => {
         }
 
         // Verify OTP
-        if (storedData.otp !== otp.toString()) {
+        if (storedData.verification_code !== otp.toString()) {
             return res.status(400).json({
                 success: false,
                 error: 'Invalid OTP. Please try again.',
@@ -177,6 +168,8 @@ router.post('/verify-otp', async (req, res) => {
 
         // Mark as verified
         storedData.verified = true;
+        storedData.verified_at = now;
+        await storedData.save();
 
 
         // Generate Session Token
@@ -261,7 +254,7 @@ router.post('/resend-otp', async (req, res) => {
             });
         }
 
-        const storedData = otpStorage.get(verificationId);
+        const storedData = await EmailVerification.findOne({ verification_id: verificationId });
 
         if (!storedData) {
             return res.status(400).json({
@@ -272,14 +265,14 @@ router.post('/resend-otp', async (req, res) => {
 
         // Generate new OTP
         const newOtp = emailService.generateOTP();
-        const newExpiresAt = Date.now() + (10 * 60 * 1000); // 10 minutes
+        const newExpiresAt = new Date(Date.now() + (10 * 60 * 1000)); // 10 minutes
 
         // Update stored data
-        storedData.otp = newOtp;
-        storedData.expiresAt = newExpiresAt;
+        storedData.verification_code = newOtp;
+        storedData.expires_at = newExpiresAt;
         storedData.attempts = 0;
         storedData.verified = false;
-
+        await storedData.save();
 
         // Send new OTP email
         await emailService.sendOTP(storedData.email, newOtp);
@@ -417,19 +410,20 @@ router.post('/send-verification-otp', require('../middleware/auth').requireAuth,
         // Generate OTP and verification ID
         const otp = emailService.generateOTP();
         const verificationId = `${userAccount.user_id}-${purpose}-${Date.now()}`;
-        const expiresAt = Date.now() + (10 * 60 * 1000); // 10 minutes
+        const expiresAt = new Date(Date.now() + (10 * 60 * 1000)); // 10 minutes
 
-        // Store OTP with user and purpose info
-        otpStorage.set(verificationId, {
-            userId: userAccount.user_id,
+        // Store OTP in database with user and purpose info
+        await EmailVerification.create({
+            verification_id: verificationId,
             email: userAccount.recovery_email,
-            purpose,
-            otp,
-            expiresAt,
+            user_id: userAccount.user_id,
+            verification_code: otp,
+            type: purpose,
+            purpose: purpose,
+            verified: false,
             attempts: 0,
-            verified: false
+            expires_at: expiresAt
         });
-
 
         // Send OTP email with purpose context
         await emailService.sendOTP(userAccount.recovery_email, otp, `CasperID - ${purpose.replace('-', ' ').toUpperCase()} Verification`);
@@ -483,19 +477,12 @@ router.post('/verify-verification-otp', require('../middleware/auth').requireAut
             });
         }
 
-        // Find OTP entry for this user and purpose
-        let otpEntry = null;
-        let otpKey = null;
-
-        for (const [key, value] of otpStorage.entries()) {
-            if (value.userId === userAccount.user_id &&
-                value.purpose === purpose &&
-                !value.verified) {
-                otpEntry = value;
-                otpKey = key;
-                break;
-            }
-        }
+        // Find OTP entry for this user and purpose from database
+        const otpEntry = await EmailVerification.findOne({
+            user_id: userAccount.user_id,
+            purpose: purpose,
+            verified: false
+        }).sort({ created_at: -1 }); // Get most recent
 
         if (!otpEntry) {
             return res.status(400).json({
@@ -505,8 +492,8 @@ router.post('/verify-verification-otp', require('../middleware/auth').requireAut
         }
 
         // Check if expired
-        if (Date.now() > otpEntry.expiresAt) {
-            otpStorage.delete(otpKey);
+        if (new Date() > otpEntry.expires_at) {
+            await EmailVerification.deleteOne({ _id: otpEntry._id });
             return res.status(400).json({
                 success: false,
                 error: 'OTP has expired. Please request a new one.'
@@ -515,7 +502,7 @@ router.post('/verify-verification-otp', require('../middleware/auth').requireAut
 
         // Check attempts
         if (otpEntry.attempts >= 3) {
-            otpStorage.delete(otpKey);
+            await EmailVerification.deleteOne({ _id: otpEntry._id });
             return res.status(400).json({
                 success: false,
                 error: 'Too many failed attempts. Please request a new OTP.'
@@ -523,8 +510,9 @@ router.post('/verify-verification-otp', require('../middleware/auth').requireAut
         }
 
         // Verify OTP
-        if (otpEntry.otp !== otp) {
+        if (otpEntry.verification_code !== otp) {
             otpEntry.attempts++;
+            await otpEntry.save();
             return res.status(400).json({
                 success: false,
                 error: 'Invalid OTP. Please try again.',
@@ -532,22 +520,22 @@ router.post('/verify-verification-otp', require('../middleware/auth').requireAut
             });
         }
 
-        // Success - mark as verified
-        otpEntry.verified = true;
+        // Success - mark as verified and delete OTP entry
+        await EmailVerification.deleteOne({ _id: otpEntry._id });
 
-
-        // Store verification token for subsequent requests (using in-memory for now)
+        // Store verification token in database for subsequent requests
         const verificationToken = `${userAccount.user_id}-${purpose}-${Date.now()}-verified`;
-        otpStorage.set(verificationToken, {
-            userId: userAccount.user_id,
-            purpose,
+        await EmailVerification.create({
+            verification_id: verificationToken,
+            email: userAccount.recovery_email,
+            user_id: userAccount.user_id,
+            verification_code: 'verified', // Not used for verification tokens
+            type: 'verification_token',
+            purpose: `${purpose}-verified`,
             verified: true,
-            timestamp: Date.now(),
-            expiresAt: Date.now() + (5 * 60 * 1000) // 5 minutes validity
+            verified_at: new Date(),
+            expires_at: new Date(Date.now() + (5 * 60 * 1000)) // 5 minutes validity
         });
-
-        // Clean up OTP
-        otpStorage.delete(otpKey);
 
         res.json({
             success: true,
@@ -592,12 +580,16 @@ router.post('/export-did', require('../middleware/auth').requireAuth, async (req
             });
         }
 
-        // Check if user has verified OTP for export-did
-        const verification = otpStorage.get(verificationToken);
-        if (!verification || !verification.verified ||
-            verification.purpose !== 'export-did' ||
-            verification.userId !== userAccount.user_id ||
-            Date.now() > verification.expiresAt) {
+        // Check if user has verified OTP for export-did (from database)
+        const verification = await EmailVerification.findOne({
+            verification_id: verificationToken,
+            type: 'verification_token',
+            purpose: 'export-did-verified',
+            user_id: userAccount.user_id,
+            verified: true
+        });
+
+        if (!verification || new Date() > verification.expires_at) {
             return res.status(403).json({
                 success: false,
                 error: 'OTP verification required. Please verify your OTP first.'
@@ -624,7 +616,7 @@ router.post('/export-did', require('../middleware/auth').requireAuth, async (req
         };
 
         // Clear the verification after use (one-time use)
-        otpStorage.delete(verificationToken);
+        await EmailVerification.deleteOne({ verification_id: verificationToken });
 
         // Generate export file name
         const filename = `casperid-export-${userAccount.user_id}-${Date.now()}.json`;

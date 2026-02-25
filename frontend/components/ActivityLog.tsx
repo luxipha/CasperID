@@ -12,6 +12,27 @@ export const ActivityLog: React.FC<ActivityLogProps> = ({ onViewDetail }) => {
   const [error, setError] = useState<string | null>(null);
   const [pagination, setPagination] = useState({ total: 0, page: 1, limit: 10, pages: 0 });
 
+  const formatTimeAgo = (date: string | number) => {
+    const timestamp = typeof date === 'string' ? new Date(date).getTime() : date;
+    const now = new Date().getTime();
+    const seconds = Math.floor((now - timestamp) / 1000);
+
+    if (seconds < 60) return 'Just now';
+    const minutes = Math.floor(seconds / 60);
+    if (minutes < 60) return `${minutes}m ago`;
+    const hours = Math.floor(minutes / 60);
+    if (hours < 24) return `${hours}h ago`;
+    const days = Math.floor(hours / 24);
+    if (days < 7) return `${days}d ago`;
+
+    return new Date(timestamp).toLocaleDateString();
+  };
+
+  const getProfileSlug = (url?: string) => {
+    if (!url || !url.includes('/api/public-profile/')) return null;
+    return url.split('/').pop();
+  };
+
   // Filter states
   const [searchQuery, setSearchQuery] = useState('');
   const [eventType, setEventType] = useState('');
@@ -195,23 +216,29 @@ export const ActivityLog: React.FC<ActivityLogProps> = ({ onViewDetail }) => {
                     </td>
                     <td className="px-6 py-5">
                       <p className="text-sm font-bold text-text-main line-clamp-1">{item.action}</p>
-                      <p className="text-[11px] text-text-sub font-medium line-clamp-1">{item.subText}</p>
+                      {item.type === 'visibility' && (
+                        <p className="text-[11px] text-text-sub font-medium line-clamp-1">
+                          {getProfileSlug(item.subText) || 'Public Profile'}
+                        </p>
+                      )}
                       {/* Date visible only on smaller screens here */}
-                      <p className="text-[10px] text-text-sub/60 mt-1 lg:hidden">{item.date} • {item.time}</p>
+                      <p className="text-[10px] text-text-sub/60 mt-1 lg:hidden">
+                        {formatTimeAgo(item.timestamp)}
+                      </p>
                     </td>
                     <td className="px-6 py-5">
                       <div className="flex flex-col max-w-[120px] sm:max-w-none">
                         <span className="text-sm font-bold text-text-main truncate">{item.entity}</span>
-                        {item.entitySub && (
-                          <span className="text-[10px] bg-gray-100 px-1.5 py-0.5 rounded text-text-sub font-mono w-fit mt-1 truncate">
-                            {item.entitySub}
+                        {item.location && (
+                          <span className="text-[10px] text-text-sub font-medium w-fit mt-1 truncate">
+                            {item.location}
                           </span>
                         )}
                       </div>
                     </td>
                     <td className="px-6 py-5 hidden lg:table-cell">
-                      <p className="text-sm font-bold text-text-main">{item.date}</p>
-                      <p className="text-[11px] text-text-sub font-medium">{item.time}</p>
+                      <p className="text-sm font-bold text-text-main truncate">{formatTimeAgo(item.timestamp)}</p>
+                      <p className="text-[11px] text-text-sub font-medium truncate">{item.date} {item.time}</p>
                     </td>
                     <td className="px-6 py-5">
                       <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-[9px] font-extrabold uppercase tracking-wider ${item.statusClass}`}>

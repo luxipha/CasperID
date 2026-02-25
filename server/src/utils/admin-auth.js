@@ -143,26 +143,47 @@ async function changeAdminPassword(username, currentPassword, newPassword) {
 
 /**
  * Initialize default admin user if none exists
+ *
+ * SECURITY: The default password is written to a secure file, NOT logged to console.
+ * This prevents password exposure in container logs, Docker history, or CI/CD output.
  */
 async function initializeDefaultAdmin() {
+    const fs = require('fs');
+    const path = require('path');
+
     try {
         // Check if any admin exists
         const adminCount = await AdminUser.countDocuments();
-        
+
         if (adminCount === 0) {
             console.log('🔧 Creating default admin user...');
-            
+
             // Generate a secure random password for initial setup
             const defaultPassword = crypto.randomBytes(16).toString('hex');
-            
+
             await createAdminUser('admin', defaultPassword, 'super_admin');
-            
+
+            // Write credentials to a secure file instead of logging
+            // This file should be in a location that's not committed to version control
+            const credentialsPath = path.join(__dirname, '../../.admin-credentials');
+            const credentialsContent = `# CasperID Default Admin Credentials
+# Generated: ${new Date().toISOString()}
+#
+# IMPORTANT: Delete this file after retrieving the password!
+# Change this password immediately after first login.
+#
+Username: admin
+Password: ${defaultPassword}
+`;
+
+            fs.writeFileSync(credentialsPath, credentialsContent, { mode: 0o600 }); // Read/write only by owner
+
             console.log('✅ Default admin created successfully!');
             console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-            console.log('🚨 IMPORTANT: Default admin credentials:');
-            console.log(`   Username: admin`);
-            console.log(`   Password: ${defaultPassword}`);
+            console.log('🔐 Admin credentials saved to: .admin-credentials');
+            console.log('   (in server directory, NOT in logs for security)');
             console.log('🔒 Please login and change this password immediately!');
+            console.log('🗑️  Delete the credentials file after retrieving the password.');
             console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
         }
     } catch (error) {

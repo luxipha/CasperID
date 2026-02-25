@@ -4,9 +4,10 @@ import { Menu, X } from 'lucide-react';
 
 interface HeaderMarketingProps {
     className?: string;
+    hideMenu?: boolean;
 }
 
-export default function HeaderMarketing({ className = "" }: HeaderMarketingProps) {
+export default function HeaderMarketing({ className = "", hideMenu = false }: HeaderMarketingProps) {
     const [scrolled, setScrolled] = useState(false);
     const [isMenuOpen, setIsMenuOpen] = useState(false);
 
@@ -34,16 +35,18 @@ export default function HeaderMarketing({ className = "" }: HeaderMarketingProps
                     <div className="hover:opacity-80 transition-opacity">
                         <Logo variant="png" showName />
                     </div>
-                    <nav className="hidden lg:flex items-center gap-8 text-sm font-semibold text-slate-600">
-                        <a href="/#product" className="hover:text-slate-900 transition">Product</a>
-                        <a href="/#download" className="hover:text-slate-900 transition">Download</a>
-                        <a href="/#resources" className="hover:text-slate-900 transition">Resources</a>
-                        <a href="/#developers" className="hover:text-slate-900 transition">Developers</a>
-                        <a href="/anra" className="hover:text-slate-900 transition flex items-center gap-0.5">
-                            anra
-                            <span className="animate-pulse" title="Trending">🔥</span>
-                        </a>
-                    </nav>
+                    {!hideMenu && (
+                        <nav className="hidden lg:flex items-center gap-8 text-sm font-semibold text-slate-600">
+                            <a href="/#product" className="hover:text-slate-900 transition">Product</a>
+                            <a href="/#download" className="hover:text-slate-900 transition">Download</a>
+                            <a href="/#resources" className="hover:text-slate-900 transition">Resources</a>
+                            <a href="/#developers" className="hover:text-slate-900 transition">Developers</a>
+                            <a href="/anra" className="hover:text-slate-900 transition flex items-center gap-0.5">
+                                anra
+                                <span className="animate-pulse" title="Trending">🔥</span>
+                            </a>
+                        </nav>
+                    )}
                 </div>
 
                 <div className="flex items-center gap-3">
@@ -70,20 +73,31 @@ export default function HeaderMarketing({ className = "" }: HeaderMarketingProps
             {/* Mobile Navigation Overlay */}
             <div className={`fixed inset-0 bg-white z-[60] lg:hidden transition-transform duration-300 ease-in-out ${isMenuOpen ? 'translate-x-0' : 'translate-x-full'}`}>
                 <div className="flex flex-col items-center justify-center h-full gap-8 text-2xl font-bold text-slate-900 px-6">
-                    <a onClick={() => setIsMenuOpen(false)} href="/#product" className="hover:text-indigo-600 transition">Product</a>
-                    <a onClick={() => setIsMenuOpen(false)} href="/#download" className="hover:text-indigo-600 transition">Download</a>
-                    <a onClick={() => setIsMenuOpen(false)} href="/#resources" className="hover:text-indigo-600 transition">Resources</a>
-                    <a onClick={() => setIsMenuOpen(false)} href="/#developers" className="hover:text-indigo-600 transition">Developers</a>
-                    <a onClick={() => setIsMenuOpen(false)} href="/anra" className="hover:text-indigo-600 transition flex items-center gap-2">
-                        anra
-                        <span className="animate-pulse">🔥</span>
-                    </a>
-                    <div className="flex flex-col gap-4 mt-8 w-full max-w-sm">
-                        <a href="/dashboard" className="w-full text-center py-4 bg-indigo-100 text-indigo-700 rounded-2xl text-lg font-bold">Get CasperID</a>
-                        <button className="w-full text-center py-4 bg-slate-900 text-white rounded-2xl text-lg font-bold shadow-xl shadow-slate-900/20">
-                            Download
-                        </button>
-                    </div>
+                    {!hideMenu ? (
+                        <>
+                            <a onClick={() => setIsMenuOpen(false)} href="/#product" className="hover:text-indigo-600 transition">Product</a>
+                            <a onClick={() => setIsMenuOpen(false)} href="/#download" className="hover:text-indigo-600 transition">Download</a>
+                            <a onClick={() => setIsMenuOpen(false)} href="/#resources" className="hover:text-indigo-600 transition">Resources</a>
+                            <a onClick={() => setIsMenuOpen(false)} href="/#developers" className="hover:text-indigo-600 transition">Developers</a>
+                            <a onClick={() => setIsMenuOpen(false)} href="/anra" className="hover:text-indigo-600 transition flex items-center gap-2">
+                                anra
+                                <span className="animate-pulse">🔥</span>
+                            </a>
+                            <div className="flex flex-col gap-4 mt-8 w-full max-w-sm">
+                                <a href="/dashboard" className="w-full text-center py-4 bg-indigo-100 text-indigo-700 rounded-2xl text-lg font-bold">Get CasperID</a>
+                                <button className="w-full text-center py-4 bg-slate-900 text-white rounded-2xl text-lg font-bold shadow-xl shadow-slate-900/20">
+                                    Download
+                                </button>
+                            </div>
+                        </>
+                    ) : (
+                        <div className="flex flex-col gap-4 mt-8 w-full max-w-sm">
+                            <a href="/dashboard" className="w-full text-center py-4 bg-indigo-100 text-indigo-700 rounded-2xl text-lg font-bold">Get CasperID</a>
+                            <button className="w-full text-center py-4 bg-slate-900 text-white rounded-2xl text-lg font-bold shadow-xl shadow-slate-900/20">
+                                Download
+                            </button>
+                        </div>
+                    )}
                 </div>
                 {/* Close button inside overlay */}
                 <button

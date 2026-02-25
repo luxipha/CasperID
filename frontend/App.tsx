@@ -1,6 +1,5 @@
-
 import React, { useState, useEffect, useCallback } from 'react';
-import { Routes, Route, useLocation, useNavigate, Navigate } from 'react-router-dom';
+import { Routes, Route, useLocation, useNavigate, Navigate, useParams } from 'react-router-dom';
 import { Sidebar } from './components/Sidebar';
 import { Header } from './components/Header';
 import { MobileHeader } from './components/MobileHeader';
@@ -58,6 +57,16 @@ import AffiliatePage from './components/landing/AffiliatePage';
 import ChangelogPage from './components/landing/casperos/changelog';
 import AdminPage from './admin/page';
 
+const PublicProfileContainerWrapper: React.FC = () => {
+  const { slug } = useParams<{ slug: string }>();
+  return slug ? <PublicProfileContainer walletOrUsername={slug} /> : null;
+};
+
+const PRouteRedirect: React.FC = () => {
+  const { slug } = useParams<{ slug: string }>();
+  return <Navigate to={`/profile/${slug}`} replace />;
+};
+
 const App: React.FC = () => {
   /* 
      ROUTING LOGIC
@@ -66,9 +75,9 @@ const App: React.FC = () => {
   */
   // Check if a path is a reserved system path and should NOT be treated as a public profile
   const isReservedPath = (path: string) => {
-    const sysPaths = ['/', '/admin', '/pair', '/dashboard', '/login', '/auth', '/settings', '/integrations', '/verify', '/mobile', '/null', '/business', '/anra', '/adevaros', '/casperos', '/careers', '/apply-success', '/affiliate'];
+    const sysPaths = ['/', '/admin', '/pair', '/dashboard', '/login', '/auth', '/settings', '/integrations', '/verify', '/mobile', '/null', '/business', '/anra', '/adevaros', '/casperos', '/careers', '/apply-success', '/affiliate', '/profile', '/p'];
     const p = path.toLowerCase();
-    return sysPaths.includes(p) || p.startsWith('/verify/') || p.startsWith('/mobile/') || p.startsWith('/business/') || p.startsWith('/careers/') || p === '/null';
+    return sysPaths.includes(p) || p.startsWith('/verify/') || p.startsWith('/mobile/') || p.startsWith('/business/') || p.startsWith('/careers/') || p.startsWith('/profile/') || p.startsWith('/p/') || p === '/null';
   };
 
   const location = useLocation();
@@ -85,6 +94,7 @@ const App: React.FC = () => {
     if (path === '/careers' || path.startsWith('/careers/')) return 'careers';
     if (path === '/apply-success') return 'apply-success';
     if (path === '/affiliate') return 'affiliate';
+    if (path === '/profile' || path.startsWith('/profile/')) return 'public-profile';
 
     // Check for credential verification route
     if (path.startsWith('/verify/')) return 'verify-credential';
@@ -103,7 +113,7 @@ const App: React.FC = () => {
   const [currentView, setCurrentView] = useState('loading'); // Initialize with loading
   const [publicProfileSlug, setPublicProfileSlug] = useState<string | null>(() => {
     const path = window.location.pathname;
-    const slug = path.substring(1);
+    const slug = path.startsWith('/profile/') ? path.replace('/profile/', '') : path.substring(1);
     return (path.length > 1 && !isReservedPath(path) && slug !== 'null' && slug !== 'undefined') ? slug : null;
   });
   const [credentialHash, setCredentialHash] = useState<string | null>(() => {
@@ -153,7 +163,8 @@ const App: React.FC = () => {
     const path = location.pathname;
     const slug = path.substring(1);
     if (path.length > 1 && !isReservedPath(path) && slug !== 'null' && slug !== 'undefined') {
-      setPublicProfileSlug(slug);
+      const actualSlug = path.startsWith('/profile/') ? path.replace('/profile/', '') : slug;
+      setPublicProfileSlug(actualSlug);
     }
     if (path.startsWith('/verify/')) {
       setCredentialHash(path.replace('/verify/', ''));
@@ -550,9 +561,11 @@ const App: React.FC = () => {
         <Route path="/changelog" element={<ChangelogPage />} />
         <Route path="/business/*" element={<BusinessPlatform />} />
         <Route path="/careers" element={<CareersPage onJobClick={(slug) => navigate(`/careers/${slug}`)} />} />
-        <Route path="/careers/:id" element={<CareerDetailPage onBack={() => navigate('/careers')} onApplySuccess={() => navigate('/apply-success')} />} />
+        <Route path="/careers/:id" element={<CareerDetailPage onBack={() => navigate('/careers')} onApplySuccess={(jobTitle) => navigate('/apply-success', { state: { jobTitle } })} />} />
         <Route path="/apply-success" element={<ApplySuccessPage onReturnToCareers={() => navigate('/careers')} />} />
         <Route path="/affiliate" element={<AffiliatePage />} />
+        <Route path="/profile/:slug" element={<PublicProfileContainerWrapper />} />
+        <Route path="/p/:slug" element={<PRouteRedirect />} />
 
         {/* Dashboard Route - must be before /:slug catch-all */}
         <Route path="/dashboard" element={
@@ -652,11 +665,9 @@ const App: React.FC = () => {
         appName="CasperSwap"
         appLogo="https://casperswap.xyz/logo.png"
         onApprove={() => {
-          console.log('Approved');
           setIsConsentModalOpen(false);
         }}
         onDeny={() => {
-          console.log('Denied');
           setIsConsentModalOpen(false);
         }}
       />
@@ -672,8 +683,7 @@ const App: React.FC = () => {
         onClose={() => setIsPersonaModalOpen(false)}
         primaryIdentity={user?.cns_name || user?.human_id || 'Primary Identity'}
         userTier={user?.tier || 'layer_2'}
-        onSubmit={(data) => {
-          console.log('Creating persona:', data);
+        onSubmit={() => {
           // Success handled within modal
         }}
       />
@@ -690,9 +700,8 @@ const App: React.FC = () => {
       <ConnectWalletModal
         isOpen={isConnectWalletOpen}
         onClose={() => setIsConnectWalletOpen(false)}
-        onWalletLinked={(address, chain) => {
-          console.log('Wallet linked:', address, chain);
-          // Could refresh user data here
+        onWalletLinked={() => {
+          // Wallet linked - could refresh user data here
         }}
       />
 

@@ -8,6 +8,27 @@ export const RecentActivity: React.FC = () => {
   const [activities, setActivities] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
+  const formatTimeAgo = (date: string | number) => {
+    const timestamp = typeof date === 'string' ? new Date(date).getTime() : date;
+    const now = new Date().getTime();
+    const seconds = Math.floor((now - timestamp) / 1000);
+
+    if (seconds < 60) return 'Just now';
+    const minutes = Math.floor(seconds / 60);
+    if (minutes < 60) return `${minutes}m ago`;
+    const hours = Math.floor(minutes / 60);
+    if (hours < 24) return `${hours}h ago`;
+    const days = Math.floor(hours / 24);
+    if (days < 7) return `${days}d ago`;
+
+    return new Date(timestamp).toLocaleDateString();
+  };
+
+  const getProfileSlug = (url?: string) => {
+    if (!url || !url.includes('/api/public-profile/')) return null;
+    return url.split('/').pop();
+  };
+
   useEffect(() => {
     if (isAuthenticated) {
       fetchActivity();
@@ -33,8 +54,14 @@ export const RecentActivity: React.FC = () => {
   const getEventIcon = (type: string) => {
     switch (type.toLowerCase()) {
       case 'login': return { icon: 'login', color: 'bg-blue-100 text-blue-600' };
-      case 'verification': return { icon: 'verified_user', color: 'bg-green-100 text-green-600' };
-      case 'cns_register': return { icon: 'badge', color: 'bg-purple-100 text-purple-600' };
+      case 'verification':
+      case 'verified_user':
+        return { icon: 'verified_user', color: 'bg-green-100 text-green-600' };
+      case 'cns_register':
+      case 'card_membership':
+        return { icon: 'badge', color: 'bg-purple-100 text-purple-600' };
+      case 'visibility':
+        return { icon: 'visibility', color: 'bg-blue-100 text-blue-600' };
       default: return { icon: 'event_note', color: 'bg-gray-100 text-gray-600' };
     }
   };
@@ -83,15 +110,26 @@ export const RecentActivity: React.FC = () => {
                         <div className={`w-8 h-8 rounded-full ${iconInfo.color} flex items-center justify-center`}>
                           <span className="material-symbols-outlined text-sm">{iconInfo.icon}</span>
                         </div>
-                        <span className="font-bold text-sm text-text-main">{item.title || item.event}</span>
+                        <div className="flex flex-col">
+                          <span className="font-bold text-sm text-text-main">{item.action || item.title || item.event}</span>
+                          {item.type === 'visibility' && (
+                            <span className="text-[10px] font-medium text-text-sub">
+                              {getProfileSlug(item.subText) || 'Public Profile'}
+                            </span>
+                          )}
+                        </div>
                       </div>
                     </td>
                     <td className="px-6 py-4">
-                      <div className="text-sm font-bold text-text-main">{item.application || 'CasperID System'}</div>
-                      <div className="text-[10px] font-medium text-text-sub">{item.description}</div>
+                      <div className="text-sm font-bold text-text-main">{item.entity || item.application || 'CasperID System'}</div>
+                      {item.location && (
+                        <div className="text-[10px] font-medium text-text-sub">
+                          {item.location}
+                        </div>
+                      )}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-xs font-medium text-text-sub">
-                      {new Date(item.createdAt).toLocaleDateString()}
+                    <td className="px-6 py-4 whitespace-nowrap text-xs font-semibold text-text-sub capitalize">
+                      {formatTimeAgo(item.timestamp)}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold bg-green-100 text-green-700 uppercase tracking-wide">

@@ -105,7 +105,7 @@ export const PublicProfileContainer: React.FC<PublicProfileContainerProps> = ({ 
 
     return (
         <div className="min-h-screen bg-white">
-            <HeaderMarketing />
+            <HeaderMarketing hideMenu={true} />
 
             <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-24 pb-20">
                 <ProfileDisplay

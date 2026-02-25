@@ -207,7 +207,7 @@ const ChangelogPage: React.FC = () => {
                     <header className="mb-20">
                         <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-8 mb-12">
                             <h1 className="text-6xl md:text-8xl font-black text-slate-900 tracking-tight leading-[1.1] flex flex-col">
-                                <span>anra</span>
+                                <span>casperId</span>
                                 <span className="text-primary">Changelog</span>
                             </h1>
                             <div className="flex items-center gap-3">

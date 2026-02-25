@@ -45,19 +45,18 @@ class ApiService {
   }
 
   private setupInterceptors() {
-    // Request interceptor for auth token
+    // Request interceptor
+    // NOTE: Authentication is handled via httpOnly cookies (withCredentials: true)
+    // No need to manually add Authorization header - cookies are sent automatically
     this.client.interceptors.request.use(
       (config) => {
-        const token = this.getStoredToken();
-        if (token) {
-          config.headers.Authorization = `Bearer ${token}`;
-        }
+        // Cookies are sent automatically with withCredentials: true
         return config;
       },
       (error) => Promise.reject(error)
     );
 
-    // Response interceptor for token refresh
+    // Response interceptor for handling 401 errors
     this.client.interceptors.response.use(
       (response) => response,
       async (error) => {
@@ -65,18 +64,10 @@ class ApiService {
 
         if (error.response?.status === 401 && !originalRequest._retry) {
           originalRequest._retry = true;
-
-          try {
-            await this.refreshToken();
-            const token = this.getStoredToken();
-            if (token) {
-              originalRequest.headers.Authorization = `Bearer ${token}`;
-              return this.client(originalRequest);
-            }
-          } catch (refreshError) {
-            this.logout();
-            // Removed automatic redirect to /login to prevent routing loops with public profiles
-          }
+          // Session expired - clear local state
+          // The httpOnly cookie will be cleared by the server or expire naturally
+          this.clearTokens();
+          // Don't auto-redirect to prevent loops with public profiles
         }
 
         return Promise.reject(error);
@@ -87,58 +78,77 @@ class ApiService {
   // ============================================
   // TOKEN MANAGEMENT
   // ============================================
-
-  private getStoredToken(): string | null {
-    return localStorage.getItem('casperid_session_token');
-  }
+  //
+  // SECURITY: Tokens are now stored in httpOnly cookies set by the server.
+  // This protects against XSS attacks as JavaScript cannot access httpOnly cookies.
+  // The server sets the cookie in /api/passkey/register/finish and /api/passkey/auth/finish.
+  // We use withCredentials: true to send cookies with requests automatically.
+  //
+  // For backwards compatibility during migration, we also check sessionStorage
+  // (NOT localStorage) as a fallback for session expiry tracking only.
+  // ============================================
 
   public setTokens(tokens: AuthTokens) {
-    localStorage.setItem('casperid_session_token', tokens.sessionToken);
-    localStorage.setItem('casperid_token_expires', tokens.expiresAt.toString());
+    // The server sets httpOnly cookies automatically.
+    // We only track expiry time in sessionStorage for UI purposes (e.g., showing session timeout warnings)
+    // sessionStorage is cleared on tab close, which is safer than localStorage
+    try {
+      sessionStorage.setItem('casperid_session_expiry', tokens.expiresAt.toString());
+    } catch {
+      // sessionStorage may be unavailable in some contexts
+    }
   }
 
   public getTokens(): AuthTokens | null {
-    const sessionToken = this.getStoredToken();
-    const expiresAtStr = localStorage.getItem('casperid_token_expires');
-
-    if (sessionToken && expiresAtStr) {
-      return {
-        sessionToken,
-        expiresAt: parseInt(expiresAtStr, 10)
-      };
+    // We can't access the actual token (it's in httpOnly cookie)
+    // Only return expiry info for UI purposes
+    try {
+      const expiresAtStr = sessionStorage.getItem('casperid_session_expiry');
+      if (expiresAtStr) {
+        return {
+          sessionToken: '[httpOnly]', // Placeholder - actual token is in cookie
+          expiresAt: parseInt(expiresAtStr, 10)
+        };
+      }
+    } catch {
+      // sessionStorage may be unavailable
     }
     return null;
   }
 
   private clearTokens() {
-    localStorage.removeItem('casperid_session_token');
-    localStorage.removeItem('casperid_token_expires');
-  }
-
-  private async refreshToken(): Promise<void> {
-    // Session tokens don't refresh - they expire and require re-authentication
-    throw new Error('Session expired - please log in again');
+    try {
+      sessionStorage.removeItem('casperid_session_expiry');
+      // Clean up legacy localStorage tokens if they exist
+      localStorage.removeItem('casperid_session_token');
+      localStorage.removeItem('casperid_token_expires');
+    } catch {
+      // Storage may be unavailable
+    }
   }
 
   public async logout() {
     try {
+      // Server will clear the httpOnly cookie
       await this.client.post('/api/passkey/logout');
-    } catch (error) {
-      console.warn('Backend logout failed:', error);
+    } catch {
+      // Logout failed silently - cookie will expire naturally
     } finally {
       this.clearTokens();
     }
   }
 
   public isAuthenticated(): boolean {
-    const token = this.getStoredToken();
-    const expiresAt = localStorage.getItem('casperid_token_expires');
-
-    if (!token || !expiresAt) {
+    // Check session expiry from sessionStorage
+    try {
+      const expiresAtStr = sessionStorage.getItem('casperid_session_expiry');
+      if (!expiresAtStr) {
+        return false;
+      }
+      return Date.now() < parseInt(expiresAtStr);
+    } catch {
       return false;
     }
-
-    return Date.now() < parseInt(expiresAt);
   }
 
   // ============================================
@@ -628,9 +638,8 @@ class ApiService {
     try {
       const response = await this.client.get('/api/random-banner');
       return response.data;
-    } catch (error) {
-      console.error('Failed to fetch random banner:', error);
-      // Minimal Fallback
+    } catch {
+      // Fallback to default banner on error
       return { imageUrl: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&q=80&w=1200' };
     }
   }
@@ -638,8 +647,6 @@ class ApiService {
   async uploadProfilePicture(file: File, wallet?: string): Promise<{ profile: UserProfile; imageUrl: string }> {
     try {
       const targetWallet = await this.getWalletForRequest(wallet);
-      console.log(`[API] Uploading avatar for ${targetWallet}`);
-
       const formData = new FormData();
       formData.append('avatar', file);
 
@@ -650,7 +657,6 @@ class ApiService {
       });
       return response.data;
     } catch (error) {
-      console.error('[API] uploadProfilePicture error:', error);
       throw this.handleError(error);
     }
   }
@@ -809,33 +815,21 @@ class ApiService {
 
   // --- Skills ---
   async getSkills(wallet?: string): Promise<ApiResponse> {
-    console.log('🌐 API getSkills called with wallet:', wallet);
     try {
       const targetWallet = await this.getWalletForRequest(wallet);
-      console.log('🌐 Target wallet resolved to:', targetWallet);
-      console.log('🌐 Making GET request to:', `/api/profile/${targetWallet}/skills`);
       const response = await this.client.get(`/api/profile/${targetWallet}/skills`);
-      console.log('🌐 API getSkills response status:', response.status);
-      console.log('🌐 API getSkills response data:', response.data);
       return response.data;
     } catch (error) {
-      console.error('🌐 API getSkills error:', error);
       throw this.handleError(error);
     }
   }
 
   async addSkill(skillData: any, wallet?: string): Promise<ApiResponse> {
-    console.log('🌐 API addSkill called with:', { skillData, wallet });
     try {
       const targetWallet = await this.getWalletForRequest(wallet);
-      console.log('🌐 Target wallet resolved to:', targetWallet);
-      console.log('🌐 Making POST request to:', `/api/profile/${targetWallet}/skills`);
       const response = await this.client.post(`/api/profile/${targetWallet}/skills`, skillData);
-      console.log('🌐 API addSkill response status:', response.status);
-      console.log('🌐 API addSkill response data:', response.data);
       return response.data;
     } catch (error) {
-      console.error('🌐 API addSkill error:', error);
       throw this.handleError(error);
     }
   }
@@ -1240,8 +1234,7 @@ class ApiService {
     try {
       await this.healthCheck();
       return true;
-    } catch (error) {
-      console.error('API connection test failed:', error);
+    } catch {
       return false;
     }
   }
@@ -1271,7 +1264,6 @@ class ApiService {
       const response = await this.client.get('/api/activity-log', { params });
       return response.data;
     } catch (error) {
-      console.error('[API] getActivityLog error:', error);
       throw this.handleError(error);
     }
   }
@@ -1281,7 +1273,6 @@ class ApiService {
       const response = await this.client.get(`/api/public-profile/${identifier}`);
       return response.data;
     } catch (error) {
-      console.error('[API] getPublicProfile error:', error);
       throw this.handleError(error);
     }
   }
@@ -1291,7 +1282,6 @@ class ApiService {
       const response = await this.client.get(`/api/activity-log/${id}`);
       return response.data;
     } catch (error) {
-      console.error('[API] getActivityDetail error:', error);
       throw this.handleError(error);
     }
   }

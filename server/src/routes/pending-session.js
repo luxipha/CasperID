@@ -191,22 +191,52 @@ router.post('/:sessionId/complete', async (req, res) => {
         }
 
         if (session.type === 'login') {
-            // Login flow: mobile already authenticated, just providing session token for desktop
-            const { userId, sessionToken, expiresAt, userAccount } = req.body;
+            // Login flow: mobile authenticated, create NEW session for desktop
+            const { userId, userAccount } = req.body;
 
-            if (!sessionToken || !userAccount) {
+            if (!userId || !userAccount) {
                 return res.status(400).json({
                     success: false,
-                    error: 'Session info is required for login completion'
+                    error: 'User info is required for login completion'
                 });
             }
 
+            // Verify user exists
+            const user = await UserAccount.findOne({ user_id: userId });
+            if (!user) {
+                return res.status(404).json({
+                    success: false,
+                    error: 'User not found'
+                });
+            }
+
+            // Create NEW device session for desktop (can't reuse mobile's httpOnly cookie)
+            const desktopSessionId = uuidv4();
+            const desktopSessionToken = crypto.randomBytes(64).toString('hex');
+            const sessionExpiresAt = new Date(Date.now() + (24 * 60 * 60 * 1000)); // 24 hours
+
+            const deviceSession = new DeviceSession({
+                session_id: desktopSessionId,
+                user_id: user.user_id,
+                credential_id: user.active_passkey_id || 'mobile-login-handoff',
+                session_token: desktopSessionToken,
+                device_fingerprint: 'desktop-via-mobile-login',
+                expires_at: sessionExpiresAt
+            });
+
+            await deviceSession.save();
+
             session.status = 'completed';
             session.completedData = {
-                userId,
-                sessionToken,
-                expiresAt,
-                userAccount
+                userId: user.user_id,
+                sessionToken: desktopSessionToken,
+                expiresAt: sessionExpiresAt.toISOString(),
+                userAccount: {
+                    user_id: user.user_id,
+                    recovery_email: user.recovery_email,
+                    tier: user.tier,
+                    wallet: user.wallet
+                }
             };
 
             console.log(`[PendingSession] Login session ${sessionId} completed successfully`);
@@ -310,6 +340,17 @@ router.get('/:sessionId/status', async (req, res) => {
         if (session.status === 'completed' && session.completedData) {
             // Clean up after delivering completion
             setTimeout(() => pendingSessions.delete(sessionId), 5000);
+
+            // Set httpOnly cookie for the polling desktop
+            const isSecure = process.env.NODE_ENV === 'production' ||
+                             req.secure ||
+                             req.headers['x-forwarded-proto'] === 'https';
+            res.cookie('casperid_session', session.completedData.sessionToken, {
+                httpOnly: true,
+                secure: isSecure,
+                sameSite: isSecure ? 'none' : 'lax',
+                maxAge: 24 * 60 * 60 * 1000 // 24 hours
+            });
 
             return res.json({
                 success: true,

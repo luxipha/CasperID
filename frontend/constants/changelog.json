@@ -1,9 +1,43 @@
 [
   {
+    "version": "2.2.0",
+    "title": "Identity & Infrastructure Scalability",
+    "date": "February 2026",
+    "status": "Active Version",
+    "highlight": {
+      "title": "Futuristic Liveness UI",
+      "description": "Integrated an advanced AI-driven biometric verification flow with resilient retry logic.",
+      "type": "sparkles"
+    },
+    "summary": "This release introduces a new high-fidelity mobile liveness experience, significantly optimizes landing page load times, and adds core infrastructure for careers and enterprise identity integrations.",
+    "categories": [
+      {
+        "id": "v220-imp",
+        "title": "Improvements",
+        "items": [
+          "Integrated futuristic Mobile Liveness UI with real-time AI status feedback.",
+          "Optimized landing page assets: Replaced heavy 7MB PNGs with WebP, saving 14MB in total load weight.",
+          "Enhanced PWA resilience: Increased Workbox pre-cache limit to 10MB to accommodate modern application bundles.",
+          "Launched Careers & Affiliate application engine with automated email notifications.",
+          "Implemented RSA-2048 signing foundation for upcoming enterprise identity features."
+        ]
+      },
+      {
+        "id": "v220-fix",
+        "title": "Fixes",
+        "items": [
+          "Fixed Vercel build failures caused by large asset pre-caching limits.",
+          "Updated passkey authentication flows for better mobile-to-desktop handoff stability.",
+          "Resolved QR code URL structure issues for improved mobile scanning reliability."
+        ]
+      }
+    ]
+  },
+  {
     "version": "2.1.0",
     "title": "Identity & Branding",
     "date": "February 2026",
-    "status": "Active Version",
+    "status": "Product Milestone",
     "highlight": {
       "title": "The Brand Refinement",
       "description": "Unified styling, mobile handoff integration, and enhanced passkey security.",

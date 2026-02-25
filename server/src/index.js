@@ -7,6 +7,7 @@ const helmet = require('helmet');
 const mongoSanitize = require('express-mongo-sanitize');
 
 const app = express();
+app.set('trust proxy', true);
 const PORT = process.env.PORT || 8080;
 
 // Security Middleware
@@ -27,14 +28,31 @@ app.use(mongoSanitize());
 
 // Core Middleware
 app.use(cors({
-    origin: [
-        'http://localhost:3000',
-        'http://localhost:3002',
-        'https://casper-id.netlify.app',
-        'https://casperid.com',
-        'https://www.casperid.com',
-        process.env.FRONTEND_URL
-    ].filter(Boolean),
+    origin: function (origin, callback) {
+        const allowedOrigins = [
+            'http://localhost:3000',
+            'http://localhost:3002',
+            'http://localhost:5173',
+            'https://casper-id.netlify.app',
+            'https://casperid.com',
+            'https://www.casperid.com',
+            process.env.FRONTEND_URL
+        ].filter(Boolean);
+
+        // Allow requests with no origin (mobile apps, curl, etc.)
+        if (!origin) return callback(null, true);
+
+        // Allow ngrok URLs for development
+        if (origin.includes('ngrok') || origin.includes('ngrok-free.app')) {
+            return callback(null, true);
+        }
+
+        if (allowedOrigins.includes(origin)) {
+            return callback(null, true);
+        }
+
+        callback(new Error('Not allowed by CORS'));
+    },
     credentials: true
 }));
 app.use(express.json({

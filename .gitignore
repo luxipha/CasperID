@@ -62,6 +62,7 @@ ZK.md
 keys/
 secrets/
 /server/.env
+.admin-credentials
 *.md
 roadmap.md
 /server/*.md

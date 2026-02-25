@@ -46,7 +46,8 @@ class EmailService {
             secure: useSSL,
             requireTLS: useSTARTTLS,
             tlsOptions: {
-                rejectUnauthorized: false,
+                // Enable TLS certificate verification in production (prevents MITM attacks)
+                rejectUnauthorized: process.env.NODE_ENV === 'production' || process.env.TLS_REJECT_UNAUTHORIZED !== 'false',
                 servername: process.env.SUPPORT_EMAIL_HOST || 'mail.ile.africa'
             },
             authTimeout: 30000,
@@ -64,7 +65,8 @@ class EmailService {
                 pass: process.env.SUPPORT_EMAIL_PASSWORD
             },
             tls: {
-                rejectUnauthorized: false
+                // Enable TLS certificate verification in production (prevents MITM attacks)
+                rejectUnauthorized: process.env.NODE_ENV === 'production' || process.env.TLS_REJECT_UNAUTHORIZED !== 'false'
             }
         };
 
@@ -341,9 +343,17 @@ class EmailService {
         }
     }
 
-    async sendJobApplication({ jobTitle, applicantEmail, applicantName, applicantId, resumeLink }) {
+    async sendJobApplication({ jobTitle, applicantEmail, applicantName, applicantId, profileData, tier, topSkills }) {
         try {
             console.log(`📧 Sending Job Application for ${jobTitle} from ${applicantEmail}`);
+
+            const profileUrl = `${process.env.FRONTEND_URL}/profile/${applicantId}`;
+            const tierLabel = tier === 'layer_3' ? 'Fully Verified Identity' :
+                tier === 'layer_2' ? 'Liveness Verified' :
+                    tier === 'layer_1' ? 'Email Verified' : 'Unverified';
+            const tierColor = tier === 'layer_3' ? '#059669' :
+                tier === 'layer_2' ? '#2563eb' :
+                    tier === 'layer_1' ? '#ca8a04' : '#6b7280';
 
             const mailOptions = {
                 from: `"CasperID Careers" <careers@casperid.com>`,
@@ -352,21 +362,62 @@ class EmailService {
                 subject: `New Application: ${jobTitle} - ${applicantName}`,
                 html: `
                     <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f8f9ff;">
-                        <div style="background: white; border-radius: 16px; padding: 40px; border: 1px solid #e5e7eb;">
-                            <h2 style="color: #1f2937; margin: 0 0 16px 0;">New Job Application</h2>
-                            <p style="color: #4b5563; font-size: 16px;"><strong>Role:</strong> ${jobTitle}</p>
-                            
-                            <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 24px 0;" />
-                            
-                            <h3 style="color: #1f2937; font-size: 18px; margin-bottom: 12px;">Applicant Details</h3>
-                            <ul style="list-style: none; padding: 0; color: #4b5563;">
-                                <li style="margin-bottom: 8px;"><strong>Name:</strong> ${applicantName}</li>
-                                <li style="margin-bottom: 8px;"><strong>Email:</strong> ${applicantEmail}</li>
-                                <li style="margin-bottom: 8px;"><strong>CasperID:</strong> ${applicantId || 'N/A'}</li>
-                            </ul>
+                        <div style="background: white; border-radius: 24px; padding: 40px; border: 1px solid #e5e7eb; shadow: 0 4px 6px rgba(0,0,0,0.05);">
+                            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px;">
+                                <h2 style="color: #1f2937; margin: 0; font-size: 24px; font-weight: 800;">New Job Application</h2>
+                                <span style="background-color: ${tierColor}15; color: ${tierColor}; padding: 6px 12px; border-radius: 12px; font-size: 11px; font-weight: 900; text-transform: uppercase; letter-spacing: 0.5px;">${tierLabel}</span>
+                            </div>
 
-                            <div style="margin-top: 32px; text-align: center;">
-                                <a href="mailto:${applicantEmail}" style="background-color: #8652e2; color: white; padding: 12px 24px; border-radius: 8px; text-decoration: none; font-weight: bold; display: inline-block;">Reply to Applicant</a>
+                            <div style="background-color: #f9fafb; padding: 20px; border-radius: 16px; margin-bottom: 32px;">
+                                <p style="color: #6b7280; font-size: 12px; font-weight: 700; text-transform: uppercase; margin: 0 0 4px 0;">Applying for</p>
+                                <p style="color: #1f2937; font-size: 18px; font-weight: 800; margin: 0;">${jobTitle}</p>
+                            </div>
+                            
+                            <h3 style="color: #1f2937; font-size: 16px; font-weight: 800; margin-bottom: 16px; text-transform: uppercase; letter-spacing: 0.5px;">Applicant Profile</h3>
+                            
+                            <div style="display: flex; gap: 20px; margin-bottom: 24px;">
+                                <div style="flex: 1;">
+                                    <table style="width: 100%; border-collapse: collapse;">
+                                        <tr>
+                                            <td style="padding: 8px 0; color: #6b7280; font-size: 14px; width: 100px;">Name</td>
+                                            <td style="padding: 8px 0; color: #1f2937; font-size: 14px; font-weight: 600;">${applicantName}</td>
+                                        </tr>
+                                        <tr>
+                                            <td style="padding: 8px 0; color: #6b7280; font-size: 14px;">Email</td>
+                                            <td style="padding: 8px 0; color: #1f2937; font-size: 14px; font-weight: 600;">${applicantEmail}</td>
+                                        </tr>
+                                        <tr>
+                                            <td style="padding: 8px 0; color: #6b7280; font-size: 14px;">CasperID</td>
+                                            <td style="padding: 8px 0; color: #8652e2; font-size: 14px; font-weight: 800;">${applicantId || 'N/A'}</td>
+                                        </tr>
+                                        ${profileData?.headline ? `
+                                        <tr>
+                                            <td style="padding: 8px 0; color: #6b7280; font-size: 14px;">Headline</td>
+                                            <td style="padding: 8px 0; color: #1f2937; font-size: 14px; font-weight: 500;">${profileData.headline}</td>
+                                        </tr>` : ''}
+                                    </table>
+                                </div>
+                            </div>
+
+                            ${topSkills && topSkills.length > 0 ? `
+                            <div style="margin-bottom: 32px;">
+                                <p style="color: #6b7280; font-size: 12px; font-weight: 700; text-transform: uppercase; margin: 0 0 12px 0;">Top Skills</p>
+                                <div style="display: flex; flex-wrap: wrap; gap: 8px;">
+                                    ${topSkills.map(skill => `
+                                        <span style="background-color: #f3f4f6; color: #374151; padding: 4px 10px; border-radius: 8px; font-size: 12px; font-weight: 600; margin-right: 4px; margin-bottom: 4px; display: inline-block;">${skill}</span>
+                                    `).join('')}
+                                </div>
+                            </div>` : ''}
+
+                            <div style="display: grid; grid-template-cols: 1fr 1fr; gap: 16px; margin-top: 32px;">
+                                <a href="${profileUrl}" style="background-color: #8652e2; color: white; padding: 16px 24px; border-radius: 12px; text-decoration: none; font-weight: 800; text-align: center; display: block; shadow: 0 10px 15px -3px rgba(134, 82, 226, 0.3);">View Full Profile</a>
+                                <div style="margin-top: 12px; text-align: center;">
+                                    <a href="mailto:${applicantEmail}" style="color: #6b7280; text-decoration: none; font-size: 13px; font-weight: 600;">Reply via Email</a>
+                                </div>
+                            </div>
+
+                            <div style="margin-top: 40px; padding-top: 24px; border-top: 1px solid #f3f4f6; text-align: center;">
+                                <p style="color: #9ca3af; font-size: 11px; margin: 0;">This application was verified and secured by CasperID Protocol.</p>
                             </div>
                         </div>
                     </div>

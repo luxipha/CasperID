@@ -909,8 +909,11 @@ const emailVerificationSchema = new mongoose.Schema({
     verification_token: String,
     type: {
         type: String,
-        enum: ['registration', 'recovery', 'change_email'],
+        enum: ['registration', 'recovery', 'change_email', 'otp_auth', 'export-did', 'delete-account', 'verification_token'],
         required: true
+    },
+    purpose: {
+        type: String  // For verification tokens (e.g., 'export-did-verified')
     },
     verified: {
         type: Boolean,
@@ -935,6 +938,9 @@ const emailVerificationSchema = new mongoose.Schema({
     },
     verified_at: Date
 });
+
+// TTL index for auto-cleanup of expired OTPs
+emailVerificationSchema.index({ expires_at: 1 }, { expireAfterSeconds: 0 });
 
 const recoveryRequestSchema = new mongoose.Schema({
     recovery_id: {

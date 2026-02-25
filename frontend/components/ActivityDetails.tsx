@@ -12,6 +12,22 @@ export const ActivityDetails: React.FC<ActivityDetailsProps> = ({ activityId, on
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  const formatTimeAgo = (date: string | number) => {
+    const timestamp = typeof date === 'string' ? new Date(date).getTime() : date;
+    const now = new Date().getTime();
+    const seconds = Math.floor((now - timestamp) / 1000);
+
+    if (seconds < 60) return 'Just now';
+    const minutes = Math.floor(seconds / 60);
+    if (minutes < 60) return `${minutes}m ago`;
+    const hours = Math.floor(minutes / 60);
+    if (hours < 24) return `${hours}h ago`;
+    const days = Math.floor(hours / 24);
+    if (days < 7) return `${days}d ago`;
+
+    return new Date(timestamp).toLocaleDateString();
+  };
+
   useEffect(() => {
     const fetchActivityDetail = async () => {
       try {
@@ -35,10 +51,14 @@ export const ActivityDetails: React.FC<ActivityDetailsProps> = ({ activityId, on
     if (!activity) return { title: 'Activity', action: 'Loading...', type: 'General', icon: 'info', status: 'Unknown', statusClass: 'bg-gray-100 text-gray-600' };
 
     if (activity.viewerWallet !== undefined) {
-      // ViewEvent
+      const getProfileSlug = (url?: string) => {
+        if (!url || !url.includes('/api/public-profile/')) return null;
+        return url.split('/').pop();
+      };
+
       return {
         title: 'Profile View',
-        action: activity.endpoint || 'Public Profile',
+        action: getProfileSlug(activity.endpoint) || 'Public Profile',
         type: 'Profile View Activity',
         icon: 'visibility',
         status: 'Success',
@@ -182,7 +202,10 @@ export const ActivityDetails: React.FC<ActivityDetailsProps> = ({ activityId, on
               </div>
               <div>
                 <p className="text-[10px] font-extrabold text-text-sub uppercase tracking-widest mb-1.5 opacity-60">Date & Time</p>
-                <p className="text-base font-bold text-text-main">{formattedDate}</p>
+                <p className="text-base font-bold text-text-main">
+                  {formatTimeAgo(activity.created_at || activity.timestamp)}
+                  <span className="text-sm font-medium text-text-sub ml-2 opacity-60">({formattedDate})</span>
+                </p>
               </div>
               <div>
                 <p className="text-[10px] font-extrabold text-text-sub uppercase tracking-widest mb-1.5 opacity-60">Involved Entity</p>

@@ -1,4 +1,5 @@
 import React from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { FooterMarketing } from '../FooterMarketing';
 import HeaderMarketing from '../HeaderMarketing';
 import { Check, ShieldCheck, FileText, Award, ArrowRight } from 'lucide-react';
@@ -8,6 +9,10 @@ interface ApplySuccessPageProps {
 }
 
 const ApplySuccessPage: React.FC<ApplySuccessPageProps> = ({ onReturnToCareers }) => {
+    const location = useLocation();
+    const navigate = useNavigate();
+    const jobTitle = location.state?.jobTitle || 'Career Opportunity';
+
     return (
         <div className="bg-bg-light min-h-screen">
             <HeaderMarketing />
@@ -30,7 +35,7 @@ const ApplySuccessPage: React.FC<ApplySuccessPageProps> = ({ onReturnToCareers }
                     <div className="bg-slate-50 rounded-3xl p-8 text-left mb-12 animate-fade-scale delay-300">
                         <div className="mb-6">
                             <span className="text-[10px] font-black text-text-sub uppercase tracking-[0.2em] block mb-2">Applied For</span>
-                            <h3 className="text-xl font-bold text-text-main">Senior Rust Engineer (Identity Protocol)</h3>
+                            <h3 className="text-xl font-bold text-text-main">{jobTitle}</h3>
                         </div>
 
                         <div>
@@ -62,7 +67,7 @@ const ApplySuccessPage: React.FC<ApplySuccessPageProps> = ({ onReturnToCareers }
                         <ul className="space-y-6">
                             {[
                                 'Our team will review your verified credentials.',
-                                <>Track your application status directly in your <span className="text-primary font-bold cursor-pointer hover:underline">CasperID Dashboard</span>.</>,
+                                <>Track your application status directly in your <span onClick={() => navigate('/dashboard')} className="text-primary font-bold cursor-pointer hover:underline">CasperID Dashboard</span>.</>,
                                 'You will receive a notification at your linked email address.'
                             ].map((step, i) => (
                                 <li key={i} className="flex gap-4">
@@ -85,7 +90,10 @@ const ApplySuccessPage: React.FC<ApplySuccessPageProps> = ({ onReturnToCareers }
                         >
                             Return to Careers
                         </button>
-                        <button className="px-10 py-4 bg-white border-2 border-gray-100 text-text-main rounded-2xl font-bold text-lg hover:bg-gray-50 transition-all">
+                        <button
+                            onClick={() => navigate('/dashboard')}
+                            className="px-10 py-4 bg-white border-2 border-gray-100 text-text-main rounded-2xl font-bold text-lg hover:bg-gray-50 transition-all"
+                        >
                             Go to My Dashboard
                         </button>
                     </div>

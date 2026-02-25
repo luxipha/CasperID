@@ -54,16 +54,24 @@ const adminAuth = async (req, res, next) => {
 
 /**
  * Middleware to require a valid token (JWT or Passkey Session)
+ * Checks both Authorization header and httpOnly cookie (casperid_session)
  */
 const requireAuth = async (req, res, next) => {
     try {
         const authHeader = req.headers.authorization;
+        const cookieToken = req.cookies?.casperid_session;
 
-        if (!authHeader || !authHeader.startsWith('Bearer ')) {
-            return res.status(401).json({ error: 'Authorization token required' });
+        // Get token from Authorization header OR cookie
+        let token = null;
+        if (authHeader && authHeader.startsWith('Bearer ')) {
+            token = authHeader.split(' ')[1];
+        } else if (cookieToken) {
+            token = cookieToken;
         }
 
-        const token = authHeader.split(' ')[1];
+        if (!token) {
+            return res.status(401).json({ error: 'Authorization token required' });
+        }
         let user = null;
 
         // Strategy 1: Try verifying as JWT
@@ -117,13 +125,21 @@ const requireAuth = async (req, res, next) => {
 
 /**
  * Middleware to extract viewer if present, but not require it
+ * Checks both Authorization header and httpOnly cookie (casperid_session)
  */
 const extractViewer = async (req, res, next) => {
     try {
         const authHeader = req.headers.authorization;
+        const cookieToken = req.cookies?.casperid_session;
 
+        let token = null;
         if (authHeader && authHeader.startsWith('Bearer ')) {
-            const token = authHeader.split(' ')[1];
+            token = authHeader.split(' ')[1];
+        } else if (cookieToken) {
+            token = cookieToken;
+        }
+
+        if (token) {
             const decoded = verifyToken(token);
             if (decoded) {
                 // We don't enforce DB session check for passive view logging to save perf,

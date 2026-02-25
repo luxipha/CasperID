@@ -9,7 +9,7 @@ import axios from 'axios';
 
 interface CareerDetailPageProps {
     onBack: () => void;
-    onApplySuccess: () => void;
+    onApplySuccess: (jobTitle: string) => void;
 }
 
 interface ParsedJobContent {
@@ -101,7 +101,7 @@ const CareerDetailPage: React.FC<CareerDetailPageProps> = ({ onBack, onApplySucc
                 applicantName: user.display_name || user.cns_name || 'CasperID User',
                 applicantId: user.human_id || user.wallet || 'Unknown ID'
             });
-            onApplySuccess();
+            onApplySuccess(job?.title || 'Position');
         } catch (error) {
             console.error('Failed to apply:', error);
             alert('Failed to submit application. Please try again.');

@@ -127,7 +127,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const isAuthenticated = !!user && apiService.isAuthenticated();
+  // User state is the source of truth - populated by server validation via httpOnly cookie
+  const isAuthenticated = !!user;
 
   // Initialize authentication state
   useEffect(() => {
@@ -139,26 +140,28 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       setIsLoading(true);
       setError(null);
 
-      // Debug logs removed for production
-      // console.log('🔍 Auth initialization started');
-      // console.log('🔍 apiService.isAuthenticated():', apiService.isAuthenticated());
-
-      // Check if user has valid token
-      if (apiService.isAuthenticated()) {
-        // console.log('🔍 Found stored token, attempting to refresh user...');
-        await refreshUser();
-      } else {
-        // console.log('🔍 No valid token found, setting user to null');
+      // Always attempt to validate session with server
+      // The httpOnly cookie is sent automatically with the request
+      // Don't rely solely on sessionStorage (which is tab-specific)
+      try {
+        const sessionResponse = await apiService.getSessionStatus();
+        if (sessionResponse.success && sessionResponse.userAccount) {
+          // Valid session - refresh user data
+          await refreshUser();
+        } else {
+          // No valid session
+          setUser(null);
+        }
+      } catch {
+        // Server returned error (401, etc.) - no valid session
         setUser(null);
       }
-    } catch (error) {
-      console.error('Auth initialization failed:', error);
+    } catch {
       setError('Failed to initialize authentication');
       apiService.logout();
       setUser(null);
     } finally {
       setIsLoading(false);
-      // console.log('🔍 Auth initialization complete, isLoading set to false');
     }
   };
 
@@ -179,8 +182,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             // console.log('🔍 Human-id API response:', humanIdResponse);
             humanId = humanIdResponse.success ? humanIdResponse.humanId : null;
             // console.log('🔍 Final humanId:', humanId);
-          } catch (error) {
-            console.warn('Failed to fetch human-id:', error);
+          } catch {
+            // Human ID fetch failed - continue without it
           }
         }
 
@@ -189,8 +192,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         if (userAccount.wallet && userAccount.wallet !== 'pending_wallet' && userAccount.wallet !== 'undefined') {
           try {
             profileData = await apiService.getUserProfile();
-          } catch (e) {
-            console.warn('Failed to fetch full profile:', e);
+          } catch {
+            // Profile fetch failed - continue with basic data
           }
         }
 
@@ -232,8 +235,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       } else {
         throw new Error('No valid session');
       }
-    } catch (error) {
-      console.error('Failed to refresh user:', error);
+    } catch {
       setUser(null);
       apiService.logout();
       return null;
@@ -252,12 +254,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       // console.log('📨 Registration init response:', initResponse);
 
       if (!initResponse.success) {
-        console.error('❌ Registration init failed:', initResponse);
         throw new Error(initResponse.error || 'Failed to initialize registration');
       }
 
       if (!initResponse.options) {
-        console.error('❌ No options in response:', initResponse);
         throw new Error('No credential creation options received');
       }
 
@@ -343,7 +343,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       // console.log('🚀 Ready to show OnboardingProgress component!');
 
     } catch (error: any) {
-      console.error('Registration failed:', error);
       const errorMessage = error.message || 'Registration failed';
       setError(errorMessage);
       throw new Error(errorMessage);
@@ -433,7 +432,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       return { success: true, deviceType, user: user || undefined };
 
     } catch (error: any) {
-      console.error('Login failed:', error);
       const errorMessage = error.message || 'Authentication failed';
       setError(errorMessage);
       throw new Error(errorMessage);
@@ -444,6 +442,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     await apiService.logout();
     setUser(null);
     setError(null);
+    // Force page reload to clear all JavaScript state
+    // This ensures clean state for next login attempt
+    window.location.href = '/';
   };
 
   const updateProfile = async (data: Partial<User>): Promise<void> => {
@@ -526,8 +527,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 export const useAuth = (): AuthContextType => {
   const context = useContext(AuthContext);
   if (!context) {
-    console.error('useAuth called outside AuthProvider - this usually happens during hot reload');
-    // Return a minimal context to prevent crashes during development
+    // Return a minimal context to prevent crashes during development (hot reload)
     return {
       user: null,
       isLoading: false,
