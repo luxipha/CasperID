@@ -1760,7 +1760,39 @@ export const Profile: React.FC = () => {
               <div className="px-8 pb-8">
                 <div className="flex flex-col md:flex-row items-start md:items-end gap-6 -mt-12 relative z-10">
                   <div className="relative group">
-                    <div className="size-28 rounded-full border-4 border-white bg-gray-100 overflow-hidden shadow-lg relative cursor-pointer" onClick={() => avatarInputRef.current?.click()}>
+                    <div
+                      className="size-28 rounded-full border-4 border-white bg-gray-100 overflow-hidden shadow-lg relative cursor-pointer z-10"
+                      onClick={() => avatarInputRef.current?.click()}
+                    >
+                      {/* Loading Ring */}
+                      {uploadingAvatar && (
+                        <div className="absolute inset-0 z-20 pointer-events-none">
+                          <svg className="w-full h-full -rotate-90">
+                            <circle
+                              className="text-primary/20"
+                              strokeWidth="8"
+                              stroke="currentColor"
+                              fill="transparent"
+                              r="48"
+                              cx="52"
+                              cy="52"
+                            />
+                            <circle
+                              className="text-primary animate-[spin_2s_linear_infinite]"
+                              strokeWidth="8"
+                              strokeDasharray="300"
+                              strokeDashoffset="150"
+                              strokeLinecap="round"
+                              stroke="currentColor"
+                              fill="transparent"
+                              r="48"
+                              cx="52"
+                              cy="52"
+                            />
+                          </svg>
+                        </div>
+                      )}
+
                       <img
                         src={profile?.profile_image_url ?
                           (profile.profile_image_url.startsWith('http') ? profile.profile_image_url : `${apiService['baseURL'] || 'http://localhost:3001'}${profile.profile_image_url}`)
@@ -1768,9 +1800,12 @@ export const Profile: React.FC = () => {
                         alt="Avatar"
                         className="w-full h-full object-cover"
                       />
-                      <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                      <div className={`absolute inset-0 bg-black/40 flex items-center justify-center transition-opacity ${uploadingAvatar ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}>
                         {uploadingAvatar ? (
-                          <span className="material-symbols-outlined text-white animate-spin">refresh</span>
+                          <div className="flex flex-col items-center gap-1">
+                            <span className="material-symbols-outlined text-white animate-spin">refresh</span>
+                            <span className="text-[10px] text-white font-bold uppercase tracking-tighter">Uploading</span>
+                          </div>
                         ) : (
                           <span className="material-symbols-outlined text-white text-3xl">photo_camera</span>
                         )}

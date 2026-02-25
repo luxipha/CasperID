@@ -1,5 +1,39 @@
 [
   {
+    "version": "2.2.1",
+    "title": "ImageKit Integration & Activity Log UX",
+    "date": "February 25, 2026",
+    "status": "Active Development",
+    "highlight": {
+      "title": "Branded Loading UX & Cloud Media",
+      "description": "Integrated ImageKit CDN with an animated branded loading ring for profile pictures.",
+      "type": "sparkles"
+    },
+    "summary": "This update resolves avatar upload issues through ImageKit integration, enhances the Activity Log with relative dates and improved privacy, and hardens the deployment infrastructure.",
+    "categories": [
+      {
+        "id": "v221-imp",
+        "title": "Improvements",
+        "items": [
+          "Integrated ImageKit CDN for high-performance profile picture hosting.",
+          "Implemented an animated SVG loading ring in branded purple (#8652E2) for avatar uploads.",
+          "Standardized Activity Log with relative \"Time-Ago\" dates across the dashboard and log pages.",
+          "Refined Activity Log layout to show profile slugs (e.g. \"lovi\") and move visitor locations for better clarity."
+        ]
+      },
+      {
+        "id": "v221-fix",
+        "title": "Fixes",
+        "items": [
+          "Resolved 500 and \"Missing File\" errors during profile picture uploads in v7+ SDK.",
+          "Fixed WebAuthn RP_ID and Origin mismatches for stable localhost testing environment.",
+          "Enabled `trust proxy` in the backend for accurate visitor geolocation in production.",
+          "Updated GitHub Actions deployment workflow with ImageKit production secrets."
+        ]
+      }
+    ]
+  },
+  {
     "version": "2.2.0",
     "title": "Identity & Infrastructure Scalability",
     "date": "February 2026",

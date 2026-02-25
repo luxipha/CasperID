@@ -73,3 +73,5 @@ roadmap.md
 github-actions-key.json
 /frontend/node_modules/server/test-*.js
 /server/uploads
+/server/scripts
+/server/src/tests

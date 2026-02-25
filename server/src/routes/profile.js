@@ -516,9 +516,12 @@ router.post('/profile/:wallet/upload-avatar', upload.single('avatar'), async (re
 
         const { wallet } = req.params;
 
+        console.log(`[Upload] ImageKit upload start for ${wallet}`);
+        console.log(`[Upload] Buffer length: ${req.file.buffer ? req.file.buffer.length : 'UNDEFINED'}`);
+
         // Upload to ImageKit
-        const uploadResponse = await imagekit.upload({
-            file: req.file.buffer, // required, buffer or base64
+        const uploadResponse = await imagekit.files.upload({
+            file: req.file.buffer.toString('base64'), // Send as base64 string
             fileName: `avatar-${wallet}-${Date.now()}`, // required
             folder: '/avatars',
             useUniqueFileName: true
