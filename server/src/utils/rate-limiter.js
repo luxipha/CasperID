@@ -28,6 +28,22 @@ const RATE_LIMITS = {
         windowMs: 5 * 60 * 1000, // 5 minutes
         max: 3, // 3 minting attempts per 5 minutes
         blockDurationMs: 15 * 60 * 1000 // 15 minutes block
+    },
+    // Business Platform rate limits
+    business_api: {
+        windowMs: 60 * 1000, // 1 minute
+        max: 60, // 60 requests per minute
+        blockDurationMs: 5 * 60 * 1000 // 5 minutes block
+    },
+    business_webhook_test: {
+        windowMs: 60 * 1000, // 1 minute
+        max: 5, // 5 test webhooks per minute
+        blockDurationMs: 5 * 60 * 1000 // 5 minutes block
+    },
+    business_api_key_create: {
+        windowMs: 60 * 60 * 1000, // 1 hour
+        max: 10, // 10 API key creations per hour
+        blockDurationMs: 60 * 60 * 1000 // 1 hour block
     }
 };
 

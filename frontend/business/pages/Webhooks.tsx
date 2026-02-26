@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { RefreshCw, Activity, Check, AlertTriangle, Play, ChevronDown, Trash2 } from 'lucide-react';
+import { RefreshCw, Activity, Check, AlertTriangle, Play, ChevronDown, Trash2, History, X, Clock, CheckCircle, XCircle } from 'lucide-react';
+import { WEBHOOK_EVENTS, SUBSCRIBABLE_EVENTS } from '../constants/webhook-events';
 
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:8080';
 
@@ -17,6 +18,25 @@ interface WebhookSubscription {
   active: boolean;
   created_at: string;
   signing_secret?: string; // Only on creation
+  failure_count?: number;
+  last_delivered_at?: string;
+}
+
+interface WebhookLogEntry {
+  _id: string;
+  event_type: string;
+  status: 'success' | 'failed' | 'pending';
+  status_code?: number;
+  error_message?: string;
+  duration_ms?: number;
+  delivery_id: string;
+  created_at: string;
+}
+
+interface WebhookStats {
+  success: { count: number; avg_duration: number };
+  failed: { count: number; avg_duration: number };
+  total: number;
 }
 
 async function fetchWithAuth(path: string, opts: RequestInit = {}) {
@@ -44,7 +64,7 @@ const Webhooks: React.FC = () => {
 
   // Create Form State
   const [newUrl, setNewUrl] = useState('');
-  const [selectedEvents, setSelectedEvents] = useState<string[]>(['user.verified']);
+  const [selectedEvents, setSelectedEvents] = useState<string[]>([WEBHOOK_EVENTS.USER_VERIFIED]);
   const [isCreating, setIsCreating] = useState(false);
   const [newSecret, setNewSecret] = useState<string | null>(null);
 
@@ -52,9 +72,16 @@ const Webhooks: React.FC = () => {
   const [testResult, setTestResult] = useState<any>(null);
   const [testingId, setTestingId] = useState<string | null>(null);
 
+  // Logs State
+  const [logsModalOpen, setLogsModalOpen] = useState(false);
+  const [selectedWebhookForLogs, setSelectedWebhookForLogs] = useState<WebhookSubscription | null>(null);
+  const [logs, setLogs] = useState<WebhookLogEntry[]>([]);
+  const [logsStats, setLogsStats] = useState<WebhookStats | null>(null);
+  const [logsLoading, setLogsLoading] = useState(false);
+
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
 
-  const AVAILABLE_EVENTS = ['user.verified', 'user.registered', 'kyc.completed', 'session.revoked'];
+  const AVAILABLE_EVENTS = SUBSCRIBABLE_EVENTS;
 
   const showToast = (message: string, type: 'success' | 'error' = 'success') => {
     setToast({ message, type });
@@ -120,7 +147,7 @@ const Webhooks: React.FC = () => {
 
       setNewSecret(data.webhook.signing_secret);
       setNewUrl('');
-      setSelectedEvents(['user.verified']);
+      setSelectedEvents([WEBHOOK_EVENTS.USER_VERIFIED]);
       await loadWebhooks();
       showToast('Webhook created successfully');
     } catch (e: any) {
@@ -167,8 +194,170 @@ const Webhooks: React.FC = () => {
     );
   };
 
+  const openLogsModal = async (webhook: WebhookSubscription) => {
+    setSelectedWebhookForLogs(webhook);
+    setLogsModalOpen(true);
+    setLogsLoading(true);
+    setLogs([]);
+    setLogsStats(null);
+
+    try {
+      const res = await fetchWithAuth(`/api/business/webhooks/${webhook._id}/logs?limit=50`);
+      if (res.ok) {
+        const data = await res.json();
+        setLogs(data.logs || []);
+        setLogsStats(data.stats || null);
+      }
+    } catch (e) {
+      console.error('Failed to load logs');
+    } finally {
+      setLogsLoading(false);
+    }
+  };
+
+  const closeLogsModal = () => {
+    setLogsModalOpen(false);
+    setSelectedWebhookForLogs(null);
+    setLogs([]);
+    setLogsStats(null);
+  };
+
+  const formatDate = (dateStr: string) => {
+    const date = new Date(dateStr);
+    return date.toLocaleString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit'
+    });
+  };
+
   return (
     <div className="flex flex-col gap-8 max-w-7xl mx-auto w-full relative">
+      {/* Logs Modal */}
+      {logsModalOpen && selectedWebhookForLogs && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-white rounded-2xl w-full max-w-3xl max-h-[80vh] shadow-2xl overflow-hidden flex flex-col animate-in zoom-in-95 duration-200">
+            {/* Header */}
+            <div className="px-6 py-4 border-b border-border-muted flex items-center justify-between bg-background-light/50">
+              <div>
+                <h3 className="text-lg font-bold text-text-main">Delivery Logs</h3>
+                <p className="text-xs text-text-muted truncate max-w-md">{selectedWebhookForLogs.url}</p>
+              </div>
+              <button onClick={closeLogsModal} className="p-2 hover:bg-background-light rounded-lg transition-colors">
+                <X size={20} className="text-text-muted" />
+              </button>
+            </div>
+
+            {/* Stats */}
+            {logsStats && (
+              <div className="px-6 py-3 border-b border-border-muted bg-background-light/30 flex items-center gap-6">
+                <div className="flex items-center gap-2">
+                  <CheckCircle size={16} className="text-green-500" />
+                  <span className="text-sm">
+                    <span className="font-bold text-green-600">{logsStats.success.count}</span>
+                    <span className="text-text-muted"> successful</span>
+                  </span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <XCircle size={16} className="text-red-500" />
+                  <span className="text-sm">
+                    <span className="font-bold text-red-600">{logsStats.failed.count}</span>
+                    <span className="text-text-muted"> failed</span>
+                  </span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Clock size={16} className="text-text-muted" />
+                  <span className="text-sm text-text-muted">
+                    Avg: <span className="font-bold text-text-main">{logsStats.success.avg_duration}ms</span>
+                  </span>
+                </div>
+              </div>
+            )}
+
+            {/* Logs List */}
+            <div className="flex-1 overflow-auto">
+              {logsLoading ? (
+                <div className="flex items-center justify-center h-48">
+                  <RefreshCw className="animate-spin text-primary" size={24} />
+                </div>
+              ) : logs.length === 0 ? (
+                <div className="flex flex-col items-center justify-center h-48 text-text-muted">
+                  <History size={32} className="mb-2" />
+                  <p className="font-medium">No delivery logs yet</p>
+                  <p className="text-sm">Logs will appear after webhook deliveries</p>
+                </div>
+              ) : (
+                <table className="w-full text-left">
+                  <thead className="sticky top-0 bg-white border-b border-border-muted">
+                    <tr>
+                      <th className="px-6 py-3 text-xs font-bold text-text-muted uppercase">Status</th>
+                      <th className="px-6 py-3 text-xs font-bold text-text-muted uppercase">Event</th>
+                      <th className="px-6 py-3 text-xs font-bold text-text-muted uppercase">Response</th>
+                      <th className="px-6 py-3 text-xs font-bold text-text-muted uppercase">Duration</th>
+                      <th className="px-6 py-3 text-xs font-bold text-text-muted uppercase">Time</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-border-muted">
+                    {logs.map((log) => (
+                      <tr key={log._id} className="hover:bg-background-light/30 transition-colors">
+                        <td className="px-6 py-3">
+                          {log.status === 'success' ? (
+                            <span className="inline-flex items-center gap-1 px-2 py-1 bg-green-100 text-green-700 text-xs font-bold rounded-full">
+                              <CheckCircle size={12} /> Success
+                            </span>
+                          ) : log.status === 'failed' ? (
+                            <span className="inline-flex items-center gap-1 px-2 py-1 bg-red-100 text-red-700 text-xs font-bold rounded-full">
+                              <XCircle size={12} /> Failed
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 px-2 py-1 bg-gray-100 text-gray-700 text-xs font-bold rounded-full">
+                              <Clock size={12} /> Pending
+                            </span>
+                          )}
+                        </td>
+                        <td className="px-6 py-3">
+                          <span className="font-mono text-xs bg-background-light px-2 py-1 rounded">{log.event_type}</span>
+                        </td>
+                        <td className="px-6 py-3">
+                          {log.status_code ? (
+                            <span className={`font-mono text-sm ${log.status_code >= 200 && log.status_code < 300 ? 'text-green-600' : 'text-red-600'}`}>
+                              {log.status_code}
+                            </span>
+                          ) : (
+                            <span className="text-text-muted text-sm" title={log.error_message}>
+                              {log.error_message ? log.error_message.substring(0, 20) + '...' : '-'}
+                            </span>
+                          )}
+                        </td>
+                        <td className="px-6 py-3 text-sm text-text-muted">
+                          {log.duration_ms ? `${log.duration_ms}ms` : '-'}
+                        </td>
+                        <td className="px-6 py-3 text-sm text-text-muted">
+                          {formatDate(log.created_at)}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </div>
+
+            {/* Footer */}
+            <div className="px-6 py-3 border-t border-border-muted bg-background-light/30 flex justify-between items-center">
+              <p className="text-xs text-text-muted">Showing {logs.length} of {logsStats?.total || 0} logs (last 30 days)</p>
+              <button
+                onClick={() => openLogsModal(selectedWebhookForLogs)}
+                className="text-xs text-primary font-bold hover:underline flex items-center gap-1"
+              >
+                <RefreshCw size={12} /> Refresh
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Toast */}
       <div className={`fixed bottom-8 left-1/2 -translate-x-1/2 z-[200] transition-all duration-300 transform ${toast ? 'translate-y-0 opacity-100' : 'translate-y-12 opacity-0 pointer-events-none'}`}>
         <div className={`backdrop-blur-lg text-white px-6 py-3 rounded-full shadow-2xl flex items-center gap-3 border border-white/10 ${toast?.type === 'error' ? 'bg-red-600/90' : 'bg-green-600/90'}`}>
@@ -301,11 +490,25 @@ const Webhooks: React.FC = () => {
                           <td className="px-6 py-4">
                             <div className="flex flex-col">
                               <span className="font-semibold text-text-main text-sm truncate max-w-sm block" title={hook.url}>{hook.url}</span>
-                              <span className="text-xs text-text-muted">{hook.events.length} events subscribed</span>
+                              <div className="flex items-center gap-2 mt-1">
+                                <span className="text-xs text-text-muted">{hook.events.length} events</span>
+                                {hook.failure_count && hook.failure_count > 0 && (
+                                  <span className="text-xs text-red-600 bg-red-50 px-1.5 py-0.5 rounded">
+                                    {hook.failure_count} failures
+                                  </span>
+                                )}
+                              </div>
                             </div>
                           </td>
                           <td className="px-6 py-4 text-right">
-                            <div className="flex items-center justify-end gap-2">
+                            <div className="flex items-center justify-end gap-1">
+                              <button
+                                onClick={() => openLogsModal(hook)}
+                                className="p-2 text-text-muted hover:text-primary hover:bg-primary/10 rounded-lg transition-colors"
+                                title="View Delivery Logs"
+                              >
+                                <History size={16} />
+                              </button>
                               <button
                                 onClick={() => handleTest(hook._id)}
                                 disabled={testingId === hook._id}

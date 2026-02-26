@@ -19,6 +19,7 @@ const { extractViewer } = require('../middleware/auth');
 const { extractApp } = require('../middleware/app-auth');
 const { generateBusinessToken } = require('../utils/jwt-manager');
 const { dispatchEvent } = require('../utils/webhook-dispatcher');
+const { WEBHOOK_EVENTS } = require('../constants/webhook-events');
 
 /**
  * Passkey Authentication Routes
@@ -181,7 +182,7 @@ router.post('/register/finish', passkeyRateLimit, validatePasskeyAuth, extractAp
             }, req.businessApp.app_id);
 
             // Dispatch webhook
-            dispatchEvent(req.businessApp.app_id, 'user.registered', {
+            dispatchEvent(req.businessApp.app_id, WEBHOOK_EVENTS.USER_REGISTERED, {
                 user_id: ua.user_id,
                 wallet: ua.wallet,
                 registered_at: new Date().toISOString()
@@ -579,7 +580,7 @@ router.post('/auth/finish', extractApp, async (req, res) => {
             }, req.businessApp.app_id);
 
             // Dispatch webhook
-            dispatchEvent(req.businessApp.app_id, 'user.verified', {
+            dispatchEvent(req.businessApp.app_id, WEBHOOK_EVENTS.USER_VERIFIED, {
                 user_id: ua.user_id,
                 wallet: ua.wallet,
                 verified_at: new Date().toISOString()

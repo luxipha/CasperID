@@ -2,11 +2,17 @@ const express = require('express');
 const router = express.Router();
 const crypto = require('crypto');
 const bcrypt = require('bcrypt');
-const { BusinessApp, WebhookSubscription } = require('../database/models');
+const { BusinessApp, WebhookSubscription, WebhookLog } = require('../database/models');
 const { requireAuth } = require('../middleware/auth');
-const { dispatchEvent } = require('../utils/webhook-dispatcher');
+const { rateLimitMiddleware } = require('../utils/rate-limiter');
+const { dispatchEvent, sendTestWebhook } = require('../utils/webhook-dispatcher');
+const { WEBHOOK_EVENTS } = require('../constants/webhook-events');
 
-const SALT_ROUNDS = 12;
+// Salt rounds for bcrypt hashing - configurable via environment
+const SALT_ROUNDS = parseInt(process.env.BCRYPT_SALT_ROUNDS, 10) || 12;
+
+// Apply general rate limiting to all business routes
+router.use(rateLimitMiddleware('business_api'));
 
 /**
  * Generate a secure, prefixed API key
@@ -27,7 +33,7 @@ function generateKey(prefix) {
  * Body: { name, allowed_origins, environment }
  * Returns: { app_id, api_secret } — api_secret shown ONCE, never retrievable again
  */
-router.post('/apps', requireAuth, async (req, res) => {
+router.post('/apps', requireAuth, rateLimitMiddleware('business_api_key_create'), async (req, res) => {
     try {
         const { name, allowed_origins = [], environment = 'sandbox' } = req.body;
         const userId = req.user.userId || req.user.wallet;
@@ -124,7 +130,7 @@ router.get('/apps/:app_id', requireAuth, async (req, res) => {
  * Rotate API secret for an app (old secret immediately invalidated)
  * POST /api/business/apps/:app_id/rotate-key
  */
-router.post('/apps/:app_id/rotate-key', requireAuth, async (req, res) => {
+router.post('/apps/:app_id/rotate-key', requireAuth, rateLimitMiddleware('business_api_key_create'), async (req, res) => {
     const userId = req.user.userId || req.user.wallet;
     const { app_id } = req.params;
 
@@ -149,9 +155,7 @@ router.post('/apps/:app_id/rotate-key', requireAuth, async (req, res) => {
         });
     } catch (error) {
         console.error('[Business] Key rotation failed:', error);
-        if (!res.headersSent) {
-            return res.status(500).json({ success: false, error: 'Failed to rotate key' });
-        }
+        return res.status(500).json({ success: false, error: 'Failed to rotate key' });
     }
 });
 
@@ -324,7 +328,7 @@ router.delete('/webhooks/:webhook_id', requireAuth, async (req, res) => {
  * Trigger a test event for a specific webhook
  * POST /api/business/webhooks/:webhook_id/test
  */
-router.post('/webhooks/:webhook_id/test', requireAuth, async (req, res) => {
+router.post('/webhooks/:webhook_id/test', requireAuth, rateLimitMiddleware('business_webhook_test'), async (req, res) => {
     try {
         const userId = req.user.userId || req.user.wallet;
         const { webhook_id } = req.params;
@@ -334,18 +338,17 @@ router.post('/webhooks/:webhook_id/test', requireAuth, async (req, res) => {
             return res.status(404).json({ success: false, error: 'Webhook not found' });
         }
 
-        //Verify ownership
+        // Verify ownership
         const app = await BusinessApp.findOne({ app_id: webhook.app_id, owner_user_id: userId, active: true });
         if (!app) {
             return res.status(403).json({ success: false, error: 'Forbidden' });
         }
 
-        // Manually dispatch a test event (bypassing the lookup logic to force send to this specific URL)
-        // We'll expose a 'test.ping' event
+        // Create test payload
         const testPayload = {
             id: 'evt_test_' + crypto.randomBytes(8).toString('hex'),
             object: 'event',
-            type: 'test.ping',
+            type: WEBHOOK_EVENTS.TEST_PING,
             created: Math.floor(Date.now() / 1000),
             data: {
                 message: 'This is a test webhook from CasperID',
@@ -353,42 +356,134 @@ router.post('/webhooks/:webhook_id/test', requireAuth, async (req, res) => {
             }
         };
 
-        // We can reuse the internal send logic if we export it, or rely on dispatchEvent.
-        // dispatchEvent filters by event type, so we need to ensure the webhook subscribes to 'test.ping' OR just force it.
-        // For simplicity, let's just use dispatchEvent but with a special 'test.ping' event type that we pretend is subscribed?
-        // Actually, better to just call dispatchEvent if they subscribed to it. But usually test routes force delivery.
-        // Let's implement a manual send here using axios directly to mimic the dispatcher, or refactor dispatcher to export sendWebhook.
-        // Refactoring dispatcher is cleaner. Let's assume sendWebhook is exported or just duplicate the small axios call for the test route.
-        // Wait, I can just update the dispatcher to export sendSingleWebhook.
-        // But for now, let's just trigger a real dispatch for 'test.ping'. If they didn't subscribe, no dispatch.
-        // Better UX: Force dispatch. I'll import sendWebhook from utils if I export it.
-        // Let's modify webhook-dispatcher.js to export sendWebhook too.
+        // Use the shared sendTestWebhook function (logs the delivery)
+        const result = await sendTestWebhook(webhook, testPayload);
 
-        // Actually, just calling dispatchEvent with 'test.ping' is safest, but requires subscription.
-        // Let's just implement the send logic here for the test route to guarantee delivery even if not subscribed.
-
-        const axios = require('axios');
-        const timestamp = Math.floor(Date.now() / 1000);
-        const payloadString = JSON.stringify(testPayload);
-        const signaturePayload = `${timestamp}.${payloadString}`;
-        const signature = crypto.createHmac('sha256', webhook.signing_secret).update(signaturePayload).digest('hex');
-
-        axios.post(webhook.url, testPayload, {
-            headers: {
-                'Content-Type': 'application/json',
-                'User-Agent': 'CasperID-Webhook-Test/1.0',
-                'X-CasperID-Event': 'test.ping',
-                'X-CasperID-Signature': `t=${timestamp},v1=${signature}`,
-                'X-CasperID-Delivery': crypto.randomUUID()
-            },
-            timeout: 5000
-        }).catch(err => console.error('Test webhook failed:', err.message));
-
-        res.json({ success: true, message: 'Test webhook triggered', payload: testPayload });
+        res.json({
+            success: result.success,
+            message: result.success ? 'Test webhook delivered successfully' : 'Test webhook delivery failed',
+            payload: testPayload,
+            delivery: {
+                id: result.delivery_id,
+                status_code: result.status_code,
+                duration_ms: result.duration_ms,
+                error: result.error
+            }
+        });
 
     } catch (error) {
         console.error('[Business] Test webhook failed:', error);
         res.status(500).json({ success: false, error: 'Failed to trigger test webhook' });
+    }
+});
+
+/**
+ * Get webhook delivery logs
+ * GET /api/business/webhooks/:webhook_id/logs
+ */
+router.get('/webhooks/:webhook_id/logs', requireAuth, async (req, res) => {
+    try {
+        const userId = req.user.userId || req.user.wallet;
+        const { webhook_id } = req.params;
+        const { limit = 50, offset = 0, status } = req.query;
+
+        const webhook = await WebhookSubscription.findById(webhook_id);
+        if (!webhook) {
+            return res.status(404).json({ success: false, error: 'Webhook not found' });
+        }
+
+        // Verify ownership
+        const app = await BusinessApp.findOne({ app_id: webhook.app_id, owner_user_id: userId, active: true });
+        if (!app) {
+            return res.status(403).json({ success: false, error: 'Forbidden' });
+        }
+
+        // Build query
+        const query = { webhook_id: webhook._id };
+        if (status && ['success', 'failed', 'pending'].includes(status)) {
+            query.status = status;
+        }
+
+        // Get logs with pagination
+        const [logs, total] = await Promise.all([
+            WebhookLog.find(query)
+                .sort({ created_at: -1 })
+                .skip(parseInt(offset))
+                .limit(Math.min(parseInt(limit), 100))
+                .select('-request_payload') // Exclude payload for list view
+                .lean(),
+            WebhookLog.countDocuments(query)
+        ]);
+
+        // Get stats
+        const stats = await WebhookLog.aggregate([
+            { $match: { webhook_id: webhook._id } },
+            {
+                $group: {
+                    _id: '$status',
+                    count: { $sum: 1 },
+                    avg_duration: { $avg: '$duration_ms' }
+                }
+            }
+        ]);
+
+        const statsMap = stats.reduce((acc, s) => {
+            acc[s._id] = { count: s.count, avg_duration: Math.round(s.avg_duration || 0) };
+            return acc;
+        }, {});
+
+        res.json({
+            success: true,
+            logs,
+            pagination: {
+                total,
+                limit: parseInt(limit),
+                offset: parseInt(offset),
+                has_more: parseInt(offset) + logs.length < total
+            },
+            stats: {
+                success: statsMap.success || { count: 0, avg_duration: 0 },
+                failed: statsMap.failed || { count: 0, avg_duration: 0 },
+                total: total
+            }
+        });
+
+    } catch (error) {
+        console.error('[Business] Get webhook logs failed:', error);
+        res.status(500).json({ success: false, error: 'Failed to get webhook logs' });
+    }
+});
+
+/**
+ * Get single webhook log detail
+ * GET /api/business/webhooks/logs/:log_id
+ */
+router.get('/webhooks/logs/:log_id', requireAuth, async (req, res) => {
+    try {
+        const userId = req.user.userId || req.user.wallet;
+        const { log_id } = req.params;
+
+        const log = await WebhookLog.findById(log_id);
+        if (!log) {
+            return res.status(404).json({ success: false, error: 'Log not found' });
+        }
+
+        // Verify ownership through webhook -> app chain
+        const webhook = await WebhookSubscription.findById(log.webhook_id);
+        if (!webhook) {
+            return res.status(404).json({ success: false, error: 'Webhook not found' });
+        }
+
+        const app = await BusinessApp.findOne({ app_id: webhook.app_id, owner_user_id: userId, active: true });
+        if (!app) {
+            return res.status(403).json({ success: false, error: 'Forbidden' });
+        }
+
+        res.json({ success: true, log });
+
+    } catch (error) {
+        console.error('[Business] Get webhook log detail failed:', error);
+        res.status(500).json({ success: false, error: 'Failed to get log detail' });
     }
 });
 

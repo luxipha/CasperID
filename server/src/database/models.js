@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const { ALL_EVENTS } = require('../constants/webhook-events');
 
 // ============================================
 // VERIFICATION & CREDENTIALS (Existing)
@@ -1442,7 +1443,7 @@ const webhookSubscriptionSchema = new mongoose.Schema({
     },
     events: [{
         type: String,
-        enum: ['user.verified', 'user.registered', 'kyc.completed', 'session.revoked', 'user.created', 'test.ping']
+        enum: ALL_EVENTS
     }],
     signing_secret: {
         type: String,
@@ -1463,8 +1464,70 @@ const webhookSubscriptionSchema = new mongoose.Schema({
     }
 });
 
+// Webhook Delivery Log - tracks each webhook delivery attempt
+const webhookLogSchema = new mongoose.Schema({
+    webhook_id: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'WebhookSubscription',
+        required: true,
+        index: true
+    },
+    app_id: {
+        type: String,
+        required: true,
+        index: true
+    },
+    event_type: {
+        type: String,
+        required: true
+    },
+    url: {
+        type: String,
+        required: true
+    },
+    delivery_id: {
+        type: String,
+        required: true,
+        unique: true
+    },
+    status: {
+        type: String,
+        enum: ['success', 'failed', 'pending'],
+        default: 'pending'
+    },
+    status_code: {
+        type: Number
+    },
+    error_message: {
+        type: String
+    },
+    request_payload: {
+        type: mongoose.Schema.Types.Mixed
+    },
+    response_body: {
+        type: String,
+        maxlength: 2000 // Limit response storage
+    },
+    duration_ms: {
+        type: Number
+    },
+    retry_count: {
+        type: Number,
+        default: 0
+    },
+    created_at: {
+        type: Date,
+        default: Date.now,
+        index: true
+    }
+});
+
+// Auto-expire logs after 30 days
+webhookLogSchema.index({ created_at: 1 }, { expireAfterSeconds: 30 * 24 * 60 * 60 });
+
 const BusinessApp = mongoose.model('BusinessApp', businessAppSchema);
 const WebhookSubscription = mongoose.model('WebhookSubscription', webhookSubscriptionSchema);
+const WebhookLog = mongoose.model('WebhookLog', webhookLogSchema);
 
 module.exports = {
     // Verification & Credentials
@@ -1511,5 +1574,6 @@ module.exports = {
 
     // Business Platform (Identity-as-a-Service)
     BusinessApp,
-    WebhookSubscription
+    WebhookSubscription,
+    WebhookLog
 };

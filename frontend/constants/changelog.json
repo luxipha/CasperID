@@ -1,9 +1,52 @@
 [
   {
+    "version": "2.3.0",
+    "title": "Business Platform & Webhook Infrastructure",
+    "date": "February 26, 2026",
+    "status": "Active Development",
+    "highlight": {
+      "title": "Enterprise-Ready Webhooks",
+      "description": "Full webhook delivery logging, automatic retries with exponential backoff, and rate limiting for Business Platform APIs.",
+      "type": "sparkles"
+    },
+    "summary": "This release hardens the Business Platform with production-grade webhook infrastructure, real-time delivery logs, rate limiting, and centralized event constants.",
+    "categories": [
+      {
+        "id": "v230-feat",
+        "title": "Features",
+        "items": [
+          "Webhook delivery logs with 30-day retention and auto-expiry (TTL index).",
+          "Webhook logs UI modal with delivery stats, status filtering, and pagination.",
+          "Exponential backoff retry system for failed webhooks (5 retries: 1s → 5s → 30s → 2min → 5min).",
+          "Rate limiting on Business API routes: 60 req/min general, 5 req/min webhook tests, 10 req/hr key creation."
+        ]
+      },
+      {
+        "id": "v230-imp",
+        "title": "Improvements",
+        "items": [
+          "Connected Analytics, Billing, Settings, and IntegrationDetail pages to real API data.",
+          "Centralized webhook event types in constants files (backend and frontend).",
+          "Refactored test webhook endpoint to use shared signature logic.",
+          "Salt rounds now configurable via BCRYPT_SALT_ROUNDS environment variable."
+        ]
+      },
+      {
+        "id": "v230-fix",
+        "title": "Fixes",
+        "items": [
+          "Standardized error response format across all Business API endpoints.",
+          "Fixed Tailwind CSS class warnings (bg-gradient-to-r, z-index, positioning).",
+          "Confirmed DappIntegration and BusinessApp schemas serve different purposes (not redundant)."
+        ]
+      }
+    ]
+  },
+  {
     "version": "2.2.1",
     "title": "ImageKit Integration & Activity Log UX",
     "date": "February 25, 2026",
-    "status": "Active Development",
+    "status": "Previous Release",
     "highlight": {
       "title": "Branded Loading UX & Cloud Media",
       "description": "Integrated ImageKit CDN with an animated branded loading ring for profile pictures.",
