@@ -1359,6 +1359,83 @@ class ApiService {
     }
   }
 
+  // ============================================
+  // CNS (CasperID Name Service)
+  // ============================================
+
+  async checkCnsAvailability(name: string): Promise<ApiResponse> {
+    try {
+      const response = await this.client.get(`/api/cns/check/${encodeURIComponent(name)}`);
+      return response.data;
+    } catch (error) {
+      throw this.handleError(error);
+    }
+  }
+
+  async registerCns(name: string, years: number): Promise<ApiResponse> {
+    try {
+      const response = await this.client.post('/api/cns/register', {
+        name,
+        years
+      });
+      return response.data;
+    } catch (error) {
+      throw this.handleError(error);
+    }
+  }
+
+  async getMyNames(): Promise<ApiResponse> {
+    try {
+      const response = await this.client.get('/api/cns/my-names');
+      return response.data;
+    } catch (error) {
+      throw this.handleError(error);
+    }
+  }
+
+  async getCnsRoutes(): Promise<ApiResponse> {
+    try {
+      const response = await this.client.get('/api/cns/routes');
+      return response.data;
+    } catch (error) {
+      throw this.handleError(error);
+    }
+  }
+
+  async saveCnsRoute(name: string, config: any): Promise<ApiResponse> {
+    try {
+      const response = await this.client.post('/api/cns/route', {
+        name,
+        ...config
+      });
+      return response.data;
+    } catch (error) {
+      throw this.handleError(error);
+    }
+  }
+
+  async resolveCnsName(name: string): Promise<ApiResponse> {
+    try {
+      const response = await this.client.get(`/api/resolve/${encodeURIComponent(name)}`);
+      return response.data;
+    } catch (error) {
+      throw this.handleError(error);
+    }
+  }
+
+  async createSubName(parentName: string, prefix: string, contextType: string): Promise<ApiResponse> {
+    try {
+      const response = await this.client.post('/api/cns/subname', {
+        parentName,
+        prefix,
+        contextType
+      });
+      return response.data;
+    } catch (error) {
+      throw this.handleError(error);
+    }
+  }
+
   async checkHealth(): Promise<boolean> {
     try {
       const response = await this.client.get('/health');

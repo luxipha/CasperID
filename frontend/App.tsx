@@ -47,6 +47,7 @@ import { PublicProfileContainer } from './components/PublicProfileContainer';
 import { VerifyCredentialPage } from './components/VerifyCredentialPage';
 import { QRScannerModal } from './components/QRScannerModal';
 import { useAuth } from './contexts/AuthContext';
+import { useDocumentTitle } from './hooks/useDocumentTitle';
 // ApiTest removed - was for debugging
 // import { ApiTest } from './components/ApiTest';
 import LandingPage from './components/landing/LandingPage';
@@ -136,6 +137,53 @@ const App: React.FC = () => {
   const [isMobileDrawerOpen, setIsMobileDrawerOpen] = useState(false);
   const [isScannerOpen, setIsScannerOpen] = useState(false);
   const { user, isLoading, isAuthenticated } = useAuth();
+
+  // --- Page Title Logic ---
+  const getPageTitle = () => {
+    const path = location.pathname;
+
+    // Specific Landing Pages
+    if (path === '/anra' || path === '/adevaros' || path === '/casperos') {
+      return 'anra by CasperID - anra | All-in-One Restaurant Operating System';
+    }
+    if (path === '/careers') {
+      return 'CasperID | Join the Team';
+    }
+    if (path === '/affiliate') {
+      return 'CasperID | Join the CasperID as Relationship Manager';
+    }
+    if (path === '/apply-success') {
+      return 'Success! | Careers | CasperID';
+    }
+    if (path === '/changelog') {
+      return 'Changelog | CasperID';
+    }
+
+    // Dynamic Route placeholders (Hooks in components will handle more specific titles)
+    if (path.startsWith('/careers/')) return 'Position Details | Careers | CasperID';
+    if (path.startsWith('/profile/')) return 'Public Profile | CasperID';
+    if (path.startsWith('/verify/')) return 'Verify Credential | CasperID';
+
+    // Dashboard Internal States
+    if (path === '/dashboard') {
+      switch (currentView) {
+        case 'overview': return `Dashboard | ${user?.display_name || 'CasperID'}`;
+        case 'settings': return 'Settings | CasperID';
+        case 'activity': return 'Activity Log | CasperID';
+        case 'did-management': return 'Identities | CasperID';
+        case 'credentials': return 'Credential Vault | CasperID';
+        case 'integration': return 'Integrations | CasperID';
+        default: return 'Dashboard | CasperID';
+      }
+    }
+
+    // Default base title for home
+    if (path === '/') return 'casperId - Verify once, Reuse everywhere';
+
+    return 'CasperID';
+  };
+
+  useDocumentTitle(getPageTitle());
 
   React.useEffect(() => {
     const handleOpenWallet = () => setIsConnectWalletOpen(true);

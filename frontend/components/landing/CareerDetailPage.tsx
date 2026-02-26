@@ -5,6 +5,7 @@ import HeaderMarketing from '../HeaderMarketing';
 import { ArrowLeft, CheckCircle, Star, Zap, FileText, Loader2, Brain, Wallet, GraduationCap, Globe } from 'lucide-react';
 import { getJobBySlug, Job } from '@/utils/jobLoader';
 import { useAuth } from '../../contexts/AuthContext';
+import { useDocumentTitle } from '../../hooks/useDocumentTitle';
 import axios from 'axios';
 
 interface CareerDetailPageProps {
@@ -30,6 +31,8 @@ const CareerDetailPage: React.FC<CareerDetailPageProps> = ({ onBack, onApplySucc
     });
     const [isLoadingJob, setIsLoadingJob] = useState(true);
     const [isApplying, setIsApplying] = useState(false);
+
+    useDocumentTitle(job ? `${job.title} | Careers | CasperID` : 'CasperID | Join the Team');
 
     const { user, isAuthenticated } = useAuth();
     const isLocalhost = typeof window !== 'undefined' &&
