@@ -4,6 +4,7 @@ const { v4: uuidv4 } = require('uuid');
 const { UserAccount, LoginSession, UserProfile, Credential, EmailVerification } = require('../database/models');
 const { generateToken } = require('../utils/jwt-manager');
 const emailService = require('../services/emailService');
+const { normalizeEmail, buildEmailQuery } = require('../utils/email-normalizer');
 
 // Note: OTP storage now uses MongoDB EmailVerification model with TTL index for auto-cleanup
 
@@ -41,11 +42,12 @@ router.post('/send-otp', async (req, res) => {
             });
         }
 
-        // Check if user already exists with this email
+        // Normalize email for consistent lookup (handles Gmail dot-stripping)
+        const normalizedEmail = normalizeEmail(email);
+
+        // Check if user already exists with this email (case-insensitive, normalized)
         const { UserAccount, PasskeyCredential } = require('../database/models');
-        const existingUser = await UserAccount.findOne({
-            recovery_email: email
-        });
+        const existingUser = await UserAccount.findOne(buildEmailQuery(email));
 
         if (existingUser) {
             // Check if user has any active passkey credentials
@@ -173,8 +175,8 @@ router.post('/verify-otp', async (req, res) => {
 
 
         // Generate Session Token
-        // 1. Find user account to get wallet/human_id
-        const userAccount = await UserAccount.findOne({ recovery_email: storedData.email });
+        // 1. Find user account to get wallet/human_id (use normalized email query for Gmail compatibility)
+        const userAccount = await UserAccount.findOne(buildEmailQuery(storedData.email));
 
         let wallet = null;
         let humanId = null;

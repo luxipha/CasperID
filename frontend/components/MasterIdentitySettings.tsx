@@ -52,15 +52,13 @@ export const MasterIdentitySettings: React.FC<MasterIdentitySettingsProps> = ({
                 setUserData(profile as any);
 
                 // Fetch CNS names
-                const namesResponse = await fetch('/api/cns/my-names', { credentials: 'include' });
-                const namesData = await namesResponse.json();
+                const namesData = await apiService.getMyNames();
                 if (namesData.success) {
                     setMyNames(namesData.names || []);
                 }
 
                 // Fetch routes
-                const routesResponse = await fetch('/api/cns/routes', { credentials: 'include' });
-                const routesData = await routesResponse.json();
+                const routesData = await apiService.getCnsRoutes();
                 if (routesData.success) {
                     setRoutes(routesData.routes || []);
                 }

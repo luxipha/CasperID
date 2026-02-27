@@ -8,7 +8,8 @@ const mongoSanitize = require('express-mongo-sanitize');
 
 const app = express();
 app.set('trust proxy', true);
-const PORT = process.env.PORT || 8080;
+const PORT = process.env.PORT || 3001;
+console.log(`[${new Date().toISOString()}] 🚀 Bootstrap: Target port is ${PORT}`);
 
 // Security Middleware
 app.use(helmet({
@@ -42,8 +43,8 @@ app.use(cors({
         // Allow requests with no origin (mobile apps, curl, etc.)
         if (!origin) return callback(null, true);
 
-        // Allow ngrok URLs for development
-        if (origin.includes('ngrok') || origin.includes('ngrok-free.app')) {
+        // Allow chrome-extension URLs or ngrok URLs for development
+        if (origin.startsWith('chrome-extension://') || origin.includes('ngrok') || origin.includes('ngrok-free.app')) {
             return callback(null, true);
         }
 
@@ -82,47 +83,62 @@ mongoose.connect(process.env.MONGODB_URI, {
     useUnifiedTopology: true
 })
     .then(async () => {
-        console.log('✅ MongoDB connected successfully');
+        console.log(`[${new Date().toISOString()}] ✅ MongoDB: Connected successfully`);
 
-        // Initialize admin system
-        const { initializeDefaultAdmin } = require('./utils/admin-auth');
-        await initializeDefaultAdmin();
+        try {
+            // Initialize admin system
+            console.log(`[${new Date().toISOString()}] 🔧 Init: Setting up admin system...`);
+            const { initializeDefaultAdmin } = require('./utils/admin-auth');
+            await initializeDefaultAdmin();
 
-        // Initialize JWT secret rotation with database backing
-        const { initializeJWTRotation } = require('./utils/jwt-rotation-db');
-        await initializeJWTRotation();
+            // Initialize JWT secret rotation with database backing
+            console.log(`[${new Date().toISOString()}] 🔧 Init: Setting up JWT rotation...`);
+            const { initializeJWTRotation } = require('./utils/jwt-rotation-db');
+            await initializeJWTRotation();
 
-        // Initialize RSA key pair for business-scoped RS256 tokens
-        const { initializeRsaKeys } = require('./utils/rsa-key-manager');
-        await initializeRsaKeys();
+            // Initialize RSA key pair for business-scoped RS256 tokens
+            console.log(`[${new Date().toISOString()}] 🔧 Init: Setting up RSA keys...`);
+            const { initializeRsaKeys } = require('./utils/rsa-key-manager');
+            await initializeRsaKeys();
 
-        // Schedule rate limit cleanup
-        const { cleanupOldRecords } = require('./utils/rate-limiter');
-        setInterval(cleanupOldRecords, 60 * 60 * 1000); // Cleanup every hour
+            // Schedule rate limit cleanup
+            const { cleanupOldRecords } = require('./utils/rate-limiter');
+            setInterval(cleanupOldRecords, 60 * 60 * 1000); // Cleanup every hour
 
-        // Start server only AFTER database is ready
-        app.listen(PORT, () => {
-            console.log(`🚀 CasperID API server running on port ${PORT}`);
-            console.log(`📍 Environment: ${process.env.NODE_ENV || 'development'}`);
-            console.log(`🌐 Frontend URL: ${process.env.FRONTEND_URL || 'http://localhost:3000'}`);
-        });
+            console.log(`[${new Date().toISOString()}] ✨ Init: All systems ready`);
+        } catch (initErr) {
+            console.error(`[${new Date().toISOString()}] ⚠️ Init: Non-fatal initialization error:`, initErr);
+        }
     })
     .catch((err) => {
-        console.error('❌ MongoDB connection FATAL error:', err.message);
+        console.error(`[${new Date().toISOString()}] ❌ MongoDB: FATAL connection error:`, err.message);
         console.error('📋 Connection details:', {
             uri: process.env.MONGODB_URI ? 'REDACTED (Present)' : 'MISSING',
             node_version: process.version,
             platform: process.platform
         });
-        process.exit(1); // Exit if we can't connect to DB
+        // We no longer exit here immediately to allow the server to report its 
+        // status via the /health endpoint to Cloud Run.
     });
+
+// Start server IMMEDIATELY to satisfy Cloud Run health checks
+app.listen(PORT, '0.0.0.0', () => {
+    console.log(`[${new Date().toISOString()}] 🛰️  Server: Bound to port ${PORT} (0.0.0.0)`);
+    console.log(`[${new Date().toISOString()}] 📍 Environment: ${process.env.NODE_ENV || 'development'}`);
+});
 
 // Routes
 app.get('/health', (req, res) => {
-    res.json({
-        status: mongoose.connection.readyState === 1 ? 'ok' : 'degraded',
-        db_state: mongoose.connection.readyState,
-        message: 'CasperID API is running',
+    const dbStatus = mongoose.connection.readyState;
+    const isOk = dbStatus === 1;
+
+    res.status(isOk ? 200 : 503).json({
+        status: isOk ? 'ok' : 'degraded',
+        database: {
+            state: dbStatus,
+            connected: isOk
+        },
+        uptime: process.uptime(),
         timestamp: new Date().toISOString()
     });
 });
@@ -151,6 +167,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api', aiRoutes);
 app.use('/api/casperid', casperidAuthRoutes);
 app.use('/api/passkey', passkeyAuthRoutes); // Passkey authentication (Layer 0/1)
+app.use('/api/passkey/pairing/otp', require('./routes/otp-pairing')); // OTP Pairing (Extension-to-Web)
 app.use('/api/passkey/context-did', require('./routes/context-did')); // Context DID Management (Layer 2+)
 app.use('/api/metamask', metamaskPermissionsRoutes); // MetaMask Advanced Permissions (ERC-7715)
 app.use('/api/indexer', indexerRoutes); // Blockchain event indexing

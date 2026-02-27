@@ -18,6 +18,7 @@ const {
     DeviceSession,
     EmailVerification
 } = require('../database/models');
+const { normalizeEmail, buildEmailQuery } = require('../utils/email-normalizer');
 
 /**
  * WebAuthn Service for Passkey Authentication
@@ -52,12 +53,12 @@ class WebAuthnService {
     async generateRegistrationOptions(userEmail, userName = null, isEmailVerified = false) {
         try {
             const userId = uuidv4();
-            const userDisplayName = userName || userEmail.split('@')[0];
+            // Normalize email for consistent storage (handles Gmail dot-stripping)
+            const normalizedUserEmail = normalizeEmail(userEmail);
+            const userDisplayName = userName || normalizedUserEmail.split('@')[0];
 
-            // Check if user already exists
-            const existingUser = await UserAccount.findOne({
-                recovery_email: userEmail
-            });
+            // Check if user already exists (using normalized email query for Gmail compatibility)
+            const existingUser = await UserAccount.findOne(buildEmailQuery(userEmail));
 
             if (existingUser && existingUser.email_verified) {
                 throw new Error('User with this email already exists');
@@ -88,10 +89,10 @@ class WebAuthnService {
                 supportedAlgorithmIDs: [-7, -257],
             });
 
-            // Store challenge temporarily (5 minutes)
+            // Store challenge temporarily (5 minutes) - use normalized email
             this.challengeStorage.set(userId, {
                 challenge: options.challenge,
-                userEmail,
+                userEmail: normalizedUserEmail,
                 isEmailVerified,
                 timestamp: Date.now(),
             });
@@ -150,10 +151,8 @@ class WebAuthnService {
             // Generate user salt for key derivation
             const userSalt = crypto.randomBytes(32).toString('hex');
 
-            // Create or update user account
-            let userAccount = await UserAccount.findOne({
-                recovery_email: storedChallenge.userEmail
-            });
+            // Create or update user account (use normalized email query for Gmail compatibility)
+            let userAccount = await UserAccount.findOne(buildEmailQuery(storedChallenge.userEmail));
 
             if (!userAccount) {
                 // New users must have verified OTP before reaching passkey creation
@@ -249,11 +248,9 @@ class WebAuthnService {
             let allowCredentials = [];
             let deviceTypeHint = 'desktop';
 
-            // If user identifier provided (email), get their credentials
+            // If user identifier provided (email), get their credentials (using normalized email query)
             if (userIdentifier) {
-                const userAccount = await UserAccount.findOne({
-                    recovery_email: userIdentifier
-                });
+                const userAccount = await UserAccount.findOne(buildEmailQuery(userIdentifier));
 
                 if (userAccount) {
                     // Get device type hint for the primary passkey

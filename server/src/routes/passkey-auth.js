@@ -19,6 +19,7 @@ const { extractViewer } = require('../middleware/auth');
 const { extractApp } = require('../middleware/app-auth');
 const { generateBusinessToken } = require('../utils/jwt-manager');
 const { dispatchEvent } = require('../utils/webhook-dispatcher');
+const { normalizeEmail, buildEmailQuery } = require('../utils/email-normalizer');
 const { WEBHOOK_EVENTS } = require('../constants/webhook-events');
 
 /**
@@ -157,8 +158,8 @@ router.post('/register/finish', passkeyRateLimit, validatePasskeyAuth, extractAp
         // Set session cookie (user is now logged in)
         // Use secure cookies when accessed via HTTPS (ngrok, production, etc.)
         const isSecure = process.env.NODE_ENV === 'production' ||
-                         req.secure ||
-                         req.headers['x-forwarded-proto'] === 'https';
+            req.secure ||
+            req.headers['x-forwarded-proto'] === 'https';
         res.cookie('casperid_session', registrationResult.sessionToken, {
             httpOnly: true,
             secure: isSecure,
@@ -251,8 +252,8 @@ router.get('/register/:userId/status', async (req, res) => {
             // Set session cookie for the polling desktop device
             // This allows cross-device registration to work properly
             const isSecure = process.env.NODE_ENV === 'production' ||
-                             req.secure ||
-                             req.headers['x-forwarded-proto'] === 'https';
+                req.secure ||
+                req.headers['x-forwarded-proto'] === 'https';
             res.cookie('casperid_session', latestSession.session_token, {
                 httpOnly: true,
                 secure: isSecure,
@@ -454,8 +455,10 @@ router.post('/resend-verification', async (req, res) => {
             });
         }
 
+        // Use normalized email query for Gmail compatibility
+        const emailQuery = buildEmailQuery(email);
         const userAccount = await UserAccount.findOne({
-            recovery_email: email,
+            ...emailQuery,
             email_verified: false
         });
 
@@ -556,8 +559,8 @@ router.post('/auth/finish', extractApp, async (req, res) => {
         // Set session cookie (optional - can also use token)
         // Use secure cookies when accessed via HTTPS (ngrok, production, etc.)
         const isSecure = process.env.NODE_ENV === 'production' ||
-                         req.secure ||
-                         req.headers['x-forwarded-proto'] === 'https';
+            req.secure ||
+            req.headers['x-forwarded-proto'] === 'https';
         res.cookie('casperid_session', authResult.sessionToken, {
             httpOnly: true,
             secure: isSecure,
@@ -681,8 +684,8 @@ router.post('/logout', async (req, res) => {
 
         // Clear session cookie (must use same options as when setting)
         const isSecure = process.env.NODE_ENV === 'production' ||
-                         req.secure ||
-                         req.headers['x-forwarded-proto'] === 'https';
+            req.secure ||
+            req.headers['x-forwarded-proto'] === 'https';
         res.clearCookie('casperid_session', {
             httpOnly: true,
             secure: isSecure,
@@ -806,8 +809,8 @@ router.post('/pairing/complete', async (req, res) => {
         // Set session cookie for new device
         // Use secure cookies when accessed via HTTPS (ngrok, production, etc.)
         const isSecure = process.env.NODE_ENV === 'production' ||
-                         req.secure ||
-                         req.headers['x-forwarded-proto'] === 'https';
+            req.secure ||
+            req.headers['x-forwarded-proto'] === 'https';
         res.cookie('casperid_session', pairingResult.sessionToken, {
             httpOnly: true,
             secure: isSecure,
@@ -1433,9 +1436,8 @@ router.post('/recovery/begin', async (req, res) => {
             });
         }
 
-        const userAccount = await UserAccount.findOne({
-            recovery_email: email
-        });
+        // Use normalized email query for Gmail compatibility
+        const userAccount = await UserAccount.findOne(buildEmailQuery(email));
 
         if (!userAccount) {
             // Don't reveal if account exists for security
