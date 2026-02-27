@@ -1,6 +1,6 @@
-
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { CIDExplanationModal } from './ui/CIDexplantionModal';
+import apiService from '../services/api';
 
 interface RegisterCIDProps {
   onBack: () => void;
@@ -25,11 +25,32 @@ export const RegisterCID: React.FC<RegisterCIDProps> = ({ onBack }) => {
   const [registeredName, setRegisteredName] = useState<string>('');
   const [txHash, setTxHash] = useState<string | null>(null);
   const [showExplanationModal, setShowExplanationModal] = useState(false);
+  const [timeLeft, setTimeLeft] = useState<{ days: number, hours: number, minutes: number, seconds: number } | null>(null);
+
+  useEffect(() => {
+    const targetDate = new Date('2026-03-11T00:00:00Z'); // 14 days from Feb 25, 2026
+    const timer = setInterval(() => {
+      const now = new Date();
+      const diff = targetDate.getTime() - now.getTime();
+
+      if (diff <= 0) {
+        setTimeLeft(null);
+        clearInterval(timer);
+      } else {
+        const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+        const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+        const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+        const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+        setTimeLeft({ days, hours, minutes, seconds });
+      }
+    }, 1000);
+    return () => clearInterval(timer);
+  }, []);
 
   const pricing = [
-    { years: 1, price: 10, discount: null, label: '1 Year', sub: 'Standard pricing' },
-    { years: 2, price: 18, discount: '10% Off included', label: '2 Years', recommended: true },
-    { years: 5, price: 40, discount: '20% Off included', label: '5 Years' }
+    { years: 1, price: 3, discount: null, label: '1 Year', sub: 'Standard pricing' },
+    { years: 2, price: 5, discount: '16% Off included', label: '2 Years', recommended: true },
+    { years: 5, price: 10, discount: '33% Off included', label: '5 Years' }
   ];
 
   const currentPrice = pricing.find(p => p.years === selectedYears)?.price || 0;
@@ -43,8 +64,7 @@ export const RegisterCID: React.FC<RegisterCIDProps> = ({ onBack }) => {
     setRegistrationError(null);
 
     try {
-      const response = await fetch(`/api/cns/check/${encodeURIComponent(search)}`);
-      const data = await response.json();
+      const data = await apiService.checkCnsAvailability(search);
 
       setCheckResult({
         available: data.available,
@@ -52,7 +72,10 @@ export const RegisterCID: React.FC<RegisterCIDProps> = ({ onBack }) => {
       });
       setHasChecked(true);
     } catch (err) {
-      setCheckResult({ available: false, reason: 'Failed to check availability' });
+      setCheckResult({
+        available: false,
+        reason: 'Service unreachable. Please check your connection or try again later.'
+      });
       setHasChecked(true);
     } finally {
       setIsChecking(false);
@@ -68,16 +91,7 @@ export const RegisterCID: React.FC<RegisterCIDProps> = ({ onBack }) => {
     setRegistrationError(null);
 
     try {
-      const response = await fetch('/api/cns/register', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({
-          name: search,
-          years: selectedYears
-        })
-      });
-      const data = await response.json();
+      const data = await apiService.registerCns(search, selectedYears);
 
       if (data.success) {
         setRegisteredName(data.name || `${search}.cid`);
@@ -186,8 +200,8 @@ export const RegisterCID: React.FC<RegisterCIDProps> = ({ onBack }) => {
                 </div>
               </div>
               <div className="text-right">
-                <p className="text-xl font-black text-text-main">{currentPrice.toFixed(2)} CSPR</p>
-                <p className="text-[10px] font-bold text-text-sub uppercase tracking-tight">Estimated: ${(currentPrice * 0.05).toFixed(2)}</p>
+                <p className="text-xl font-black text-text-main">${currentPrice.toFixed(2)}</p>
+                <p className="text-[10px] font-bold text-text-sub uppercase tracking-tight">{(currentPrice * 20).toFixed(0)} CSPR</p>
               </div>
             </div>
 
@@ -226,7 +240,7 @@ export const RegisterCID: React.FC<RegisterCIDProps> = ({ onBack }) => {
           <div className="p-10 border-t border-gray-50 flex flex-col gap-6">
             <div className="flex justify-between items-center px-2">
               <span className="text-lg font-bold text-text-sub">Total Due:</span>
-              <span className="text-3xl font-black text-text-main">{currentPrice.toFixed(2)} CSPR</span>
+              <span className="text-3xl font-black text-text-main">${currentPrice.toFixed(2)}</span>
             </div>
             {registrationError && (
               <div className="bg-red-50 border border-red-200 rounded-2xl px-4 py-3 flex items-center gap-3">
@@ -236,10 +250,11 @@ export const RegisterCID: React.FC<RegisterCIDProps> = ({ onBack }) => {
             )}
             <button
               onClick={handleConfirmPayment}
-              className="w-full h-16 bg-primary text-white rounded-[24px] font-black text-lg shadow-xl shadow-primary/30 hover:bg-primary/95 transition-all active:scale-[0.98] flex items-center justify-center gap-3"
+              disabled={!!timeLeft}
+              className={`w-full h-16 rounded-[24px] font-black text-lg transition-all flex items-center justify-center gap-3 ${timeLeft ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : 'bg-primary text-white shadow-xl shadow-primary/30 hover:bg-primary/95 active:scale-[0.98]'}`}
             >
-              <span className="material-symbols-outlined">{paymentMethod === 'crypto' ? 'account_balance_wallet' : 'credit_card'}</span>
-              Confirm & Pay
+              <span className="material-symbols-outlined">{timeLeft ? 'lock' : (paymentMethod === 'crypto' ? 'account_balance_wallet' : 'credit_card')}</span>
+              {timeLeft ? `Unlocking in ${timeLeft.days}d ${timeLeft.hours}h ${timeLeft.minutes}m` : 'Confirm & Pay'}
             </button>
           </div>
         </div>
@@ -249,6 +264,7 @@ export const RegisterCID: React.FC<RegisterCIDProps> = ({ onBack }) => {
 
   return (
     <div className="w-full max-w-5xl mx-auto space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700 pb-20">
+
       {/* Hero Header */}
       <div className="text-center space-y-4 mb-12">
         <h1 className="text-5xl font-black text-text-main tracking-tight leading-tight">
@@ -355,8 +371,8 @@ export const RegisterCID: React.FC<RegisterCIDProps> = ({ onBack }) => {
                       key={option.years}
                       onClick={() => setSelectedYears(option.years)}
                       className={`relative p-8 rounded-[28px] border-2 transition-all cursor-pointer group flex flex-col justify-between h-[200px] ${selectedYears === option.years
-                          ? 'border-primary bg-primary/[0.01]'
-                          : 'border-gray-50 bg-[#FCFDFF] hover:border-gray-200'
+                        ? 'border-primary bg-primary/[0.01]'
+                        : 'border-gray-50 bg-[#FCFDFF] hover:border-gray-200'
                         }`}
                     >
                       {option.recommended && (
@@ -368,8 +384,8 @@ export const RegisterCID: React.FC<RegisterCIDProps> = ({ onBack }) => {
                       <div>
                         <h3 className={`text-sm font-bold mb-4 ${selectedYears === option.years ? 'text-primary' : 'text-text-sub'}`}>{option.label}</h3>
                         <div className="flex items-baseline gap-2">
-                          <span className="text-[44px] font-black text-text-main leading-none">{option.price}</span>
-                          <span className="text-sm font-bold text-text-sub uppercase tracking-widest">CSPR</span>
+                          <span className="text-[44px] font-black text-text-main leading-none">${option.price}</span>
+                          <span className="text-sm font-bold text-text-sub uppercase tracking-widest">USD</span>
                         </div>
                       </div>
 
@@ -419,8 +435,8 @@ export const RegisterCID: React.FC<RegisterCIDProps> = ({ onBack }) => {
                   <div className="flex items-center gap-3">
                     <span className="text-lg font-bold text-text-sub">Total Price:</span>
                     <div className="flex items-baseline gap-2">
-                      <span className="text-[44px] font-black text-text-main leading-none">{currentPrice.toFixed(2)}</span>
-                      <span className="text-xl font-bold text-text-sub uppercase tracking-widest">CSPR</span>
+                      <span className="text-[44px] font-black text-text-main leading-none">${currentPrice.toFixed(2)}</span>
+                      <span className="text-xl font-bold text-text-sub uppercase tracking-widest">USD</span>
                     </div>
                   </div>
 
@@ -433,10 +449,11 @@ export const RegisterCID: React.FC<RegisterCIDProps> = ({ onBack }) => {
                 </div>
 
                 <button
-                  onClick={handleRegister}
-                  className="h-20 px-16 bg-primary text-white rounded-[24px] font-black text-xl shadow-2xl shadow-primary/30 hover:bg-primary/95 transition-all active:scale-[0.98]"
+                  onClick={handleConfirmPayment}
+                  disabled={!!timeLeft}
+                  className={`w-full py-4 rounded-[20px] font-black text-lg transition-all ${timeLeft ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : 'bg-primary text-white shadow-xl shadow-primary/20 hover:opacity-90 active:scale-[0.98]'}`}
                 >
-                  Register & Pay
+                  {timeLeft ? `Domain Registry Unlocks in ${timeLeft.days}d ${timeLeft.hours}h ${timeLeft.minutes}m` : 'Register & Pay'}
                 </button>
               </div>
             </>

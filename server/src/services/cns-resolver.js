@@ -8,7 +8,15 @@
  * 3. Raw wallet address (fallback)
  */
 
-const { UserAccount, UserProfile, Credential } = require('../database/models');
+const {
+    UserAccount,
+    UserProfile,
+    Credential,
+    Experience,
+    Education,
+    Certification,
+    Skill
+} = require('../database/models');
 const { walletToHuman } = require('../utils/wallet-to-human');
 const casperService = require('./casper');
 

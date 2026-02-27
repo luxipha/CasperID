@@ -65,8 +65,7 @@ const NameManagement: React.FC<NameManagementProps> = ({ onRegisterCID }) => {
 
     const fetchRoutes = async () => {
         try {
-            const response = await fetch('/api/cns/routes', { credentials: 'include' });
-            const data = await response.json();
+            const data = await apiService.getCnsRoutes();
             if (data.success) setRoutes(data.routes);
         } catch (err) { console.error('Fetch routes err:', err); }
     };
@@ -74,10 +73,7 @@ const NameManagement: React.FC<NameManagementProps> = ({ onRegisterCID }) => {
     const fetchMyNames = async () => {
         try {
             setLoading(true);
-            const response = await fetch('/api/cns/my-names', {
-                credentials: 'include'
-            });
-            const data = await response.json();
+            const data = await apiService.getMyNames();
 
             if (data.success) {
                 setMyNames(data.names || []);
@@ -98,8 +94,7 @@ const NameManagement: React.FC<NameManagementProps> = ({ onRegisterCID }) => {
         setCheckResult(null);
 
         try {
-            const response = await fetch(`/api/cns/check/${encodeURIComponent(checkName)}`);
-            const data = await response.json();
+            const data = await apiService.checkCnsAvailability(checkName);
 
             setCheckResult({
                 available: data.available,
@@ -119,13 +114,7 @@ const NameManagement: React.FC<NameManagementProps> = ({ onRegisterCID }) => {
         setRegisterResult(null);
 
         try {
-            const response = await fetch('/api/cns/register', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                credentials: 'include',
-                body: JSON.stringify({ name: registerName })
-            });
-            const data = await response.json();
+            const data = await apiService.registerCns(registerName, 1); // Default 1 year
 
             if (data.success) {
                 const txMsg = data.txHash ? ` (TX: ${data.txHash.slice(0, 10)}...)` : '';
@@ -149,8 +138,7 @@ const NameManagement: React.FC<NameManagementProps> = ({ onRegisterCID }) => {
         setResolveResult(null);
 
         try {
-            const response = await fetch(`/api/resolve/${encodeURIComponent(resolveName)}`);
-            const data = await response.json();
+            const data = await apiService.resolveCnsName(resolveName);
             setResolveResult(data);
         } catch (err) {
             setResolveResult({ success: false, error: 'Resolve failed' });
@@ -163,16 +151,7 @@ const NameManagement: React.FC<NameManagementProps> = ({ onRegisterCID }) => {
         if (!selectedNameRoute) return;
 
         try {
-            const response = await fetch('/api/cns/route', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                credentials: 'include',
-                body: JSON.stringify({
-                    name: selectedNameRoute,
-                    ...routingConfig
-                })
-            });
-            const data = await response.json();
+            const data = await apiService.saveCnsRoute(selectedNameRoute, routingConfig);
             if (data.success) {
                 alert('✅ Routing preference saved!');
                 setSelectedNameRoute(null);
@@ -200,17 +179,7 @@ const NameManagement: React.FC<NameManagementProps> = ({ onRegisterCID }) => {
 
         setCreatingSubName(true);
         try {
-            const response = await fetch('/api/cns/subname', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                credentials: 'include',
-                body: JSON.stringify({
-                    parentName: subNameParent,
-                    prefix: subNamePrefix.toLowerCase(),
-                    contextType: subNameContext
-                })
-            });
-            const data = await response.json();
+            const data = await apiService.createSubName(subNameParent, subNamePrefix.toLowerCase(), subNameContext);
             if (data.success) {
                 alert(`✅ Created ${data.subName}`);
                 setSubNamePrefix('');

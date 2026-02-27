@@ -4,6 +4,7 @@ import { UserProfile, Experience, Education, Certification, Skill, Project, Awar
 import ProfileDisplay from './ProfileDisplay.tsx';
 import HeaderMarketing from './HeaderMarketing';
 import { Loader2, AlertCircle } from 'lucide-react';
+import { useDocumentTitle } from '../hooks/useDocumentTitle';
 // import { Button } from './ui/button';
 
 interface PublicProfileContainerProps {
@@ -25,6 +26,15 @@ export const PublicProfileContainer: React.FC<PublicProfileContainerProps> = ({ 
     const [languages, setLanguages] = useState<Language[]>([]);
     const [volunteers, setVolunteers] = useState<Volunteer[]>([]);
 
+    // Branded Dynamic Title
+    const profileName = profile
+        ? (profile.first_name && profile.last_name ? `${profile.first_name} ${profile.last_name}` : (profile.cns_name || profile.human_id || walletOrUsername))
+        : 'Public Profile';
+
+    const profileHandle = profile?.cns_name || profile?.human_id || walletOrUsername;
+
+    useDocumentTitle(`${profileName} (@${profileHandle}) | casperId`);
+
     useEffect(() => {
         if (walletOrUsername && walletOrUsername !== 'null' && walletOrUsername !== 'undefined') {
             loadProfile();
@@ -40,14 +50,6 @@ export const PublicProfileContainer: React.FC<PublicProfileContainerProps> = ({ 
 
             // Set profile data
             setProfile(publicProfileData);
-
-            // Dynamically update page title for SEO
-            if (publicProfileData) {
-                const name = publicProfileData.first_name && publicProfileData.last_name
-                    ? `${publicProfileData.first_name} ${publicProfileData.last_name}`
-                    : (publicProfileData.human_id || walletOrUsername);
-                document.title = `${name} - CasperID Profile`;
-            }
 
             // Set all section data from the single response (safely handling potential missing arrays)
             setExperiences(publicProfileData.experiences || []);

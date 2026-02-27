@@ -12,6 +12,7 @@ import OldVsNewSection from "./OldVsNewSection";
 import ContextualSection from "./ContextsAware";
 import { AdevarOSFlow } from "./AdevarOSFlow";
 import { ScrollToTop } from "./casperos/ScrollToTop";
+import { useDocumentTitle } from "../../hooks/useDocumentTitle";
 
 interface LandingPageProps {
   initialView?: 'main' | 'anra';
@@ -24,6 +25,13 @@ export default function LandingPage({ initialView = 'main' }: LandingPageProps) 
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [showScrollTop, setShowScrollTop] = useState(false);
+
+  // Dynamic titles for sub-views
+  useDocumentTitle(
+    currentLandingView === 'anra'
+      ? 'anra by CasperID - anra | All-in-One Restaurant Operating System'
+      : 'casperId - Verify once, Reuse everywhere'
+  );
 
   // Sync internal view with URL
   useEffect(() => {
