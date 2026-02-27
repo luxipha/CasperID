@@ -1,5 +1,40 @@
 [
   {
+    "version": "2.3.0",
+    "title": "OTP Pairing & Browser Extension Co-pilot",
+    "date": "February 27, 2026",
+    "status": "Production Release",
+    "highlight": {
+      "title": "Secure OTP Pairing",
+      "description": "Launched cross-device OTP pairing allowing browser extensions to sync identity without passkeys.",
+      "type": "sparkles"
+    },
+    "summary": "This milestone release introduces a seamless OTP-based pairing flow for the browser extension, hardens security with cross-origin policies for extensions, and refines the Job Assistant UI by removing mock data and improving verified identity mapping.",
+    "categories": [
+      {
+        "id": "v230-imp",
+        "title": "Improvements",
+        "items": [
+          "Implemented secure 6-digit OTP pairing flow for browser extension authentication.",
+          "Streamlined Extension UX: Bypassed initial selection screen to navigate directly to CasperID login.",
+          "Enhanced CNS Name Resolution: Added smart suffix handling for .cid domain lookups.",
+          "Improved Extension Dashboard: Standardized data mapping for verified identities and CNS names.",
+          "Cleaned up Job Assistant UI: Removed mock data in favor of live platform detection placeholders."
+        ]
+      },
+      {
+        "id": "v230-fix",
+        "title": "Fixes",
+        "items": [
+          "Fixed CORS errors for `chrome-extension://` origins in the backend API.",
+          "Resolved \"CasperID not found\" errors by implementing normalized email and CNS lookups.",
+          "Restored missing user data fields (human_id, cns_name) in the OTP verification response.",
+          "Fixed session persistence issues between the extension popup and background scripts."
+        ]
+      }
+    ]
+  },
+  {
     "version": "2.2.1",
     "title": "ImageKit Integration & Activity Log UX",
     "date": "February 25, 2026",
