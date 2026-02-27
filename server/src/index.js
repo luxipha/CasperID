@@ -42,8 +42,8 @@ app.use(cors({
         // Allow requests with no origin (mobile apps, curl, etc.)
         if (!origin) return callback(null, true);
 
-        // Allow ngrok URLs for development
-        if (origin.includes('ngrok') || origin.includes('ngrok-free.app')) {
+        // Allow chrome-extension URLs or ngrok URLs for development
+        if (origin.startsWith('chrome-extension://') || origin.includes('ngrok') || origin.includes('ngrok-free.app')) {
             return callback(null, true);
         }
 
@@ -151,6 +151,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api', aiRoutes);
 app.use('/api/casperid', casperidAuthRoutes);
 app.use('/api/passkey', passkeyAuthRoutes); // Passkey authentication (Layer 0/1)
+app.use('/api/passkey/pairing/otp', require('./routes/otp-pairing')); // OTP Pairing (Extension-to-Web)
 app.use('/api/passkey/context-did', require('./routes/context-did')); // Context DID Management (Layer 2+)
 app.use('/api/metamask', metamaskPermissionsRoutes); // MetaMask Advanced Permissions (ERC-7715)
 app.use('/api/indexer', indexerRoutes); // Blockchain event indexing

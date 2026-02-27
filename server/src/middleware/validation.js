@@ -1,5 +1,6 @@
 const { body, param, query, validationResult } = require('express-validator');
 const { rateLimitMiddleware } = require('../utils/rate-limiter');
+const { normalizeEmail } = require('../utils/email-normalizer');
 
 /**
  * Input validation middleware using express-validator
@@ -27,7 +28,7 @@ const handleValidationErrors = (req, res, next) => {
 const validatePasskeyRegistration = [
     body('email')
         .isEmail()
-        .normalizeEmail()
+        .customSanitizer(value => normalizeEmail(value))
         .withMessage('Valid email is required'),
     body('name')
         .optional()
@@ -86,7 +87,7 @@ const validateDappRegistration = [
     body('developerEmail')
         .optional()
         .isEmail()
-        .normalizeEmail()
+        .customSanitizer(value => normalizeEmail(value))
         .withMessage('Developer email must be valid'),
     body('webhookUrl')
         .optional()
@@ -105,7 +106,7 @@ const validatePermissionRequest = [
     body('userEmail')
         .optional()
         .isEmail()
-        .normalizeEmail()
+        .customSanitizer(value => normalizeEmail(value))
         .withMessage('User email must be valid'),
     body('requestedPermissions')
         .isArray({ min: 1 })

@@ -46,6 +46,7 @@ import { BusinessPlatform } from './business/BusinessPlatform';
 import { PublicProfileContainer } from './components/PublicProfileContainer';
 import { VerifyCredentialPage } from './components/VerifyCredentialPage';
 import { QRScannerModal } from './components/QRScannerModal';
+import OTPPairingNotification from './components/OTPPairingNotification';
 import { useAuth } from './contexts/AuthContext';
 // ApiTest removed - was for debugging
 // import { ApiTest } from './components/ApiTest';
@@ -716,6 +717,9 @@ const App: React.FC = () => {
         isOpen={isScannerOpen}
         onClose={() => setIsScannerOpen(false)}
       />
+
+      {/* OTP Pairing Notification for Extension */}
+      <OTPPairingNotification isAuthenticated={isAuthenticated} />
     </>
   );
 };

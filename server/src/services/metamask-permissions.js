@@ -7,6 +7,7 @@ const {
     DappIntegration,
     VerificationRequestV2
 } = require('../database/models');
+const { buildEmailQuery } = require('../utils/email-normalizer');
 
 /**
  * MetaMask Advanced Permissions Service
@@ -125,10 +126,10 @@ class MetaMaskPermissionsService {
                 throw new Error('Invalid or inactive dApp API key');
             }
 
-            // Find or create user account
+            // Find or create user account (use normalized email query for Gmail compatibility)
             let userAccount;
             if (userEmail) {
-                userAccount = await UserAccount.findOne({ recovery_email: userEmail });
+                userAccount = await UserAccount.findOne(buildEmailQuery(userEmail));
             } else {
                 // Try to find by MetaMask address (if previously linked)
                 userAccount = await UserAccount.findOne({ metamask_address: metamaskAddress });

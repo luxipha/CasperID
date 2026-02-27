@@ -267,6 +267,67 @@ class ApiService {
   }
 
   // ============================================
+  // OTP PAIRING (Extension-to-Web)
+  // ============================================
+
+  /**
+   * Initiate OTP pairing from extension
+   * @param cid - CasperID username or email
+   */
+  async initiateOTPPairing(cid: string): Promise<ApiResponse> {
+    try {
+      const response = await this.client.post('/api/passkey/pairing/otp/start', { cid });
+      return response.data;
+    } catch (error) {
+      throw this.handleError(error);
+    }
+  }
+
+  /**
+   * Verify OTP and complete pairing
+   * @param pairingId - The pairing session ID
+   * @param otp - The 3-digit OTP
+   * @param deviceInfo - Optional device information
+   */
+  async verifyOTPPairing(pairingId: string, otp: string, deviceInfo?: any): Promise<ApiResponse> {
+    try {
+      const response = await this.client.post('/api/passkey/pairing/otp/verify', {
+        pairingId,
+        otp,
+        deviceInfo
+      });
+      return response.data;
+    } catch (error) {
+      throw this.handleError(error);
+    }
+  }
+
+  /**
+   * Get pending OTP pairing requests (for web portal)
+   */
+  async getOTPPendingPairings(): Promise<ApiResponse> {
+    try {
+      const response = await this.client.get('/api/passkey/pairing/otp/pending');
+      return response.data;
+    } catch (error) {
+      throw this.handleError(error);
+    }
+  }
+
+  /**
+   * Cancel a pending OTP pairing request
+   * @param pairingId - The pairing session ID to cancel
+   */
+  async cancelOTPPairing(pairingId: string): Promise<ApiResponse> {
+    try {
+      const response = await this.client.delete(`/api/passkey/pairing/otp/${pairingId}`);
+      return response.data;
+    } catch (error) {
+      throw this.handleError(error);
+    }
+  }
+
+  // ============================================
   // PENDING SESSION (Mobile Passkey Handoff)
   // ============================================
 

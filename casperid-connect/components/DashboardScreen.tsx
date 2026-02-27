@@ -140,34 +140,6 @@ interface Job {
   badgeTextColor: string;
 }
 
-const JOBS_DATA: Job[] = [
-  {
-    id: 1,
-    title: 'Web3 Developer',
-    company: 'Innovate Solutions Inc.',
-    salary: '$100k - $150k',
-    location: 'Remote',
-    requirement: 'Layer 3 Required',
-    badge: 'Layer 3 Verified',
-    badgeIcon: ShieldCheck,
-    badgeColor: 'bg-[#F5F1FF]',
-    badgeTextColor: 'text-[#8652E2]',
-    badgeBorder: 'border-[#E9D5FF]'
-  },
-  {
-    id: 2,
-    title: 'Blockchain Analyst',
-    company: 'SecureChain Analytics',
-    salary: '$85k - $110k',
-    location: 'New York, NY',
-    requirement: 'Layer 2 Verified',
-    badge: 'Layer 2 Verified',
-    badgeIcon: Shield,
-    badgeColor: 'bg-[#E6FFFA]',
-    badgeTextColor: 'text-[#38B2AC]',
-    badgeBorder: 'border-[#B2F5EA]'
-  }
-];
 
 const JobsTab: React.FC<{ userData: any, currentJob: any, fetchData: () => void }> = ({ userData, currentJob, fetchData }) => {
   const [searchQuery, setSearchQuery] = useState('');
@@ -177,16 +149,7 @@ const JobsTab: React.FC<{ userData: any, currentJob: any, fetchData: () => void 
   const [pitchError, setPitchError] = useState<string | null>(null);
   const [showCoverLetter, setShowCoverLetter] = useState(false);
 
-  const filteredJobs = useMemo(() => {
-    // Filter by search query
-    let filtered = JOBS_DATA.filter(job =>
-      job.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      job.company.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      job.location.toLowerCase().includes(searchQuery.toLowerCase())
-    );
-
-    return filtered;
-  }, [searchQuery, userData?.tier]);
+  // Removed mock data filtering
 
   const handleStartMatching = async () => {
     console.log('[CasperID Popup] Start AI Matching clicked. currentJob:', currentJob);
@@ -462,30 +425,14 @@ const JobsTab: React.FC<{ userData: any, currentJob: any, fetchData: () => void 
             />
           </div>
 
-          <div className="space-y-4">
-            <h4 className="text-[11px] font-extrabold text-[#1A1A2E] uppercase tracking-widest px-1">Recommended for You</h4>
-            {filteredJobs.map(job => (
-              <div key={job.id} className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm hover:border-[#8652E2]/30 transition-all group cursor-pointer">
-                <div className="flex justify-between items-start mb-3">
-                  <div>
-                    <h4 className="text-[15px] font-extrabold text-[#1A1A2E] group-hover:text-[#8652E2] transition-colors">{job.title}</h4>
-                    <p className="text-xs font-bold text-[#626D85]">{job.company}</p>
-                  </div>
-                  <div className={`px-2.5 py-1 rounded-lg border flex items-center gap-1.5 ${job.badgeColor} ${job.badgeTextColor} ${job.badgeBorder}`}>
-                    <job.badgeIcon size={12} strokeWidth={3} />
-                    <span className="text-[9px] font-extrabold uppercase tracking-wider">{job.badge}</span>
-                  </div>
-                </div>
-                <div className="flex items-center gap-3 text-[11px] font-bold text-[#626D85]">
-                  <div className="flex items-center gap-1">
-                    <Wallet size={12} />
-                    {job.salary}
-                  </div>
-                  <div className="size-1 rounded-full bg-gray-200"></div>
-                  <span>{job.location}</span>
-                </div>
-              </div>
-            ))}
+          <div className="flex-1 flex flex-col items-center justify-center py-10 opacity-60">
+            <div className="size-16 rounded-2xl bg-gray-50 flex items-center justify-center mb-4 text-gray-300">
+              <Sparkles size={32} />
+            </div>
+            <p className="text-sm font-bold text-gray-400">Discovering opportunities...</p>
+            <p className="text-[10px] text-gray-400 mt-1 max-w-[180px] text-center">
+              Navigate to a job post on LinkedIn or Indeed to see AI match results.
+            </p>
           </div>
         </>
       )}

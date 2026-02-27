@@ -19,6 +19,7 @@ const { extractViewer } = require('../middleware/auth');
 const { extractApp } = require('../middleware/app-auth');
 const { generateBusinessToken } = require('../utils/jwt-manager');
 const { dispatchEvent } = require('../utils/webhook-dispatcher');
+const { normalizeEmail, buildEmailQuery } = require('../utils/email-normalizer');
 
 /**
  * Passkey Authentication Routes
@@ -453,8 +454,10 @@ router.post('/resend-verification', async (req, res) => {
             });
         }
 
+        // Use normalized email query for Gmail compatibility
+        const emailQuery = buildEmailQuery(email);
         const userAccount = await UserAccount.findOne({
-            recovery_email: email,
+            ...emailQuery,
             email_verified: false
         });
 
@@ -1432,9 +1435,8 @@ router.post('/recovery/begin', async (req, res) => {
             });
         }
 
-        const userAccount = await UserAccount.findOne({
-            recovery_email: email
-        });
+        // Use normalized email query for Gmail compatibility
+        const userAccount = await UserAccount.findOne(buildEmailQuery(email));
 
         if (!userAccount) {
             // Don't reveal if account exists for security
