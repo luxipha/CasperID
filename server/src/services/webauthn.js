@@ -89,10 +89,11 @@ class WebAuthnService {
                 supportedAlgorithmIDs: [-7, -257],
             });
 
-            // Store challenge temporarily (5 minutes) - use normalized email
+            // Store challenge temporarily (5 minutes) - store ORIGINAL email for display/storage
+            // Normalization is only used for lookups, not storage
             this.challengeStorage.set(userId, {
                 challenge: options.challenge,
-                userEmail: normalizedUserEmail,
+                userEmail: userEmail.trim().toLowerCase(),  // Original email (just lowercased)
                 isEmailVerified,
                 timestamp: Date.now(),
             });

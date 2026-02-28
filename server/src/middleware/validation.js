@@ -28,7 +28,8 @@ const handleValidationErrors = (req, res, next) => {
 const validatePasskeyRegistration = [
     body('email')
         .isEmail()
-        .customSanitizer(value => normalizeEmail(value))
+        .trim()
+        .toLowerCase()
         .withMessage('Valid email is required'),
     body('name')
         .optional()
