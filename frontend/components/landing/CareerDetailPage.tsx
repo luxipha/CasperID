@@ -35,9 +35,6 @@ const CareerDetailPage: React.FC<CareerDetailPageProps> = ({ onBack, onApplySucc
     useDocumentTitle(job ? `${job.title} | Careers | CasperID` : 'CasperID | Join the Team');
 
     const { user, isAuthenticated } = useAuth();
-    const isLocalhost = typeof window !== 'undefined' &&
-        (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
-    const API_URL = import.meta.env.VITE_API_URL || (isLocalhost ? 'http://localhost:3001/api' : '/api');
 
     useEffect(() => {
         const loadJob = async () => {
@@ -98,7 +95,7 @@ const CareerDetailPage: React.FC<CareerDetailPageProps> = ({ onBack, onApplySucc
 
         setIsApplying(true);
         try {
-            await axios.post(`${API_URL}/careers/apply`, {
+            await axios.post('/api/careers/apply', {
                 jobTitle: job?.title,
                 applicantEmail: user.email || 'no-email-linked',
                 applicantName: user.display_name || user.cns_name || 'CasperID User',
