@@ -1217,6 +1217,24 @@ class ApiService {
     }
   }
 
+  async patch(url: string, data?: any): Promise<any> {
+    try {
+      const response = await this.client.patch(url, data);
+      return response.data;
+    } catch (error) {
+      throw this.handleError(error);
+    }
+  }
+
+  async delete(url: string): Promise<any> {
+    try {
+      const response = await this.client.delete(url);
+      return response.data;
+    } catch (error) {
+      throw this.handleError(error);
+    }
+  }
+
   // ============================================
   // LAYER 3 VERIFICATION (FULL KYC)
   // ============================================

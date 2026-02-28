@@ -68,13 +68,13 @@ const IntegrationDetail: React.FC = () => {
 
     try {
       setSaving(true);
-      const response = await apiService.post(`/api/business/apps/${id}`, {
+      // Use PATCH directly - the backend only supports PATCH for app updates
+      const response = await apiService.patch(`/api/business/apps/${id}`, {
         name,
         environment,
         allowed_origins: allowedOrigins,
       });
 
-      // Try PATCH if POST doesn't work (the API uses PATCH)
       if (!response.success) {
         throw new Error(response.error || 'Failed to save');
       }
@@ -82,24 +82,7 @@ const IntegrationDetail: React.FC = () => {
       setApp(response.app);
       showNotification('Changes saved successfully!', 'success');
     } catch (err: any) {
-      // Try with fetch directly using PATCH
-      try {
-        const patchResponse = await fetch(`${import.meta.env.VITE_API_URL || ''}/api/business/apps/${id}`, {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
-          credentials: 'include',
-          body: JSON.stringify({ name, environment, allowed_origins: allowedOrigins }),
-        });
-        const data = await patchResponse.json();
-        if (data.success) {
-          setApp(data.app);
-          showNotification('Changes saved successfully!', 'success');
-        } else {
-          throw new Error(data.error);
-        }
-      } catch (patchErr: any) {
-        showNotification(patchErr.message || 'Failed to save changes', 'error');
-      }
+      showNotification(err.message || 'Failed to save changes', 'error');
     } finally {
       setSaving(false);
     }
