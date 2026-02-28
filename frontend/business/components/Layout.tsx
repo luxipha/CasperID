@@ -62,6 +62,7 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     { to: '/business/analytics', icon: 'bar_chart', label: 'Analytics' },
     { to: '/business/billing', icon: 'payments', label: 'Billing' },
     { to: '/business/docs', icon: 'description', label: 'Docs' },
+    { to: '/business/sdk-design', icon: 'palette', label: 'SDK Design' },
   ];
 
   const closeSidebar = () => setIsSidebarOpen(false);

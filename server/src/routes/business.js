@@ -510,6 +510,57 @@ async function verifyAppCredentials(app_id, api_secret) {
     return app;
 }
 
+// GET /api/business/apps/:app_id/sdk-config - Load SDK theme config for an app
+router.get('/apps/:app_id/sdk-config', requireAuth, async (req, res) => {
+    try {
+        const userId = req.user.userId || req.user.wallet;
+        const { app_id } = req.params;
+
+        const app = await BusinessApp.findOne({ app_id, owner_user_id: userId, active: true })
+            .select('app_id name sdk_config');
+
+        if (!app) {
+            return res.status(404).json({ success: false, error: 'App not found' });
+        }
+
+        return res.json({ success: true, sdk_config: app.sdk_config || {} });
+    } catch (error) {
+        console.error('[Business] Get SDK config failed:', error);
+        res.status(500).json({ success: false, error: 'Failed to get SDK config' });
+    }
+});
+
+// PATCH /api/business/apps/:app_id/sdk-config - Save SDK theme config from Design Studio
+router.patch('/apps/:app_id/sdk-config', requireAuth, async (req, res) => {
+    try {
+        const userId = req.user.userId || req.user.wallet;
+        const { app_id } = req.params;
+        const { primary_color, border_radius, font_family, logo_url, mode, language } = req.body;
+
+        const app = await BusinessApp.findOne({ app_id, owner_user_id: userId, active: true });
+        if (!app) {
+            return res.status(404).json({ success: false, error: 'App not found' });
+        }
+
+        if (!app.sdk_config) app.sdk_config = {};
+        if (primary_color !== undefined) app.sdk_config.primary_color = primary_color;
+        if (border_radius !== undefined) app.sdk_config.border_radius = border_radius;
+        if (font_family !== undefined) app.sdk_config.font_family = font_family;
+        if (logo_url !== undefined) app.sdk_config.logo_url = logo_url;
+        if (mode !== undefined) app.sdk_config.mode = mode;
+        if (language !== undefined) app.sdk_config.language = language;
+        app.sdk_config.updated_at = new Date();
+
+        app.markModified('sdk_config');
+        await app.save();
+
+        return res.json({ success: true, sdk_config: app.sdk_config });
+    } catch (error) {
+        console.error('[Business] Update SDK config failed:', error);
+        res.status(500).json({ success: false, error: 'Failed to update SDK config' });
+    }
+});
+
 // GET /api/business/stats - Get aggregated usage stats
 router.get('/stats', requireAuth, async (req, res) => {
     try {

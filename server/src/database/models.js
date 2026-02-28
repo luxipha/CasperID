@@ -1416,6 +1416,15 @@ const businessAppSchema = new mongoose.Schema({
     last_used_at: {
         type: Date
     },
+    sdk_config: {
+        primary_color: { type: String, default: '#8651e1' },
+        border_radius: { type: String, default: '12' },
+        font_family: { type: String, default: 'Inter' },
+        logo_url: { type: String, default: '' },
+        mode: { type: String, enum: ['light', 'dark', 'system'], default: 'light' },
+        language: { type: String, default: 'EN' },
+        updated_at: { type: Date, default: Date.now }
+    },
     created_at: {
         type: Date,
         default: Date.now

@@ -1,0 +1,36 @@
+{
+    "name": "@casperid/react",
+    "version": "1.0.0",
+    "description": "CasperID Identity SDK — embeddable React modal for authentication and KYC verification",
+    "main": "src/index.ts",
+    "type": "module",
+    "scripts": {
+        "dev": "vite --port=3001",
+        "build": "vite build",
+        "lint": "tsc --noEmit"
+    },
+    "peerDependencies": {
+        "react": ">=18",
+        "react-dom": ">=18",
+        "framer-motion": ">=10"
+    },
+    "dependencies": {
+        "lucide-react": "^0.400.0"
+    },
+    "devDependencies": {
+        "@types/react": "^18",
+        "@types/react-dom": "^18",
+        "typescript": "~5.8.2",
+        "vite": "^6.2.0",
+        "@vitejs/plugin-react": "^5.0.0",
+        "@tailwindcss/vite": "^4.1.0",
+        "tailwindcss": "^4.1.0"
+    },
+    "exports": {
+        ".": {
+            "import": "./src/index.ts",
+            "types": "./src/index.ts"
+        },
+        "./style": "./src/index.css"
+    }
+}
