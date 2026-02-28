@@ -6,7 +6,7 @@ import { ArrowLeft, CheckCircle, Star, Zap, FileText, Loader2, Brain, Wallet, Gr
 import { getJobBySlug, Job } from '@/utils/jobLoader';
 import { useAuth } from '../../contexts/AuthContext';
 import { useDocumentTitle } from '../../hooks/useDocumentTitle';
-import axios from 'axios';
+import { apiService } from '../../services/api';
 
 interface CareerDetailPageProps {
     onBack: () => void;
@@ -95,7 +95,7 @@ const CareerDetailPage: React.FC<CareerDetailPageProps> = ({ onBack, onApplySucc
 
         setIsApplying(true);
         try {
-            await axios.post('/api/careers/apply', {
+            await apiService.post('/api/careers/apply', {
                 jobTitle: job?.title,
                 applicantEmail: user.email || 'no-email-linked',
                 applicantName: user.display_name || user.cns_name || 'CasperID User',

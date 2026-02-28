@@ -96,9 +96,21 @@ router.post('/send-otp', async (req, res) => {
 
     } catch (error) {
         console.error('Send OTP failed:', error);
+
+        // Return user-friendly error messages
+        let userMessage = 'Failed to send verification code. Please try again.';
+
+        if (error.name === 'MongooseError' || error.message?.includes('buffering timed out')) {
+            userMessage = 'Our servers are temporarily busy. Please try again in a moment.';
+        } else if (error.message?.includes('ECONNREFUSED') || error.message?.includes('ETIMEDOUT')) {
+            userMessage = 'Unable to connect to our services. Please try again later.';
+        } else if (error.message?.includes('Email')) {
+            userMessage = 'Failed to send email. Please check your email address and try again.';
+        }
+
         res.status(500).json({
             success: false,
-            error: error.message || 'Failed to send OTP'
+            error: userMessage
         });
     }
 });
@@ -234,9 +246,18 @@ router.post('/verify-otp', async (req, res) => {
 
     } catch (error) {
         console.error('Verify OTP failed:', error);
+
+        let userMessage = 'Failed to verify code. Please try again.';
+
+        if (error.name === 'MongooseError' || error.message?.includes('buffering timed out')) {
+            userMessage = 'Our servers are temporarily busy. Please try again in a moment.';
+        } else if (error.message?.includes('ECONNREFUSED') || error.message?.includes('ETIMEDOUT')) {
+            userMessage = 'Unable to connect to our services. Please try again later.';
+        }
+
         res.status(500).json({
             success: false,
-            error: error.message || 'Failed to verify OTP'
+            error: userMessage
         });
     }
 });
@@ -287,9 +308,20 @@ router.post('/resend-otp', async (req, res) => {
 
     } catch (error) {
         console.error('Resend OTP failed:', error);
+
+        let userMessage = 'Failed to resend code. Please try again.';
+
+        if (error.name === 'MongooseError' || error.message?.includes('buffering timed out')) {
+            userMessage = 'Our servers are temporarily busy. Please try again in a moment.';
+        } else if (error.message?.includes('ECONNREFUSED') || error.message?.includes('ETIMEDOUT')) {
+            userMessage = 'Unable to connect to our services. Please try again later.';
+        } else if (error.message?.includes('Email')) {
+            userMessage = 'Failed to send email. Please try again.';
+        }
+
         res.status(500).json({
             success: false,
-            error: error.message || 'Failed to resend OTP'
+            error: userMessage
         });
     }
 });
