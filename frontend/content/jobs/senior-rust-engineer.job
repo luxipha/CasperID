@@ -1,0 +1,61 @@
+---
+slug: full-stack-rust-engineer
+title: Full-Stack Rust Engineer
+department: Engineering
+location: Remote / Nigeria / Vietnam
+type: Full-time
+salary: Competitive Salary + Equity
+---
+
+## The Mandate
+
+Adevar Inc. is architecting the digital backbone for the informal economy. We aren't building "another app"; we are building a high-performance ecosystem consisting of **anra** (a high-speed restaurant operating system) and **CasperID** (a biometric identity protocol utilizing a proprietary Markov Chain Identity algorithm).
+
+We are looking for a Full-Stack Rust Engineer who treats code like high-performance machinery. You aren't here to maintain legacy systems; you are here to build the core engine. You will work directly with the Technical Founder to ship mission-critical infrastructure that must be memory-safe, hyper-performant, and globally scalable.
+
+### The Mission: Zero-Latency Infrastructure
+
+In the informal markets of Lagos and Hanoi, connectivity is expensive and hardware is varied. Your mission is to ensure our backend services and identity layers are so efficient they feel instantaneous, even on legacy networks. You will take ownership of our Rust-based microservices, blockchain integrations, and AI agent logic.
+
+## Key Responsibilities (The Core)
+
+- **Systems Architecture**: Develop and maintain high-concurrency backend services using Rust (Axum, Tokio).
+- **CasperID Evolution**: Refine the Markov Chain Identity (MCI) algorithm and integrate AI biometric verification layers that interface with our smart contracts on the Casper and BNB networks.
+- **Real-Time Data Pipelines**: Build the high-speed data engine that powers the **anra** merchant dashboards, ensuring $15/month subscriptions and transactional data are processed with zero drift.
+- **Hardware Interfacing**: Optimize how our web-based frontends communicate with low-level device APIs for biometric scanning and QR processing.
+- **Security & Reliability**: Implement rigorous safety protocols. In a system processing real money and biometric identities, "good enough" is a failure.
+
+## Candidate Profile
+
+- **The Rust Ace**: You have a deep understanding of ownership, borrowing, and the Rust ecosystem. You prefer the safety of a compiler to the "magic" of a garbage collector.
+- **Production Veteran**: You have shipped Rust in a production environment. Whether it’s DeFi protocols, high-frequency trading bots, or complex SaaS backends, you know how to manage state and concurrency.
+- **Full-Stack Fluidity**: While your heart is in the backend, you are comfortable enough with TypeScript and React to ensure your APIs are seamlessly integrated into our frontends.
+- **Extreme Ownership**: You don't just close tickets; you monitor the logs. If a service spikes in latency at 3:00 AM, you are the first to know and the first to patch.
+
+### Technical Stack
+
+- **Language**: Rust (Backend), TypeScript (Frontend/Integration)
+- **Frameworks**: Axum, Tokio, Next.js
+- **Database/Infra**: PostgreSQL, Redis, Docker, AWS/Vercel
+- **Web3**: Casper, BNB Chain, Starknet (ERC-8004/Identity standards)
+
+## Compensation & Founding Upside
+
+- **Competitive Salary**: A high-tier salary reflecting your status as a founding engineer.
+- **Equity Participation**: Significant stock options. You are building the value of the company; you should own a piece of it.
+- **Global Mobility**: Opportunities to work from or visit our primary hubs in Vietnam and Nigeria.
+- **Direct Impact**: No middle management. Your code goes from your machine to thousands of merchants in days, not months.
+
+## How to Apply
+
+**Verification**: Ensure your resume/profile is uploaded via CasperID.
+
+**Submission**: Send an email to **careers@casperid.com** with the subject line: **"Rust: [Your Name]"**.
+
+Your submission must include **ONLY** the following:
+
+- **The Proof**: A link to your GitHub profile or a specific Rust-based repository you are proud of.
+- **The Architectural Challenge**: Explain, in 3 sentences, how you would handle thousands of concurrent biometric verification requests to the CasperID protocol without bottlenecking the main event loop.
+- **The Optimization**: Tell us about the most difficult bug you ever solved in Rust (specifically relating to memory management or async execution).
+
+**Adevar Inc: Move Fast. Scale Hard. Own the Future.**

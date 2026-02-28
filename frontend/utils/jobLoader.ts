@@ -11,14 +11,14 @@ export interface Job {
 }
 
 export async function getAllJobs(): Promise<Job[]> {
-    const modules = import.meta.glob('../content/jobs/*.md', { as: 'raw', eager: true });
-    
+    const modules = import.meta.glob('../content/jobs/*.job', { as: 'raw', eager: true });
+
     const jobs: Job[] = [];
 
     for (const path in modules) {
         const rawContent = modules[path] as string;
         const { attributes, body } = frontMatter<any>(rawContent);
-        
+
         jobs.push({
             slug: attributes.slug,
             title: attributes.title,
