@@ -739,6 +739,22 @@ const userAccountSchema = new mongoose.Schema({
         security_alerts: { type: Boolean, default: true },
         kyc_updates: { type: Boolean, default: true },
         marketing_news: { type: Boolean, default: false }
+    },
+    // ZK Verification (Starknet)
+    zk_verified: {
+        type: Boolean,
+        default: false
+    },
+    zk_transaction_hash: {
+        type: String
+    },
+    zk_verified_at: {
+        type: Date
+    },
+    zk_nullifier: {
+        type: String,
+        index: true,
+        sparse: true
     }
 });
 

@@ -1284,6 +1284,82 @@ class ApiService {
   }
 
   // ============================================
+  // ZK PROOF SUBMISSION (Starknet)
+  // ============================================
+
+  /**
+   * Submit a ZK proof of liveness to Starknet
+   * This registers the user's identity on-chain without revealing biometric data
+   */
+  async submitZkProof(data: {
+    proof: string;
+    proofHash: string;
+    publicInputs: {
+      nullifier: string;
+      sessionNonce: string;
+      timestamp: number;
+      walletAddress: string;
+    };
+  }): Promise<ApiResponse & {
+    transactionHash?: string;
+    explorerUrl?: string;
+  }> {
+    try {
+      const response = await this.client.post('/api/zk/submit-proof', data);
+      return response.data;
+    } catch (error) {
+      throw this.handleError(error);
+    }
+  }
+
+  /**
+   * Check if a wallet is ZK-verified on Starknet
+   */
+  async checkZkVerification(walletAddress: string): Promise<ApiResponse & {
+    isVerified: boolean;
+    transactionHash?: string;
+    verifiedAt?: string;
+  }> {
+    try {
+      const response = await this.client.get(`/api/zk/verification/${walletAddress}`);
+      return response.data;
+    } catch (error) {
+      throw this.handleError(error);
+    }
+  }
+
+  /**
+   * Get ZK service status (Starknet connection info)
+   */
+  async getZkStatus(): Promise<ApiResponse & {
+    configured: boolean;
+    contractAddress?: string;
+    network: string;
+    verifiedCount: number;
+  }> {
+    try {
+      const response = await this.client.get('/api/zk/status');
+      return response.data;
+    } catch (error) {
+      throw this.handleError(error);
+    }
+  }
+
+  /**
+   * Check if a nullifier has been used (Sybil prevention)
+   */
+  async checkNullifier(nullifier: string): Promise<ApiResponse & {
+    isUsed: boolean;
+  }> {
+    try {
+      const response = await this.client.post('/api/zk/check-nullifier', { nullifier });
+      return response.data;
+    } catch (error) {
+      throw this.handleError(error);
+    }
+  }
+
+  // ============================================
   // UTILITY METHODS
   // ============================================
 

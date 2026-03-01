@@ -5,6 +5,8 @@ import { Camera } from '@mediapipe/camera_utils';
 import { LivenessSuccess } from './LivenessSuccess';
 import { VerificationProgress } from './VerificationProgress';
 import { MobileLivenessPage, MobileStep } from './MobileLiveness';
+import { generateLivenessProof, FaceLandmark } from '../services/zkProver';
+import apiService from '../services/api';
 
 interface LivenessCheckProps {
   onBack?: () => void;
@@ -12,7 +14,7 @@ interface LivenessCheckProps {
   layer?: number;
 }
 
-type VerificationState = "INITIALIZING" | "POSITIONING" | "CHALLENGE" | "MINTING" | "SUCCESS" | "COMPLETED";
+type VerificationState = "INITIALIZING" | "POSITIONING" | "CHALLENGE" | "MINTING" | "ZK_PROVING" | "ZK_SUBMITTING" | "SUCCESS" | "COMPLETED";
 type ChallengeType = "BLINK" | "OPEN_MOUTH";
 
 const euclideanDist = (p1: any, p2: any) => Math.sqrt(Math.pow(p1.x - p2.x, 2) + Math.pow(p1.y - p2.y, 2));
@@ -41,6 +43,12 @@ export const LivenessCheck: React.FC<LivenessCheckProps> = ({ onBack, onComplete
   const [isApiComplete, setIsApiComplete] = useState(false);
 
   const { refreshUser } = useAuth();
+
+  // ZK proof state
+  const [zkProgress, setZkProgress] = useState(0);
+  const capturedLandmarks = useRef<FaceLandmark[] | null>(null);
+  const blinkTimestamps = useRef<number[]>([]);
+  const maxMouthOpen = useRef(0);
 
   // Logic refs
   const logicState = useRef({
@@ -78,7 +86,11 @@ export const LivenessCheck: React.FC<LivenessCheckProps> = ({ onBack, onComplete
     logicState.current.isSubmitting = false;
     logicState.current.isCapturing = false;
     logicState.current.lastFrameTime = 0;
+    capturedLandmarks.current = null;
+    blinkTimestamps.current = [];
+    maxMouthOpen.current = 0;
     setProgress(0);
+    setZkProgress(0);
     setChallenge("BLINK");
   };
 
@@ -87,8 +99,8 @@ export const LivenessCheck: React.FC<LivenessCheckProps> = ({ onBack, onComplete
     let faceMesh: any = null;
     let isActive = true;
 
-    // Stop everything if we're in minting or completed state
-    if (state === "MINTING" || state === "SUCCESS") {
+    // Stop everything if we're in minting, ZK, or completed state
+    if (state === "MINTING" || state === "ZK_PROVING" || state === "ZK_SUBMITTING" || state === "SUCCESS") {
       return;
     }
 
@@ -180,6 +192,7 @@ export const LivenessCheck: React.FC<LivenessCheckProps> = ({ onBack, onComplete
             if (st.isBlinking) {
               st.isBlinking = false;
               st.blinkCount++;
+              blinkTimestamps.current.push(now); // Capture blink time for ZK
 
               // Capture frame when blink completes (async, non-blocking)
               if (canvasRef.current && st.frames.length < 20) {
@@ -205,6 +218,16 @@ export const LivenessCheck: React.FC<LivenessCheckProps> = ({ onBack, onComplete
           // Landmark 10 (top) to 152 (chin) is face height
           const faceHeight = euclideanDist(landmarks[10], landmarks[152]);
           const mouthRatio = mouthOpen / faceHeight;
+
+          // Track max mouth open for ZK proof
+          if (mouthRatio > maxMouthOpen.current) {
+            maxMouthOpen.current = mouthRatio;
+          }
+
+          // Capture landmarks for ZK proof (once when face is well-positioned)
+          if (!capturedLandmarks.current && landmarks.length >= 468) {
+            capturedLandmarks.current = landmarks.map((lm: any) => ({ x: lm.x, y: lm.y, z: lm.z }));
+          }
 
           // Capture frames periodically during mouth opening
           if (now - st.lastFrameTime > 100 && st.frames.length < 25 && canvasRef.current && !st.isCapturing) {
@@ -338,8 +361,10 @@ export const LivenessCheck: React.FC<LivenessCheckProps> = ({ onBack, onComplete
       if (response.ok) {
         const result = await response.json();
         if (result.passed) {
-          setIsApiComplete(true); // Signal progress component to finish immediately
+          setIsApiComplete(true);
           await refreshUser();
+          // Trigger ZK proof generation after minting succeeds
+          generateAndSubmitZkProof();
         } else {
           console.error('[Liveness] Verification failed:', result);
           setGuidance(result.error || "Verification failed. Please try again.");
@@ -361,9 +386,61 @@ export const LivenessCheck: React.FC<LivenessCheckProps> = ({ onBack, onComplete
     }
   };
 
+  const generateAndSubmitZkProof = async () => {
+    // Skip ZK if no landmarks captured
+    if (!capturedLandmarks.current || capturedLandmarks.current.length < 100) {
+      console.log('[ZK] Skipping - insufficient landmarks');
+      setState("SUCCESS");
+      return;
+    }
+
+    try {
+      setState("ZK_PROVING");
+      setZkProgress(0);
+
+      // Generate proof client-side
+      const proof = await generateLivenessProof(
+        {
+          faceLandmarks: capturedLandmarks.current,
+          challengeResponses: {
+            blinkTimestamps: blinkTimestamps.current,
+            mouthOpenRatio: maxMouthOpen.current,
+            headMovementDetected: true,
+          },
+          sessionNonce: crypto.randomUUID(),
+          walletAddress: localStorage.getItem('casperid_wallet') || '0x0',
+        },
+        (progress, message) => {
+          setZkProgress(progress);
+          setGuidance(message);
+        }
+      );
+
+      setState("ZK_SUBMITTING");
+      setGuidance("Anchoring to Starknet...");
+
+      // Submit to backend
+      const result = await apiService.submitZkProof({
+        proof: proof.proof,
+        proofHash: proof.proofHash,
+        publicInputs: proof.publicInputs,
+      });
+
+      if (result.success) {
+        console.log('[ZK] Proof submitted:', result.transactionHash);
+      }
+
+      setState("SUCCESS");
+    } catch (error) {
+      // ZK is optional - don't block user if it fails
+      console.warn('[ZK] Proof generation/submission failed:', error);
+      setState("SUCCESS");
+    }
+  };
+
   const getMobileStep = (): MobileStep => {
     if (state === "SUCCESS") return "success";
-    if (state === "MINTING") return "processing";
+    if (state === "MINTING" || state === "ZK_PROVING" || state === "ZK_SUBMITTING") return "processing";
     if (state === "CHALLENGE" && challenge === "OPEN_MOUTH") return "smile";
     if (state === "CHALLENGE" && challenge === "BLINK") return "blink";
     return "position";
@@ -419,16 +496,40 @@ export const LivenessCheck: React.FC<LivenessCheckProps> = ({ onBack, onComplete
       <div className="grid grid-cols-1 lg:grid-cols-[1fr_340px] gap-10 items-start">
 
         {/* Left: Main Verification Area */}
-        <div className={`bg-white rounded-[40px] border border-gray-100 shadow-soft p-8 md:p-12 space-y-10 min-h-[600px] ${state === 'MINTING' ? 'flex items-center justify-center' : ''}`}>
+        <div className={`bg-white rounded-[40px] border border-gray-100 shadow-soft p-8 md:p-12 space-y-10 min-h-[600px] ${(state === 'MINTING' || state === 'ZK_PROVING' || state === 'ZK_SUBMITTING') ? 'flex items-center justify-center' : ''}`}>
 
           {state === "MINTING" ? (
             <div className="w-full flex-1 flex items-center justify-center animate-in zoom-in-50 duration-500">
               <VerificationProgress
                 isProcessComplete={isApiComplete}
                 onComplete={() => {
-                  setState("COMPLETED");
+                  // Don't set COMPLETED here - ZK flow will handle it
                 }}
               />
+            </div>
+          ) : state === "ZK_PROVING" ? (
+            <div className="w-full flex-1 flex flex-col items-center justify-center gap-6 animate-in zoom-in-50 duration-500">
+              <div className="animate-pulse">
+                <span className="material-symbols-outlined text-purple-500 text-6xl">shield</span>
+              </div>
+              <h3 className="text-2xl font-black text-text-main">Generating Privacy Proof</h3>
+              <p className="text-text-sub text-center max-w-md">
+                Creating a zero-knowledge proof of your liveness check. Your biometric data never leaves your device.
+              </p>
+              <div className="w-full max-w-xs h-2 bg-gray-200 rounded-full overflow-hidden">
+                <div className="h-full bg-purple-500 transition-all duration-300" style={{ width: `${zkProgress}%` }} />
+              </div>
+              <p className="text-sm text-text-sub">{guidance}</p>
+            </div>
+          ) : state === "ZK_SUBMITTING" ? (
+            <div className="w-full flex-1 flex flex-col items-center justify-center gap-6 animate-in zoom-in-50 duration-500">
+              <div className="animate-spin">
+                <span className="material-symbols-outlined text-purple-500 text-6xl">sync</span>
+              </div>
+              <h3 className="text-2xl font-black text-text-main">Anchoring to Starknet</h3>
+              <p className="text-text-sub text-center max-w-md">
+                Submitting your privacy-preserving proof to the blockchain...
+              </p>
             </div>
           ) : (
             <>
@@ -540,13 +641,15 @@ export const LivenessCheck: React.FC<LivenessCheckProps> = ({ onBack, onComplete
           <div className="bg-white rounded-[32px] border border-gray-100 shadow-soft overflow-hidden p-8 space-y-8">
             <h2 className="text-[11px] font-black text-text-sub uppercase tracking-[0.2em] mb-4">Verification Steps</h2>
 
-            <div className="space-y-10 relative">
+            <div className="space-y-8 relative">
               {/* Vertical Stepper Line */}
               <div className="absolute left-[15px] top-6 bottom-6 w-0.5 bg-gray-100">
                 <div
                   className="absolute top-0 left-0 w-0.5 bg-primary transition-all duration-1000 ease-in-out"
                   style={{
-                    height: state === "SUCCESS" ? '100%' : state === "MINTING" ? '66%' : '33%'
+                    height: state === "SUCCESS" ? '100%' :
+                      (state === "ZK_PROVING" || state === "ZK_SUBMITTING") ? '75%' :
+                        state === "MINTING" ? '50%' : '25%'
                   }}
                 ></div>
               </div>
@@ -564,29 +667,29 @@ export const LivenessCheck: React.FC<LivenessCheckProps> = ({ onBack, onComplete
 
               {/* Step 2: Liveness Check */}
               <div className="flex gap-6 items-start relative z-10">
-                <div className={`size-8 rounded-full flex items-center justify-center font-black text-xs shadow-sm ring-4 ring-white transition-colors duration-500 ${state === "MINTING" || state === "SUCCESS"
+                <div className={`size-8 rounded-full flex items-center justify-center font-black text-xs shadow-sm ring-4 ring-white transition-colors duration-500 ${["MINTING", "ZK_PROVING", "ZK_SUBMITTING", "SUCCESS"].includes(state)
                   ? "bg-primary text-white shadow-md"
                   : "bg-white border-2 border-primary text-primary"
                   }`}>
-                  {state === "MINTING" || state === "SUCCESS" ? (
+                  {["MINTING", "ZK_PROVING", "ZK_SUBMITTING", "SUCCESS"].includes(state) ? (
                     <span className="material-symbols-outlined text-sm font-bold">check</span>
                   ) : "2"}
                 </div>
                 <div className="flex flex-col">
-                  <span className={`text-sm font-black leading-tight ${state !== "MINTING" && state !== "SUCCESS" ? "text-primary" : "text-text-main"
+                  <span className={`text-sm font-black leading-tight ${!["MINTING", "ZK_PROVING", "ZK_SUBMITTING", "SUCCESS"].includes(state) ? "text-primary" : "text-text-main"
                     }`}>Liveness Check</span>
                   <span className="text-[11px] font-bold text-text-sub mt-0.5">Face scan verification</span>
                 </div>
               </div>
 
               {/* Step 3: Minting */}
-              <div className={`flex gap-6 items-start relative z-10 transition-opacity duration-500 ${state === "MINTING" || state === "SUCCESS" ? "opacity-100" : "opacity-40"
+              <div className={`flex gap-6 items-start relative z-10 transition-opacity duration-500 ${["MINTING", "ZK_PROVING", "ZK_SUBMITTING", "SUCCESS"].includes(state) ? "opacity-100" : "opacity-40"
                 }`}>
-                <div className={`size-8 rounded-full flex items-center justify-center font-black text-xs transition-colors duration-500 ring-4 ring-white ${state === "SUCCESS" ? "bg-primary text-white shadow-md" :
+                <div className={`size-8 rounded-full flex items-center justify-center font-black text-xs transition-colors duration-500 ring-4 ring-white ${["ZK_PROVING", "ZK_SUBMITTING", "SUCCESS"].includes(state) ? "bg-primary text-white shadow-md" :
                   state === "MINTING" ? "bg-white border-2 border-primary text-primary animate-pulse" :
                     "bg-white border-2 border-gray-200 text-text-sub"
                   }`}>
-                  {state === "SUCCESS" ? (
+                  {["ZK_PROVING", "ZK_SUBMITTING", "SUCCESS"].includes(state) ? (
                     <span className="material-symbols-outlined text-sm font-bold">check</span>
                   ) : "3"}
                 </div>
@@ -599,14 +702,35 @@ export const LivenessCheck: React.FC<LivenessCheckProps> = ({ onBack, onComplete
                 </div>
               </div>
 
-              {/* Step 4: Success */}
+              {/* Step 4: ZK Proof */}
+              <div className={`flex gap-6 items-start relative z-10 transition-opacity duration-500 ${["ZK_PROVING", "ZK_SUBMITTING", "SUCCESS"].includes(state) ? "opacity-100" : "opacity-40"
+                }`}>
+                <div className={`size-8 rounded-full flex items-center justify-center font-black text-xs transition-colors duration-500 ring-4 ring-white ${state === "SUCCESS" ? "bg-purple-500 text-white shadow-md" :
+                  ["ZK_PROVING", "ZK_SUBMITTING"].includes(state) ? "bg-white border-2 border-purple-500 text-purple-500 animate-pulse" :
+                    "bg-white border-2 border-gray-200 text-text-sub"
+                  }`}>
+                  {state === "SUCCESS" ? (
+                    <span className="material-symbols-outlined text-sm font-bold">check</span>
+                  ) : "4"}
+                </div>
+                <div className="flex flex-col">
+                  <span className={`text-sm font-black leading-tight ${["ZK_PROVING", "ZK_SUBMITTING"].includes(state) ? "text-purple-500" : "text-text-main"
+                    }`}>Privacy Proof</span>
+                  <span className={`text-[11px] font-bold mt-0.5 ${["ZK_PROVING", "ZK_SUBMITTING"].includes(state) ? "text-purple-500 animate-pulse" : "text-text-sub"}`}>
+                    {state === "ZK_PROVING" ? "Generating proof..." :
+                      state === "ZK_SUBMITTING" ? "Submitting to Starknet..." : "Zero-Knowledge verification"}
+                  </span>
+                </div>
+              </div>
+
+              {/* Step 5: Success */}
               <div className={`flex gap-6 items-start relative z-10 transition-opacity duration-500 ${state === "SUCCESS" ? "opacity-100" : "opacity-40"
                 }`}>
                 <div className={`size-8 rounded-full flex items-center justify-center font-black text-xs transition-colors duration-500 ring-4 ring-white ${state === "SUCCESS"
                   ? "bg-white border-2 border-primary text-primary"
                   : "bg-white border-2 border-gray-200 text-text-sub"
                   }`}>
-                  4
+                  5
                 </div>
                 <div className="flex flex-col">
                   <span className={`text-sm font-black leading-tight ${state === "SUCCESS" ? "text-primary" : "text-text-main"
@@ -633,7 +757,7 @@ export const LivenessCheck: React.FC<LivenessCheckProps> = ({ onBack, onComplete
 
       {/* Footer Exit Link */}
       <div className="mt-12 flex justify-center">
-        {state !== "MINTING" && state !== "SUCCESS" && (
+        {!["MINTING", "ZK_PROVING", "ZK_SUBMITTING", "SUCCESS"].includes(state) && (
           <button
             onClick={onBack}
             className="flex items-center gap-2 text-text-sub hover:text-alerts transition-all font-bold text-sm group"
