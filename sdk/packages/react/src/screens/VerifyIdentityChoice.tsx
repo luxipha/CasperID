@@ -1,15 +1,16 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import { Globe, CreditCard, Smartphone, ShieldCheck, ChevronRight } from 'lucide-react';
+import type { DocumentType } from '../types';
 
 interface VerifyIdentityChoiceProps {
-    onNext: () => void;
+    onNext: (documentType: DocumentType) => void;
 }
 
-const docs = [
+const docs: { id: DocumentType; title: string; desc: string; Icon: React.FC<any> }[] = [
     { id: 'passport', title: 'Passport', desc: 'All countries supported', Icon: Globe },
-    { id: 'license', title: 'Driver License', desc: 'Government issued card', Icon: CreditCard },
-    { id: 'idcard', title: 'ID Card', desc: 'National identity document', Icon: Smartphone },
+    { id: 'drivers_license', title: 'Driver License', desc: 'Government issued card', Icon: CreditCard },
+    { id: 'national_id', title: 'ID Card', desc: 'National identity document', Icon: Smartphone },
 ];
 
 const VerifyIdentityChoice: React.FC<VerifyIdentityChoiceProps> = ({ onNext }) => (
@@ -28,7 +29,7 @@ const VerifyIdentityChoice: React.FC<VerifyIdentityChoiceProps> = ({ onNext }) =
             {docs.map(({ id, title, desc, Icon }) => (
                 <button
                     key={id}
-                    onClick={onNext}
+                    onClick={() => onNext(id)}
                     className="w-full group cursor-pointer dark:bg-white/5 bg-slate-100/50 border dark:border-white/10 border-slate-200 rounded-2xl p-5 flex items-center gap-4 hover:dark:bg-[var(--casperid-primary,#8651e1)]/15 hover:bg-[var(--casperid-primary,#8651e1)]/5 hover:dark:border-[var(--casperid-primary,#8651e1)]/40 hover:border-[var(--casperid-primary,#8651e1)]/30 transition-all transform hover:-translate-y-1"
                 >
                     <div className="w-14 h-14 rounded-xl dark:bg-slate-800/50 bg-white flex items-center justify-center text-[var(--casperid-primary,#8651e1)] group-hover:bg-[var(--casperid-primary,#8651e1)]/20 transition-colors border dark:border-transparent border-slate-100">

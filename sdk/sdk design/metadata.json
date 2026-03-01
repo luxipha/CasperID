@@ -1,7 +1,0 @@
-{
-  "name": "CasperID - Web3 Identity SDK",
-  "description": "A premium, secure Web3 identity and authentication layer with biometric verification and decentralized identity minting.",
-  "requestFramePermissions": [
-    "camera"
-  ]
-}

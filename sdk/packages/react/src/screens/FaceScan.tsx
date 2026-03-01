@@ -1,33 +1,212 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Lock } from 'lucide-react';
+import { Lock, Camera, AlertCircle, Loader2 } from 'lucide-react';
+import type { LivenessResponse } from '../types';
 
 interface FaceScanProps {
-    onNext: () => void;
+    requestId: string;
+    onNext: (livenessVerified: boolean) => void;
+    onError?: (error: string) => void;
+    apiBaseUrl?: string;
 }
 
 const instructions = [
-    'Align your face within the frame',
-    'Blink your eyes',
-    'Look left',
-    'Look right',
+    'Position your face in the frame',
+    'Blink your eyes slowly',
+    'Turn your head left',
+    'Turn your head right',
     'Processing...',
 ];
 
-const FaceScan: React.FC<FaceScanProps> = ({ onNext }) => {
-    const [step, setStep] = React.useState(0);
+const FaceScan: React.FC<FaceScanProps> = ({
+    requestId,
+    onNext,
+    onError,
+    apiBaseUrl = 'https://apis.casperid.com'
+}) => {
+    const videoRef = useRef<HTMLVideoElement>(null);
+    const canvasRef = useRef<HTMLCanvasElement>(null);
+    const streamRef = useRef<MediaStream | null>(null);
+    const framesRef = useRef<Blob[]>([]);
 
+    const [step, setStep] = useState(0);
+    const [cameraReady, setCameraReady] = useState(false);
+    const [error, setError] = useState('');
+    const [isProcessing, setIsProcessing] = useState(false);
+    const [cameraPermissionDenied, setCameraPermissionDenied] = useState(false);
+
+    // Initialize camera
     useEffect(() => {
-        const timer = setInterval(() => {
-            setStep((prev) => {
-                if (prev < instructions.length - 1) return prev + 1;
-                clearInterval(timer);
-                setTimeout(onNext, 1000);
-                return prev;
+        const initCamera = async () => {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({
+                    video: { facingMode: 'user', width: 640, height: 480 }
+                });
+                streamRef.current = stream;
+                if (videoRef.current) {
+                    videoRef.current.srcObject = stream;
+                    videoRef.current.onloadedmetadata = () => {
+                        setCameraReady(true);
+                    };
+                }
+            } catch (err: any) {
+                console.error('Camera error:', err);
+                if (err.name === 'NotAllowedError') {
+                    setCameraPermissionDenied(true);
+                    setError('Camera permission denied. Please allow camera access.');
+                } else {
+                    setError('Unable to access camera. Please check your device.');
+                }
+                onError?.('Camera access failed');
+            }
+        };
+
+        initCamera();
+
+        return () => {
+            if (streamRef.current) {
+                streamRef.current.getTracks().forEach(track => track.stop());
+            }
+        };
+    }, [onError]);
+
+    // Capture frame from video
+    const captureFrame = useCallback((): Blob | null => {
+        if (!videoRef.current || !canvasRef.current) return null;
+
+        const canvas = canvasRef.current;
+        const video = videoRef.current;
+        const ctx = canvas.getContext('2d');
+
+        if (!ctx) return null;
+
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        ctx.drawImage(video, 0, 0);
+
+        return new Promise((resolve) => {
+            canvas.toBlob((blob) => resolve(blob), 'image/jpeg', 0.8);
+        }) as unknown as Blob;
+    }, []);
+
+    // Progress through instructions and capture frames
+    useEffect(() => {
+        if (!cameraReady || isProcessing) return;
+
+        const captureAndAdvance = async () => {
+            // Capture frame at each step
+            const frame = await new Promise<Blob | null>((resolve) => {
+                if (!videoRef.current || !canvasRef.current) {
+                    resolve(null);
+                    return;
+                }
+                const canvas = canvasRef.current;
+                const video = videoRef.current;
+                const ctx = canvas.getContext('2d');
+                if (!ctx) {
+                    resolve(null);
+                    return;
+                }
+                canvas.width = video.videoWidth;
+                canvas.height = video.videoHeight;
+                ctx.drawImage(video, 0, 0);
+                canvas.toBlob((blob) => resolve(blob), 'image/jpeg', 0.8);
             });
-        }, 2500);
-        return () => clearInterval(timer);
-    }, [onNext]);
+
+            if (frame) {
+                framesRef.current.push(frame);
+            }
+
+            if (step < instructions.length - 1) {
+                setStep(prev => prev + 1);
+            } else {
+                // Last step - submit for verification
+                submitLiveness();
+            }
+        };
+
+        const timer = setTimeout(captureAndAdvance, 2500);
+        return () => clearTimeout(timer);
+    }, [step, cameraReady, isProcessing]);
+
+    // Submit liveness check
+    const submitLiveness = async () => {
+        setIsProcessing(true);
+
+        try {
+            const formData = new FormData();
+            formData.append('requestId', requestId);
+
+            // Add captured frames
+            framesRef.current.forEach((frame, index) => {
+                formData.append('imageFrames', frame, `frame_${index}.jpg`);
+            });
+
+            formData.append('metadata', JSON.stringify({
+                capturedAt: new Date().toISOString(),
+                frameCount: framesRef.current.length,
+                instructions: instructions.slice(0, -1)
+            }));
+
+            const response = await fetch(`${apiBaseUrl}/api/v2/verification/liveness`, {
+                method: 'POST',
+                body: formData,
+                credentials: 'include'
+            });
+
+            const data: LivenessResponse = await response.json();
+
+            if (data.success && data.liveness?.passed) {
+                // Stop camera
+                if (streamRef.current) {
+                    streamRef.current.getTracks().forEach(track => track.stop());
+                }
+                onNext(true);
+            } else {
+                setError(data.error || 'Liveness check failed. Please try again.');
+                // Reset for retry
+                setStep(0);
+                framesRef.current = [];
+                setIsProcessing(false);
+            }
+        } catch (err) {
+            setError('Verification failed. Please try again.');
+            setStep(0);
+            framesRef.current = [];
+            setIsProcessing(false);
+            onError?.('Liveness submission failed');
+        }
+    };
+
+    // Retry handler
+    const handleRetry = () => {
+        setError('');
+        setStep(0);
+        framesRef.current = [];
+        setIsProcessing(false);
+    };
+
+    if (cameraPermissionDenied) {
+        return (
+            <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                className="flex-1 flex flex-col items-center justify-center px-8 text-center"
+            >
+                <AlertCircle className="w-16 h-16 text-red-500 mb-6" />
+                <h2 className="text-xl font-bold text-main mb-3">Camera Access Required</h2>
+                <p className="text-muted text-sm mb-6">
+                    Please enable camera access in your browser settings to continue with face verification.
+                </p>
+                <button
+                    onClick={() => window.location.reload()}
+                    className="px-6 py-3 bg-[var(--casperid-primary,#8651e1)] text-white rounded-xl font-bold"
+                >
+                    Try Again
+                </button>
+            </motion.div>
+        );
+    }
 
     return (
         <motion.div
@@ -36,6 +215,9 @@ const FaceScan: React.FC<FaceScanProps> = ({ onNext }) => {
             exit={{ opacity: 0 }}
             className="flex-1 flex flex-col relative dark:bg-[#050a0a] bg-slate-50 overflow-hidden"
         >
+            {/* Hidden canvas for frame capture */}
+            <canvas ref={canvasRef} className="hidden" />
+
             {/* Ambient glow */}
             <div className="absolute inset-0 z-0">
                 <div className="w-full h-full opacity-20 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-[#6fe8ec]/30 via-transparent to-transparent" />
@@ -44,12 +226,14 @@ const FaceScan: React.FC<FaceScanProps> = ({ onNext }) => {
             {/* Top badge */}
             <div className="relative z-40 pt-12 pb-4 flex items-center justify-center">
                 <div className="flex items-center gap-2 px-4 py-1.5 dark:bg-black/40 bg-white/40 backdrop-blur-md rounded-full border dark:border-white/5 border-black/5">
-                    <div className="w-2 h-2 rounded-full bg-[#6fe8ec] shadow-[0_0_8px_#6fe8ec]" />
-                    <span className="text-[10px] text-muted uppercase tracking-[0.2em] font-bold">Secure SDK</span>
+                    <div className={`w-2 h-2 rounded-full ${cameraReady ? 'bg-[#6fe8ec] shadow-[0_0_8px_#6fe8ec]' : 'bg-yellow-500 animate-pulse'}`} />
+                    <span className="text-[10px] text-muted uppercase tracking-[0.2em] font-bold">
+                        {cameraReady ? 'Live Camera' : 'Initializing...'}
+                    </span>
                 </div>
             </div>
 
-            {/* Scan area */}
+            {/* Scan area with video */}
             <div className="relative z-20 flex-1 flex items-center justify-center">
                 {/* Frosted mask with oval hole */}
                 <div
@@ -61,8 +245,15 @@ const FaceScan: React.FC<FaceScanProps> = ({ onNext }) => {
                 />
 
                 <div className="relative z-30 flex items-center justify-center">
-                    {/* Oval biometric frame */}
+                    {/* Oval biometric frame with video */}
                     <div className="w-[200px] h-[290px] flex-shrink-0 rounded-full border-[3px] border-[#6fe8ec] shadow-[0_0_40px_rgba(111,232,236,0.4),inset_0_0_20px_rgba(111,232,236,0.2)] relative overflow-hidden">
+                        <video
+                            ref={videoRef}
+                            autoPlay
+                            playsInline
+                            muted
+                            className="absolute inset-0 w-full h-full object-cover scale-x-[-1]"
+                        />
                         <motion.div
                             animate={{ opacity: [0.4, 1, 0.4] }}
                             transition={{ duration: 2, repeat: Infinity }}
@@ -73,7 +264,6 @@ const FaceScan: React.FC<FaceScanProps> = ({ onNext }) => {
                             transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut' }}
                             className="absolute left-0 w-full h-[3px] bg-gradient-to-r from-transparent via-[#6fe8ec] to-transparent shadow-[0_0_20px_#6fe8ec] z-10"
                         />
-                        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_transparent_50%,_rgba(111,232,236,0.05)_100%)]" />
                     </div>
 
                     {/* Corner brackets */}
@@ -88,23 +278,42 @@ const FaceScan: React.FC<FaceScanProps> = ({ onNext }) => {
 
             {/* Instruction card */}
             <footer className="relative z-40 p-8 flex flex-col items-center gap-6">
-                <div className="dark:bg-[#0a1515]/95 bg-white/90 backdrop-blur-2xl border dark:border-white/10 border-black/5 w-full p-6 rounded-[2.5rem] text-center shadow-2xl">
-                    <AnimatePresence mode="wait">
-                        <motion.p
-                            key={step}
-                            initial={{ opacity: 0, y: 10 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            exit={{ opacity: 0, y: -10 }}
-                            className="text-[#6fe8ec] font-bold text-2xl tracking-tight mb-2"
+                {error ? (
+                    <div className="dark:bg-red-900/30 bg-red-50 backdrop-blur-2xl border border-red-500/30 w-full p-6 rounded-[2.5rem] text-center">
+                        <p className="text-red-500 font-bold text-lg mb-4">{error}</p>
+                        <button
+                            onClick={handleRetry}
+                            className="px-6 py-2 bg-red-500 text-white rounded-full font-bold"
                         >
-                            {instructions[step]}
-                        </motion.p>
-                    </AnimatePresence>
-                    <div className="flex items-center justify-center gap-2 text-muted text-[10px] font-bold uppercase tracking-widest">
-                        <Lock className="w-3 h-3" />
-                        Secure Face Scan • Encrypted
+                            Try Again
+                        </button>
                     </div>
-                </div>
+                ) : (
+                    <div className="dark:bg-[#0a1515]/95 bg-white/90 backdrop-blur-2xl border dark:border-white/10 border-black/5 w-full p-6 rounded-[2.5rem] text-center shadow-2xl">
+                        <AnimatePresence mode="wait">
+                            <motion.p
+                                key={step}
+                                initial={{ opacity: 0, y: 10 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                exit={{ opacity: 0, y: -10 }}
+                                className="text-[#6fe8ec] font-bold text-2xl tracking-tight mb-2"
+                            >
+                                {isProcessing ? (
+                                    <span className="flex items-center justify-center gap-3">
+                                        <Loader2 className="w-6 h-6 animate-spin" />
+                                        Verifying...
+                                    </span>
+                                ) : (
+                                    instructions[step]
+                                )}
+                            </motion.p>
+                        </AnimatePresence>
+                        <div className="flex items-center justify-center gap-2 text-muted text-[10px] font-bold uppercase tracking-widest">
+                            <Lock className="w-3 h-3" />
+                            Secure Face Scan • Encrypted
+                        </div>
+                    </div>
+                )}
 
                 {/* Progress dots */}
                 <div className="flex gap-2 w-full max-w-[140px]">
@@ -112,8 +321,8 @@ const FaceScan: React.FC<FaceScanProps> = ({ onNext }) => {
                         <div
                             key={i}
                             className={`h-1.5 flex-1 rounded-full transition-all duration-700 ${i <= Math.floor((step / (instructions.length - 1)) * 2)
-                                    ? 'bg-[#6fe8ec] shadow-[0_0_15px_#6fe8ec]'
-                                    : 'dark:bg-slate-800 bg-slate-200'
+                                ? 'bg-[#6fe8ec] shadow-[0_0_15px_#6fe8ec]'
+                                : 'dark:bg-slate-800 bg-slate-200'
                                 }`}
                         />
                     ))}
@@ -121,13 +330,15 @@ const FaceScan: React.FC<FaceScanProps> = ({ onNext }) => {
 
                 <div className="px-6 py-2.5 dark:bg-black/60 bg-white/60 backdrop-blur-md rounded-full border dark:border-white/5 border-black/5 flex items-center gap-3">
                     <div
-                        className={`w-2 h-2 rounded-full ${step === instructions.length - 1
+                        className={`w-2 h-2 rounded-full ${isProcessing
+                            ? 'bg-yellow-400 animate-pulse'
+                            : step === instructions.length - 1
                                 ? 'bg-emerald-400 shadow-[0_0_10px_#34d399]'
                                 : 'bg-[#6fe8ec] animate-pulse'
                             }`}
                     />
                     <span className="text-[10px] dark:text-slate-400 text-slate-600 uppercase tracking-[0.25em] font-black">
-                        {step === instructions.length - 1 ? 'Calibration Complete' : 'Awaiting Calibration'}
+                        {isProcessing ? 'Analyzing Liveness' : step === instructions.length - 1 ? 'Calibration Complete' : 'Awaiting Calibration'}
                     </span>
                 </div>
             </footer>

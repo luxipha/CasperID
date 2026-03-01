@@ -17,7 +17,16 @@ import MintingIdentity from './screens/MintingIdentity';
 import IdentityVerified from './screens/IdentityVerified';
 import PermissionsRequest from './screens/PermissionsRequest';
 
-import type { CasperIDModalProps, Screen, SDKMode } from './types';
+import type {
+    CasperIDModalProps,
+    Screen,
+    SDKMode,
+    OTPState,
+    KYCState,
+    DocumentType,
+    ExtractedDocumentData,
+    StartVerificationResponse
+} from './types';
 
 // Resolve 'system' mode to actual light/dark
 function resolveMode(mode: SDKMode = 'light'): 'light' | 'dark' {
@@ -28,6 +37,15 @@ function resolveMode(mode: SDKMode = 'light'): 'light' | 'dark' {
 }
 
 const FOOTER_SCREENS: Screen[] = ['AuthSelection', 'Login', 'PinVerification'];
+
+// Default API base URL
+const DEFAULT_API_BASE_URL = 'https://apis.casperid.com';
+
+// Initial KYC state
+const initialKYCState: KYCState = {
+    requestId: '',
+    verificationTier: 'layer_3'
+};
 
 export const CasperIDModal: React.FC<CasperIDModalProps> = ({
     isOpen,
@@ -53,6 +71,18 @@ export const CasperIDModal: React.FC<CasperIDModalProps> = ({
         initialScreen ?? (mode === 'verify' ? 'SecurityUpgrade' : 'AuthSelection')
     );
 
+    // OTP flow state
+    const [otpState, setOtpState] = useState<OTPState>({ email: '', verificationId: '' });
+    const [sessionToken, setSessionToken] = useState<string | null>(null);
+
+    // KYC flow state
+    const [kycState, setKycState] = useState<KYCState>(initialKYCState);
+    const [uploadId, setUploadId] = useState<string>('');
+    const [credentialHash, setCredentialHash] = useState<string>('');
+
+    // API base URL (could be configurable via props in the future)
+    const apiBaseUrl = DEFAULT_API_BASE_URL;
+
     // Apply CSS variables + theme class to the modal root
     const cssVars = {
         '--casperid-primary': primaryColor,
@@ -76,6 +106,12 @@ export const CasperIDModal: React.FC<CasperIDModalProps> = ({
     useEffect(() => {
         if (isOpen && !previewMode) {
             setScreen(initialScreen ?? (mode === 'verify' ? 'SecurityUpgrade' : 'AuthSelection'));
+            // Reset all state when modal opens
+            setOtpState({ email: '', verificationId: '' });
+            setSessionToken(null);
+            setKycState(initialKYCState);
+            setUploadId('');
+            setCredentialHash('');
         }
     }, [isOpen, mode, previewMode, initialScreen]);
 
@@ -84,14 +120,233 @@ export const CasperIDModal: React.FC<CasperIDModalProps> = ({
 
     const go = useCallback((next: Screen) => setScreen(next), []);
 
+    // Start KYC verification flow
+    const startVerification = useCallback(async (tier: 'layer_2' | 'layer_3') => {
+        try {
+            // Use the correct endpoint for each layer
+            const endpoint = tier === 'layer_2'
+                ? `${apiBaseUrl}/api/v2/verification/layer2/start`
+                : `${apiBaseUrl}/api/v2/verification/layer3/start`;
+
+            const response = await fetch(endpoint, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-API-Key': apiKey
+                },
+                credentials: 'include',
+                body: JSON.stringify({
+                    purpose: 'sdk_verification',
+                    ...(tier === 'layer_3' ? { verificationMethod: 'document' } : {})
+                })
+            });
+
+            const data: StartVerificationResponse = await response.json();
+
+            if (data.success && data.verification) {
+                setKycState(prev => ({
+                    ...prev,
+                    requestId: data.verification!.requestId,
+                    verificationTier: tier
+                }));
+                return data.verification.requestId;
+            } else {
+                throw new Error(data.error || 'Failed to start verification');
+            }
+        } catch (err) {
+            console.error('Failed to start verification:', err);
+            onError?.(err instanceof Error ? err : new Error('Failed to start verification'));
+            return null;
+        }
+    }, [apiBaseUrl, apiKey, onError]);
+
+    // Handle successful OTP verification
+    const handleOTPSuccess = useCallback((token: string) => {
+        setSessionToken(token);
+        // Continue to next screen (SecurityUpgrade or IdentityVerified based on requiredTier)
+        go('SecurityUpgrade');
+    }, [go]);
+
+    // Handle extension login success
+    const handleExtensionSuccess = useCallback((userData: any) => {
+        // Extension auth is complete - generate token and proceed
+        const mockToken = `cid_ext_${apiKey}_${Date.now()}`;
+        setSessionToken(mockToken);
+        // Skip to appropriate screen based on user's tier
+        go('SecurityUpgrade');
+    }, [apiKey, go]);
+
+    // Handle SecurityUpgrade start
+    const handleSecurityUpgradeNext = useCallback(async () => {
+        // Start Layer 2 verification (face scan)
+        const requestId = await startVerification('layer_2');
+        if (requestId) {
+            go('FaceScan');
+        }
+    }, [startVerification, go]);
+
+    // Handle FaceScan completion
+    const handleFaceScanNext = useCallback(async (livenessVerified: boolean) => {
+        setKycState(prev => ({ ...prev, livenessVerified }));
+
+        // Check if we need Layer 3 (document verification)
+        if (requiredTier === 'L3') {
+            // Start Layer 3 verification
+            const requestId = await startVerification('layer_3');
+            if (requestId) {
+                go('VerifyIdentityChoice');
+            }
+        } else {
+            // Layer 2 complete, go to minting
+            go('MintingIdentity');
+        }
+    }, [requiredTier, startVerification, go]);
+
+    // Handle document type selection
+    const handleDocumentTypeSelected = useCallback((documentType: DocumentType) => {
+        setKycState(prev => ({ ...prev, documentType }));
+        go('DocumentScan');
+    }, [go]);
+
+    // Handle document scan completion
+    const handleDocumentScanNext = useCallback((extractedData: ExtractedDocumentData, docUploadId: string) => {
+        setKycState(prev => ({ ...prev, extractedData }));
+        setUploadId(docUploadId);
+        go('ReviewData');
+    }, [go]);
+
+    // Handle review data confirmation
+    const handleReviewDataNext = useCallback((confirmedData: ExtractedDocumentData) => {
+        setKycState(prev => ({ ...prev, extractedData: confirmedData }));
+        go('MintingIdentity');
+    }, [go]);
+
+    // Handle document retake
+    const handleDocumentRetake = useCallback(() => {
+        setKycState(prev => ({ ...prev, extractedData: undefined }));
+        setUploadId('');
+        go('DocumentScan');
+    }, [go]);
+
+    // Handle minting completion
+    const handleMintingNext = useCallback((hash?: string) => {
+        if (hash) {
+            setCredentialHash(hash);
+        }
+        go('IdentityVerified');
+    }, [go]);
+
+    // Handle final success (after permissions approved)
     const handleSuccess = useCallback(() => {
-        // In a real implementation, exchange the session for a signed token
-        const mockToken = `cid_${apiKey}_${Date.now()}`;
-        onSuccess?.(mockToken);
+        const token = sessionToken || `cid_${apiKey}_${Date.now()}`;
+        onSuccess?.(token);
         onClose?.();
-    }, [apiKey, onSuccess, onClose]);
+    }, [apiKey, sessionToken, onSuccess, onClose]);
+
+    // Handle errors
+    const handleError = useCallback((error: string) => {
+        onError?.(new Error(error));
+    }, [onError]);
+
+    // Login screen handlers
+    const handleLoginNext = useCallback((email: string, verificationId: string) => {
+        setOtpState({ email, verificationId });
+        go('PinVerification');
+    }, [go]);
 
     if (!isOpen && !previewMode) return null;
+
+    // Render screen content
+    const renderScreen = () => {
+        switch (screen) {
+            case 'AuthSelection':
+                return (
+                    <AuthSelection
+                        onNext={(method) => go(method === 'otp' ? 'Login' : 'SecurityUpgrade')}
+                        onExtensionSuccess={handleExtensionSuccess}
+                        onError={handleError}
+                    />
+                );
+            case 'Login':
+                return (
+                    <Login
+                        onNext={handleLoginNext}
+                        onError={handleError}
+                        apiBaseUrl={apiBaseUrl}
+                    />
+                );
+            case 'PinVerification':
+                return (
+                    <PinVerification
+                        email={otpState.email}
+                        verificationId={otpState.verificationId}
+                        onNext={handleOTPSuccess}
+                        onError={handleError}
+                        apiBaseUrl={apiBaseUrl}
+                    />
+                );
+            case 'SecurityUpgrade':
+                return (
+                    <SecurityUpgrade
+                        onNext={handleSecurityUpgradeNext}
+                        onSkip={() => go('IdentityVerified')}
+                    />
+                );
+            case 'FaceScan':
+                return (
+                    <FaceScan
+                        requestId={kycState.requestId}
+                        onNext={handleFaceScanNext}
+                        onError={handleError}
+                        apiBaseUrl={apiBaseUrl}
+                    />
+                );
+            case 'VerifyIdentityChoice':
+                return (
+                    <VerifyIdentityChoice
+                        onNext={handleDocumentTypeSelected}
+                    />
+                );
+            case 'DocumentScan':
+                return (
+                    <DocumentScan
+                        requestId={kycState.requestId}
+                        documentType={kycState.documentType || 'passport'}
+                        onNext={handleDocumentScanNext}
+                        onError={handleError}
+                        apiBaseUrl={apiBaseUrl}
+                    />
+                );
+            case 'ReviewData':
+                return (
+                    <ReviewData
+                        requestId={kycState.requestId}
+                        documentType={kycState.documentType || 'passport'}
+                        extractedData={kycState.extractedData || {}}
+                        uploadId={uploadId}
+                        onNext={handleReviewDataNext}
+                        onRetake={handleDocumentRetake}
+                        onError={handleError}
+                        apiBaseUrl={apiBaseUrl}
+                    />
+                );
+            case 'MintingIdentity':
+                return (
+                    <MintingIdentity
+                        requestId={kycState.requestId}
+                        onNext={handleMintingNext}
+                        onError={handleError}
+                        apiBaseUrl={apiBaseUrl}
+                    />
+                );
+            case 'IdentityVerified':
+                return <IdentityVerified onNext={() => go('PermissionsRequest')} />;
+            case 'PermissionsRequest':
+                return <PermissionsRequest onApprove={handleSuccess} onDeny={() => onClose?.()} />;
+            default:
+                return null;
+        }
+    };
 
     // In previewMode, render the card directly (no fixed overlay)
     if (previewMode) {
@@ -107,61 +362,9 @@ export const CasperIDModal: React.FC<CasperIDModalProps> = ({
                     />
                     <div className="flex-1 flex flex-col relative overflow-hidden">
                         <AnimatePresence mode="wait">
-                            {screen === 'AuthSelection' && (
-                                <motion.div key="auth" className="flex-1 flex flex-col">
-                                    <AuthSelection onNext={(m) => go(m === 'otp' ? 'Login' : 'SecurityUpgrade')} />
-                                </motion.div>
-                            )}
-                            {screen === 'Login' && (
-                                <motion.div key="login" className="flex-1 flex flex-col">
-                                    <Login onNext={() => go('PinVerification')} />
-                                </motion.div>
-                            )}
-                            {screen === 'PinVerification' && (
-                                <motion.div key="pin" className="flex-1 flex flex-col">
-                                    <PinVerification onNext={() => go('SecurityUpgrade')} />
-                                </motion.div>
-                            )}
-                            {screen === 'SecurityUpgrade' && (
-                                <motion.div key="upgrade" className="flex-1 flex flex-col">
-                                    <SecurityUpgrade onNext={() => go('FaceScan')} onSkip={() => go('IdentityVerified')} />
-                                </motion.div>
-                            )}
-                            {screen === 'FaceScan' && (
-                                <motion.div key="face" className="flex-1 flex flex-col">
-                                    <FaceScan onNext={() => go('VerifyIdentityChoice')} />
-                                </motion.div>
-                            )}
-                            {screen === 'VerifyIdentityChoice' && (
-                                <motion.div key="choice" className="flex-1 flex flex-col">
-                                    <VerifyIdentityChoice onNext={() => go('DocumentScan')} />
-                                </motion.div>
-                            )}
-                            {screen === 'DocumentScan' && (
-                                <motion.div key="doc" className="flex-1 flex flex-col">
-                                    <DocumentScan onNext={() => go('ReviewData')} />
-                                </motion.div>
-                            )}
-                            {screen === 'ReviewData' && (
-                                <motion.div key="review" className="flex-1 flex flex-col">
-                                    <ReviewData onNext={() => go('MintingIdentity')} />
-                                </motion.div>
-                            )}
-                            {screen === 'MintingIdentity' && (
-                                <motion.div key="mint" className="flex-1 flex flex-col">
-                                    <MintingIdentity onNext={() => go('IdentityVerified')} />
-                                </motion.div>
-                            )}
-                            {screen === 'IdentityVerified' && (
-                                <motion.div key="verified" className="flex-1 flex flex-col">
-                                    <IdentityVerified onNext={() => go('PermissionsRequest')} />
-                                </motion.div>
-                            )}
-                            {screen === 'PermissionsRequest' && (
-                                <motion.div key="perms" className="flex-1 flex flex-col">
-                                    <PermissionsRequest onApprove={() => { }} onDeny={onClose} />
-                                </motion.div>
-                            )}
+                            <motion.div key={screen} className="flex-1 flex flex-col">
+                                {renderScreen()}
+                            </motion.div>
                         </AnimatePresence>
                     </div>
                     {FOOTER_SCREENS.includes(screen) && (
@@ -215,71 +418,9 @@ export const CasperIDModal: React.FC<CasperIDModalProps> = ({
 
                     <div className="flex-1 flex flex-col relative overflow-hidden">
                         <AnimatePresence mode="wait">
-                            {screen === 'AuthSelection' && (
-                                <motion.div key="auth" className="flex-1 flex flex-col">
-                                    <AuthSelection
-                                        onNext={(method) =>
-                                            go(method === 'otp' ? 'Login' : 'SecurityUpgrade')
-                                        }
-                                    />
-                                </motion.div>
-                            )}
-                            {screen === 'Login' && (
-                                <motion.div key="login" className="flex-1 flex flex-col">
-                                    <Login onNext={() => go('PinVerification')} />
-                                </motion.div>
-                            )}
-                            {screen === 'PinVerification' && (
-                                <motion.div key="pin" className="flex-1 flex flex-col">
-                                    <PinVerification onNext={() => go('SecurityUpgrade')} />
-                                </motion.div>
-                            )}
-                            {screen === 'SecurityUpgrade' && (
-                                <motion.div key="upgrade" className="flex-1 flex flex-col">
-                                    <SecurityUpgrade
-                                        onNext={() => go('FaceScan')}
-                                        onSkip={() => go('IdentityVerified')}
-                                    />
-                                </motion.div>
-                            )}
-                            {screen === 'FaceScan' && (
-                                <motion.div key="face" className="flex-1 flex flex-col">
-                                    <FaceScan onNext={() => go('VerifyIdentityChoice')} />
-                                </motion.div>
-                            )}
-                            {screen === 'VerifyIdentityChoice' && (
-                                <motion.div key="choice" className="flex-1 flex flex-col">
-                                    <VerifyIdentityChoice onNext={() => go('DocumentScan')} />
-                                </motion.div>
-                            )}
-                            {screen === 'DocumentScan' && (
-                                <motion.div key="doc" className="flex-1 flex flex-col">
-                                    <DocumentScan onNext={() => go('ReviewData')} />
-                                </motion.div>
-                            )}
-                            {screen === 'ReviewData' && (
-                                <motion.div key="review" className="flex-1 flex flex-col">
-                                    <ReviewData onNext={() => go('MintingIdentity')} />
-                                </motion.div>
-                            )}
-                            {screen === 'MintingIdentity' && (
-                                <motion.div key="mint" className="flex-1 flex flex-col">
-                                    <MintingIdentity onNext={() => go('IdentityVerified')} />
-                                </motion.div>
-                            )}
-                            {screen === 'IdentityVerified' && (
-                                <motion.div key="verified" className="flex-1 flex flex-col">
-                                    <IdentityVerified onNext={() => go('PermissionsRequest')} />
-                                </motion.div>
-                            )}
-                            {screen === 'PermissionsRequest' && (
-                                <motion.div key="perms" className="flex-1 flex flex-col">
-                                    <PermissionsRequest
-                                        onApprove={handleSuccess}
-                                        onDeny={onClose}
-                                    />
-                                </motion.div>
-                            )}
+                            <motion.div key={screen} className="flex-1 flex flex-col">
+                                {renderScreen()}
+                            </motion.div>
                         </AnimatePresence>
                     </div>
 
