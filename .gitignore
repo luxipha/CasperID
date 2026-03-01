@@ -75,3 +75,8 @@ github-actions-key.json
 /server/uploads
 /server/scripts
 /server/src/tests
+
+# Starknet / ZK specifics
+casperid_zk/target/
+casperid_zk/.snfoundry_cache/
+casperid_zk/.scarb/
