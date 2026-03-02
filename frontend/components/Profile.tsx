@@ -423,13 +423,18 @@ export const Profile: React.FC = () => {
     }, 400); // Match animation duration
   };
 
-  const renderSectionHeader = (title: string, icon: string) => (
+  const renderSectionHeader = (title: string, icon: string, onSave?: () => void) => (
     <div className="px-8 py-5 border-b border-gray-50 flex items-center justify-between bg-gray-50/10">
       <h3 className="text-sm font-black text-text-main uppercase tracking-widest flex items-center gap-2">
         <span className="material-symbols-outlined text-primary text-[20px]">{icon}</span>
         {title}
       </h3>
-      <button className="text-primary font-bold text-sm hover:underline">Save</button>
+      <button
+        onClick={onSave}
+        className={`text-primary font-bold text-sm hover:underline ${!onSave ? 'opacity-0 pointer-events-none' : ''}`}
+      >
+        Save
+      </button>
     </div>
   );
 
@@ -811,7 +816,7 @@ export const Profile: React.FC = () => {
 
             {/* Identity Details Form */}
             <div className="bg-white rounded-[32px] border border-gray-100 shadow-soft overflow-hidden">
-              {renderSectionHeader('Identity Details', 'badge')}
+              {renderSectionHeader('Identity Details', 'badge', handleSaveProfile)}
               <div className="p-8 space-y-6">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div className="space-y-2">
@@ -859,7 +864,7 @@ export const Profile: React.FC = () => {
 
             {/* About Section */}
             <div className="bg-white rounded-[32px] border border-gray-100 shadow-soft overflow-hidden">
-              {renderSectionHeader('About', 'person_book')}
+              {renderSectionHeader('About', 'person_book', handleSaveProfile)}
               <div className="p-8">
                 <div className="space-y-2">
                   <label className="text-xs font-bold text-text-main">Tell your story <span className="text-text-sub font-medium">(2,600 characters max)</span></label>
@@ -878,7 +883,7 @@ export const Profile: React.FC = () => {
 
             {/* Location & Contact */}
             <div className="bg-white rounded-[32px] border border-gray-100 shadow-soft overflow-hidden">
-              {renderSectionHeader('Location & Contact', 'location_on')}
+              {renderSectionHeader('Location & Contact', 'location_on', handleSaveProfile)}
               <div className="p-8 space-y-6">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div className="space-y-2">
@@ -1368,7 +1373,7 @@ export const Profile: React.FC = () => {
       case 'Projects':
         return (
           <div className="bg-white rounded-[32px] border border-gray-100 shadow-soft overflow-hidden">
-            {renderSectionHeader('Projects', 'rocket_launch')}
+            {renderSectionHeader('Projects', 'rocket_launch', handleSaveProfile)}
             <div className="p-8 space-y-6">
               {isLoading ? (
                 <div className="text-center text-text-sub">Loading projects...</div>
@@ -1703,7 +1708,7 @@ export const Profile: React.FC = () => {
         type="file"
         ref={resumeInputRef}
         className="hidden"
-        accept=".pdf,.doc,.docx,image/*"
+        accept="application/pdf"
         onChange={handleResumeUpload}
       />
       <div className="space-y-8 animate-in fade-in duration-500 pb-32">

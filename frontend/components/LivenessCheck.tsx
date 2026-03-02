@@ -5,6 +5,7 @@ import { Camera } from '@mediapipe/camera_utils';
 import { LivenessSuccess } from './LivenessSuccess';
 import { VerificationProgress } from './VerificationProgress';
 import { MobileLivenessPage, MobileStep } from './MobileLiveness';
+import { apiService } from '../services/api';
 
 interface LivenessCheckProps {
   onBack?: () => void;
@@ -242,7 +243,7 @@ export const LivenessCheck: React.FC<LivenessCheckProps> = ({ onBack, onComplete
     const init = async () => {
       // Wait for refs to be available (max 2 seconds)
       let attempts = 0;
-      while ((!videoRef.current || !canvasRef.current) && attempts < 20) {
+      while ((!videoRef.current || !canvasRef.current) && attempts < 50) {
         await new Promise(r => setTimeout(r, 100));
         attempts++;
       }
@@ -311,46 +312,20 @@ export const LivenessCheck: React.FC<LivenessCheckProps> = ({ onBack, onComplete
       setState("MINTING"); // Transition to progress UI
       setGuidance("Verifying & Minting...");
 
-      // Build FormData directly from Blobs (no conversion needed)
-      const formData = new FormData();
-      frames.forEach((blob, index) => {
-        formData.append(`frame_${index}`, blob, `frame_${index}.jpg`);
-      });
-      formData.append('totalFrames', frames.length.toString());
-      formData.append('stepSequence', JSON.stringify(['blink', 'open_mouth']));
+      // Use apiService which handles CSRF tokens automatically
+      const result = await apiService.verifyLivenessSequence(frames, ['blink', 'open_mouth']);
 
-      const isLocalhost = typeof window !== 'undefined' &&
-        (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
-      const apiUrl = import.meta.env.VITE_API_URL || (isLocalhost ? 'http://localhost:3001' : '');
-      const token = localStorage.getItem('casperid_session_token');
-
-      const response = await fetch(`${apiUrl}/api/ai/verify-liveness-sequence`, {
-        method: 'POST',
-        credentials: 'include',
-        headers: token ? {
-          'Authorization': `Bearer ${token}`
-        } : {},
-        body: formData,
-      });
-
-
-
-      if (response.ok) {
-        const result = await response.json();
-        if (result.passed) {
-          setIsApiComplete(true); // Signal progress component to finish immediately
-          await refreshUser();
-        } else {
-          console.error('[Liveness] Verification failed:', result);
-          setGuidance(result.error || "Verification failed. Please try again.");
-          resetLivenessState();
-          setState("POSITIONING");
-          setIsApiComplete(false);
-        }
+      if (result.passed) {
+        setIsApiComplete(true); // Signal progress component to finish immediately
+        await refreshUser();
       } else {
-        throw new Error('Verification failed');
+        console.error('[Liveness] Verification failed:', result);
+        setGuidance(result.error || "Verification failed. Please try again.");
+        resetLivenessState();
+        setState("POSITIONING");
+        setIsApiComplete(false);
       }
-    } catch (error) {
+    } catch (error: any) {
       if (error.message?.includes('503') || error.details?.includes('503') || error.message?.includes('high demand')) {
         setGuidance("Our Neural engine is busy. retry again later.");
       } else {

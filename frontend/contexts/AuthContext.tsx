@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
 import { apiService, ApiResponse } from '../services/api';
 
 // Utility function to convert ArrayBuffer to base64url
@@ -165,7 +165,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   };
 
-  const refreshUser = async (): Promise<User | null> => {
+  const refreshUser = useCallback(async (): Promise<User | null> => {
     try {
       // Get session status from backend
       const sessionResponse = await apiService.getSessionStatus();
@@ -177,23 +177,20 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         let humanId;
         if (userAccount.wallet && userAccount.wallet !== 'pending_wallet' && userAccount.wallet !== 'undefined') {
           try {
-            // console.log('🔍 Fetching human-id for wallet:', userAccount.wallet);
             const humanIdResponse = await apiService.getHumanId(userAccount.wallet);
-            // console.log('🔍 Human-id API response:', humanIdResponse);
             humanId = humanIdResponse.success ? humanIdResponse.humanId : null;
-            // console.log('🔍 Final humanId:', humanId);
           } catch {
-            // Human ID fetch failed - continue without it
+            // Human ID fetch failed
           }
         }
 
-        // Fetch full profile for data disclosure checks (only if wallet exists)
+        // Fetch full profile for data disclosure checks
         let profileData: any = {};
         if (userAccount.wallet && userAccount.wallet !== 'pending_wallet' && userAccount.wallet !== 'undefined') {
           try {
             profileData = await apiService.getUserProfile();
           } catch {
-            // Profile fetch failed - continue with basic data
+            // Profile fetch failed
           }
         }
 
@@ -224,14 +221,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           did_address: userAccount.did_address || profileData?.did_address,
           profile_image_url: profileData?.profile_image_url,
           context_dids: userAccount.context_dids || profileData?.context_dids || [],
-          created_at: new Date().toISOString(), // Backend doesn't return this
-          last_login: new Date().toISOString()   // Backend doesn't return this
+          created_at: new Date().toISOString(),
+          last_login: new Date().toISOString()
         };
 
         setUser(user);
         setError(null);
         return user;
-        // console.log('✅ User session restored:', user);
       } else {
         throw new Error('No valid session');
       }
@@ -240,18 +236,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       apiService.logout();
       return null;
     }
-  };
+  }, []);
 
-  const register = async (email: string, displayName: string): Promise<void> => {
+  const register = useCallback(async (email: string, displayName: string): Promise<void> => {
     try {
       setError(null);
 
-      // Step 1: Initialize passkey registration
-      // console.log('🔄 Calling passkeyRegisterInit with:', { email, displayName });
-
       const initResponse = await apiService.passkeyRegisterInit(email, displayName);
-
-      // console.log('📨 Registration init response:', initResponse);
 
       if (!initResponse.success) {
         throw new Error(initResponse.error || 'Failed to initialize registration');
@@ -261,11 +252,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         throw new Error('No credential creation options received');
       }
 
-      // Step 2: Create WebAuthn credential
       const credentialCreationOptions = initResponse.options;
-      // console.log('🔑 Credential creation options:', credentialCreationOptions);
-
-      // Convert base64url to ArrayBuffer for WebAuthn API
       const challenge = base64urlToArrayBuffer(credentialCreationOptions.challenge);
 
       const publicKeyCredentialCreationOptions: CredentialCreationOptions = {
@@ -285,16 +272,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         throw new Error('Failed to create credential');
       }
 
-      // Step 3: Send credential to server for verification
       const response = credential.response as AuthenticatorAttestationResponse;
 
-      // Debug logs removed for production
-      // console.log('🔐 Raw credential from browser:', { ... });
-
-      // Format credential for SimpleWebAuthn library - exact format it expects
       const formattedCredential = {
         id: credential.id,
-        rawId: arrayBufferToBase64url(credential.rawId), // Convert ArrayBuffer to base64url
+        rawId: arrayBufferToBase64url(credential.rawId),
         type: credential.type,
         clientExtensionResults: {},
         response: {
@@ -303,7 +285,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         },
       };
 
-      // Detect device type from user agent
       const getDeviceType = () => {
         const userAgent = navigator.userAgent.toLowerCase();
         if (/mobile|android|iphone|ipad|ipod|blackberry|windows phone/.test(userAgent)) {
@@ -326,34 +307,28 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         }
       };
 
-      // console.log('📤 Sending registration data:', JSON.stringify(registrationData, null, 2));
-
       const verifyResponse = await apiService.passkeyRegisterComplete(registrationData);
 
       if (!verifyResponse.success) {
         throw new Error(verifyResponse.error || 'Registration verification failed');
       }
 
-      // Registration successful - user is now logged in!
-      // console.log('✅ Registration completed and user logged in!', verifyResponse);
+      // Proactively refresh CSRF token now that we have a session cookie
+      await apiService.refreshCsrfToken();
 
-      // User is now logged in - refresh user data and continue to onboarding
       await refreshUser();
-
-      // console.log('🚀 Ready to show OnboardingProgress component!');
 
     } catch (error: any) {
       const errorMessage = error.message || 'Registration failed';
       setError(errorMessage);
       throw new Error(errorMessage);
     }
-  };
+  }, [refreshUser]);
 
-  const login = async (email?: string, skipNativePrompt: boolean = false): Promise<{ success: boolean, deviceType?: string, user?: User }> => {
+  const login = useCallback(async (email?: string, skipNativePrompt: boolean = false): Promise<{ success: boolean, deviceType?: string, user?: User }> => {
     try {
       setError(null);
 
-      // Step 1: Initialize authentication
       const initResponse = await apiService.passkeyAuthInit(email);
 
       if (!initResponse.success || !(initResponse as any).options) {
@@ -362,22 +337,17 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
       const deviceType = (initResponse as any).deviceType;
 
-      // If skipping native prompt (e.g. for mobile handoff hint), return early with the hint
       if (skipNativePrompt) {
         setIsLoading(false);
         return { success: true, deviceType };
       }
 
-      // Extract challengeId from init response
       const challengeId = (initResponse as any).challengeId;
       if (!challengeId) {
         throw new Error('No challenge ID received from server');
       }
 
-      // Step 2: Get WebAuthn credential
       const credentialRequestOptions = (initResponse as any).options;
-
-      // Convert base64url to ArrayBuffer
       const challenge = base64urlToArrayBuffer(credentialRequestOptions.challenge);
 
       const publicKeyCredentialRequestOptions: CredentialRequestOptions = {
@@ -397,10 +367,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         throw new Error('Authentication was cancelled');
       }
 
-      // Step 3: Send credential to server for verification
       const response = credential.response as AuthenticatorAssertionResponse;
 
-      // Format credential for SimpleWebAuthn library - convert ArrayBuffers to base64url
       const authenticationResponse = {
         id: credential.id,
         rawId: arrayBufferToBase64url(credential.rawId),
@@ -414,7 +382,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         clientExtensionResults: {},
       };
 
-      // Include challengeId in the complete request
       const completePayload = {
         challengeId,
         credential: authenticationResponse
@@ -426,7 +393,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         throw new Error(verifyResponse.error || 'Authentication verification failed');
       }
 
-      // Authentication successful - fetch user profile
+      // Proactively refresh CSRF token now that we have a session cookie
+      await apiService.refreshCsrfToken();
+
       const user = await refreshUser();
 
       return { success: true, deviceType, user: user || undefined };
@@ -436,24 +405,22 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       setError(errorMessage);
       throw new Error(errorMessage);
     }
-  };
+  }, [refreshUser]);
 
-  const logout = async () => {
+  const logout = useCallback(async () => {
     await apiService.logout();
     setUser(null);
     setError(null);
-    // Force page reload to clear all JavaScript state
-    // This ensures clean state for next login attempt
     window.location.href = '/';
-  };
+  }, []);
 
-  const updateProfile = async (data: Partial<User>): Promise<void> => {
+  const updateProfile = useCallback(async (data: Partial<User>): Promise<void> => {
     try {
       setError(null);
       const response = await apiService.updateUserProfile(data) as any;
 
       if (response && (response.success || response._id)) {
-        await refreshUser(); // Refresh to get updated data
+        await refreshUser();
       } else {
         throw new Error((response && response.error) || 'Failed to update profile');
       }
@@ -462,15 +429,15 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       setError(errorMessage);
       throw new Error(errorMessage);
     }
-  };
+  }, [refreshUser]);
 
-  const linkMetaMask = async (address: string, signature: string, message: string): Promise<void> => {
+  const linkMetaMask = useCallback(async (address: string, signature: string, message: string): Promise<void> => {
     try {
       setError(null);
       const response = await apiService.linkMetaMaskAccount(address, signature, message);
 
       if (response.success) {
-        await refreshUser(); // Refresh to get updated MetaMask status
+        await refreshUser();
       } else {
         throw new Error(response.error || 'Failed to link MetaMask account');
       }
@@ -479,15 +446,15 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       setError(errorMessage);
       throw new Error(errorMessage);
     }
-  };
+  }, [refreshUser]);
 
-  const unlinkMetaMask = async (): Promise<void> => {
+  const unlinkMetaMask = useCallback(async (): Promise<void> => {
     try {
       setError(null);
       const response = await apiService.unlinkMetaMaskAccount();
 
       if (response.success) {
-        await refreshUser(); // Refresh to get updated MetaMask status
+        await refreshUser();
       } else {
         throw new Error(response.error || 'Failed to unlink MetaMask account');
       }
@@ -496,11 +463,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       setError(errorMessage);
       throw new Error(errorMessage);
     }
-  };
+  }, [refreshUser]);
 
-  const clearError = () => {
+  const clearError = useCallback(() => {
     setError(null);
-  };
+  }, []);
 
   const contextValue: AuthContextType = {
     user,

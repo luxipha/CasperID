@@ -3,6 +3,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { FaceMesh } from '@mediapipe/face_mesh';
 import { Camera } from '@mediapipe/camera_utils';
 import { MobileLivenessPage, MobileStep } from './MobileLiveness';
+import { apiService } from '../services/api';
 
 const euclideanDist = (p1: any, p2: any) => Math.sqrt(Math.pow(p1.x - p2.x, 2) + Math.pow(p1.y - p2.y, 2));
 
@@ -304,25 +305,10 @@ export const L3LivenessCheck: React.FC<L3LivenessCheckProps> = ({ onComplete }) 
             setState("VERIFYING");
             setGuidance("Verifying liveness...");
 
-            const formData = new FormData();
-            frames.forEach((blob, index) => {
-                formData.append(`frame_${index}`, blob, `frame_${index}.jpg`);
-            });
-            formData.append('totalFrames', frames.length.toString());
-            formData.append('stepSequence', JSON.stringify(['blink', 'open_mouth']));
+            // Use apiService which handles CSRF tokens automatically
+            const result = await apiService.verifyLivenessSequence(frames, ['blink', 'open_mouth']);
 
-            const isLocalhost = typeof window !== 'undefined' &&
-                (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
-            const apiUrl = import.meta.env.VITE_API_URL || (isLocalhost ? 'http://localhost:3001' : '');
-            const response = await fetch(`${apiUrl}/api/ai/verify-liveness-sequence`, {
-                method: 'POST',
-                credentials: 'include',
-                body: formData,
-            });
-
-            const result = await response.json();
-
-            if (response.ok && result.passed) {
+            if (result.passed) {
                 // Layer 3 doesn't change user status, so no need to refresh
                 // Call onComplete immediately to prevent App.tsx from routing to dashboard
                 setState("SUCCESS");
@@ -336,7 +322,7 @@ export const L3LivenessCheck: React.FC<L3LivenessCheckProps> = ({ onComplete }) 
                 resetLivenessState();
                 setState("POSITIONING");
             }
-        } catch (error) {
+        } catch (error: any) {
             if (error.message?.includes('503') || error.details?.includes('503') || error.message?.includes('high demand')) {
                 setGuidance("Our Neural engine is busy. retry again later.");
             } else {

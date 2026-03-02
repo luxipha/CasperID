@@ -93,11 +93,13 @@ export const CredentialVault: React.FC = () => {
               social: 'group',
             };
             const cnsName = (profileRes as any).cns_name;
+            const humanId = (profileRes as any).human_id;
             const displayAlias = ctx.alias || ctx.context;
+            const nameRoot = cnsName ? `${cnsName}.cid` : (humanId || null);
             identitiesList.push({
               id: ctx.did,
               type: 'persona',
-              name: cnsName ? `${displayAlias}.${cnsName}.cid` : displayAlias,
+              name: nameRoot ? `${displayAlias}.${nameRoot}` : displayAlias,
               context: ctx.context,
               did: ctx.did,
               createdAt: ctx.created_at || new Date().toISOString(),
@@ -186,8 +188,10 @@ export const CredentialVault: React.FC = () => {
       const cnsName = (userProfile as any)?.cns_name;
       return cnsName ? `${baseUrl}/${cnsName}.cid` : `${baseUrl}/profile/${(userProfile as any)?.wallet}`;
     } else {
-      const cnsName = (userProfile as any)?.cns_name;
-      return cnsName ? `${baseUrl}/${identity.context}.${cnsName}.cid` : `${baseUrl}/did/${identity.did}`;
+      // Prefer subdomain format: alias.name (strip .cid from identity.name if present)
+      // identity.name is already e.g. "gig.vawa-bitu-sabo.cid" or "gig.premiumname.cid"
+      const subdomainSlug = identity.name.replace(/\.cid$/, '');
+      return `${baseUrl}/did/${subdomainSlug}`;
     }
   };
 

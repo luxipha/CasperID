@@ -1,22 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Activity, Users, Box, ArrowUpRight, ArrowRight, Zap, CheckCircle2 } from 'lucide-react';
 import { Link } from 'react-router-dom';
-
-const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:8080';
-
-async function fetchWithAuth(path: string) {
-  const cookie = document.cookie;
-  const sessionToken = cookie.match(/casperid_session=([^;]+)/)?.[1]
-    || localStorage.getItem('casperid_token')
-    || '';
-
-  return fetch(`${API_BASE}${path}`, {
-    headers: {
-      'Content-Type': 'application/json',
-      ...(sessionToken ? { Authorization: `Bearer ${sessionToken}` } : {})
-    }
-  });
-}
+import { apiService } from '../../services/api';
 
 const Overview: React.FC = () => {
   const [stats, setStats] = useState({
@@ -29,12 +14,9 @@ const Overview: React.FC = () => {
   useEffect(() => {
     const loadStats = async () => {
       try {
-        const res = await fetchWithAuth('/api/business/stats');
-        if (res.ok) {
-          const data = await res.json();
-          if (data.success) {
-            setStats(data.stats);
-          }
+        const data = await apiService.getBusinessStats();
+        if (data.success) {
+          setStats(data.stats);
         }
       } catch (e) {
         console.error('Failed to load stats');

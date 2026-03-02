@@ -1,5 +1,39 @@
 [
   {
+    "version": "2.4.0",
+    "title": "Persona Identity & Responsive Web",
+    "date": "March 2, 2026",
+    "status": "Production Release",
+    "highlight": {
+      "title": "Human-Readable Personas",
+      "description": "Launched subdomain-based URLs for context identities, moving from raw DIDs to user-friendly paths like /did/game.bika.",
+      "type": "sparkles"
+    },
+    "summary": "This release standardizes persona profiles with human-readable URLs, hardens CNS name resolution for all human ID formats, and significantly improves the mobile experience for public profile viewers.",
+    "categories": [
+      {
+        "id": "v240-imp",
+        "title": "Improvements",
+        "items": [
+          "Standardized Persona URLs: Transitioned context profiles to subdomain-based paths (e.g., /did/game.bika).",
+          "Public Profile Responsiveness: Optimized header and card layouts for mobile and tablet viewports.",
+          "Credential Vault UX: Updated identity sharing logic to generate human-readable URLs by default.",
+          "Enhanced CNS Logic: Added robust handling for multi-word and single-word human ID resolution."
+        ]
+      },
+      {
+        "id": "v240-fix",
+        "title": "Fixes",
+        "items": [
+          "Hardened Persona Privacy: Fixed disclosure filtering to correctly apply user consent settings across all profiles.",
+          "AI Liveness Stability: Implemented robust JSON parsing for Gemini responses to handle markdown code fences.",
+          "Aligned Profile Identifiers: Corrected DID labels in profile views to show identity aliases instead of pending status.",
+          "Synchronized Data Schemas: Aligned frontend disclosure keys with backend database models for accurate field display."
+        ]
+      }
+    ]
+  },
+  {
     "version": "2.3.0",
     "title": "OTP Pairing & Browser Extension Co-pilot",
     "date": "February 27, 2026",

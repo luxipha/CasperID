@@ -356,7 +356,7 @@ class EmailService {
                     tier === 'layer_1' ? '#ca8a04' : '#6b7280';
 
             const mailOptions = {
-                from: `"CasperID Careers" <careers@casperid.com>`,
+                from: `"CasperID Careers" <${process.env.SUPPORT_EMAIL}>`,
                 to: 'careers@casperid.com', // Send to careers team
                 replyTo: applicantEmail,
                 subject: `New Application: ${jobTitle} - ${applicantName}`,
@@ -438,7 +438,7 @@ class EmailService {
             console.log(`📧 Sending Affiliate Application from ${applicantEmail}`);
 
             const mailOptions = {
-                from: `"CasperID Partners" <careers@casperid.com>`,
+                from: `"CasperID Partners" <${process.env.SUPPORT_EMAIL}>`,
                 to: 'careers@casperid.com',
                 replyTo: applicantEmail,
                 subject: `New Affiliate Application - ${applicantName}`,
