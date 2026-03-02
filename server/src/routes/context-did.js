@@ -165,12 +165,15 @@ router.post('/create', validateSession, async (req, res) => {
  */
 router.get('/list', validateSession, async (req, res) => {
     try {
-        const user = await UserAccount.findOne({ user_id: req.userAccount.user_id });
+        // Only select the fields we need for better performance
+        const user = await UserAccount.findOne({ user_id: req.userAccount.user_id })
+            .select('did_address context_dids')
+            .lean();
 
         res.json({
             success: true,
-            master_did: user.did_address,
-            context_dids: user.context_dids || []
+            master_did: user?.did_address,
+            context_dids: user?.context_dids || []
         });
 
     } catch (error) {

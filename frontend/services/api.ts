@@ -22,6 +22,7 @@ export interface AuthTokens {
 class ApiService {
   private client: AxiosInstance;
   private baseURL: string;
+  private csrfToken: string | null = null;
 
   constructor() {
     // In development, we use the VITE_API_URL (usually localhost:3001).
@@ -42,6 +43,28 @@ class ApiService {
     });
 
     this.setupInterceptors();
+    // Initialize CSRF token on service creation
+    this.initializeCsrfToken();
+  }
+
+  /**
+   * Fetch CSRF token from server
+   * Should be called on app initialization
+   */
+  private async initializeCsrfToken() {
+    try {
+      const response = await this.client.get('/api/csrf-token');
+      this.csrfToken = response.data.csrfToken;
+    } catch (error) {
+      console.error('Failed to fetch CSRF token:', error);
+    }
+  }
+
+  /**
+   * Public method to refresh CSRF token if needed
+   */
+  public async refreshCsrfToken() {
+    await this.initializeCsrfToken();
   }
 
   private setupInterceptors() {
@@ -50,6 +73,11 @@ class ApiService {
     // No need to manually add Authorization header - cookies are sent automatically
     this.client.interceptors.request.use(
       (config) => {
+        // Add CSRF token for state-changing requests (POST, PUT, DELETE, PATCH)
+        const method = config.method?.toUpperCase();
+        if (this.csrfToken && ['POST', 'PUT', 'DELETE', 'PATCH'].includes(method || '')) {
+          config.headers['X-CSRF-Token'] = this.csrfToken;
+        }
         // Cookies are sent automatically with withCredentials: true
         return config;
       },

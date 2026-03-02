@@ -144,17 +144,18 @@ router.get('/user/profile', requireAuth, async (req, res) => {
         });
 
         // Check for existence of data in other categories for disclosure validation
+        // Using findOne with select is more efficient than countDocuments for existence checks
         const [
-            expCount, eduCount, certCount, skillCount, projCount, awardCount, langCount, volCount
+            hasExp, hasEdu, hasCert, hasSkill, hasProj, hasAward, hasLang, hasVol
         ] = await Promise.all([
-            Experience.countDocuments({ wallet }),
-            Education.countDocuments({ wallet }),
-            Certification.countDocuments({ wallet }),
-            Skill.countDocuments({ wallet }),
-            Project.countDocuments({ wallet }),
-            Award.countDocuments({ wallet }),
-            Language.countDocuments({ wallet }),
-            Volunteer.countDocuments({ wallet })
+            Experience.findOne({ wallet }).select('_id').lean(),
+            Education.findOne({ wallet }).select('_id').lean(),
+            Certification.findOne({ wallet }).select('_id').lean(),
+            Skill.findOne({ wallet }).select('_id').lean(),
+            Project.findOne({ wallet }).select('_id').lean(),
+            Award.findOne({ wallet }).select('_id').lean(),
+            Language.findOne({ wallet }).select('_id').lean(),
+            Volunteer.findOne({ wallet }).select('_id').lean()
         ]);
 
         // Merge account-level data with profile
@@ -169,14 +170,14 @@ router.get('/user/profile', requireAuth, async (req, res) => {
             cns_routing: userAccount?.cns_routing || [],
             linked_wallets: userAccount?.linked_wallets || [],
             data_availability: {
-                experience: expCount > 0,
-                education: eduCount > 0,
-                certifications: certCount > 0,
-                skills: skillCount > 0,
-                projects: projCount > 0,
-                awards: awardCount > 0,
-                languages: langCount > 0,
-                volunteer: volCount > 0
+                experience: !!hasExp,
+                education: !!hasEdu,
+                certifications: !!hasCert,
+                skills: !!hasSkill,
+                projects: !!hasProj,
+                awards: !!hasAward,
+                languages: !!hasLang,
+                volunteer: !!hasVol
             }
         };
 
@@ -304,15 +305,15 @@ router.get('/public-profile/:identifier', async (req, res) => {
             volunteers,
             credential
         ] = await Promise.all([
-            Experience.find({ wallet }).sort({ 'start_date.year': -1, 'start_date.month': -1, created_at: -1 }),
-            Education.find({ wallet }).sort({ 'start_date.year': -1, 'start_date.month': -1, created_at: -1 }),
-            Certification.find({ wallet }).sort({ 'issue_date.year': -1, 'issue_date.month': -1, created_at: -1 }),
-            Skill.find({ wallet }).sort({ is_top_skill: -1, display_order: 1, created_at: -1 }),
-            Project.find({ wallet }).sort({ 'start_date.year': -1, 'start_date.month': -1, created_at: -1 }),
-            Award.find({ wallet }).sort({ 'issue_date.year': -1, 'issue_date.month': -1, created_at: -1 }),
-            Language.find({ wallet }).sort({ display_order: 1, created_at: -1 }),
-            Volunteer.find({ wallet }).sort({ 'start_date.year': -1, 'start_date.month': -1, created_at: -1 }),
-            Credential.findOne({ wallet, revoked: false })
+            Experience.find({ wallet }).sort({ 'start_date.year': -1, 'start_date.month': -1, created_at: -1 }).lean(),
+            Education.find({ wallet }).sort({ 'start_date.year': -1, 'start_date.month': -1, created_at: -1 }).lean(),
+            Certification.find({ wallet }).sort({ 'issue_date.year': -1, 'issue_date.month': -1, created_at: -1 }).lean(),
+            Skill.find({ wallet }).sort({ is_top_skill: -1, display_order: 1, created_at: -1 }).lean(),
+            Project.find({ wallet }).sort({ 'start_date.year': -1, 'start_date.month': -1, created_at: -1 }).lean(),
+            Award.find({ wallet }).sort({ 'issue_date.year': -1, 'issue_date.month': -1, created_at: -1 }).lean(),
+            Language.find({ wallet }).sort({ display_order: 1, created_at: -1 }).lean(),
+            Volunteer.find({ wallet }).sort({ 'start_date.year': -1, 'start_date.month': -1, created_at: -1 }).lean(),
+            Credential.findOne({ wallet, revoked: false }).lean()
         ]);
 
         // Return public profile (include contact fields for public display)

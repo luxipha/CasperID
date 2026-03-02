@@ -70,6 +70,16 @@ app.use(express.json({
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 app.use(cookieParser());
 
+// CSRF Protection
+const { doubleCsrfProtection, csrfErrorHandler, getCsrfToken } = require('./middleware/csrf');
+
+// CSRF token endpoint - frontend should call this on initialization
+app.get('/api/csrf-token', getCsrfToken);
+
+// Apply CSRF protection to all state-changing requests (POST, PUT, DELETE, PATCH)
+// Skips GET, HEAD, OPTIONS automatically
+app.use(doubleCsrfProtection);
+
 // Serve static files from uploads directory
 const path = require('path');
 app.use('/uploads', (req, res, next) => {
@@ -181,6 +191,9 @@ app.use('/api/business', require('./routes/business')); // Business Platform (Id
 app.use('/.well-known', require('./routes/well-known')); // JWKS + OpenID Connect Discovery
 app.use('/api/careers', require('./routes/careers')); // Career applications
 app.use('/api/affiliates', require('./routes/affiliates')); // Affiliate applications
+
+// CSRF error handler (must be before general error handler)
+app.use(csrfErrorHandler);
 
 // Error handling middleware
 app.use((err, req, res, next) => {

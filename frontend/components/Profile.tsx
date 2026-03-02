@@ -368,12 +368,20 @@ export const Profile: React.FC = () => {
     return `${days}d ago`;
   };
 
+  // Helper function to safely format date objects
+  const formatDate = (date: { month?: number | string; year?: number | string } | null | undefined): string => {
+    if (!date) return '-';
+    const { month, year } = date;
+    if (!month && !year) return '-';
+    if (!month) return year?.toString() || '-';
+    if (!year) return month?.toString() || '-';
+    return `${month}/${year}`;
+  };
 
 
-  // Load all data on component mount
-  useEffect(() => {
-    refreshAllData();
-  }, []);
+
+  // Note: refreshAllData() is already called in loadProfile's finally block above
+  // Removed duplicate useEffect that was causing double data fetches
 
 
 
@@ -1044,12 +1052,12 @@ export const Profile: React.FC = () => {
                         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                           <div className="space-y-1">
                             <label className="text-xs font-bold text-text-sub uppercase tracking-wider">Start Date</label>
-                            <div className="text-sm font-semibold text-text-main">{exp.start_date.month}/{exp.start_date.year}</div>
+                            <div className="text-sm font-semibold text-text-main">{formatDate(exp.start_date)}</div>
                           </div>
                           <div className="space-y-1">
                             <label className="text-xs font-bold text-text-sub uppercase tracking-wider">End Date</label>
                             <div className="text-sm font-semibold text-text-main">
-                              {exp.end_date?.is_current ? 'Present' : (exp.end_date ? `${exp.end_date.month}/${exp.end_date.year}` : '-')}
+                              {exp.end_date?.is_current ? 'Present' : formatDate(exp.end_date)}
                             </div>
                           </div>
                         </div>
