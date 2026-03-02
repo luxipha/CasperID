@@ -360,8 +360,14 @@ Only mark as passed if you're confident this is a live human performing the requ
         const response = await aiResult.response;
         const text = response.text();
 
+        // Strip markdown fences if Gemini wrapped the JSON (happens after model updates)
+        const cleanText = text
+            .replace(/^```(?:json)?\s*/i, '')
+            .replace(/\s*```$/, '')
+            .trim();
+
         // Extract JSON from the response
-        const jsonMatch = text.match(/\{[\s\S]*\}/);
+        const jsonMatch = cleanText.match(/\{[\s\S]*\}/);
         if (jsonMatch) {
             const analysis = JSON.parse(jsonMatch[0]);
 

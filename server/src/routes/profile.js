@@ -1,5 +1,6 @@
 const express = require('express');
 const router = express.Router();
+const cnsResolver = require('../services/cns-resolver');
 const {
     UserProfile,
     Experience,
@@ -249,9 +250,184 @@ router.get('/public-profile/:identifier', async (req, res) => {
         console.log(`GET /public-profile/${identifier}`);
 
         const trimmedIdentifier = identifier.trim();
+
+        // ─── Context DID Resolution ───────────────────────────────────────
+        // Handles did:casper:context:... identifiers which belong to personas.
+        if (trimmedIdentifier.startsWith('did:casper:context:')) {
+            const { UserAccount } = require('../database/models');
+            const ownerAccount = await UserAccount.findOne({
+                'context_dids.did': trimmedIdentifier
+            });
+
+            if (!ownerAccount) {
+                return res.status(404).json({ error: 'Profile not found', message: 'No profile found for this persona.' });
+            }
+
+            const contextDid = ownerAccount.context_dids.find(c => c.did === trimmedIdentifier);
+            if (!contextDid) {
+                return res.status(404).json({ error: 'Profile not found' });
+            }
+
+            // Wallet-routing personas are payment pointers, not profile pages
+            if (contextDid.routing_type === 'wallet') {
+                return res.status(200).json({
+                    is_wallet_routing: true,
+                    target_wallet: contextDid.target_wallet,
+                    alias: contextDid.alias,
+                    context: contextDid.context
+                });
+            }
+
+            const disclosures = contextDid.disclosures || {};
+            const wallet = ownerAccount.wallet;
+
+            const fullProfile = await UserProfile.findOne({ wallet });
+            if (!fullProfile) {
+                return res.status(404).json({ error: 'Profile not found' });
+            }
+
+            // Build filtered profile — only include what the user consented to share
+            const contextProfile = {
+                did: contextDid.did,
+                alias: contextDid.alias,
+                context: contextDid.context,
+                is_context_profile: true,
+                tier: ownerAccount.tier,
+                profile_image_url: fullProfile.profile_image_url,
+                first_name: disclosures.firstName ? fullProfile.first_name : undefined,
+                last_name: disclosures.lastName ? fullProfile.last_name : undefined,
+                date_of_birth: disclosures.dateOfBirth ? fullProfile.date_of_birth : undefined,
+                email: disclosures.email ? fullProfile.email : undefined,
+                phone_number: disclosures.phone ? fullProfile.phone_number : undefined,
+                headline: disclosures.headline ? fullProfile.headline : undefined,
+                about: disclosures.about ? fullProfile.about : undefined,
+                city: disclosures.location ? fullProfile.city : undefined,
+                country: disclosures.location ? fullProfile.country : undefined,
+                socials: disclosures.socials ? fullProfile.socials : undefined,
+            };
+
+            // Conditionally fetch section data based on disclosures
+            const fetchTasks = [];
+            if (disclosures.experience) fetchTasks.push(Experience.find({ wallet }).sort({ 'start_date.year': -1 }).lean().then(r => { contextProfile.experiences = r; }));
+            if (disclosures.education) fetchTasks.push(Education.find({ wallet }).sort({ 'start_date.year': -1 }).lean().then(r => { contextProfile.education = r; }));
+            if (disclosures.certifications) fetchTasks.push(Certification.find({ wallet }).sort({ created_at: -1 }).lean().then(r => { contextProfile.certifications = r; }));
+            if (disclosures.skills) fetchTasks.push(Skill.find({ wallet }).sort({ is_top_skill: -1 }).lean().then(r => { contextProfile.skills = r; }));
+            if (disclosures.projects) fetchTasks.push(Project.find({ wallet }).sort({ created_at: -1 }).lean().then(r => { contextProfile.projects = r; }));
+            if (disclosures.awards) fetchTasks.push(Award.find({ wallet }).sort({ created_at: -1 }).lean().then(r => { contextProfile.awards = r; }));
+            if (disclosures.languages) fetchTasks.push(Language.find({ wallet }).lean().then(r => { contextProfile.languages = r; }));
+            if (disclosures.volunteer) fetchTasks.push(Volunteer.find({ wallet }).lean().then(r => { contextProfile.volunteers = r; }));
+            await Promise.all(fetchTasks);
+
+            return res.json(contextProfile);
+        }
+
+        // ─── Standard Master Profile Resolution ───────────────────────────
         let profile;
 
-        // Find by wallet OR human_id (since identifier can be either)
+        // ─── Subdomain-style Persona Resolution ──────────────────────────
+        // Handles identifiers like "gig.vawa-bitu-sabo" or "gig.vawa-bitu-sabo.cid"
+        // These are human-readable persona URLs that resolve via the CNS system.
+        const isLikelySubdomain = trimmedIdentifier.includes('.') &&
+            !trimmedIdentifier.startsWith('did:') &&
+            !trimmedIdentifier.startsWith('account-hash-');
+
+        if (isLikelySubdomain) {
+            const nameToResolve = trimmedIdentifier.endsWith('.cid')
+                ? trimmedIdentifier
+                : `${trimmedIdentifier}.cid`;
+
+            const resolved = await cnsResolver.resolve(nameToResolve);
+
+            if (!resolved) {
+                return res.status(404).json({
+                    error: 'Profile not found',
+                    message: `No profile found for: ${identifier}`
+                });
+            }
+
+            // Wallet-only routing personas
+            if (resolved.contextType === 'wallet_only') {
+                return res.status(200).json({
+                    is_wallet_routing: true,
+                    target_wallet: resolved.profileData?.wallet,
+                    alias: trimmedIdentifier,
+                    context: resolved.contextType
+                });
+            }
+
+            // Redirect responses (e.g. explicit cns routing rules)
+            if (resolved.redirect) {
+                return res.redirect(resolved.redirect);
+            }
+
+            // For context profiles, apply the persona's actual disclosures
+            // (CNS resolver uses hardcoded context-type filtering — we override that here)
+            const ownerWallet = resolved.profileData?.wallet || resolved.wallet;
+            if (resolved.contextType && resolved.contextType !== 'master' && ownerWallet) {
+                const { UserAccount } = require('../database/models');
+                const ownerAccount = await UserAccount.findOne({ wallet: ownerWallet });
+
+                if (ownerAccount) {
+                    // Find the context DID matching the subdomain alias
+                    const contextAlias = trimmedIdentifier.split('.')[0]; // 'game' from 'game.bika'
+                    const contextDid = ownerAccount.context_dids?.find(c =>
+                        c.alias === contextAlias || c.context === contextAlias
+                    );
+
+                    if (contextDid && contextDid.routing_type !== 'wallet') {
+                        const disclosures = contextDid.disclosures || {};
+                        const wallet = ownerAccount.wallet;
+
+                        const fullProfile = await UserProfile.findOne({ wallet });
+                        if (!fullProfile) {
+                            return res.status(404).json({ error: 'Profile not found' });
+                        }
+
+                        // Build filtered profile from actual disclosures
+                        const contextProfile = {
+                            did: contextDid.did,
+                            alias: contextDid.alias,
+                            context: contextDid.context,
+                            is_context_profile: true,
+                            tier: ownerAccount.tier,
+                            profile_image_url: fullProfile.profile_image_url,
+                            first_name: disclosures.firstName ? fullProfile.first_name : undefined,
+                            last_name: disclosures.lastName ? fullProfile.last_name : undefined,
+                            date_of_birth: disclosures.dateOfBirth ? fullProfile.date_of_birth : undefined,
+                            email: disclosures.email ? fullProfile.email : undefined,
+                            phone_number: disclosures.phone ? fullProfile.phone_number : undefined,
+                            headline: disclosures.headline ? fullProfile.headline : undefined,
+                            about: disclosures.about ? fullProfile.about : undefined,
+                            city: disclosures.location ? fullProfile.city : undefined,
+                            country: disclosures.location ? fullProfile.country : undefined,
+                            socials: disclosures.socials ? fullProfile.socials : undefined,
+                        };
+
+                        const fetchTasks = [];
+                        if (disclosures.experience) fetchTasks.push(Experience.find({ wallet }).sort({ 'start_date.year': -1 }).lean().then(r => { contextProfile.experiences = r; }));
+                        if (disclosures.education) fetchTasks.push(Education.find({ wallet }).sort({ 'start_date.year': -1 }).lean().then(r => { contextProfile.education = r; }));
+                        if (disclosures.certifications) fetchTasks.push(Certification.find({ wallet }).sort({ created_at: -1 }).lean().then(r => { contextProfile.certifications = r; }));
+                        if (disclosures.skills) fetchTasks.push(Skill.find({ wallet }).sort({ is_top_skill: -1 }).lean().then(r => { contextProfile.skills = r; }));
+                        if (disclosures.projects) fetchTasks.push(Project.find({ wallet }).sort({ created_at: -1 }).lean().then(r => { contextProfile.projects = r; }));
+                        if (disclosures.awards) fetchTasks.push(Award.find({ wallet }).sort({ created_at: -1 }).lean().then(r => { contextProfile.awards = r; }));
+                        if (disclosures.languages) fetchTasks.push(Language.find({ wallet }).lean().then(r => { contextProfile.languages = r; }));
+                        if (disclosures.volunteer) fetchTasks.push(Volunteer.find({ wallet }).lean().then(r => { contextProfile.volunteers = r; }));
+                        await Promise.all(fetchTasks);
+
+                        return res.json(contextProfile);
+                    }
+                }
+            }
+
+            // Fallback: master profile resolved via CNS (e.g. premium name like alice.cid)
+            return res.json({
+                ...resolved.profileData,
+                is_context_profile: false,
+            });
+        }
+
+        // ─── Standard Master Profile Resolution ───────────────────────────
+        // Find by wallet OR human_id
         profile = await UserProfile.findOne({
             $or: [
                 { wallet: trimmedIdentifier },
