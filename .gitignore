@@ -68,8 +68,9 @@ secrets/
 .admin-credentials
 
 # Specific docs to ignore
-# roadmap.md (removed broad *.md ignore)
-# /server/*.md (removed)
+*.md
+roadmap.md
+/server/*.md
 
 /extension/
 /secrets.json
