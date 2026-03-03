@@ -53,7 +53,7 @@ export const IdentityStatusCard: React.FC = () => {
   const statusInfo = getStatusInfo();
 
   return (
-    <section className="relative overflow-hidden rounded-[32px] bg-gradient-to-br from-[#8652E2] to-[#6D36D6] text-white shadow-soft p-5 md:p-7 h-full flex flex-col justify-between group">
+    <section id="tour-identity-card" className="relative overflow-hidden rounded-[32px] bg-gradient-to-br from-[#8652E2] to-[#6D36D6] text-white shadow-soft p-5 md:p-7 h-full flex flex-col justify-between group">
       {/* Infinity Symbol Background Decoration */}
       <div className="absolute top-1/2 right-[-20%] -translate-y-1/2 opacity-10 pointer-events-none select-none">
         <svg width="240" height="120" viewBox="0 0 240 120" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -180,7 +180,7 @@ export const ReusableKYCCard: React.FC = () => {
   const currentLayerStatus = verificationData?.currentStatus?.layerStatus || 'unverified';
 
   return (
-    <div className="bg-white p-7 rounded-[32px] shadow-soft h-full flex flex-col justify-between border border-gray-50">
+    <div id="tour-kyc-card" className="bg-white p-7 rounded-[32px] shadow-soft h-full flex flex-col justify-between border border-gray-50">
       <div>
         <div className="flex justify-between items-start mb-1">
           <p className="text-[11px] font-bold text-text-sub uppercase tracking-wider">REUSABLE KYC</p>
@@ -272,7 +272,7 @@ export const TrustScoreCard: React.FC = () => {
   };
 
   return (
-    <div className="bg-white p-7 rounded-[32px] shadow-soft h-full relative overflow-hidden flex flex-col justify-between border border-gray-50">
+    <div id="tour-trust-card" className="bg-white p-7 rounded-[32px] shadow-soft h-full relative overflow-hidden flex flex-col justify-between border border-gray-50">
       {/* Faint Shield Background */}
       <span className="material-icons-outlined absolute top-10 right-[-10px] text-[120px] text-primary/5 select-none pointer-events-none">shield</span>
 

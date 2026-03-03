@@ -1,6 +1,7 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
+import { apiService } from '../../services/api';
 
 interface QuickToolItemProps {
     icon: string;
@@ -59,6 +60,7 @@ interface QuickActionsRailProps {
     onRegisterCID: () => void;
     onImportDID: () => void;
     onNavigate: (view: string) => void;
+    onOpenQuests: () => void;
 }
 
 export const QuickActionsRail: React.FC<QuickActionsRailProps> = ({
@@ -66,12 +68,31 @@ export const QuickActionsRail: React.FC<QuickActionsRailProps> = ({
     onConnectWallet,
     onRegisterCID,
     onImportDID,
-    onNavigate
+    onNavigate,
+    onOpenQuests
 }) => {
     const { user } = useAuth();
     const [isCollapsed, setIsCollapsed] = useState(true);
     const [isDIDMenuOpen, setIsDIDMenuOpen] = useState(false);
     const [copiedDID, setCopiedDID] = useState<string | null>(null);
+    const [pendingQuests, setPendingQuests] = useState(0);
+
+    // Fetch pending quests on mount
+    useEffect(() => {
+        const fetchQuests = async () => {
+            if (!user?.user_id) return;
+            try {
+                const res = await apiService.get(`/api/quest/status?userId=${user.user_id}`);
+                if (res.success) {
+                    const totalQuests = 4; // Total defined quests
+                    setPendingQuests(totalQuests - res.completedQuests.length);
+                }
+            } catch (err) {
+                console.error('Rail: Failed to fetch quests', err);
+            }
+        };
+        fetchQuests();
+    }, [user?.user_id, user?.points]); // Refresh when points change too
 
     // Get user's DIDs
     const masterDID = user?.did_address;
@@ -93,7 +114,7 @@ export const QuickActionsRail: React.FC<QuickActionsRailProps> = ({
     };
 
     return (
-        <div className={`hidden xl:flex fixed right-4 top-1/2 -translate-y-1/2 z-40 transition-all duration-500 ease-in-out ${isCollapsed ? 'w-[72px]' : 'w-[120px]'}`}>
+        <div id="tour-quick-actions" className={`hidden xl:flex fixed right-4 top-1/2 -translate-y-1/2 z-40 transition-all duration-500 ease-in-out ${isCollapsed ? 'w-[72px]' : 'w-[120px]'}`}>
             <div className={`w-full bg-white/60 backdrop-blur-2xl border border-white/40 rounded-[50px] shadow-[0_20px_50px_rgba(0,0,0,0.05)] flex flex-col items-center py-6 overflow-hidden transition-all duration-500 ${isCollapsed ? 'h-fit' : 'max-h-[75vh]'}`}>
 
                 {/* Top Toggle Button */}
@@ -108,6 +129,22 @@ export const QuickActionsRail: React.FC<QuickActionsRailProps> = ({
 
                 {/* Quick Actions */}
                 <div className={`w-full overflow-y-auto no-scrollbar flex flex-col items-center transition-all duration-500 ${isCollapsed ? 'gap-5' : 'gap-6'} py-2`}>
+
+                    {/* Identity Quests */}
+                    <div className="relative group w-full">
+                        <QuickToolItem
+                            icon="bolt"
+                            label="Identity Quests"
+                            onClick={onOpenQuests}
+                            iconClass="text-amber-500"
+                            isCollapsed={isCollapsed}
+                        />
+                        {pendingQuests > 0 && (
+                            <div className={`absolute ${isCollapsed ? 'top-0 right-3' : 'top-0 right-8'} size-5 bg-red-500 text-white text-[10px] font-black rounded-full flex items-center justify-center border-2 border-white shadow-sm transition-all duration-300 pointer-events-none`}>
+                                {pendingQuests}
+                            </div>
+                        )}
+                    </div>
 
                     {/* Create Persona */}
                     <QuickToolItem

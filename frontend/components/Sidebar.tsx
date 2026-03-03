@@ -60,7 +60,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate }) => 
     }
   };
   return (
-    <aside className="hidden md:flex w-64 bg-white border-r border-border-color flex-col h-screen fixed left-0 top-0 z-50">
+    <aside id="tour-sidebar" className="hidden md:flex w-64 bg-white border-r border-border-color flex-col h-screen fixed left-0 top-0 z-50">
       <div className="p-6 flex items-center gap-3">
         <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary to-purple-600 flex items-center justify-center text-white shadow-lg shadow-primary/20">
           <img src="/logos/logo.png" alt="CasperID logo" className="w-7 h-7 object-contain" />

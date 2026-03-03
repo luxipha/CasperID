@@ -739,7 +739,15 @@ const userAccountSchema = new mongoose.Schema({
         security_alerts: { type: Boolean, default: true },
         kyc_updates: { type: Boolean, default: true },
         marketing_news: { type: Boolean, default: false }
-    }
+    },
+    // Gamification & Quest System
+    points: {
+        type: Number,
+        default: 0
+    },
+    completed_quests: [{
+        type: String // Quest ID or handle
+    }]
 });
 
 const passkeyCredentialSchema = new mongoose.Schema({

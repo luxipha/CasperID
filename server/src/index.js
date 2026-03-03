@@ -181,6 +181,7 @@ app.use('/api/business', require('./routes/business')); // Business Platform (Id
 app.use('/.well-known', require('./routes/well-known')); // JWKS + OpenID Connect Discovery
 app.use('/api/careers', require('./routes/careers')); // Career applications
 app.use('/api/affiliates', require('./routes/affiliates')); // Affiliate applications
+app.use('/api/quest', require('./routes/quest')); // Gamified Quest System
 
 // Error handling middleware
 app.use((err, req, res, next) => {

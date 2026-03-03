@@ -40,6 +40,7 @@ export interface User {
   wallet?: string;
   metamask_address?: string;
   metamask_connected: boolean;
+  points?: number;
   email_verified?: boolean;
   human_id?: string;
   cns_name?: string;
@@ -204,6 +205,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           human_id: humanId,
           tier: userAccount.tier,
           wallet: userAccount.wallet,
+          points: userAccount.points || 0,
           metamask_connected: userAccount.metamask_connected || false,
           cns_name: userAccount.cns_name || '',
           kyc_completed_at: userAccount.kyc_completed_at || '',

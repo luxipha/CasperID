@@ -58,6 +58,9 @@ import ApplySuccessPage from './components/landing/ApplySuccess';
 import AffiliatePage from './components/landing/AffiliatePage';
 import ChangelogPage from './components/landing/casperos/changelog';
 import AdminPage from './admin/page';
+import { Tour } from './components/Tour';
+import { QuestModal } from './components/QuestModal';
+import { apiService } from './services/api';
 
 const PublicProfileContainerWrapper: React.FC = () => {
   const { slug } = useParams<{ slug: string }>();
@@ -137,7 +140,9 @@ const App: React.FC = () => {
   const [isConnectWalletOpen, setIsConnectWalletOpen] = useState(false);
   const [isMobileDrawerOpen, setIsMobileDrawerOpen] = useState(false);
   const [isScannerOpen, setIsScannerOpen] = useState(false);
-  const { user, isLoading, isAuthenticated } = useAuth();
+  const { user, isLoading, isAuthenticated, refreshUser } = useAuth();
+  const [runTour, setRunTour] = useState(false);
+  const [isQuestModalOpen, setIsQuestModalOpen] = useState(false);
 
   // --- Page Title Logic ---
   const getPageTitle = () => {
@@ -323,6 +328,19 @@ const App: React.FC = () => {
       setCurrentView('overview');
     }
   }, []);
+
+  const handleTourFinish = async () => {
+    setRunTour(false);
+    if (user) {
+      try {
+        await apiService.post('/api/quest/claim', { questId: 'tour_complete', userId: user.user_id });
+        await refreshUser(); // Update XP in Header
+        setIsQuestModalOpen(true); // Open quest modal to show success
+      } catch (err) {
+        console.error('App: Failed to claim tour quest', err);
+      }
+    }
+  };
 
   const handleVerificationUpgrade = useCallback((nextLevel: 'layer_1' | 'layer_2' | 'layer_3') => {
     switch (nextLevel) {
@@ -584,6 +602,9 @@ const App: React.FC = () => {
             <div className="hidden md:block">
               <RecentActivity />
             </div>
+
+            {/* Tour Component */}
+            <Tour run={runTour} onFinish={handleTourFinish} />
           </div>
         );
     }
@@ -628,6 +649,7 @@ const App: React.FC = () => {
                   onRegisterCID={() => setCurrentView('register-cid')}
                   onImportDID={() => setCurrentView('did-import')}
                   onNavigate={setCurrentView}
+                  onOpenQuests={() => setIsQuestModalOpen(true)}
                 />
                 <div className="flex-1 md:pl-64 flex flex-col min-w-0">
                   <div className="hidden md:block">
@@ -677,6 +699,7 @@ const App: React.FC = () => {
                   onRegisterCID={() => setCurrentView('register-cid')}
                   onImportDID={() => setCurrentView('did-import')}
                   onNavigate={setCurrentView}
+                  onOpenQuests={() => setIsQuestModalOpen(true)}
                 />
 
                 <div className="flex-1 md:pl-64 flex flex-col min-w-0">
@@ -752,6 +775,12 @@ const App: React.FC = () => {
         onWalletLinked={() => {
           // Wallet linked - could refresh user data here
         }}
+      />
+
+      <QuestModal
+        isOpen={isQuestModalOpen}
+        onClose={() => setIsQuestModalOpen(false)}
+        onStartTour={() => setRunTour(true)}
       />
 
       <MobileNavigationDrawer

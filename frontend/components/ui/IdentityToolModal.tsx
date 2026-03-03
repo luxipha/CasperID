@@ -20,6 +20,7 @@ interface IdentityToolModalProps {
     onAction: () => void;
     isActionLoading?: boolean;
     isActionDisabled?: boolean;
+    maxWidth?: string;
     children: React.ReactNode;
     footer?: React.ReactNode;
 }
@@ -38,6 +39,7 @@ export const IdentityToolModal: React.FC<IdentityToolModalProps> = ({
     onAction,
     isActionLoading,
     isActionDisabled,
+    maxWidth = 'max-w-md',
     children,
     footer
 }) => {
@@ -77,7 +79,7 @@ export const IdentityToolModal: React.FC<IdentityToolModalProps> = ({
 
             {/* Floating Modal Container - Reduced height and hanging */}
             <div
-                className={`relative h-auto max-h-[calc(100%-120px)] mr-6 w-full max-w-xl bg-white rounded-[44px] shadow-[-24px_0_80px_-12px_rgba(0,0,0,0.12)] flex flex-col overflow-hidden border border-gray-100 ${isExiting ? 'animate-slide-out-right' : 'animate-slide-in-right'
+                className={`relative h-auto max-h-[calc(100%-120px)] mr-6 w-full ${maxWidth} bg-white rounded-[44px] shadow-[-24px_0_80px_-12px_rgba(0,0,0,0.12)] flex flex-col overflow-hidden border border-gray-100 ${isExiting ? 'animate-slide-out-right' : 'animate-slide-in-right'
                     }`}
             >
 

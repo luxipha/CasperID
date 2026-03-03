@@ -19,7 +19,7 @@ export const Header: React.FC = () => {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [showDropdown, setShowDropdown] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, user } = useAuth();
 
   // Check server status on mount
   useEffect(() => {
@@ -111,6 +111,16 @@ export const Header: React.FC = () => {
             }`}></div>
           {serverOnline === null ? 'Checking...' : serverOnline ? 'Online' : 'Offline'}
         </div>
+
+        {/* XP / Points Badge */}
+        {isAuthenticated && user?.points !== undefined && (
+          <div className="flex items-center gap-2 px-3.5 py-1.5 bg-white border border-gray-100 rounded-xl shadow-[0_4px_12px_rgba(0,0,0,0.03)] animate-in fade-in zoom-in-95 duration-700">
+            <div className="size-5 rounded-full bg-primary/10 flex items-center justify-center">
+              <span className="material-symbols-outlined text-[14px] text-primary icon-filled">workspace_premium</span>
+            </div>
+            <span className="text-[11px] font-black text-text-main tracking-tight">{user.points} XP</span>
+          </div>
+        )}
 
         {/* Network Badge */}
         <div className="hidden sm:flex items-center px-3 py-1.5 bg-purple-50 text-purple-700 rounded-lg text-xs font-bold border border-purple-100">
