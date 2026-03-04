@@ -139,8 +139,8 @@ const ContextualSection: React.FC = () => {
                         {/* Interactive Search Container */}
                         <div className="relative max-w-lg">
                             <div className={`group relative flex items-center transition-all duration-500 p-2 rounded-full border-2 ${isAvailable === true ? 'border-emerald-400 bg-emerald-50/50' :
-                                    isAvailable === false ? 'border-red-400 bg-red-50/50' :
-                                        'border-slate-200 bg-white'
+                                isAvailable === false ? 'border-red-400 bg-red-50/50' :
+                                    'border-slate-200 bg-white'
                                 } shadow-xl focus-within:ring-4 focus-within:ring-indigo-100`}>
 
                                 <div className="pl-4 md:pl-6 text-indigo-600 flex items-center">

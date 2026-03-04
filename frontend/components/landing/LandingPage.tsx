@@ -1,18 +1,22 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { FooterMarketing } from "../FooterMarketing";
-import StickyScrollSection from "./sticky-scroll";
 import Logo from "../Logo";
-import ScanShowcase from "../ScanShowcase";
 import "./LandingPage.css";
 import RoadmapSection from "./RoadmapSection";
 // ChatAssistant disabled - using Crisp chatbot instead
 // import ChatAssistant from "./ChatAssistant";
-import OldVsNewSection from "./OldVsNewSection";
 import ContextualSection from "./ContextsAware";
 import { AdevarOSFlow } from "./AdevarOSFlow";
 import { ScrollToTop } from "./casperos/ScrollToTop";
 import { useDocumentTitle } from "../../hooks/useDocumentTitle";
+import CinematicHero from "./CinematicHero";
+import Hero from "./SplitHero";
+import IdentityWeb from "./IdentityWeb";
+import MCIAlgorithm from "./MCIAlgorithm";
+import { ScrollTrigger } from 'gsap/ScrollTrigger';
+import HowItWorks from "./HowItWorks";
+
 
 interface LandingPageProps {
   initialView?: 'main' | 'anra';
@@ -62,50 +66,6 @@ export default function LandingPage({ initialView = 'main' }: LandingPageProps) 
   }, []);
 
   useEffect(() => {
-    // Load tsparticles
-    const script = document.createElement('script');
-    script.src = "https://cdn.jsdelivr.net/npm/tsparticles@2/tsparticles.bundle.min.js";
-    script.async = true;
-    document.body.appendChild(script);
-
-    const scriptInit = document.createElement('script');
-    scriptInit.textContent = `
-      window.loadParticles = () => {
-        if (!window.tsParticles) return;
-        window.tsParticles.load({
-          id: "tsparticles",
-          options: {
-            background: { color: "transparent" },
-            interactivity: {
-              detectsOn: "window",
-              events: {
-                onClick: { enable: false, mode: "repulse" },
-                onHover: { enable: false, mode: "bubble" },
-                resize: true
-              },
-              modes: {
-                bubble: { distance: 200, duration: 2, opacity: 0, size: 0, speed: 3 },
-                repulse: { distance: 400, duration: 0.4 }
-              }
-            },
-            particles: {
-              color: { value: "#ffffff" },
-              move: { enable: true, speed: 0.3, direction: "none", random: true, outModes: "out" },
-              number: { density: { enable: true }, value: 600 },
-              opacity: { animation: { enable: true, speed: 5 }, value: { min: 0.3, max: 0.6 } },
-              shape: { type: "circle" },
-              size: { value: 1 }
-            }
-          }
-        });
-      };
-      if (document.readyState === "complete") {
-        setTimeout(() => window.loadParticles && window.loadParticles(), 1000); 
-      } else {
-        window.addEventListener("load", () => window.loadParticles && window.loadParticles());
-      }
-    `;
-    document.body.appendChild(scriptInit);
 
     // Houdini
     if ('paintWorklet' in CSS) {
@@ -142,10 +102,14 @@ export default function LandingPage({ initialView = 'main' }: LandingPageProps) 
       window.addEventListener('scroll', toggle, { passive: true });
     }
 
+    // Refresh triggers after components mount
+    const timer = setTimeout(() => {
+      ScrollTrigger.refresh();
+    }, 500);
+
     return () => {
       if (header) window.removeEventListener('scroll', toggle);
-      if (document.body.contains(script)) document.body.removeChild(script);
-      if (document.body.contains(scriptInit)) document.body.removeChild(scriptInit);
+      clearTimeout(timer);
     };
   }, []);
 
@@ -226,81 +190,19 @@ export default function LandingPage({ initialView = 'main' }: LandingPageProps) 
 
         {currentLandingView === 'main' ? (
           <>
-            <section
-              id="hero-ring"
-              data-ring="true"
-              className="relative overflow-hidden flex flex-col items-center text-center min-h-[70vh] justify-center bg-transparent"
-            >
-              <div className="relative z-10 flex flex-col items-center">
-                <Logo className="mb-6" variant="png" />
-                <h1 className="text-[36px] sm:text-[52px] md:text-[80px] font-black tracking-tight mb-4 leading-[1.05]">
-                  Verify once
-                </h1>
-                <p className="text-[24px] sm:text-[32px] md:text-[56px] text-slate-600 font-semibold mb-4 leading-[1.1]">
-                  Reuse everywhere
-                </p>
-                <p className="text-lg sm:text-xl md:text-2xl text-slate-600 font-semibold mb-10 max-w-3xl px-4">
-                  One-tap login, verified, and ready to autofill anywhere.
-                </p>
-                <div className="flex flex-wrap items-center justify-center gap-3">
-                  <a
-                    href="/dashboard"
-                    className="inline-flex items-center gap-2 rounded-full bg-slate-900 px-5 py-3 text-sm font-semibold text-white shadow-md shadow-slate-300/40"
-                  >
-                    Get Started
-                  </a>
-                  <a
-                    href="#use-cases"
-                    className="inline-flex items-center gap-2 rounded-full bg-slate-100 px-5 py-3 text-sm font-semibold text-slate-800 border border-slate-200"
-                  >
-                    Explore use cases
-                  </a>
-                </div>
-              </div>
-            </section>
-
-            {/* Contextual Identities Section */}
+            <CinematicHero />
+            <Hero />
+            <IdentityWeb />
+            <HowItWorks />
             <ContextualSection />
+            <MCIAlgorithm />
 
-            <section id="product" className="w-full flex justify-center pb-16 pt-24 md:pt-32 px-4">
-              <div className="w-full max-w-[1585px] border border-slate-200 rounded-2xl overflow-hidden shadow-lg shadow-slate-200">
 
-                <div className="bg-black">
-                  <iframe
-                    className="w-full h-[300px] sm:h-[500px] md:h-[700px] lg:h-[900px] rounded-2xl"
-                    src="https://www.youtube.com/embed/SrPLG0vmXHQ"
-                    title="CasperID Product Demo"
-                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                    allowFullScreen
-                  />
-
-                </div>
-              </div>
-            </section>
-
-            <section className="w-full py-16 md:py-24 px-4" id="identity">
-              <div className="max-w-6xl mx-auto grid md:grid-cols-[1.1fr_0.9fr] items-start gap-8 md:gap-6">
-                <div className="max-w-xl text-left space-y-4">
-                  <h2 className="text-3xl md:text-5xl font-bold leading-tight">
-                    CasperID is a reusable digital identity layer
-                  </h2>
-                  <p className="text-lg md:text-xl text-slate-600">
-                    that lets you complete KYC once and log in across platforms without resubmitting documents or losing control of your data.</p>
-                </div>
-                <div className="w-full">
-                  <ScanShowcase />
-                </div>
-              </div>
-            </section>
 
             {/* Old vs New Section */}
-            <OldVsNewSection />
 
-            <div id="use-cases">
-              <StickyScrollSection />
-            </div>
 
-            <section className="relative w-full min-h-[600px] md:min-h-[800px] lg:h-[900px] overflow-hidden bg-white py-16 md:py-0" id="developers">
+            <section className="relative w-full min-h-[600px] md:min-h-[800px] lg:h-[900px] overflow-hidden py-16 md:py-0" id="developers">
               <div className="absolute inset-0 bg-[radial-gradient(1px_1px_at_10%_10%,rgba(0,0,0,0.16),transparent),radial-gradient(1px_1px_at_50%_50%,rgba(0,0,0,0.12),transparent),radial-gradient(1px_1px_at_90%_80%,rgba(0,0,0,0.1),transparent)] opacity-40" />
               <div className="absolute inset-0 bg-[radial-gradient(1px_1px_at_20%_30%,rgba(99,102,241,0.2),transparent),radial-gradient(1px_1px_at_80%_20%,rgba(79,70,229,0.15),transparent)] opacity-30" />
               <div className="relative z-10 h-full max-w-6xl mx-auto px-4 md:px-6 flex flex-col md:flex-row items-center justify-center gap-8 md:gap-12">
@@ -340,7 +242,7 @@ export default function LandingPage({ initialView = 'main' }: LandingPageProps) 
               </div>
             </section>
 
-            <section className="w-full py-12 md:py-16 min-h-[600px] md:min-h-[827px] bg-white" id="blogs">
+            <section className="w-full py-12 md:py-16 min-h-[600px] md:min-h-[827px]" id="blogs">
               <div className="w-full px-4 md:px-12">
                 <div className="w-full flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                   <h2 className="text-2xl md:text-4xl font-bold text-slate-900">Latest Blogs</h2>
@@ -464,8 +366,8 @@ export default function LandingPage({ initialView = 'main' }: LandingPageProps) 
 
         <ScrollToTop />
 
-        {/* Mobile Navigation Overlay - High Z-index and Solid Background */}
-        <div className={`fixed inset-0 bg-white z-[60] md:hidden transition-transform duration-300 ease-in-out ${isMenuOpen ? 'translate-x-0' : 'translate-x-full'}`}>
+        {/* Mobile Navigation Overlay - High Z-index and Premium Blur */}
+        <div className={`fixed inset-0 bg-white/90 backdrop-blur-2xl z-[60] md:hidden transition-transform duration-500 ease-in-out ${isMenuOpen ? 'translate-x-0' : 'translate-x-full'}`}>
           <div className="flex flex-col items-center justify-center h-full gap-8 text-2xl font-bold text-slate-900 px-6">
             <a onClick={() => { setIsMenuOpen(false); handleNavigate('main'); }} href="#product" className="hover:text-indigo-600 transition">Product</a>
             <a onClick={() => setIsMenuOpen(false)} href="#download" className="hover:text-indigo-600 transition">Download</a>
