@@ -22,12 +22,7 @@ interface QuestModalProps {
 
 export const QuestModal: React.FC<QuestModalProps> = ({ isOpen, onClose, onStartTour }) => {
     const { user, refreshUser } = useAuth();
-    const [quests, setQuests] = useState<Quest[]>([
-        { id: 'tour_complete', title: 'Complete Onboarding Tour', xp: 100, icon: 'map', completed: false },
-        { id: 'layer_2_verify', title: 'Complete Liveness Check', xp: 500, icon: 'face', completed: false },
-        { id: 'cid_register', title: 'Register .cid Name', xp: 300, icon: 'badge', completed: false },
-        { id: 'persona_create', title: 'Create your first Persona', xp: 200, icon: 'person_add', completed: false }
-    ]);
+    const [quests, setQuests] = useState<Quest[]>([]);
     const [isLoading, setIsLoading] = useState(false);
 
     useEffect(() => {
@@ -40,7 +35,8 @@ export const QuestModal: React.FC<QuestModalProps> = ({ isOpen, onClose, onStart
         try {
             const res = await apiService.get(`/api/quest/status?userId=${user?.user_id}`);
             if (res.success) {
-                setQuests(prev => prev.map(q => ({
+                // Merge completed status with available quests from backend
+                setQuests(res.availableQuests.map((q: any) => ({
                     ...q,
                     completed: res.completedQuests.includes(q.id)
                 })));
@@ -102,8 +98,8 @@ export const QuestModal: React.FC<QuestModalProps> = ({ isOpen, onClose, onStart
                         initial={{ opacity: 0, x: -10 }}
                         animate={{ opacity: 1, x: 0 }}
                         className={`flex items-center justify-between p-4 rounded-2xl border transition-all ${quest.completed
-                                ? 'bg-gray-50/50 border-gray-100 opacity-60'
-                                : 'bg-white border-gray-100 hover:border-primary/20 shadow-sm'
+                            ? 'bg-gray-50/50 border-gray-100 opacity-60'
+                            : 'bg-white border-gray-100 hover:border-primary/20 shadow-sm'
                             }`}
                     >
                         <div className="flex items-center gap-4">

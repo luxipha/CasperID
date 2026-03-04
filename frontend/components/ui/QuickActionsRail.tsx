@@ -84,8 +84,8 @@ export const QuickActionsRail: React.FC<QuickActionsRailProps> = ({
             try {
                 const res = await apiService.get(`/api/quest/status?userId=${user.user_id}`);
                 if (res.success) {
-                    const totalQuests = 4; // Total defined quests
-                    setPendingQuests(totalQuests - res.completedQuests.length);
+                    const availableCount = res.availableQuests?.length || 0;
+                    setPendingQuests(availableCount - res.completedQuests.length);
                 }
             } catch (err) {
                 console.error('Rail: Failed to fetch quests', err);

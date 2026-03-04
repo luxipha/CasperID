@@ -1342,6 +1342,52 @@ verificationEventSchema.index({ event_type: 1, timestamp: -1 });
 
 
 // ============================================
+// DYNAMIC QUESTS
+// ============================================
+
+const questSchema = new mongoose.Schema({
+    quest_id: {
+        type: String,
+        required: true,
+        unique: true,
+        index: true
+    },
+    title: {
+        type: String,
+        required: true
+    },
+    description: {
+        type: String
+    },
+    points: {
+        type: Number,
+        required: true,
+        default: 0
+    },
+    icon: {
+        type: String,
+        default: 'bolt'
+    },
+    active: {
+        type: Boolean,
+        default: true
+    },
+    created_at: {
+        type: Date,
+        default: Date.now
+    },
+    updated_at: {
+        type: Date,
+        default: Date.now
+    }
+});
+
+questSchema.pre('save', function (next) {
+    this.updated_at = Date.now();
+    next();
+});
+
+// ============================================
 // MODEL EXPORTS
 // ============================================
 
@@ -1365,6 +1411,7 @@ const DappIntegration = mongoose.model('DappIntegration', dappIntegrationSchema)
 const VerificationRequestV2 = mongoose.model('VerificationRequestV2', verificationRequestV2Schema);
 
 const AdminUser = mongoose.model('AdminUser', adminUserSchema);
+const Quest = mongoose.model('Quest', questSchema);
 const RateLimit = mongoose.model('RateLimit', rateLimitSchema);
 
 const UserProfile = mongoose.model('UserProfile', userProfileSchema);
@@ -1517,7 +1564,7 @@ module.exports = {
     // Blockchain Event Indexing
     VerificationEvent,
 
-    // Business Platform (Identity-as-a-Service)
-    BusinessApp,
-    WebhookSubscription
+    AdminUser,
+    PasskeyCredential,
+    Quest
 };

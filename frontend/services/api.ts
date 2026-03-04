@@ -1392,6 +1392,44 @@ class ApiService {
     }
   }
 
+  // --- Admin Quest Management ---
+
+  async getAdminQuests(): Promise<{ success: boolean; quests: any[] }> {
+    try {
+      const response = await this.client.get('/api/quest/admin/list');
+      return response.data;
+    } catch (error) {
+      throw this.handleError(error);
+    }
+  }
+
+  async addQuest(questData: any): Promise<ApiResponse> {
+    try {
+      const response = await this.client.post('/api/quest/admin/add', questData);
+      return response.data;
+    } catch (error) {
+      throw this.handleError(error);
+    }
+  }
+
+  async updateQuest(id: string, questData: any): Promise<ApiResponse> {
+    try {
+      const response = await this.client.put(`/api/quest/admin/update/${id}`, questData);
+      return response.data;
+    } catch (error) {
+      throw this.handleError(error);
+    }
+  }
+
+  async deleteQuest(id: string): Promise<ApiResponse> {
+    try {
+      const response = await this.client.delete(`/api/quest/admin/delete/${id}`);
+      return response.data;
+    } catch (error) {
+      throw this.handleError(error);
+    }
+  }
+
   // ============================================
   // CONTEXT DID MANAGEMENT
   // ============================================
