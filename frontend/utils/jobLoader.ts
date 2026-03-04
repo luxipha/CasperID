@@ -11,7 +11,7 @@ export interface Job {
 }
 
 export async function getAllJobs(): Promise<Job[]> {
-    const modules = import.meta.glob('../content/jobs/*.job', { as: 'raw', eager: true });
+    const modules = import.meta.glob('../content/jobs/*.job', { query: '?raw', import: 'default', eager: true });
 
     const jobs: Job[] = [];
 

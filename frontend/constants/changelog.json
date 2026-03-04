@@ -1,5 +1,38 @@
 [
   {
+    "version": "2.5.0",
+    "title": "Global Trust Score & Application Guard",
+    "date": "March 4, 2026",
+    "status": "Production Release",
+    "highlight": {
+      "title": "Profile Score Required to Apply",
+      "description": "Introduced a unified 0–100 Trust Score combining identity verification tier and profile completeness. Users must score 60+ to submit job applications.",
+      "type": "sparkles"
+    },
+    "summary": "This release introduces a Global Trust Score that merges identity verification (Layer 1/2/3) with profile completeness (experience, education, skills, certifications, projects, awards, languages, social links, and more). The Apply button on job listings now displays the applicant's live score, and a Profile Completion Modal guides low-scoring users to improve their profile or verify their identity before applying.",
+    "categories": [
+      {
+        "id": "v250-feat",
+        "title": "New Features",
+        "items": [
+          "Global Trust Score engine: a unified 0–100 score combining Identity Tier (50 pts) and Profile Completeness (50 pts) with no additional API calls.",
+          "Application Guard: Apply button on job listings shows the user's live score badge and blocks submissions below 60 points.",
+          "Profile Completion Modal: surfaces when score is below threshold, showing a progress bar, threshold marker, top improvement tips, and CTAs to complete profile or verify identity.",
+          "CTAs in modal navigate directly to /dashboard?view=profile and /dashboard?view=kyc for a frictionless fix flow.",
+          "Dashboard Trust Score card updated to reflect the new unified score instead of the previous identity-tier-only estimate."
+        ]
+      },
+      {
+        "id": "v250-fix",
+        "title": "Fixes",
+        "items": [
+          "Fixed Vite deprecation warning: updated import.meta.glob from deprecated `as: 'raw'` to `query: '?raw', import: 'default'` syntax.",
+          "Fixed navigation from Profile Completion Modal using window.location.href instead of React Router navigate to correctly trigger the app's view-sync on query string changes."
+        ]
+      }
+    ]
+  },
+  {
     "version": "2.4.0",
     "title": "Persona Identity & Responsive Web",
     "date": "March 2, 2026",
