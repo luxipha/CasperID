@@ -113,7 +113,7 @@ const Hero: React.FC = () => {
                         className="overflow-hidden opacity-0 flex items-baseline justify-end whitespace-nowrap"
                         style={{ width: 0 }}
                     >
-                        <div className="h-48 flex items-baseline justify-end pr-0 translate-y-[-0.05em] translate-x-[0.12em]">
+                        <div className="h-14 sm:h-24 md:h-48 flex items-baseline justify-end pr-0 translate-y-[-0.02em] md:translate-y-[-0.05em] translate-x-[0.12em]">
                             <AnimatePresence mode="popLayout">
                                 <motion.span
                                     key={personas[currentPersonaIndex]}
@@ -121,7 +121,7 @@ const Hero: React.FC = () => {
                                     animate={{ y: 0, opacity: 1 }}
                                     exit={{ y: -60, opacity: 0 }}
                                     transition={{ duration: 0.4, ease: [0.23, 1, 0.32, 1] }}
-                                    className="text-6xl md:text-9xl font-black text-primary tracking-tighter drop-shadow-2xl py-4"
+                                    className="text-4xl sm:text-6xl md:text-9xl font-black text-primary tracking-tighter drop-shadow-2xl py-4"
                                 >
                                     {personas[currentPersonaIndex]}
                                 </motion.span>
@@ -131,7 +131,7 @@ const Hero: React.FC = () => {
 
                     {/* Right Side: The Anchor */}
                     <div ref={suffixRef} className="text-center flex-shrink-0">
-                        <h1 className="text-6xl md:text-9xl font-black tracking-tighter text-slate-900 drop-shadow-2xl">
+                        <h1 className="text-4xl sm:text-6xl md:text-9xl font-black tracking-tighter text-slate-900 drop-shadow-2xl">
                             <span className="text-primary">.</span>alice<span className="text-primary">.cid</span>
                         </h1>
                     </div>

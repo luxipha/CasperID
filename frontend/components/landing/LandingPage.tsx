@@ -3,7 +3,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { FooterMarketing } from "../FooterMarketing";
 import Logo from "../Logo";
 import "./LandingPage.css";
-import RoadmapSection from "./RoadmapSection";
+import Roadmap from "./RoadMap";
 // ChatAssistant disabled - using Crisp chatbot instead
 // import ChatAssistant from "./ChatAssistant";
 import ContextualSection from "./ContextsAware";
@@ -102,13 +102,18 @@ export default function LandingPage({ initialView = 'main' }: LandingPageProps) 
       window.addEventListener('scroll', toggle, { passive: true });
     }
 
-    // Refresh triggers after components mount
+    // Refresh triggers after components mount — use both a timeout and onLoad
+    // to handle race conditions where GSAP calculates pin heights before layout settles
     const timer = setTimeout(() => {
       ScrollTrigger.refresh();
-    }, 500);
+    }, 1000);
+
+    const onLoad = () => ScrollTrigger.refresh();
+    window.addEventListener('load', onLoad);
 
     return () => {
       if (header) window.removeEventListener('scroll', toggle);
+      window.removeEventListener('load', onLoad);
       clearTimeout(timer);
     };
   }, []);
@@ -128,18 +133,11 @@ export default function LandingPage({ initialView = 'main' }: LandingPageProps) 
                 <Logo variant="png" />
               </div>
               <nav className="hidden md:flex items-center gap-4 text-sm text-slate-600">
-                <a
-                  onClick={() => handleNavigate('main')}
-                  href="#product"
-                  className="hover:text-slate-900 transition"
-                >
-                  Product
-                </a>
-                <a href="#download" className="hover:text-slate-900 transition">
-                  Download
-                </a>
-                <a href="#resources" className="hover:text-slate-900 transition">
+                <a href="#blogs" className="hover:text-slate-900 transition">
                   Resources
+                </a>
+                <a href="#roadmap" className="hover:text-slate-900 transition">
+                  Roadmap
                 </a>
                 <a href="#developers" className="hover:text-slate-900 transition">
                   Developers
@@ -216,14 +214,11 @@ export default function LandingPage({ initialView = 'main' }: LandingPageProps) 
                   <div className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-semibold text-slate-600">
                     A verified identity you can reuse everywhere
                   </div>
-                  <a
-                    href="https://chromewebstore.google.com/detail/oecccgmhmojgniechnclmffchodmdjmd"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="mt-4 px-5 md:px-6 py-2.5 md:py-3 rounded-full bg-slate-900 text-white text-sm font-semibold shadow-lg shadow-slate-900/40 hover:-translate-y-0.5 transition"
+                  <div
+                    className="mt-4 px-5 md:px-6 py-2.5 md:py-3 rounded-full bg-slate-100 text-slate-400 text-sm font-semibold border border-slate-200 cursor-default inline-block"
                   >
                     Download for Chrome
-                  </a>
+                  </div>
                 </div>
                 <div className="flex-1 flex flex-col items-center text-center space-y-3 md:space-y-4">
                   <div className="text-xs uppercase tracking-[0.2em] text-slate-400">
@@ -320,7 +315,7 @@ export default function LandingPage({ initialView = 'main' }: LandingPageProps) 
               </div>
             </section>
 
-            <RoadmapSection />
+            <Roadmap />
 
             <section className="w-full py-6 md:py-10 px-4 md:px-12" id="download">
               <div
@@ -369,9 +364,8 @@ export default function LandingPage({ initialView = 'main' }: LandingPageProps) 
         {/* Mobile Navigation Overlay - High Z-index and Premium Blur */}
         <div className={`fixed inset-0 bg-white/90 backdrop-blur-2xl z-[60] md:hidden transition-transform duration-500 ease-in-out ${isMenuOpen ? 'translate-x-0' : 'translate-x-full'}`}>
           <div className="flex flex-col items-center justify-center h-full gap-8 text-2xl font-bold text-slate-900 px-6">
-            <a onClick={() => { setIsMenuOpen(false); handleNavigate('main'); }} href="#product" className="hover:text-indigo-600 transition">Product</a>
-            <a onClick={() => setIsMenuOpen(false)} href="#download" className="hover:text-indigo-600 transition">Download</a>
-            <a onClick={() => setIsMenuOpen(false)} href="#resources" className="hover:text-indigo-600 transition">Resources</a>
+            <a onClick={() => { setIsMenuOpen(false); handleNavigate('main'); }} href="#blogs" className="hover:text-indigo-600 transition">Resources</a>
+            <a onClick={() => setIsMenuOpen(false)} href="#roadmap" className="hover:text-indigo-600 transition">Roadmap</a>
             <a onClick={() => setIsMenuOpen(false)} href="#developers" className="hover:text-indigo-600 transition">Developers</a>
             <a onClick={() => { setIsMenuOpen(false); handleNavigate('anra'); }} className="hover:text-indigo-600 transition cursor-pointer">anra</a>
             <div className="flex flex-col gap-4 mt-8 w-full max-w-sm">

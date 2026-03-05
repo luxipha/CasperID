@@ -12,28 +12,28 @@ const steps = [
         id: 1,
         title: "Generate ID",
         description: "Create your unique CasperID in seconds. No central authority, no data silos. Just you and your private keys.",
-        icon: <UserPlus className="w-12 h-12 text-primary" />,
+        icon: <UserPlus className="w-8 h-8 md:w-12 md:h-12 text-primary" />,
         color: "from-purple-500/20 to-indigo-500/20"
     },
     {
         id: 2,
         title: "Verify Once",
         description: "Complete a one-time verification. Our MCI Algorithm generates a zero-knowledge proof that you are who you say you are.",
-        icon: <ShieldCheck className="w-12 h-12 text-primary" />,
+        icon: <ShieldCheck className="w-8 h-8 md:w-12 md:h-12 text-primary" />,
         color: "from-indigo-500/20 to-blue-500/20"
     },
     {
         id: 3,
         title: "Use Everywhere",
         description: "Access any dApp, bank, or service with a single click. Context-specific proofs ensure you only share what's necessary.",
-        icon: <Globe className="w-12 h-12 text-primary" />,
+        icon: <Globe className="w-8 h-8 md:w-12 md:h-12 text-primary" />,
         color: "from-blue-500/20 to-cyan-500/20"
     },
     {
         id: 4,
         title: "Revoke Access",
         description: "Take back your data in a single click. Revoke permissions instantly and ensure your digital footprint is only where you want it.",
-        icon: <RotateCcw className="w-12 h-12 text-primary" />,
+        icon: <RotateCcw className="w-8 h-8 md:w-12 md:h-12 text-primary" />,
         color: "from-cyan-500/20 to-emerald-500/20"
     }
 ];
@@ -94,7 +94,7 @@ const HowItWorks: React.FC = () => {
                                     transition={{ duration: 0.8, delay: 0.2 }}
                                     className="mb-8 flex justify-center"
                                 >
-                                    <div className={`p-8 rounded-3xl bg-gradient-to-br ${step.color} backdrop-blur-xl border border-primary/20 shadow-2xl`}>
+                                    <div className={`p-5 md:p-8 rounded-3xl bg-gradient-to-br ${step.color} backdrop-blur-xl border border-primary/20 shadow-2xl`}>
                                         {step.icon}
                                     </div>
                                 </motion.div>
@@ -103,7 +103,7 @@ const HowItWorks: React.FC = () => {
                                     initial={{ opacity: 0, y: 30 }}
                                     whileInView={{ opacity: 1, y: 0 }}
                                     transition={{ duration: 0.8, delay: 0.4 }}
-                                    className="text-5xl md:text-7xl font-black text-slate-900 mb-6 tracking-tighter"
+                                    className="text-3xl md:text-7xl font-black text-slate-900 mb-4 md:mb-6 tracking-tighter"
                                 >
                                     {step.id}. {step.title}
                                 </motion.h2>
@@ -112,7 +112,7 @@ const HowItWorks: React.FC = () => {
                                     initial={{ opacity: 0, y: 20 }}
                                     whileInView={{ opacity: 1, y: 0 }}
                                     transition={{ duration: 0.8, delay: 0.6 }}
-                                    className="text-xl md:text-2xl text-slate-600 max-w-2xl mx-auto leading-relaxed"
+                                    className="text-base md:text-2xl text-slate-600 max-w-2xl mx-auto leading-relaxed px-4"
                                 >
                                     {step.description}
                                 </motion.p>

@@ -4,8 +4,6 @@ import Logo from "./Logo";
 export function FooterMarketing({ className, onNavigate }: { className?: string; onNavigate?: (view: string) => void }) {
   const productLinks = [
     { label: "anra 🔥", href: "/anra" },
-    { label: "Download", href: "#download" },
-    { label: "Product", href: "#product" },
     { label: "White Paper", href: "https://docs.google.com/document/d/1XxpYRW5Dz4vV5G_3rIublF-lwqxPHnQ7quAhiDFaKgo/edit?usp=drive_link" },
     { label: "Changelog", href: "/changelog" },
   ];
