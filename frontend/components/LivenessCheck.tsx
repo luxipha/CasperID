@@ -217,7 +217,7 @@ export const LivenessCheck: React.FC<LivenessCheckProps> = ({ onBack, onComplete
           const mouthProgress = Math.min(100, Math.max(0, (mouthRatio - 0.05) / 0.1 * 100));
           setProgress(mouthProgress);
 
-          if (mouthRatio > 0.15) {
+          if (mouthRatio > 0.13) {
             if (st.frames.length < 15) {
               setGuidance("Keep mouth open...");
               return;

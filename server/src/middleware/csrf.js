@@ -31,8 +31,9 @@ const {
     cookieName: isProduction ? '__Host-csrf' : 'csrf-token',
     cookieOptions: {
         httpOnly: true,
-        sameSite: isProduction ? 'strict' : 'lax', // lax allows same-site navigation in dev
-        secure: isProduction,
+        // When using ngrok subdomains, we need SameSite=None and Secure=true
+        sameSite: (isProduction || process.env.FRONTEND_URL?.includes('ngrok')) ? 'none' : 'lax',
+        secure: isProduction || process.env.FRONTEND_URL?.includes('ngrok'),
         path: '/'
     },
     size: 64, // Token size in bytes
