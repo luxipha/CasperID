@@ -49,7 +49,6 @@ const verificationRequestSchema = new mongoose.Schema({
     },
     ip: String,
     userAgent: String,
-    location: String,
     updated_at: {
         type: Date,
         default: Date.now
@@ -923,6 +922,9 @@ const devicePairingSchema = new mongoose.Schema({
     },
     completed_at: Date
 });
+
+// TTL index for auto-cleanup of expired pairings
+devicePairingSchema.index({ expires_at: 1 }, { expireAfterSeconds: 0 });
 
 const emailVerificationSchema = new mongoose.Schema({
     verification_id: {

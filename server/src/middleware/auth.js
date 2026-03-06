@@ -12,7 +12,7 @@ const adminAuth = async (req, res, next) => {
         const { authorization } = req.headers;
 
         if (!authorization || !authorization.startsWith('Bearer ')) {
-            return res.status(401).json({ error: 'Admin token required' });
+            return res.status(401).json({ success: false, error: 'Admin token required' });
         }
 
         // Extract token from "Bearer <token>" format
@@ -21,18 +21,19 @@ const adminAuth = async (req, res, next) => {
         // Verify JWT token
         const decoded = verifyToken(token);
         if (!decoded || !decoded.isAdmin) {
-            return res.status(401).json({ error: 'Invalid admin token' });
+            return res.status(401).json({ success: false, error: 'Invalid admin token' });
         }
 
         // Verify admin still exists and is active
         const admin = await AdminUser.findById(decoded.adminId);
         if (!admin || !admin.active) {
-            return res.status(401).json({ error: 'Admin account not found or disabled' });
+            return res.status(401).json({ success: false, error: 'Admin account not found or disabled' });
         }
 
         // Check if admin account is locked
         if (admin.locked_until && admin.locked_until > new Date()) {
             return res.status(423).json({
+                success: false,
                 error: 'Admin account temporarily locked',
                 lockedUntil: admin.locked_until
             });
@@ -48,7 +49,7 @@ const adminAuth = async (req, res, next) => {
         next();
     } catch (error) {
         console.error('Admin auth error:', error);
-        res.status(500).json({ error: 'Authentication error' });
+        res.status(500).json({ success: false, error: 'Authentication error' });
     }
 };
 
@@ -70,7 +71,7 @@ const requireAuth = async (req, res, next) => {
         }
 
         if (!token) {
-            return res.status(401).json({ error: 'Authorization token required' });
+            return res.status(401).json({ success: false, error: 'Authorization token required' });
         }
         let user = null;
 
@@ -109,7 +110,7 @@ const requireAuth = async (req, res, next) => {
         }
 
         if (!user) {
-            return res.status(401).json({ error: 'Invalid or expired token' });
+            return res.status(401).json({ success: false, error: 'Invalid or expired token' });
         }
 
         // Attach user to request
@@ -119,7 +120,7 @@ const requireAuth = async (req, res, next) => {
         next();
     } catch (error) {
         console.error('Auth middleware error:', error);
-        res.status(500).json({ error: 'Internal server error' });
+        res.status(500).json({ success: false, error: 'Internal server error' });
     }
 };
 

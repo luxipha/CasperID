@@ -248,6 +248,7 @@ class WebAuthnService {
         try {
             let allowCredentials = [];
             let deviceTypeHint = 'desktop';
+            let passkeyTransports = [];
 
             // If user identifier provided (email), get their credentials (using normalized email query)
             if (userIdentifier) {
@@ -263,6 +264,9 @@ class WebAuthnService {
 
                     if (primaryPasskey) {
                         deviceTypeHint = primaryPasskey.device_type;
+                        // Store transports to help frontend decide on cross-device flow
+                        // 'hybrid' transport indicates passkey was registered via QR code scan
+                        passkeyTransports = primaryPasskey.transports || [];
                     }
 
                     // For email-based auth, DON'T send allowCredentials to avoid conditional UI
@@ -294,6 +298,7 @@ class WebAuthnService {
                 challengeId,
                 options,
                 deviceType: deviceTypeHint,
+                transports: passkeyTransports,
                 expiresIn: this.timeout,
             };
 

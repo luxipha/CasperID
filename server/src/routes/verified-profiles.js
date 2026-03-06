@@ -37,7 +37,7 @@ router.get('/verified-profiles', async (req, res) => {
 
     } catch (error) {
         console.error('Failed to fetch verified profiles:', error);
-        res.status(500).json({ error: 'Failed to fetch verified profiles' });
+        res.status(500).json({ success: false, error: 'Failed to fetch verified profiles' });
     }
 });
 

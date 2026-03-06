@@ -100,7 +100,7 @@ export interface AuthContextType {
   error: string | null;
 
   // Authentication methods
-  login: (email?: string, skipNativePrompt?: boolean) => Promise<{ success: boolean; deviceType?: string; user?: User }>;
+  login: (email?: string, skipNativePrompt?: boolean) => Promise<{ success: boolean; deviceType?: string; transports?: string[]; user?: User }>;
   logout: () => Promise<void>;
   register: (email: string, displayName: string) => Promise<void>;
 
@@ -325,7 +325,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   }, [refreshUser]);
 
-  const login = useCallback(async (email?: string, skipNativePrompt: boolean = false): Promise<{ success: boolean, deviceType?: string, user?: User }> => {
+  const login = useCallback(async (email?: string, skipNativePrompt: boolean = false): Promise<{ success: boolean, deviceType?: string, transports?: string[], user?: User }> => {
     try {
       setError(null);
 
@@ -336,10 +336,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       }
 
       const deviceType = (initResponse as any).deviceType;
+      const transports = (initResponse as any).transports || [];
 
       if (skipNativePrompt) {
         setIsLoading(false);
-        return { success: true, deviceType };
+        return { success: true, deviceType, transports };
       }
 
       const challengeId = (initResponse as any).challengeId;
@@ -500,7 +501,7 @@ export const useAuth = (): AuthContextType => {
       isLoading: false,
       isAuthenticated: false,
       error: null,
-      login: async () => ({ success: false, deviceType: undefined, user: undefined }),
+      login: async () => ({ success: false, deviceType: undefined, transports: undefined, user: undefined }),
       logout: async () => { },
       register: async () => { },
       updateProfile: async () => { },
