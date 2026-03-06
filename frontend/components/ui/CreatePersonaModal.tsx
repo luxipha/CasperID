@@ -36,7 +36,7 @@ const disclosureCategories = [
         id: 'personal',
         label: 'Personal Information',
         items: [
-            { key: 'fullName', label: 'Full Name', icon: 'person' },
+            { key: 'firstName', label: 'Full Name', icon: 'person' },
             { key: 'dateOfBirth', label: 'Date of Birth', icon: 'calendar_today' },
             { key: 'ageVerification', label: 'Age Verification', icon: 'verified_user' },
             { key: 'headline', label: 'Headline', icon: 'text_fields' },
@@ -93,9 +93,11 @@ export const CreatePersonaModal: React.FC<CreatePersonaModalProps> = ({
     const [selectedWallet, setSelectedWallet] = useState<string>('');
     const [isLoading, setIsLoading] = useState(false);
     const [createdDid, setCreatedDid] = useState('');
+    const [createdSubdomain, setCreatedSubdomain] = useState(''); // human-readable: gig.vawa-bitu-sabo
     const [selectedContext, setSelectedContext] = useState<string>('professional');
     const [disclosures, setDisclosures] = useState<Record<string, boolean>>({
-        fullName: true,
+        firstName: true,
+        lastName: true,
         dateOfBirth: false,
         ageVerification: true,
         email: true,
@@ -215,6 +217,10 @@ export const CreatePersonaModal: React.FC<CreatePersonaModalProps> = ({
                 // Safely extract DID, fallback to specific warning if missing
                 const did = response.context_did?.did || response.did || 'did:casper:unknown';
                 setCreatedDid(did);
+                // Use human-readable subdomain URL if the backend returned full_name
+                // full_name example: "gig.vawa-bitu-sabo.cid" → strip .cid → "gig.vawa-bitu-sabo"
+                const fullName = response.context_did?.full_name || '';
+                setCreatedSubdomain(fullName.replace(/\.cid$/, ''));
                 setStage('success');
                 setPersonaCreated(true); // Mark that persona was created, will trigger refresh on close
 
@@ -236,7 +242,8 @@ export const CreatePersonaModal: React.FC<CreatePersonaModalProps> = ({
     const isDataAvailable = (key: string): boolean => {
         if (!user) return false;
         switch (key) {
-            case 'fullName': return !!(user.first_name || user.last_name);
+            case 'firstName': return !!(user.first_name || user.last_name);
+            case 'lastName': return !!(user.first_name || user.last_name);
             case 'dateOfBirth': return !!user.date_of_birth;
             case 'ageVerification': return !!user.date_of_birth || user.tier !== 'layer_0';
             case 'email': return !!user.email;
@@ -590,12 +597,17 @@ export const CreatePersonaModal: React.FC<CreatePersonaModalProps> = ({
                                 <div className="flex items-center justify-between">
                                     <span className="text-[11px] font-black text-text-sub uppercase tracking-widest">DID Address</span>
                                     <div className="flex items-center gap-2 max-w-[170px]">
-                                        <span className="text-xs font-mono font-bold text-text-sub truncate">{createdDid}</span>
+                                        <span className="text-xs font-mono font-bold text-text-sub truncate">
+                                            {createdSubdomain || createdDid}
+                                        </span>
                                         <button
-                                            onClick={() => {
-                                                navigator.clipboard.writeText(createdDid);
-                                                // Could add a toast or momentary icon change here
-                                            }}
+                                            onClick={() =>
+                                                navigator.clipboard.writeText(
+                                                    createdSubdomain
+                                                        ? `${window.location.origin}/did/${createdSubdomain}`
+                                                        : `${window.location.origin}/did/${createdDid}`
+                                                )
+                                            }
                                             className="text-text-sub hover:text-primary transition-colors"
                                         >
                                             <span className="material-symbols-outlined text-lg">content_copy</span>
@@ -614,7 +626,7 @@ export const CreatePersonaModal: React.FC<CreatePersonaModalProps> = ({
 
                         <div className="p-8 bg-white border-t border-gray-50 flex flex-col gap-4">
                             <a
-                                href={`/${createdDid}`}
+                                href={`/did/${createdSubdomain || createdDid}`}
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 className="w-full h-14 bg-white text-text-main border-2 border-gray-100 rounded-[20px] font-black text-sm flex items-center justify-center gap-2 hover:bg-gray-50 transition-all"

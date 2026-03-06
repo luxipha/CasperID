@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const { encryptionPlugin } = require('../utils/field-encryption');
 
 // ============================================
 // VERIFICATION & CREDENTIALS (Existing)
@@ -48,7 +49,6 @@ const verificationRequestSchema = new mongoose.Schema({
     },
     ip: String,
     userAgent: String,
-    location: String,
     updated_at: {
         type: Date,
         default: Date.now
@@ -120,6 +120,14 @@ const credentialSchema = new mongoose.Schema({
     userAgent: String,
     location: String
 });
+
+// Apply field-level encryption for sensitive credential data
+credentialSchema.plugin(encryptionPlugin, {
+    encryptedFields: ['credential_json']
+});
+
+// Add compound index for common query patterns
+credentialSchema.index({ wallet: 1, revoked: 1 });
 
 const issuerSchema = new mongoose.Schema({
     public_key: {
@@ -296,6 +304,10 @@ const experienceSchema = new mongoose.Schema({
     created_at: { type: Date, default: Date.now }
 });
 
+// Compound index for efficient queries sorted by date
+experienceSchema.index({ wallet: 1, created_at: -1 });
+experienceSchema.index({ wallet: 1, 'start_date.year': -1, 'start_date.month': -1 });
+
 // ============================================
 // EDUCATION
 // ============================================
@@ -333,6 +345,10 @@ const educationSchema = new mongoose.Schema({
     created_at: { type: Date, default: Date.now }
 });
 
+// Compound index for efficient queries sorted by date
+educationSchema.index({ wallet: 1, created_at: -1 });
+educationSchema.index({ wallet: 1, 'start_date.year': -1, 'start_date.month': -1 });
+
 // ============================================
 // CERTIFICATIONS
 // ============================================
@@ -361,9 +377,12 @@ const certificationSchema = new mongoose.Schema({
     created_at: { type: Date, default: Date.now }
 });
 
+// Compound index for efficient queries sorted by date
+certificationSchema.index({ wallet: 1, created_at: -1 });
+
 // ============================================
 // SKILLS
-// ============================================d
+// ============================================
 
 const skillSchema = new mongoose.Schema({
     wallet: { type: String, required: true, index: true },
@@ -387,6 +406,9 @@ const skillSchema = new mongoose.Schema({
 
     created_at: { type: Date, default: Date.now }
 });
+
+// Compound index for efficient queries sorted by date
+skillSchema.index({ wallet: 1, created_at: -1 });
 
 // ============================================
 // PROJECTS
@@ -426,6 +448,9 @@ const projectSchema = new mongoose.Schema({
     created_at: { type: Date, default: Date.now }
 });
 
+// Compound index for efficient queries sorted by date
+projectSchema.index({ wallet: 1, created_at: -1 });
+
 // ============================================
 // AWARDS
 // ============================================
@@ -447,6 +472,9 @@ const awardSchema = new mongoose.Schema({
     created_at: { type: Date, default: Date.now }
 });
 
+// Compound index for efficient queries sorted by date
+awardSchema.index({ wallet: 1, created_at: -1 });
+
 // ============================================
 // LANGUAGES
 // ============================================
@@ -464,6 +492,9 @@ const languageSchema = new mongoose.Schema({
     display_order: { type: Number, default: 0 },
     created_at: { type: Date, default: Date.now }
 });
+
+// Compound index for efficient queries sorted by date
+languageSchema.index({ wallet: 1, created_at: -1 });
 
 // ============================================
 // VOLUNTEER EXPERIENCE
@@ -492,6 +523,9 @@ const volunteerSchema = new mongoose.Schema({
     display_order: { type: Number, default: 0 },
     created_at: { type: Date, default: Date.now }
 });
+
+// Compound index for efficient queries sorted by date
+volunteerSchema.index({ wallet: 1, created_at: -1 });
 
 // ============================================
 // SYSTEM SCHEMAS (Existing)
@@ -904,6 +938,9 @@ const devicePairingSchema = new mongoose.Schema({
     },
     completed_at: Date
 });
+
+// TTL index for auto-cleanup of expired pairings
+devicePairingSchema.index({ expires_at: 1 }, { expireAfterSeconds: 0 });
 
 const emailVerificationSchema = new mongoose.Schema({
     verification_id: {

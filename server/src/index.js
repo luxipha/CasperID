@@ -62,13 +62,23 @@ app.use(express.json({
         try {
             JSON.parse(buf);
         } catch (e) {
-            res.status(400).json({ error: 'Invalid JSON' });
+            res.status(400).json({ success: false, error: 'Invalid JSON' });
             return;
         }
     }
 }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 app.use(cookieParser());
+
+// CSRF Protection
+const { doubleCsrfProtection, csrfErrorHandler, getCsrfToken } = require('./middleware/csrf');
+
+// CSRF token endpoint - frontend should call this on initialization
+app.get('/api/csrf-token', getCsrfToken);
+
+// Apply CSRF protection to all state-changing requests (POST, PUT, DELETE, PATCH)
+// Skips GET, HEAD, OPTIONS automatically
+app.use(doubleCsrfProtection);
 
 // Serve static files from uploads directory
 const path = require('path');
@@ -183,6 +193,9 @@ app.use('/.well-known', require('./routes/well-known')); // JWKS + OpenID Connec
 app.use('/api/careers', require('./routes/careers')); // Career applications
 app.use('/api/affiliates', require('./routes/affiliates')); // Affiliate applications
 
+// CSRF error handler (must be before general error handler)
+app.use(csrfErrorHandler);
+
 // Error handling middleware
 app.use((err, req, res, next) => {
     console.error(err.stack);
@@ -194,7 +207,7 @@ app.use((err, req, res, next) => {
 
 // 404 handler
 app.use((req, res) => {
-    res.status(404).json({ error: 'Route not found' });
+    res.status(404).json({ success: false, error: 'Route not found' });
 });
 
 module.exports = app;

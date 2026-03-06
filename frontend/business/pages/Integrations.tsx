@@ -1,8 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Plus, RefreshCw, AlertCircle } from 'lucide-react';
-
-const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:8080';
+import { apiService } from '../../services/api';
 
 interface BusinessApp {
   app_id: string;
@@ -13,20 +12,6 @@ interface BusinessApp {
   created_at: string;
 }
 
-async function fetchWithAuth(path: string) {
-  const cookie = document.cookie;
-  const sessionToken = cookie.match(/casperid_session=([^;]+)/)?.[1]
-    || localStorage.getItem('casperid_token')
-    || '';
-
-  return fetch(`${API_BASE}${path}`, {
-    headers: {
-      'Content-Type': 'application/json',
-      ...(sessionToken ? { Authorization: `Bearer ${sessionToken}` } : {})
-    }
-  });
-}
-
 const Integrations: React.FC = () => {
   const navigate = useNavigate();
   const [apps, setApps] = useState<BusinessApp[]>([]);
@@ -35,11 +20,8 @@ const Integrations: React.FC = () => {
   useEffect(() => {
     const loadApps = async () => {
       try {
-        const res = await fetchWithAuth('/api/business/apps');
-        if (res.ok) {
-          const data = await res.json();
-          setApps(data.apps || []);
-        }
+        const data = await apiService.getBusinessApps();
+        setApps(data.apps || []);
       } catch (e) {
         console.error('Failed to load apps');
       } finally {

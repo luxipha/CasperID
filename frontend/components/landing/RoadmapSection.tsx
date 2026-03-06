@@ -82,7 +82,7 @@ const RoadmapSection: React.FC = () => {
   ];
 
   return (
-    <section className="py-12 md:py-24 lg:py-32 bg-white border-t border-slate-200 overflow-hidden relative">
+    <section className="py-12 md:py-24 lg:py-32 overflow-hidden relative">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex flex-col md:flex-row md:items-end justify-between mb-12 md:mb-20 gap-6 md:gap-8">
           <div className="max-w-2xl">

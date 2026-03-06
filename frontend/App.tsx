@@ -64,6 +64,12 @@ const PublicProfileContainerWrapper: React.FC = () => {
   return slug ? <PublicProfileContainer walletOrUsername={slug} /> : null;
 };
 
+// Handles /did/:didSlug routes (e.g. /did/did:casper:context:gig:abc123)
+const DIDProfileWrapper: React.FC = () => {
+  const { '*': didSlug } = useParams<{ '*': string }>();
+  return didSlug ? <PublicProfileContainer walletOrUsername={didSlug} /> : null;
+};
+
 const PRouteRedirect: React.FC = () => {
   const { slug } = useParams<{ slug: string }>();
   return <Navigate to={`/profile/${slug}`} replace />;
@@ -77,9 +83,9 @@ const App: React.FC = () => {
   */
   // Check if a path is a reserved system path and should NOT be treated as a public profile
   const isReservedPath = (path: string) => {
-    const sysPaths = ['/', '/admin', '/pair', '/dashboard', '/login', '/auth', '/settings', '/integrations', '/verify', '/mobile', '/null', '/business', '/anra', '/adevaros', '/casperos', '/careers', '/apply-success', '/affiliate', '/profile', '/p'];
+    const sysPaths = ['/', '/admin', '/pair', '/dashboard', '/login', '/auth', '/settings', '/integrations', '/verify', '/mobile', '/null', '/business', '/anra', '/adevaros', '/casperos', '/careers', '/apply-success', '/affiliate', '/profile', '/p', '/did'];
     const p = path.toLowerCase();
-    return sysPaths.includes(p) || p.startsWith('/verify/') || p.startsWith('/mobile/') || p.startsWith('/business/') || p.startsWith('/careers/') || p.startsWith('/profile/') || p.startsWith('/p/') || p === '/null';
+    return sysPaths.includes(p) || p.startsWith('/verify/') || p.startsWith('/mobile/') || p.startsWith('/business/') || p.startsWith('/careers/') || p.startsWith('/profile/') || p.startsWith('/p/') || p.startsWith('/did/') || p === '/null';
   };
 
   const location = useLocation();
@@ -87,12 +93,15 @@ const App: React.FC = () => {
 
   const getInitialView = () => {
     const path = location.pathname;
+    const searchParams = new URLSearchParams(location.search);
+    const viewParam = searchParams.get('view');
 
     // Check for explicit system routes
     if (path === '/') return 'landing';
     if (path === '/anra' || path === '/adevaros' || path === '/casperos') return 'landing';
     if (path === '/admin') return 'admin';
-    if (path === '/pair' || path === '/dashboard') return 'dashboard-home';
+    if (path === '/pair' || (path === '/dashboard' && !viewParam)) return 'dashboard-home';
+    if (path === '/dashboard' && viewParam) return viewParam;
     if (path === '/careers' || path.startsWith('/careers/')) return 'careers';
     if (path === '/apply-success') return 'apply-success';
     if (path === '/affiliate') return 'affiliate';
@@ -200,7 +209,9 @@ const App: React.FC = () => {
     if (initialView === 'dashboard-home') {
       // If on dashboard path, we let the auth effect handle it or default to overview
       if (isAuthenticated && user) {
-        setCurrentView('overview');
+        const searchParams = new URLSearchParams(location.search);
+        const viewParam = searchParams.get('view');
+        setCurrentView(viewParam || 'overview');
       } else {
         setCurrentView('auth-entry');
       }
@@ -253,10 +264,14 @@ const App: React.FC = () => {
         const isAuthView = ['auth-entry', 'otp-verify', 'onboarding-start', 'pairing', 'loading', 'handoff'].includes(currentView);
 
         if (isAuthView) {
-          if (user.wallet && user.human_id) {
-            setCurrentView('overview');
-          } else if (user.wallet) {
-            setCurrentView('overview');
+          if (user.wallet) {
+            if (location.pathname === '/dashboard') {
+              const searchParams = new URLSearchParams(location.search);
+              const viewParam = searchParams.get('view');
+              setCurrentView(viewParam || 'overview');
+            } else {
+              setCurrentView('overview');
+            }
           } else {
             setCurrentView('onboarding-progress');
           }
@@ -270,6 +285,25 @@ const App: React.FC = () => {
       }
     }
   }, [isLoading, isAuthenticated, user, currentView]);
+
+  // Sync currentView to URL query params for dashboard persistence
+  useEffect(() => {
+    if (isLoading || !isAuthenticated || currentView === 'loading') return;
+
+    const dashboardViews = [
+      'overview', 'credentials', 'did-management', 'names',
+      'kyc', 'integrations', 'data', 'activity',
+      'settings', 'profile', 'names', 'did-export',
+      'did-import', 'master-identity-settings'
+    ];
+
+    if (dashboardViews.includes(currentView) && location.pathname === '/dashboard') {
+      const searchParams = new URLSearchParams(location.search);
+      if (searchParams.get('view') !== currentView) {
+        navigate(`/dashboard?view=${currentView}`, { replace: true });
+      }
+    }
+  }, [currentView, location.pathname, location.search, navigate, isLoading, isAuthenticated]);
 
   useEffect(() => {
     const handleOpenKYC = () => {
@@ -614,6 +648,7 @@ const App: React.FC = () => {
         <Route path="/apply-success" element={<ApplySuccessPage onReturnToCareers={() => navigate('/careers')} />} />
         <Route path="/affiliate" element={<AffiliatePage />} />
         <Route path="/profile/:slug" element={<PublicProfileContainerWrapper />} />
+        <Route path="/did/*" element={<DIDProfileWrapper />} />
         <Route path="/p/:slug" element={<PRouteRedirect />} />
 
         {/* Dashboard Route - must be before /:slug catch-all */}

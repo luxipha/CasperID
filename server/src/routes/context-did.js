@@ -16,21 +16,21 @@ const validateSession = async (req, res, next) => {
             req.headers.authorization?.replace('Bearer ', '');
 
         if (!sessionToken) {
-            return res.status(401).json({ error: 'Authentication required' });
+            return res.status(401).json({ success: false, error: 'Authentication required' });
         }
 
         const webauthnService = require('../services/webauthn');
         const sessionData = await webauthnService.validateSession(sessionToken);
 
         if (!sessionData) {
-            return res.status(401).json({ error: 'Invalid session' });
+            return res.status(401).json({ success: false, error: 'Invalid session' });
         }
 
         req.userAccount = sessionData.userAccount;
         next();
     } catch (error) {
         console.error('Session validation error:', error);
-        res.status(500).json({ error: 'Internal server error' });
+        res.status(500).json({ success: false, error: 'Internal server error' });
     }
 };
 
@@ -45,11 +45,11 @@ router.post('/create', validateSession, async (req, res) => {
         const { userAccount } = req;
 
         if (!context) {
-            return res.status(400).json({ error: 'Context type is required' });
+            return res.status(400).json({ success: false, error: 'Context type is required' });
         }
 
         if (!alias) {
-            return res.status(400).json({ error: 'Alias (handle) is required' });
+            return res.status(400).json({ success: false, error: 'Alias (handle) is required' });
         }
 
         // TIER-BASED PERSONA LIMITS
@@ -86,7 +86,7 @@ router.post('/create', validateSession, async (req, res) => {
         // Check if alias already exists for this user
         const existingAlias = userAccount.context_dids?.find(c => c.alias === alias);
         if (existingAlias) {
-            return res.status(400).json({ error: `Persona with alias '${alias}' already exists` });
+            return res.status(400).json({ success: false, error: `Persona with alias '${alias}' already exists` });
         }
 
         // Generate Context DID
@@ -155,7 +155,7 @@ router.post('/create', validateSession, async (req, res) => {
 
     } catch (error) {
         console.error('Create Context DID error:', error);
-        res.status(500).json({ error: error.message });
+        res.status(500).json({ success: false, error: error.message });
     }
 });
 
@@ -165,17 +165,20 @@ router.post('/create', validateSession, async (req, res) => {
  */
 router.get('/list', validateSession, async (req, res) => {
     try {
-        const user = await UserAccount.findOne({ user_id: req.userAccount.user_id });
+        // Only select the fields we need for better performance
+        const user = await UserAccount.findOne({ user_id: req.userAccount.user_id })
+            .select('did_address context_dids')
+            .lean();
 
         res.json({
             success: true,
-            master_did: user.did_address,
-            context_dids: user.context_dids || []
+            master_did: user?.did_address,
+            context_dids: user?.context_dids || []
         });
 
     } catch (error) {
         console.error('List Context DIDs error:', error);
-        res.status(500).json({ error: error.message });
+        res.status(500).json({ success: false, error: error.message });
     }
 });
 
@@ -205,7 +208,7 @@ router.delete('/:did', validateSession, async (req, res) => {
 
     } catch (error) {
         console.error('Revoke Context DID error:', error);
-        res.status(500).json({ error: error.message });
+        res.status(500).json({ success: false, error: error.message });
     }
 });
 

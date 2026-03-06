@@ -1,9 +1,20 @@
 import React, { ReactNode } from 'react';
-import { createWeb3Modal } from '@web3modal/wagmi/react';
+import { createWeb3Modal, type CreateWeb3ModalParameters } from '@web3modal/wagmi/react';
 import { defaultWagmiConfig } from '@web3modal/wagmi/react/config';
 import { WagmiProvider } from 'wagmi';
 import { mainnet, polygon, arbitrum, bsc, sepolia } from 'wagmi/chains';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+
+// Extend Web3Modal config type to include features property (available at runtime but not in types)
+type Web3ModalConfig = CreateWeb3ModalParameters & {
+    features?: {
+        email?: boolean;
+        socials?: boolean;
+        onramp?: boolean;
+        swaps?: boolean;
+        history?: boolean;
+    };
+};
 
 // WalletConnect Cloud Project ID - Get yours at https://cloud.walletconnect.com
 // For development, you can use a placeholder or set in .env
@@ -49,7 +60,7 @@ export function WalletConnectProvider({ children }: WalletConnectProviderProps) 
     React.useEffect(() => {
         if (!isInitialized && typeof window !== 'undefined') {
             // Initialize Web3Modal only when the provider is mounted
-            createWeb3Modal({
+            const modalConfig: Web3ModalConfig = {
                 wagmiConfig,
                 projectId,
                 enableAnalytics: false,
@@ -60,7 +71,6 @@ export function WalletConnectProvider({ children }: WalletConnectProviderProps) 
                     '--w3m-border-radius-master': '16px',
                 },
                 // Customize to show only wallets
-                // @ts-ignore
                 features: {
                     email: false,
                     socials: false,
@@ -68,7 +78,8 @@ export function WalletConnectProvider({ children }: WalletConnectProviderProps) 
                     swaps: false,
                     history: false,
                 }
-            });
+            };
+            createWeb3Modal(modalConfig as CreateWeb3ModalParameters);
             isInitialized = true;
         }
     }, []);

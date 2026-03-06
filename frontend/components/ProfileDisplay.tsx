@@ -47,7 +47,7 @@ export default function ProfileDisplay({ data, isPublicView = true }: ProfileDis
                     )}
                 </div>
 
-                <div className="px-8 pb-10 -mt-16 relative z-10 flex flex-col md:flex-row items-start gap-6 md:gap-10">
+                <div className="px-8 pb-10 -mt-16 relative z-10 flex flex-col md:flex-row items-center md:items-start gap-6 md:gap-10">
                     {/* Profile Image */}
                     <div className="size-32 md:size-44 rounded-[32px] p-1 bg-white shadow-xl relative group">
                         <div className="w-full h-full rounded-[28px] overflow-hidden bg-gray-50 flex items-center justify-center border border-gray-100">
@@ -68,7 +68,7 @@ export default function ProfileDisplay({ data, isPublicView = true }: ProfileDis
                     </div>
 
                     {/* Basic Info */}
-                    <div className="flex-1 space-y-3 pt-20 pb-2 text-center md:text-left w-full">
+                    <div className="flex-1 space-y-3 pt-12 md:pt-20 pb-2 text-center md:text-left w-full">
                         <div className="space-y-1">
                             <h1 className="text-3xl md:text-5xl font-black text-text-main tracking-tight">{fullName}</h1>
                             {profile.headline && (
@@ -96,7 +96,9 @@ export default function ProfileDisplay({ data, isPublicView = true }: ProfileDis
                             )}
                             <span className="flex items-center gap-1.5">
                                 <span className="material-symbols-outlined text-[18px] text-[#6DE8EC]">bolt</span>
-                                {profile.human_id || (profile.wallet ? `${profile.wallet.slice(0, 6)}...${profile.wallet.slice(-4)}` : 'did:casper:pending')}
+                                {(profile as any).alias
+                                    ? `${(profile as any).alias} persona`
+                                    : profile.human_id || (profile.wallet ? `${profile.wallet.slice(0, 6)}...${profile.wallet.slice(-4)}` : '')}
                             </span>
                             {profile.email && !isPublicView && (
                                 <span className="flex items-center gap-1.5">
@@ -108,7 +110,7 @@ export default function ProfileDisplay({ data, isPublicView = true }: ProfileDis
                     </div>
 
                     {/* Social/Action Section */}
-                    <div className="flex flex-wrap items-center justify-center gap-3 pb-2">
+                    <div className="flex flex-wrap items-center justify-center md:justify-end gap-3 pb-2 w-full md:w-auto">
                         {profile.socials?.linkedin && (
                             <a href={profile.socials.linkedin} target="_blank" rel="noopener" className="size-11 rounded-2xl bg-gray-50 flex items-center justify-center text-text-sub hover:text-[#8652E2] hover:bg-[#8652E2]/5 transition-all border border-gray-100" title="LinkedIn">
                                 <span className="material-symbols-outlined">link</span>

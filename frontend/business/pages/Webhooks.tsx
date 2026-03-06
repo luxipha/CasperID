@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { RefreshCw, Activity, Check, AlertTriangle, Play, ChevronDown, Trash2 } from 'lucide-react';
-
-const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:8080';
+import { apiService } from '../../services/api';
 
 interface BusinessApp {
   app_id: string;
@@ -17,23 +16,6 @@ interface WebhookSubscription {
   active: boolean;
   created_at: string;
   signing_secret?: string; // Only on creation
-}
-
-async function fetchWithAuth(path: string, opts: RequestInit = {}) {
-  const cookie = document.cookie;
-  const sessionToken = cookie.match(/casperid_session=([^;]+)/)?.[1]
-    || localStorage.getItem('casperid_token')
-    || '';
-
-  return fetch(`${API_BASE}${path}`, {
-    ...opts,
-    credentials: 'include',
-    headers: {
-      'Content-Type': 'application/json',
-      ...(sessionToken ? { Authorization: `Bearer ${sessionToken}` } : {}),
-      ...opts.headers
-    }
-  });
 }
 
 const Webhooks: React.FC = () => {
@@ -63,13 +45,10 @@ const Webhooks: React.FC = () => {
 
   const loadApps = useCallback(async () => {
     try {
-      const res = await fetchWithAuth('/api/business/apps');
-      if (res.ok) {
-        const data = await res.json();
-        setApps(data.apps || []);
-        if (data.apps?.length > 0 && !selectedApp) {
-          setSelectedApp(data.apps[0]);
-        }
+      const data = await apiService.getBusinessApps();
+      setApps(data.apps || []);
+      if (data.apps?.length > 0 && !selectedApp) {
+        setSelectedApp(data.apps[0]);
       }
     } catch (e) {
       console.error('Failed to load apps');
@@ -81,11 +60,8 @@ const Webhooks: React.FC = () => {
   const loadWebhooks = useCallback(async () => {
     if (!selectedApp) return;
     try {
-      const res = await fetchWithAuth(`/api/business/webhooks?app_id=${selectedApp.app_id}`);
-      if (res.ok) {
-        const data = await res.json();
-        setWebhooks(data.webhooks || []);
-      }
+      const data = await apiService.getBusinessWebhooks(selectedApp.app_id);
+      setWebhooks(data.webhooks || []);
     } catch (e) {
       console.error('Failed to load webhooks');
     }
@@ -107,15 +83,11 @@ const Webhooks: React.FC = () => {
     if (!selectedApp || !newUrl) return;
     setIsCreating(true);
     try {
-      const res = await fetchWithAuth('/api/business/webhooks', {
-        method: 'POST',
-        body: JSON.stringify({
-          app_id: selectedApp.app_id,
-          url: newUrl,
-          events: selectedEvents
-        })
+      const data = await apiService.createBusinessWebhook({
+        app_id: selectedApp.app_id,
+        url: newUrl,
+        events: selectedEvents
       });
-      const data = await res.json();
       if (!data.success) throw new Error(data.error);
 
       setNewSecret(data.webhook.signing_secret);
@@ -133,13 +105,9 @@ const Webhooks: React.FC = () => {
   const handleDelete = async (id: string) => {
     if (!confirm('Are you sure you want to delete this webhook?')) return;
     try {
-      const res = await fetchWithAuth(`/api/business/webhooks/${id}`, { method: 'DELETE' });
-      if (res.ok) {
-        setWebhooks(prev => prev.filter(w => w._id !== id));
-        showToast('Webhook deleted');
-      } else {
-        throw new Error('Failed');
-      }
+      await apiService.deleteBusinessWebhook(id);
+      setWebhooks(prev => prev.filter(w => w._id !== id));
+      showToast('Webhook deleted');
     } catch (e) {
       showToast('Failed to delete webhook', 'error');
     }
@@ -149,8 +117,7 @@ const Webhooks: React.FC = () => {
     setTestingId(id);
     setTestResult(null);
     try {
-      const res = await fetchWithAuth(`/api/business/webhooks/${id}/test`, { method: 'POST' });
-      const data = await res.json();
+      const data = await apiService.testBusinessWebhook(id);
       setTestResult(data);
       if (data.success) showToast('Test event sent!', 'success');
       else showToast('Test failed', 'error');

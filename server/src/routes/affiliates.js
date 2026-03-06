@@ -7,7 +7,7 @@ router.post('/apply', async (req, res) => {
         const { applicantName, applicantEmail, applicantId, location } = req.body;
 
         if (!applicantEmail || !applicantName) {
-            return res.status(400).json({ error: 'Missing required fields' });
+            return res.status(400).json({ success: false, error: 'Missing required fields' });
         }
 
         await emailService.sendAffiliateApplication({
@@ -20,7 +20,7 @@ router.post('/apply', async (req, res) => {
         res.status(200).json({ success: true, message: 'Application submitted successfully' });
     } catch (error) {
         console.error('Error submitting affiliate application:', error);
-        res.status(500).json({ error: 'Failed to submit application' });
+        res.status(500).json({ success: false, error: 'Failed to submit application' });
     }
 });
 

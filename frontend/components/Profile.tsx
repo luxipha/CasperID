@@ -368,12 +368,20 @@ export const Profile: React.FC = () => {
     return `${days}d ago`;
   };
 
+  // Helper function to safely format date objects
+  const formatDate = (date: { month?: number | string; year?: number | string } | null | undefined): string => {
+    if (!date) return '-';
+    const { month, year } = date;
+    if (!month && !year) return '-';
+    if (!month) return year?.toString() || '-';
+    if (!year) return month?.toString() || '-';
+    return `${month}/${year}`;
+  };
 
 
-  // Load all data on component mount
-  useEffect(() => {
-    refreshAllData();
-  }, []);
+
+  // Note: refreshAllData() is already called in loadProfile's finally block above
+  // Removed duplicate useEffect that was causing double data fetches
 
 
 
@@ -415,13 +423,18 @@ export const Profile: React.FC = () => {
     }, 400); // Match animation duration
   };
 
-  const renderSectionHeader = (title: string, icon: string) => (
+  const renderSectionHeader = (title: string, icon: string, onSave?: () => void) => (
     <div className="px-8 py-5 border-b border-gray-50 flex items-center justify-between bg-gray-50/10">
       <h3 className="text-sm font-black text-text-main uppercase tracking-widest flex items-center gap-2">
         <span className="material-symbols-outlined text-primary text-[20px]">{icon}</span>
         {title}
       </h3>
-      <button className="text-primary font-bold text-sm hover:underline">Save</button>
+      <button
+        onClick={onSave}
+        className={`text-primary font-bold text-sm hover:underline ${!onSave ? 'opacity-0 pointer-events-none' : ''}`}
+      >
+        Save
+      </button>
     </div>
   );
 
@@ -803,7 +816,7 @@ export const Profile: React.FC = () => {
 
             {/* Identity Details Form */}
             <div className="bg-white rounded-[32px] border border-gray-100 shadow-soft overflow-hidden">
-              {renderSectionHeader('Identity Details', 'badge')}
+              {renderSectionHeader('Identity Details', 'badge', handleSaveProfile)}
               <div className="p-8 space-y-6">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div className="space-y-2">
@@ -851,7 +864,7 @@ export const Profile: React.FC = () => {
 
             {/* About Section */}
             <div className="bg-white rounded-[32px] border border-gray-100 shadow-soft overflow-hidden">
-              {renderSectionHeader('About', 'person_book')}
+              {renderSectionHeader('About', 'person_book', handleSaveProfile)}
               <div className="p-8">
                 <div className="space-y-2">
                   <label className="text-xs font-bold text-text-main">Tell your story <span className="text-text-sub font-medium">(2,600 characters max)</span></label>
@@ -870,7 +883,7 @@ export const Profile: React.FC = () => {
 
             {/* Location & Contact */}
             <div className="bg-white rounded-[32px] border border-gray-100 shadow-soft overflow-hidden">
-              {renderSectionHeader('Location & Contact', 'location_on')}
+              {renderSectionHeader('Location & Contact', 'location_on', handleSaveProfile)}
               <div className="p-8 space-y-6">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div className="space-y-2">
@@ -1044,12 +1057,12 @@ export const Profile: React.FC = () => {
                         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                           <div className="space-y-1">
                             <label className="text-xs font-bold text-text-sub uppercase tracking-wider">Start Date</label>
-                            <div className="text-sm font-semibold text-text-main">{exp.start_date.month}/{exp.start_date.year}</div>
+                            <div className="text-sm font-semibold text-text-main">{formatDate(exp.start_date)}</div>
                           </div>
                           <div className="space-y-1">
                             <label className="text-xs font-bold text-text-sub uppercase tracking-wider">End Date</label>
                             <div className="text-sm font-semibold text-text-main">
-                              {exp.end_date?.is_current ? 'Present' : (exp.end_date ? `${exp.end_date.month}/${exp.end_date.year}` : '-')}
+                              {exp.end_date?.is_current ? 'Present' : formatDate(exp.end_date)}
                             </div>
                           </div>
                         </div>
@@ -1360,7 +1373,7 @@ export const Profile: React.FC = () => {
       case 'Projects':
         return (
           <div className="bg-white rounded-[32px] border border-gray-100 shadow-soft overflow-hidden">
-            {renderSectionHeader('Projects', 'rocket_launch')}
+            {renderSectionHeader('Projects', 'rocket_launch', handleSaveProfile)}
             <div className="p-8 space-y-6">
               {isLoading ? (
                 <div className="text-center text-text-sub">Loading projects...</div>
@@ -1695,7 +1708,7 @@ export const Profile: React.FC = () => {
         type="file"
         ref={resumeInputRef}
         className="hidden"
-        accept=".pdf,.doc,.docx,image/*"
+        accept="application/pdf"
         onChange={handleResumeUpload}
       />
       <div className="space-y-8 animate-in fade-in duration-500 pb-32">

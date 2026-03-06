@@ -1,5 +1,6 @@
 const express = require('express');
 const router = express.Router();
+const cnsResolver = require('../services/cns-resolver');
 const {
     UserProfile,
     Experience,
@@ -63,7 +64,7 @@ router.delete('/profile/:wallet/batch-clear/:category', async (req, res) => {
 
         const Model = models[category.toLowerCase()];
         if (!Model) {
-            return res.status(400).json({ error: 'Invalid category' });
+            return res.status(400).json({ success: false, error: 'Invalid category' });
         }
 
         const deleteResult = await Model.deleteMany({ wallet });
@@ -78,7 +79,7 @@ router.delete('/profile/:wallet/batch-clear/:category', async (req, res) => {
         });
     } catch (error) {
         console.error('Clear category error:', error);
-        res.status(500).json({ error: error.message || 'Failed to clear category' });
+        res.status(500).json({ success: false, error: error.message || 'Failed to clear category' });
     }
 });
 
@@ -144,17 +145,18 @@ router.get('/user/profile', requireAuth, async (req, res) => {
         });
 
         // Check for existence of data in other categories for disclosure validation
+        // Using findOne with select is more efficient than countDocuments for existence checks
         const [
-            expCount, eduCount, certCount, skillCount, projCount, awardCount, langCount, volCount
+            hasExp, hasEdu, hasCert, hasSkill, hasProj, hasAward, hasLang, hasVol
         ] = await Promise.all([
-            Experience.countDocuments({ wallet }),
-            Education.countDocuments({ wallet }),
-            Certification.countDocuments({ wallet }),
-            Skill.countDocuments({ wallet }),
-            Project.countDocuments({ wallet }),
-            Award.countDocuments({ wallet }),
-            Language.countDocuments({ wallet }),
-            Volunteer.countDocuments({ wallet })
+            Experience.findOne({ wallet }).select('_id').lean(),
+            Education.findOne({ wallet }).select('_id').lean(),
+            Certification.findOne({ wallet }).select('_id').lean(),
+            Skill.findOne({ wallet }).select('_id').lean(),
+            Project.findOne({ wallet }).select('_id').lean(),
+            Award.findOne({ wallet }).select('_id').lean(),
+            Language.findOne({ wallet }).select('_id').lean(),
+            Volunteer.findOne({ wallet }).select('_id').lean()
         ]);
 
         // Merge account-level data with profile
@@ -169,21 +171,21 @@ router.get('/user/profile', requireAuth, async (req, res) => {
             cns_routing: userAccount?.cns_routing || [],
             linked_wallets: userAccount?.linked_wallets || [],
             data_availability: {
-                experience: expCount > 0,
-                education: eduCount > 0,
-                certifications: certCount > 0,
-                skills: skillCount > 0,
-                projects: projCount > 0,
-                awards: awardCount > 0,
-                languages: langCount > 0,
-                volunteer: volCount > 0
+                experience: !!hasExp,
+                education: !!hasEdu,
+                certifications: !!hasCert,
+                skills: !!hasSkill,
+                projects: !!hasProj,
+                awards: !!hasAward,
+                languages: !!hasLang,
+                volunteer: !!hasVol
             }
         };
 
         res.json(enrichedProfile);
     } catch (error) {
         console.error('Get user profile error:', error);
-        res.status(500).json({ error: error.message || 'Failed to fetch user profile' });
+        res.status(500).json({ success: false, error: error.message || 'Failed to fetch user profile' });
     }
 });
 
@@ -229,7 +231,7 @@ router.put('/user/profile', requireAuth, async (req, res) => {
         res.json(profile);
     } catch (error) {
         console.error('Update user profile error:', error);
-        res.status(500).json({ error: error.message || 'Failed to update user profile' });
+        res.status(500).json({ success: false, error: error.message || 'Failed to update user profile' });
     }
 });
 
@@ -248,9 +250,184 @@ router.get('/public-profile/:identifier', async (req, res) => {
         console.log(`GET /public-profile/${identifier}`);
 
         const trimmedIdentifier = identifier.trim();
+
+        // ─── Context DID Resolution ───────────────────────────────────────
+        // Handles did:casper:context:... identifiers which belong to personas.
+        if (trimmedIdentifier.startsWith('did:casper:context:')) {
+            const { UserAccount } = require('../database/models');
+            const ownerAccount = await UserAccount.findOne({
+                'context_dids.did': trimmedIdentifier
+            });
+
+            if (!ownerAccount) {
+                return res.status(404).json({ success: false, error: 'Profile not found', message: 'No profile found for this persona.' });
+            }
+
+            const contextDid = ownerAccount.context_dids.find(c => c.did === trimmedIdentifier);
+            if (!contextDid) {
+                return res.status(404).json({ success: false, error: 'Profile not found' });
+            }
+
+            // Wallet-routing personas are payment pointers, not profile pages
+            if (contextDid.routing_type === 'wallet') {
+                return res.status(200).json({
+                    is_wallet_routing: true,
+                    target_wallet: contextDid.target_wallet,
+                    alias: contextDid.alias,
+                    context: contextDid.context
+                });
+            }
+
+            const disclosures = contextDid.disclosures || {};
+            const wallet = ownerAccount.wallet;
+
+            const fullProfile = await UserProfile.findOne({ wallet });
+            if (!fullProfile) {
+                return res.status(404).json({ success: false, error: 'Profile not found' });
+            }
+
+            // Build filtered profile — only include what the user consented to share
+            const contextProfile = {
+                did: contextDid.did,
+                alias: contextDid.alias,
+                context: contextDid.context,
+                is_context_profile: true,
+                tier: ownerAccount.tier,
+                profile_image_url: fullProfile.profile_image_url,
+                first_name: disclosures.firstName ? fullProfile.first_name : undefined,
+                last_name: disclosures.lastName ? fullProfile.last_name : undefined,
+                date_of_birth: disclosures.dateOfBirth ? fullProfile.date_of_birth : undefined,
+                email: disclosures.email ? fullProfile.email : undefined,
+                phone_number: disclosures.phone ? fullProfile.phone_number : undefined,
+                headline: disclosures.headline ? fullProfile.headline : undefined,
+                about: disclosures.about ? fullProfile.about : undefined,
+                city: disclosures.location ? fullProfile.city : undefined,
+                country: disclosures.location ? fullProfile.country : undefined,
+                socials: disclosures.socials ? fullProfile.socials : undefined,
+            };
+
+            // Conditionally fetch section data based on disclosures
+            const fetchTasks = [];
+            if (disclosures.experience) fetchTasks.push(Experience.find({ wallet }).sort({ 'start_date.year': -1 }).lean().then(r => { contextProfile.experiences = r; }));
+            if (disclosures.education) fetchTasks.push(Education.find({ wallet }).sort({ 'start_date.year': -1 }).lean().then(r => { contextProfile.education = r; }));
+            if (disclosures.certifications) fetchTasks.push(Certification.find({ wallet }).sort({ created_at: -1 }).lean().then(r => { contextProfile.certifications = r; }));
+            if (disclosures.skills) fetchTasks.push(Skill.find({ wallet }).sort({ is_top_skill: -1 }).lean().then(r => { contextProfile.skills = r; }));
+            if (disclosures.projects) fetchTasks.push(Project.find({ wallet }).sort({ created_at: -1 }).lean().then(r => { contextProfile.projects = r; }));
+            if (disclosures.awards) fetchTasks.push(Award.find({ wallet }).sort({ created_at: -1 }).lean().then(r => { contextProfile.awards = r; }));
+            if (disclosures.languages) fetchTasks.push(Language.find({ wallet }).lean().then(r => { contextProfile.languages = r; }));
+            if (disclosures.volunteer) fetchTasks.push(Volunteer.find({ wallet }).lean().then(r => { contextProfile.volunteers = r; }));
+            await Promise.all(fetchTasks);
+
+            return res.json(contextProfile);
+        }
+
+        // ─── Standard Master Profile Resolution ───────────────────────────
         let profile;
 
-        // Find by wallet OR human_id (since identifier can be either)
+        // ─── Subdomain-style Persona Resolution ──────────────────────────
+        // Handles identifiers like "gig.vawa-bitu-sabo" or "gig.vawa-bitu-sabo.cid"
+        // These are human-readable persona URLs that resolve via the CNS system.
+        const isLikelySubdomain = trimmedIdentifier.includes('.') &&
+            !trimmedIdentifier.startsWith('did:') &&
+            !trimmedIdentifier.startsWith('account-hash-');
+
+        if (isLikelySubdomain) {
+            const nameToResolve = trimmedIdentifier.endsWith('.cid')
+                ? trimmedIdentifier
+                : `${trimmedIdentifier}.cid`;
+
+            const resolved = await cnsResolver.resolve(nameToResolve);
+
+            if (!resolved) {
+                return res.status(404).json({
+                    error: 'Profile not found',
+                    message: `No profile found for: ${identifier}`
+                });
+            }
+
+            // Wallet-only routing personas
+            if (resolved.contextType === 'wallet_only') {
+                return res.status(200).json({
+                    is_wallet_routing: true,
+                    target_wallet: resolved.profileData?.wallet,
+                    alias: trimmedIdentifier,
+                    context: resolved.contextType
+                });
+            }
+
+            // Redirect responses (e.g. explicit cns routing rules)
+            if (resolved.redirect) {
+                return res.redirect(resolved.redirect);
+            }
+
+            // For context profiles, apply the persona's actual disclosures
+            // (CNS resolver uses hardcoded context-type filtering — we override that here)
+            const ownerWallet = resolved.profileData?.wallet || resolved.wallet;
+            if (resolved.contextType && resolved.contextType !== 'master' && ownerWallet) {
+                const { UserAccount } = require('../database/models');
+                const ownerAccount = await UserAccount.findOne({ wallet: ownerWallet });
+
+                if (ownerAccount) {
+                    // Find the context DID matching the subdomain alias
+                    const contextAlias = trimmedIdentifier.split('.')[0]; // 'game' from 'game.bika'
+                    const contextDid = ownerAccount.context_dids?.find(c =>
+                        c.alias === contextAlias || c.context === contextAlias
+                    );
+
+                    if (contextDid && contextDid.routing_type !== 'wallet') {
+                        const disclosures = contextDid.disclosures || {};
+                        const wallet = ownerAccount.wallet;
+
+                        const fullProfile = await UserProfile.findOne({ wallet });
+                        if (!fullProfile) {
+                            return res.status(404).json({ success: false, error: 'Profile not found' });
+                        }
+
+                        // Build filtered profile from actual disclosures
+                        const contextProfile = {
+                            did: contextDid.did,
+                            alias: contextDid.alias,
+                            context: contextDid.context,
+                            is_context_profile: true,
+                            tier: ownerAccount.tier,
+                            profile_image_url: fullProfile.profile_image_url,
+                            first_name: disclosures.firstName ? fullProfile.first_name : undefined,
+                            last_name: disclosures.lastName ? fullProfile.last_name : undefined,
+                            date_of_birth: disclosures.dateOfBirth ? fullProfile.date_of_birth : undefined,
+                            email: disclosures.email ? fullProfile.email : undefined,
+                            phone_number: disclosures.phone ? fullProfile.phone_number : undefined,
+                            headline: disclosures.headline ? fullProfile.headline : undefined,
+                            about: disclosures.about ? fullProfile.about : undefined,
+                            city: disclosures.location ? fullProfile.city : undefined,
+                            country: disclosures.location ? fullProfile.country : undefined,
+                            socials: disclosures.socials ? fullProfile.socials : undefined,
+                        };
+
+                        const fetchTasks = [];
+                        if (disclosures.experience) fetchTasks.push(Experience.find({ wallet }).sort({ 'start_date.year': -1 }).lean().then(r => { contextProfile.experiences = r; }));
+                        if (disclosures.education) fetchTasks.push(Education.find({ wallet }).sort({ 'start_date.year': -1 }).lean().then(r => { contextProfile.education = r; }));
+                        if (disclosures.certifications) fetchTasks.push(Certification.find({ wallet }).sort({ created_at: -1 }).lean().then(r => { contextProfile.certifications = r; }));
+                        if (disclosures.skills) fetchTasks.push(Skill.find({ wallet }).sort({ is_top_skill: -1 }).lean().then(r => { contextProfile.skills = r; }));
+                        if (disclosures.projects) fetchTasks.push(Project.find({ wallet }).sort({ created_at: -1 }).lean().then(r => { contextProfile.projects = r; }));
+                        if (disclosures.awards) fetchTasks.push(Award.find({ wallet }).sort({ created_at: -1 }).lean().then(r => { contextProfile.awards = r; }));
+                        if (disclosures.languages) fetchTasks.push(Language.find({ wallet }).lean().then(r => { contextProfile.languages = r; }));
+                        if (disclosures.volunteer) fetchTasks.push(Volunteer.find({ wallet }).lean().then(r => { contextProfile.volunteers = r; }));
+                        await Promise.all(fetchTasks);
+
+                        return res.json(contextProfile);
+                    }
+                }
+            }
+
+            // Fallback: master profile resolved via CNS (e.g. premium name like alice.cid)
+            return res.json({
+                ...resolved.profileData,
+                is_context_profile: false,
+            });
+        }
+
+        // ─── Standard Master Profile Resolution ───────────────────────────
+        // Find by wallet OR human_id
         profile = await UserProfile.findOne({
             $or: [
                 { wallet: trimmedIdentifier },
@@ -304,15 +481,15 @@ router.get('/public-profile/:identifier', async (req, res) => {
             volunteers,
             credential
         ] = await Promise.all([
-            Experience.find({ wallet }).sort({ 'start_date.year': -1, 'start_date.month': -1, created_at: -1 }),
-            Education.find({ wallet }).sort({ 'start_date.year': -1, 'start_date.month': -1, created_at: -1 }),
-            Certification.find({ wallet }).sort({ 'issue_date.year': -1, 'issue_date.month': -1, created_at: -1 }),
-            Skill.find({ wallet }).sort({ is_top_skill: -1, display_order: 1, created_at: -1 }),
-            Project.find({ wallet }).sort({ 'start_date.year': -1, 'start_date.month': -1, created_at: -1 }),
-            Award.find({ wallet }).sort({ 'issue_date.year': -1, 'issue_date.month': -1, created_at: -1 }),
-            Language.find({ wallet }).sort({ display_order: 1, created_at: -1 }),
-            Volunteer.find({ wallet }).sort({ 'start_date.year': -1, 'start_date.month': -1, created_at: -1 }),
-            Credential.findOne({ wallet, revoked: false })
+            Experience.find({ wallet }).sort({ 'start_date.year': -1, 'start_date.month': -1, created_at: -1 }).lean(),
+            Education.find({ wallet }).sort({ 'start_date.year': -1, 'start_date.month': -1, created_at: -1 }).lean(),
+            Certification.find({ wallet }).sort({ 'issue_date.year': -1, 'issue_date.month': -1, created_at: -1 }).lean(),
+            Skill.find({ wallet }).sort({ is_top_skill: -1, display_order: 1, created_at: -1 }).lean(),
+            Project.find({ wallet }).sort({ 'start_date.year': -1, 'start_date.month': -1, created_at: -1 }).lean(),
+            Award.find({ wallet }).sort({ 'issue_date.year': -1, 'issue_date.month': -1, created_at: -1 }).lean(),
+            Language.find({ wallet }).sort({ display_order: 1, created_at: -1 }).lean(),
+            Volunteer.find({ wallet }).sort({ 'start_date.year': -1, 'start_date.month': -1, created_at: -1 }).lean(),
+            Credential.findOne({ wallet, revoked: false }).lean()
         ]);
 
         // Return public profile (include contact fields for public display)
@@ -367,7 +544,7 @@ router.get('/public-profile/:identifier', async (req, res) => {
         res.json(publicProfile);
     } catch (error) {
         console.error('Get public profile error:', error);
-        res.status(500).json({ error: error.message || 'Failed to fetch public profile' });
+        res.status(500).json({ success: false, error: error.message || 'Failed to fetch public profile' });
     }
 });
 
@@ -394,7 +571,7 @@ router.get('/profile/:wallet', async (req, res) => {
         console.log(`Found profile:`, !!profile);
 
         if (!profile) {
-            return res.status(404).json({ error: 'Profile not found' });
+            return res.status(404).json({ success: false, error: 'Profile not found' });
         }
 
         // Ensure profile has human_id
@@ -412,7 +589,7 @@ router.get('/profile/:wallet', async (req, res) => {
         res.json(profile);
     } catch (error) {
         console.error('Get profile error:', error);
-        res.status(500).json({ error: error.message || 'Failed to fetch profile' });
+        res.status(500).json({ success: false, error: error.message || 'Failed to fetch profile' });
     }
 });
 
@@ -461,7 +638,7 @@ router.put('/profile/:wallet', async (req, res) => {
         res.json(profile);
     } catch (error) {
         console.error('Update profile error:', error);
-        res.status(500).json({ error: error.message || 'Failed to update profile' });
+        res.status(500).json({ success: false, error: error.message || 'Failed to update profile' });
     }
 });
 
@@ -511,7 +688,7 @@ router.get('/random-banner', async (req, res) => {
 router.post('/profile/:wallet/upload-avatar', upload.single('avatar'), async (req, res) => {
     try {
         if (!req.file) {
-            return res.status(400).json({ error: 'No file uploaded' });
+            return res.status(400).json({ success: false, error: 'No file uploaded' });
         }
 
         const { wallet } = req.params;
@@ -543,7 +720,7 @@ router.post('/profile/:wallet/upload-avatar', upload.single('avatar'), async (re
         });
     } catch (error) {
         console.error('Upload avatar error:', error);
-        res.status(500).json({ error: error.message || 'Failed to upload image' });
+        res.status(500).json({ success: false, error: error.message || 'Failed to upload image' });
     }
 });
 
@@ -562,7 +739,7 @@ router.get('/profile/:wallet/experience', async (req, res) => {
         res.json(experiences);
     } catch (error) {
         console.error('Get experiences error:', error);
-        res.status(500).json({ error: error.message || 'Failed to fetch experiences' });
+        res.status(500).json({ success: false, error: error.message || 'Failed to fetch experiences' });
     }
 });
 
@@ -581,7 +758,7 @@ router.post('/profile/:wallet/experience', async (req, res) => {
         res.status(201).json(experience);
     } catch (error) {
         console.error('Add experience error:', error);
-        res.status(500).json({ error: error.message || 'Failed to add experience' });
+        res.status(500).json({ success: false, error: error.message || 'Failed to add experience' });
     }
 });
 
@@ -606,13 +783,13 @@ router.put('/profile/:wallet/experience/:id', async (req, res) => {
         );
 
         if (!experience) {
-            return res.status(404).json({ error: 'Experience not found' });
+            return res.status(404).json({ success: false, error: 'Experience not found' });
         }
 
         res.json(experience);
     } catch (error) {
         console.error('Update experience error:', error);
-        res.status(500).json({ error: error.message || 'Failed to update experience' });
+        res.status(500).json({ success: false, error: error.message || 'Failed to update experience' });
     }
 });
 
@@ -627,13 +804,13 @@ router.delete('/profile/:wallet/experience/:id', async (req, res) => {
         const experience = await Experience.findOneAndDelete({ _id: id, wallet });
 
         if (!experience) {
-            return res.status(404).json({ error: 'Experience not found' });
+            return res.status(404).json({ success: false, error: 'Experience not found' });
         }
 
         res.json({ message: 'Experience deleted successfully' });
     } catch (error) {
         console.error('Delete experience error:', error);
-        res.status(500).json({ error: error.message || 'Failed to delete experience' });
+        res.status(500).json({ success: false, error: error.message || 'Failed to delete experience' });
     }
 });
 
@@ -648,7 +825,7 @@ router.get('/profile/:wallet/education', async (req, res) => {
         res.json(education);
     } catch (error) {
         console.error('Get education error:', error);
-        res.status(500).json({ error: error.message || 'Failed to fetch education' });
+        res.status(500).json({ success: false, error: error.message || 'Failed to fetch education' });
     }
 });
 
@@ -663,7 +840,7 @@ router.post('/profile/:wallet/education', async (req, res) => {
         res.status(201).json(education);
     } catch (error) {
         console.error('Add education error:', error);
-        res.status(500).json({ error: error.message || 'Failed to add education' });
+        res.status(500).json({ success: false, error: error.message || 'Failed to add education' });
     }
 });
 
@@ -682,13 +859,13 @@ router.put('/profile/:wallet/education/:id', async (req, res) => {
         );
 
         if (!education) {
-            return res.status(404).json({ error: 'Education not found' });
+            return res.status(404).json({ success: false, error: 'Education not found' });
         }
 
         res.json(education);
     } catch (error) {
         console.error('Update education error:', error);
-        res.status(500).json({ error: error.message || 'Failed to update education' });
+        res.status(500).json({ success: false, error: error.message || 'Failed to update education' });
     }
 });
 
@@ -699,13 +876,13 @@ router.delete('/profile/:wallet/education/:id', async (req, res) => {
         const education = await Education.findOneAndDelete({ _id: id, wallet });
 
         if (!education) {
-            return res.status(404).json({ error: 'Education not found' });
+            return res.status(404).json({ success: false, error: 'Education not found' });
         }
 
         res.json({ message: 'Education deleted successfully' });
     } catch (error) {
         console.error('Delete education error:', error);
-        res.status(500).json({ error: error.message || 'Failed to delete education' });
+        res.status(500).json({ success: false, error: error.message || 'Failed to delete education' });
     }
 });
 
@@ -720,7 +897,7 @@ router.get('/profile/:wallet/certifications', async (req, res) => {
         res.json(certifications);
     } catch (error) {
         console.error('Get certifications error:', error);
-        res.status(500).json({ error: error.message || 'Failed to fetch certifications' });
+        res.status(500).json({ success: false, error: error.message || 'Failed to fetch certifications' });
     }
 });
 
@@ -735,7 +912,7 @@ router.post('/profile/:wallet/certifications', async (req, res) => {
         res.status(201).json(certification);
     } catch (error) {
         console.error('Add certification error:', error);
-        res.status(500).json({ error: error.message || 'Failed to add certification' });
+        res.status(500).json({ success: false, error: error.message || 'Failed to add certification' });
     }
 });
 
@@ -755,13 +932,13 @@ router.put('/profile/:wallet/certifications/:id', async (req, res) => {
         );
 
         if (!certification) {
-            return res.status(404).json({ error: 'Certification not found' });
+            return res.status(404).json({ success: false, error: 'Certification not found' });
         }
 
         res.json(certification);
     } catch (error) {
         console.error('Update certification error:', error);
-        res.status(500).json({ error: error.message || 'Failed to update certification' });
+        res.status(500).json({ success: false, error: error.message || 'Failed to update certification' });
     }
 });
 
@@ -772,13 +949,13 @@ router.delete('/profile/:wallet/certifications/:id', async (req, res) => {
         const certification = await Certification.findOneAndDelete({ _id: id, wallet });
 
         if (!certification) {
-            return res.status(404).json({ error: 'Certification not found' });
+            return res.status(404).json({ success: false, error: 'Certification not found' });
         }
 
         res.json({ message: 'Certification deleted successfully' });
     } catch (error) {
         console.error('Delete certification error:', error);
-        res.status(500).json({ error: error.message || 'Failed to delete certification' });
+        res.status(500).json({ success: false, error: error.message || 'Failed to delete certification' });
     }
 });
 
@@ -793,7 +970,7 @@ router.get('/profile/:wallet/skills', async (req, res) => {
         res.json(skills);
     } catch (error) {
         console.error('Get skills error:', error);
-        res.status(500).json({ error: error.message || 'Failed to fetch skills' });
+        res.status(500).json({ success: false, error: error.message || 'Failed to fetch skills' });
     }
 });
 
@@ -823,7 +1000,7 @@ router.post('/profile/:wallet/skills', async (req, res) => {
             stack: error.stack,
             name: error.name
         });
-        res.status(500).json({ error: error.message || 'Failed to add skill' });
+        res.status(500).json({ success: false, error: error.message || 'Failed to add skill' });
     }
 });
 
@@ -841,13 +1018,13 @@ router.put('/profile/:wallet/skills/:id', async (req, res) => {
         );
 
         if (!skill) {
-            return res.status(404).json({ error: 'Skill not found' });
+            return res.status(404).json({ success: false, error: 'Skill not found' });
         }
 
         res.json(skill);
     } catch (error) {
         console.error('Update skill error:', error);
-        res.status(500).json({ error: error.message || 'Failed to update skill' });
+        res.status(500).json({ success: false, error: error.message || 'Failed to update skill' });
     }
 });
 
@@ -858,13 +1035,13 @@ router.delete('/profile/:wallet/skills/:id', async (req, res) => {
         const skill = await Skill.findOneAndDelete({ _id: id, wallet });
 
         if (!skill) {
-            return res.status(404).json({ error: 'Skill not found' });
+            return res.status(404).json({ success: false, error: 'Skill not found' });
         }
 
         res.json({ message: 'Skill deleted successfully' });
     } catch (error) {
         console.error('Delete skill error:', error);
-        res.status(500).json({ error: error.message || 'Failed to delete skill' });
+        res.status(500).json({ success: false, error: error.message || 'Failed to delete skill' });
     }
 });
 
@@ -880,7 +1057,7 @@ router.get('/profile/:wallet/projects', async (req, res) => {
         res.json(projects);
     } catch (error) {
         console.error('Get projects error:', error);
-        res.status(500).json({ error: error.message || 'Failed to fetch projects' });
+        res.status(500).json({ success: false, error: error.message || 'Failed to fetch projects' });
     }
 });
 
@@ -895,7 +1072,7 @@ router.post('/profile/:wallet/projects', async (req, res) => {
         res.status(201).json(project);
     } catch (error) {
         console.error('Add project error:', error);
-        res.status(500).json({ error: error.message || 'Failed to add project' });
+        res.status(500).json({ success: false, error: error.message || 'Failed to add project' });
     }
 });
 
@@ -913,13 +1090,13 @@ router.put('/profile/:wallet/projects/:id', async (req, res) => {
         );
 
         if (!project) {
-            return res.status(404).json({ error: 'Project not found' });
+            return res.status(404).json({ success: false, error: 'Project not found' });
         }
 
         res.json(project);
     } catch (error) {
         console.error('Update project error:', error);
-        res.status(500).json({ error: error.message || 'Failed to update project' });
+        res.status(500).json({ success: false, error: error.message || 'Failed to update project' });
     }
 });
 
@@ -930,13 +1107,13 @@ router.delete('/profile/:wallet/projects/:id', async (req, res) => {
         const project = await Project.findOneAndDelete({ _id: id, wallet });
 
         if (!project) {
-            return res.status(404).json({ error: 'Project not found' });
+            return res.status(404).json({ success: false, error: 'Project not found' });
         }
 
         res.json({ message: 'Project deleted successfully' });
     } catch (error) {
         console.error('Delete project error:', error);
-        res.status(500).json({ error: error.message || 'Failed to delete project' });
+        res.status(500).json({ success: false, error: error.message || 'Failed to delete project' });
     }
 });
 
@@ -951,7 +1128,7 @@ router.get('/profile/:wallet/awards', async (req, res) => {
         res.json(awards);
     } catch (error) {
         console.error('Get awards error:', error);
-        res.status(500).json({ error: error.message || 'Failed to fetch awards' });
+        res.status(500).json({ success: false, error: error.message || 'Failed to fetch awards' });
     }
 });
 
@@ -966,7 +1143,7 @@ router.post('/profile/:wallet/awards', async (req, res) => {
         res.status(201).json(award);
     } catch (error) {
         console.error('Add award error:', error);
-        res.status(500).json({ error: error.message || 'Failed to add award' });
+        res.status(500).json({ success: false, error: error.message || 'Failed to add award' });
     }
 });
 
@@ -984,13 +1161,13 @@ router.put('/profile/:wallet/awards/:id', async (req, res) => {
         );
 
         if (!award) {
-            return res.status(404).json({ error: 'Award not found' });
+            return res.status(404).json({ success: false, error: 'Award not found' });
         }
 
         res.json(award);
     } catch (error) {
         console.error('Update award error:', error);
-        res.status(500).json({ error: error.message || 'Failed to update award' });
+        res.status(500).json({ success: false, error: error.message || 'Failed to update award' });
     }
 });
 
@@ -1001,13 +1178,13 @@ router.delete('/profile/:wallet/awards/:id', async (req, res) => {
         const award = await Award.findOneAndDelete({ _id: id, wallet });
 
         if (!award) {
-            return res.status(404).json({ error: 'Award not found' });
+            return res.status(404).json({ success: false, error: 'Award not found' });
         }
 
         res.json({ message: 'Award deleted successfully' });
     } catch (error) {
         console.error('Delete award error:', error);
-        res.status(500).json({ error: error.message || 'Failed to delete award' });
+        res.status(500).json({ success: false, error: error.message || 'Failed to delete award' });
     }
 });
 
@@ -1022,7 +1199,7 @@ router.get('/profile/:wallet/languages', async (req, res) => {
         res.json(languages);
     } catch (error) {
         console.error('Get languages error:', error);
-        res.status(500).json({ error: error.message || 'Failed to fetch languages' });
+        res.status(500).json({ success: false, error: error.message || 'Failed to fetch languages' });
     }
 });
 
@@ -1037,7 +1214,7 @@ router.post('/profile/:wallet/languages', async (req, res) => {
         res.status(201).json(language);
     } catch (error) {
         console.error('Add language error:', error);
-        res.status(500).json({ error: error.message || 'Failed to add language' });
+        res.status(500).json({ success: false, error: error.message || 'Failed to add language' });
     }
 });
 
@@ -1055,13 +1232,13 @@ router.put('/profile/:wallet/languages/:id', async (req, res) => {
         );
 
         if (!language) {
-            return res.status(404).json({ error: 'Language not found' });
+            return res.status(404).json({ success: false, error: 'Language not found' });
         }
 
         res.json(language);
     } catch (error) {
         console.error('Update language error:', error);
-        res.status(500).json({ error: error.message || 'Failed to update language' });
+        res.status(500).json({ success: false, error: error.message || 'Failed to update language' });
     }
 });
 
@@ -1072,13 +1249,13 @@ router.delete('/profile/:wallet/languages/:id', async (req, res) => {
         const language = await Language.findOneAndDelete({ _id: id, wallet });
 
         if (!language) {
-            return res.status(404).json({ error: 'Language not found' });
+            return res.status(404).json({ success: false, error: 'Language not found' });
         }
 
         res.json({ message: 'Language deleted successfully' });
     } catch (error) {
         console.error('Delete language error:', error);
-        res.status(500).json({ error: error.message || 'Failed to delete language' });
+        res.status(500).json({ success: false, error: error.message || 'Failed to delete language' });
     }
 });
 
@@ -1093,7 +1270,7 @@ router.get('/profile/:wallet/volunteer', async (req, res) => {
         res.json(volunteer);
     } catch (error) {
         console.error('Get volunteer error:', error);
-        res.status(500).json({ error: error.message || 'Failed to fetch volunteer experience' });
+        res.status(500).json({ success: false, error: error.message || 'Failed to fetch volunteer experience' });
     }
 });
 
@@ -1108,7 +1285,7 @@ router.post('/profile/:wallet/volunteer', async (req, res) => {
         res.status(201).json(volunteer);
     } catch (error) {
         console.error('Add volunteer error:', error);
-        res.status(500).json({ error: error.message || 'Failed to add volunteer experience' });
+        res.status(500).json({ success: false, error: error.message || 'Failed to add volunteer experience' });
     }
 });
 
@@ -1126,13 +1303,13 @@ router.put('/profile/:wallet/volunteer/:id', async (req, res) => {
         );
 
         if (!volunteer) {
-            return res.status(404).json({ error: 'Volunteer experience not found' });
+            return res.status(404).json({ success: false, error: 'Volunteer experience not found' });
         }
 
         res.json(volunteer);
     } catch (error) {
         console.error('Update volunteer error:', error);
-        res.status(500).json({ error: error.message || 'Failed to update volunteer experience' });
+        res.status(500).json({ success: false, error: error.message || 'Failed to update volunteer experience' });
     }
 });
 
@@ -1143,13 +1320,13 @@ router.delete('/profile/:wallet/volunteer/:id', async (req, res) => {
         const volunteer = await Volunteer.findOneAndDelete({ _id: id, wallet });
 
         if (!volunteer) {
-            return res.status(404).json({ error: 'Volunteer experience not found' });
+            return res.status(404).json({ success: false, error: 'Volunteer experience not found' });
         }
 
         res.json({ message: 'Volunteer experience deleted successfully' });
     } catch (error) {
         console.error('Delete volunteer error:', error);
-        res.status(500).json({ error: error.message || 'Failed to delete volunteer experience' });
+        res.status(500).json({ success: false, error: error.message || 'Failed to delete volunteer experience' });
     }
 });
 
@@ -1206,7 +1383,7 @@ router.get('/debug/tier-status/:wallet', async (req, res) => {
         res.json(comparison);
     } catch (error) {
         console.error('Tier comparison error:', error);
-        res.status(500).json({ error: error.message });
+        res.status(500).json({ success: false, error: error.message });
     }
 });
 

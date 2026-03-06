@@ -41,12 +41,10 @@ export const DIDManagement: React.FC<DIDManagementProps> = ({ onCreateNew, onMan
     const fetchUserData = async () => {
       try {
         setLoading(true);
-        const [profile, contextRes] = await Promise.all([
-          apiService.getUserProfile(),
-          apiService.getContextDIDs().catch(() => ({ context_dids: [] }))
-        ]);
+        // getUserProfile() already includes context_dids, no need for separate call
+        const profile = await apiService.getUserProfile();
         setUserData(profile as any);
-        setContextDIDs((contextRes as any).context_dids || []);
+        setContextDIDs((profile as any).context_dids || []);
       } catch (error) {
         console.error('Failed to fetch DID data:', error);
       } finally {

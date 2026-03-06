@@ -339,25 +339,18 @@ async function resolveRootName(rootName) {
  */
 async function findNameOwner(rootName) {
     // First check if it's a premium name (stored in cns_name field)
-    let userAccount = await UserAccount.findOne({ cns_name: rootName });
+    const premiumAccount = await UserAccount.findOne({ cns_name: rootName });
+    if (premiumAccount) return premiumAccount;
 
-    if (userAccount) {
-        return userAccount;
+    // Always fall back to human_id lookup — works for any format (single-word or hyphenated)
+    const profile = await UserProfile.findOne({ human_id: rootName });
+    if (profile) {
+        return await UserAccount.findOne({ wallet: profile.wallet });
     }
 
-    // Check if it's a Markov name
-    if (isMarkovName(rootName)) {
-        // Find by human_id in profile
-        const profile = await UserProfile.findOne({ human_id: rootName });
-        if (profile) {
-            return await UserAccount.findOne({ wallet: profile.wallet });
-        }
-
-        // Find by human_id in credential
-        const credential = await Credential.findOne({ human_id: rootName, revoked: false });
-        if (credential) {
-            return await UserAccount.findOne({ wallet: credential.wallet });
-        }
+    const credential = await Credential.findOne({ human_id: rootName, revoked: false });
+    if (credential) {
+        return await UserAccount.findOne({ wallet: credential.wallet });
     }
 
     return null;

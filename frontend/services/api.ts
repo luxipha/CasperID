@@ -22,6 +22,8 @@ export interface AuthTokens {
 class ApiService {
   private client: AxiosInstance;
   private baseURL: string;
+  private csrfToken: string | null = null;
+  private csrfTokenPromise: Promise<void> | null = null;
 
   constructor() {
     // In development, we use the VITE_API_URL (usually localhost:3001).
@@ -42,6 +44,38 @@ class ApiService {
     });
 
     this.setupInterceptors();
+    // Initialize CSRF token on service creation
+    this.csrfTokenPromise = this.initializeCsrfToken();
+  }
+
+  /**
+   * Fetch CSRF token from server
+   * Should be called on app initialization
+   */
+  private async initializeCsrfToken(): Promise<void> {
+    try {
+      const response = await this.client.get('/api/csrf-token');
+      this.csrfToken = response.data.csrfToken;
+    } catch (error) {
+      console.error('Failed to fetch CSRF token:', error);
+    }
+  }
+
+  /**
+   * Public method to refresh CSRF token if needed
+   */
+  public async refreshCsrfToken(): Promise<void> {
+    this.csrfTokenPromise = this.initializeCsrfToken();
+    await this.csrfTokenPromise;
+  }
+
+  /**
+   * Ensure CSRF token is loaded before making state-changing requests
+   */
+  private async ensureCsrfToken(): Promise<void> {
+    if (this.csrfTokenPromise) {
+      await this.csrfTokenPromise;
+    }
   }
 
   private setupInterceptors() {
@@ -49,18 +83,37 @@ class ApiService {
     // NOTE: Authentication is handled via httpOnly cookies (withCredentials: true)
     // No need to manually add Authorization header - cookies are sent automatically
     this.client.interceptors.request.use(
-      (config) => {
+      async (config) => {
+        // For state-changing requests, ensure CSRF token is loaded
+        const method = config.method?.toUpperCase();
+        if (['POST', 'PUT', 'DELETE', 'PATCH'].includes(method || '')) {
+          await this.ensureCsrfToken();
+          if (this.csrfToken) {
+            config.headers['X-CSRF-Token'] = this.csrfToken;
+          }
+        }
         // Cookies are sent automatically with withCredentials: true
         return config;
       },
       (error) => Promise.reject(error)
     );
 
-    // Response interceptor for handling 401 errors
+    // Response interceptor for handling errors
     this.client.interceptors.response.use(
       (response) => response,
       async (error) => {
         const originalRequest = error.config;
+
+        // Handle CSRF token errors - refresh token and retry once
+        if (error.response?.status === 403 &&
+            error.response?.data?.error?.includes('CSRF') &&
+            !originalRequest._csrfRetry) {
+          originalRequest._csrfRetry = true;
+          await this.refreshCsrfToken();
+          // Update the header with new token
+          originalRequest.headers['X-CSRF-Token'] = this.csrfToken;
+          return this.client(originalRequest);
+        }
 
         if (error.response?.status === 401 && !originalRequest._retry) {
           originalRequest._retry = true;
@@ -532,6 +585,30 @@ class ApiService {
   async submitLivenessCheck(livenessData: any): Promise<ApiResponse> {
     try {
       const response = await this.client.post('/api/v2/verification/liveness', livenessData);
+      return response.data;
+    } catch (error) {
+      throw this.handleError(error);
+    }
+  }
+
+  /**
+   * Verify liveness sequence using AI - handles FormData with image frames
+   * Used by LivenessCheck and L3LivenessCheck components
+   */
+  async verifyLivenessSequence(frames: Blob[], stepSequence: string[] = ['blink', 'open_mouth']): Promise<ApiResponse> {
+    try {
+      const formData = new FormData();
+      frames.forEach((blob, index) => {
+        formData.append(`frame_${index}`, blob, `frame_${index}.jpg`);
+      });
+      formData.append('totalFrames', frames.length.toString());
+      formData.append('stepSequence', JSON.stringify(stepSequence));
+
+      const response = await this.client.post('/api/ai/verify-liveness-sequence', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
       return response.data;
     } catch (error) {
       throw this.handleError(error);
@@ -1579,6 +1656,91 @@ class ApiService {
       return response.status === 200;
     } catch (error) {
       return false;
+    }
+  }
+
+  // ============================================
+  // BUSINESS PORTAL API
+  // ============================================
+
+  async getBusinessApps(): Promise<ApiResponse> {
+    try {
+      const response = await this.client.get('/api/business/apps');
+      return response.data;
+    } catch (error) {
+      throw this.handleError(error);
+    }
+  }
+
+  async createBusinessApp(data: { name: string; allowed_origins: string[]; environment: string }): Promise<ApiResponse> {
+    try {
+      const response = await this.client.post('/api/business/apps', data);
+      return response.data;
+    } catch (error) {
+      throw this.handleError(error);
+    }
+  }
+
+  async deleteBusinessApp(appId: string): Promise<ApiResponse> {
+    try {
+      const response = await this.client.delete(`/api/business/apps/${appId}`);
+      return response.data;
+    } catch (error) {
+      throw this.handleError(error);
+    }
+  }
+
+  async rotateBusinessAppKey(appId: string): Promise<ApiResponse> {
+    try {
+      const response = await this.client.post(`/api/business/apps/${appId}/rotate-key`);
+      return response.data;
+    } catch (error) {
+      throw this.handleError(error);
+    }
+  }
+
+  async getBusinessStats(): Promise<ApiResponse> {
+    try {
+      const response = await this.client.get('/api/business/stats');
+      return response.data;
+    } catch (error) {
+      throw this.handleError(error);
+    }
+  }
+
+  async getBusinessWebhooks(appId: string): Promise<ApiResponse> {
+    try {
+      const response = await this.client.get(`/api/business/webhooks?app_id=${appId}`);
+      return response.data;
+    } catch (error) {
+      throw this.handleError(error);
+    }
+  }
+
+  async createBusinessWebhook(data: { app_id: string; url: string; events: string[]; secret?: string }): Promise<ApiResponse> {
+    try {
+      const response = await this.client.post('/api/business/webhooks', data);
+      return response.data;
+    } catch (error) {
+      throw this.handleError(error);
+    }
+  }
+
+  async deleteBusinessWebhook(webhookId: string): Promise<ApiResponse> {
+    try {
+      const response = await this.client.delete(`/api/business/webhooks/${webhookId}`);
+      return response.data;
+    } catch (error) {
+      throw this.handleError(error);
+    }
+  }
+
+  async testBusinessWebhook(webhookId: string): Promise<ApiResponse> {
+    try {
+      const response = await this.client.post(`/api/business/webhooks/${webhookId}/test`);
+      return response.data;
+    } catch (error) {
+      throw this.handleError(error);
     }
   }
 }
