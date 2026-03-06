@@ -1,5 +1,37 @@
 [
   {
+    "version": "2.5.1",
+    "title": "Analytics Integration & UX Refinement",
+    "date": "March 6, 2026",
+    "status": "Production Update",
+    "highlight": {
+      "title": "Integrated Behavioral Analytics",
+      "description": "Deployed Microsoft Clarity, Hotjar, and Google Tag Manager to gain deep insights into user identity verification hurdles.",
+      "type": "sparkles"
+    },
+    "summary": "This update focuses on infrastructure for user behavior analysis and refining the Trust Score logic for improved accuracy. We've also hardened analytics reliability by optimizing script load order and improved mobile responsiveness across the roadmap and profile views.",
+    "categories": [
+      {
+        "id": "v251-feat",
+        "title": "New Features",
+        "items": [
+          "Integrated Microsoft Clarity, Hotjar, and Google Tag Manager for comprehensive behavioral analytics.",
+          "Implemented optimized analytics load-order: moved high-priority tracking scripts to the top of the <head> for maximum data reliability."
+        ]
+      },
+      {
+        "id": "v251-fix",
+        "title": "Fixes & Improvements",
+        "items": [
+          "Refined Trust Score calculation logic to ensure real-time accuracy across complex profile states.",
+          "Enhanced Roadmap Contrast: Improved legibility of detail panels against dark backgrounds for better accessibility.",
+          "Optimized Profile Responsiveness: Fixed layout shifts on mobile viewports for public identity pages.",
+          "Aligned mail sender configurations for consistent system notification delivery."
+        ]
+      }
+    ]
+  },
+  {
     "version": "2.5.0",
     "title": "Global Trust Score & Application Guard",
     "date": "March 4, 2026",

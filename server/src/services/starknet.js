@@ -170,26 +170,28 @@ async function submitProofToStarknet({ proof, proofHash, publicInputs }) {
 
   try {
     // Check if nullifier is already used (Sybil prevention)
-    const nullifierUsed = await contract.is_nullifier_used(publicInputs.nullifier);
+    const nullifierUsed = await isNullifierUsed(publicInputs.nullifier);
     if (nullifierUsed) {
       throw new Error('This biometric identity is already registered');
     }
 
     // Convert wallet address to Starknet format
-    // For now, we use the proofHash as a pseudo-address
-    // In production, users would connect their Starknet wallet
     const walletAddress = publicInputs.walletAddress.startsWith('0x')
       ? publicInputs.walletAddress
       : '0x' + publicInputs.walletAddress;
 
     // First, register the proof hash as valid (owner operation)
     console.log('[Starknet] Adding valid proof hash:', proofHash);
+    const proofHashFelt = cairo.felt(proofHash);
+    const nullifierFelt = cairo.felt(publicInputs.nullifier);
+
     const addProofTx = await relayAccount.execute({
       contractAddress: CASPERID_ZK_CONTRACT,
       entrypoint: 'add_valid_proof',
-      calldata: CallData.compile({ proof_hash: proofHash })
+      calldata: [proofHashFelt]
     });
 
+    console.log('[Starknet] Waiting for proof hash registration...');
     await provider.waitForTransaction(addProofTx.transaction_hash);
     console.log('[Starknet] Proof hash registered:', addProofTx.transaction_hash);
 
@@ -198,11 +200,7 @@ async function submitProofToStarknet({ proof, proofHash, publicInputs }) {
     const registerTx = await relayAccount.execute({
       contractAddress: CASPERID_ZK_CONTRACT,
       entrypoint: 'verify_and_register',
-      calldata: CallData.compile({
-        proof_hash: proofHash,
-        wallet_address: walletAddress,
-        biometric_nullifier: publicInputs.nullifier
-      })
+      calldata: [proofHashFelt, walletAddress, nullifierFelt]
     });
 
     const receipt = await provider.waitForTransaction(registerTx.transaction_hash);
@@ -224,13 +222,17 @@ async function submitProofToStarknet({ proof, proofHash, publicInputs }) {
  * Check if a wallet address is ZK-verified on Starknet
  */
 async function isWalletVerified(walletAddress) {
-  if (!contract) {
+  if (!CASPERID_ZK_CONTRACT) {
     throw new Error('Starknet contract not configured');
   }
 
   try {
-    const isVerified = await contract.is_verified(walletAddress);
-    return !!isVerified;
+    const result = await provider.callContract({
+      contractAddress: CASPERID_ZK_CONTRACT,
+      entrypoint: 'is_verified',
+      calldata: [walletAddress.startsWith('0x') ? walletAddress : '0x' + walletAddress]
+    });
+    return result[0] !== '0x0';
   } catch (error) {
     console.error('[Starknet] Verification check failed:', error);
     return false;
@@ -241,13 +243,18 @@ async function isWalletVerified(walletAddress) {
  * Check if a nullifier has been used (Sybil check)
  */
 async function isNullifierUsed(nullifier) {
-  if (!contract) {
+  if (!CASPERID_ZK_CONTRACT) {
     throw new Error('Starknet contract not configured');
   }
 
   try {
-    const isUsed = await contract.is_nullifier_used(nullifier);
-    return !!isUsed;
+    const nullifierFelt = cairo.felt(nullifier);
+    const result = await provider.callContract({
+      contractAddress: CASPERID_ZK_CONTRACT,
+      entrypoint: 'is_nullifier_used',
+      calldata: [nullifierFelt]
+    });
+    return result[0] !== '0x0';
   } catch (error) {
     console.error('[Starknet] Nullifier check failed:', error);
     return false;

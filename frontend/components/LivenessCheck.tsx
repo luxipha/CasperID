@@ -364,7 +364,9 @@ export const LivenessCheck: React.FC<LivenessCheckProps> = ({ onBack, onComplete
     // Skip ZK if no landmarks captured
     if (!capturedLandmarks.current || capturedLandmarks.current.length < 100) {
       console.log('[ZK] Skipping - insufficient landmarks');
+      setGuidance("");
       setState("SUCCESS");
+      setTimeout(() => setState("COMPLETED"), 2000);
       return;
     }
 
@@ -404,11 +406,23 @@ export const LivenessCheck: React.FC<LivenessCheckProps> = ({ onBack, onComplete
         console.log('[ZK] Proof submitted:', result.transactionHash);
       }
 
+      setGuidance(""); // Clear guidance text
       setState("SUCCESS");
+
+      // Auto-transition to COMPLETED after 2 seconds
+      setTimeout(() => {
+        setState("COMPLETED");
+      }, 2000);
     } catch (error) {
       // ZK is optional - don't block user if it fails
       console.warn('[ZK] Proof generation/submission failed:', error);
+      setGuidance("");
       setState("SUCCESS");
+
+      // Auto-transition to COMPLETED after 2 seconds
+      setTimeout(() => {
+        setState("COMPLETED");
+      }, 2000);
     }
   };
 
@@ -699,15 +713,19 @@ export const LivenessCheck: React.FC<LivenessCheckProps> = ({ onBack, onComplete
               <div className={`flex gap-6 items-start relative z-10 transition-opacity duration-500 ${state === "SUCCESS" ? "opacity-100" : "opacity-40"
                 }`}>
                 <div className={`size-8 rounded-full flex items-center justify-center font-black text-xs transition-colors duration-500 ring-4 ring-white ${state === "SUCCESS"
-                  ? "bg-white border-2 border-primary text-primary"
+                  ? "bg-primary text-white shadow-md"
                   : "bg-white border-2 border-gray-200 text-text-sub"
                   }`}>
-                  5
+                  {state === "SUCCESS" ? (
+                    <span className="material-symbols-outlined text-sm font-bold">check</span>
+                  ) : "5"}
                 </div>
                 <div className="flex flex-col">
                   <span className={`text-sm font-black leading-tight ${state === "SUCCESS" ? "text-primary" : "text-text-main"
                     }`}>Success</span>
-                  <span className="text-[11px] font-bold text-text-sub mt-0.5">Verified ID Activated</span>
+                  <span className={`text-[11px] font-bold mt-0.5 ${state === "SUCCESS" ? "text-primary" : "text-text-sub"}`}>
+                    {state === "SUCCESS" ? "Verification complete!" : "Verified ID Activated"}
+                  </span>
                 </div>
               </div>
             </div>
