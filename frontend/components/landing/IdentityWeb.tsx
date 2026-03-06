@@ -43,95 +43,86 @@ const IdentityWeb: React.FC = () => {
 
     useEffect(() => {
         let mm = gsap.matchMedia();
-        let rafId: number;
 
-        // Use rAF to ensure all sibling components have painted before
-        // GSAP measures the page for pin spacer heights
-        rafId = requestAnimationFrame(() => {
-            mm.add({
-                isDesktop: "(min-width: 768px)",
-                isMobile: "(max-width: 767px)"
-            }, (context) => {
-                let { isDesktop, isMobile: _isMobile } = context.conditions as any;
-                setIsMobile(_isMobile);
+        mm.add({
+            isDesktop: "(min-width: 768px)",
+            isMobile: "(max-width: 767px)"
+        }, (context) => {
+            let { isDesktop, isMobile: _isMobile } = context.conditions as any;
+            setIsMobile(_isMobile);
 
-                const tl = gsap.timeline({
-                    scrollTrigger: {
-                        trigger: containerRef.current,
-                        start: 'top top',
-                        end: '+=200%',
-                        pin: true,
-                        scrub: 1,
-                        anticipatePin: 1,
-                        invalidateOnRefresh: true,
-                        onUpdate: (self) => {
-                            const progress = self.progress;
+            const tl = gsap.timeline({
+                scrollTrigger: {
+                    trigger: containerRef.current,
+                    start: 'top top',
+                    end: '+=200%',
+                    pin: true,
+                    scrub: 1,
+                    anticipatePin: 1,
+                    onUpdate: (self) => {
+                        const progress = self.progress;
 
-                            if (progress < 0.2) {
-                                const ctxIndex = Math.floor(progress * 5 * contexts.length);
-                                if (ctxIndex < contexts.length) setActiveContext(contexts[ctxIndex].id);
+                        if (progress < 0.2) {
+                            const ctxIndex = Math.floor(progress * 5 * contexts.length);
+                            if (ctxIndex < contexts.length) setActiveContext(contexts[ctxIndex].id);
+                        } else {
+                            setActiveContext(null);
+                        }
+
+                        if (progress > 0.3) {
+                            const sectorProgress = (progress - 0.3) / 0.7;
+                            const index = Math.floor(sectorProgress * sectors.length);
+                            if (index < sectors.length) {
+                                setActiveSector(sectors[index].id);
                             } else {
-                                setActiveContext(null);
-                            }
-
-                            if (progress > 0.3) {
-                                const sectorProgress = (progress - 0.3) / 0.7;
-                                const index = Math.floor(sectorProgress * sectors.length);
-                                if (index < sectors.length) {
-                                    setActiveSector(sectors[index].id);
-                                } else {
-                                    setActiveSector(null);
-                                }
+                                setActiveSector(null);
                             }
                         }
                     }
-                });
+                }
+            });
 
-                tl.fromTo('.context-beam',
-                    { scaleY: 0, opacity: 0 },
-                    { scaleY: 1, opacity: 1, ease: 'none', duration: 1 },
-                    0
+            tl.fromTo('.context-beam',
+                { scaleY: 0, opacity: 0 },
+                { scaleY: 1, opacity: 1, ease: 'none', duration: 1 },
+                0
+            );
+
+            tl.to('.section-label', {
+                opacity: 0,
+                y: _isMobile ? -40 : -20,
+                duration: 1,
+                ease: 'power2.inOut'
+            }, _isMobile ? 0.35 : 0.5);
+
+            sectors.forEach((sector, i) => {
+                tl.fromTo(`.line-${sector.id}`,
+                    { strokeDashoffset: 1000, strokeDasharray: 1000 },
+                    { strokeDashoffset: 0, ease: 'none', duration: 1.5 },
+                    0.5 + (i * 0.1)
                 );
 
-                tl.to('.section-label', {
-                    opacity: 0,
-                    y: _isMobile ? -40 : -20,
-                    duration: 1,
-                    ease: 'power2.inOut'
-                }, _isMobile ? 0.35 : 0.5);
-
-                sectors.forEach((sector, i) => {
-                    tl.fromTo(`.line-${sector.id}`,
-                        { strokeDashoffset: 1000, strokeDasharray: 1000 },
-                        { strokeDashoffset: 0, ease: 'none', duration: 1.5 },
-                        0.5 + (i * 0.1)
-                    );
-
-                    tl.fromTo(`.card-${sector.id}`,
-                        { opacity: 0, scale: 0.5, y: 20 },
-                        { opacity: 1, scale: 1, y: 0, ease: 'back.out(1.7)', duration: 1 },
-                        1 + (i * 0.2)
-                    );
-                });
-
-                gsap.to(coreRef.current, {
-                    boxShadow: '0 0 80px rgba(79, 70, 229, 0.4)',
-                    duration: 1.5,
-                    repeat: -1,
-                    yoyo: true,
-                    ease: 'sine.inOut'
-                });
-
-                return () => {
-                    tl.kill();
-                };
+                tl.fromTo(`.card-${sector.id}`,
+                    { opacity: 0, scale: 0.5, y: 20 },
+                    { opacity: 1, scale: 1, y: 0, ease: 'back.out(1.7)', duration: 1 },
+                    1 + (i * 0.2)
+                );
             });
+
+            gsap.to(coreRef.current, {
+                boxShadow: '0 0 80px rgba(79, 70, 229, 0.4)',
+                duration: 1.5,
+                repeat: -1,
+                yoyo: true,
+                ease: 'sine.inOut'
+            });
+
+            return () => {
+                tl.kill();
+            };
         });
 
-        return () => {
-            cancelAnimationFrame(rafId);
-            mm.revert();
-        };
+        return () => mm.revert();
     }, []);
 
     // Recalculate pin spacer height after mount to prevent HowItWorks from overlapping
@@ -145,11 +136,8 @@ const IdentityWeb: React.FC = () => {
     const currentRadius = isMobile ? 28 : 35;
 
     return (
-        <section id="identity-web" ref={containerRef} className="relative h-screen w-full overflow-hidden flex items-center justify-center bg-white">
-            {/* Background Grid */}
-            <div className="absolute inset-0 opacity-[0.03] pointer-events-none">
-                <div className="absolute inset-0" style={{ backgroundImage: 'radial-gradient(circle, currentColor 1px, transparent 1px)', backgroundSize: '40px 40px' }}></div>
-            </div>
+        <section id="identity-web" ref={containerRef} className="relative h-screen w-full overflow-hidden flex items-center justify-center">
+
 
             {/* Top Context Nodes */}
             <div className="absolute top-8 md:top-12 left-0 w-full flex justify-around px-4 md:px-20 z-30">
@@ -208,7 +196,7 @@ const IdentityWeb: React.FC = () => {
                             <g key={sector.id}>
                                 <path
                                     className={`line-${sector.id} stroke-indigo-200`}
-                                    d={`M 50 50 Q ${50 + Math.cos(angleRad) * (radius / 3.5)} ${50 + Math.sin(angleRad) * (radius / 3.5)} ${x2} ${y2}`}
+                                    d={`M 50% 50% Q ${50 + Math.cos(angleRad) * (radius / 3.5)}% ${50 + Math.sin(angleRad) * (radius / 3.5)}% ${x2}% ${y2}%`}
                                     strokeWidth="2"
                                     fill="none"
                                     strokeDasharray="1000"
@@ -226,7 +214,7 @@ const IdentityWeb: React.FC = () => {
                                         <animateMotion
                                             dur="1s"
                                             repeatCount="indefinite"
-                                            path={`M 50 50 Q ${50 + Math.cos(angleRad) * (radius / 3.5)} ${50 + Math.sin(angleRad) * (radius / 3.5)} ${x2} ${y2}`}
+                                            path={`M 50% 50% Q ${50 + Math.cos(angleRad) * (radius / 3.5)}% ${50 + Math.sin(angleRad) * (radius / 3.5)}% ${x2}% ${y2}%`}
                                         />
                                     </motion.circle>
                                 )}
