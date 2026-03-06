@@ -69,11 +69,11 @@ router.post('/ai/verify-liveness', upload.single('photo'), async (req, res) => {
         const { expectedGesture } = req.body;
 
         if (!req.file) {
-            return res.status(400).json({ error: 'Photo is required' });
+            return res.status(400).json({ success: false, error: 'Photo is required' });
         }
 
         if (!expectedGesture) {
-            return res.status(400).json({ error: 'Expected gesture is required' });
+            return res.status(400).json({ success: false, error: 'Expected gesture is required' });
         }
 
         const result = await verifyLivenessGesture(req.file.buffer, expectedGesture);
@@ -134,20 +134,20 @@ router.post('/ai/verify-liveness-sequence', upload.fields([
             req.headers.authorization?.replace('Bearer ', '');
 
         if (!sessionToken) {
-            return res.status(401).json({ error: 'Authentication required' });
+            return res.status(401).json({ success: false, error: 'Authentication required' });
         }
 
         const webauthnService = require('../services/webauthn');
         const sessionData = await webauthnService.validateSession(sessionToken);
 
         if (!sessionData) {
-            return res.status(401).json({ error: 'Invalid or expired session' });
+            return res.status(401).json({ success: false, error: 'Invalid or expired session' });
         }
 
         const userAccount = sessionData.userAccount;
 
         if (!req.files || Object.keys(req.files).length === 0) {
-            return res.status(400).json({ error: 'Video frames are required' });
+            return res.status(400).json({ success: false, error: 'Video frames are required' });
         }
 
         const frameCount = parseInt(totalFrames) || Object.keys(req.files).length;
@@ -162,7 +162,7 @@ router.post('/ai/verify-liveness-sequence', upload.fields([
         }
 
         if (frames.length < 10) {
-            return res.status(400).json({ error: 'Insufficient frames for liveness verification' });
+            return res.status(400).json({ success: false, error: 'Insufficient frames for liveness verification' });
         }
 
 
@@ -328,7 +328,7 @@ router.get('/cns/info', async (req, res) => {
         const { wallet } = req.query;
 
         if (!wallet) {
-            return res.status(400).json({ error: 'Wallet address is required' });
+            return res.status(400).json({ success: false, error: 'Wallet address is required' });
         }
 
         // Optionally include profile data for better name suggestions
@@ -357,7 +357,7 @@ router.get('/cns/check-availability', async (req, res) => {
         const { name } = req.query;
 
         if (!name) {
-            return res.status(400).json({ error: 'Name is required' });
+            return res.status(400).json({ success: false, error: 'Name is required' });
         }
 
         const isAvailable = await checkNameAvailability(name);
@@ -417,7 +417,7 @@ router.post('/cns/claim', async (req, res) => {
 router.post('/ai/parse-resume', upload.single('resume'), async (req, res) => {
     try {
         if (!req.file) {
-            return res.status(400).json({ error: 'Resume file is required' });
+            return res.status(400).json({ success: false, error: 'Resume file is required' });
         }
 
         console.log(`[AI] Parsing resume: ${req.file.originalname} (${req.file.mimetype})`);

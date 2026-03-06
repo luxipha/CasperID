@@ -64,7 +64,7 @@ router.delete('/profile/:wallet/batch-clear/:category', async (req, res) => {
 
         const Model = models[category.toLowerCase()];
         if (!Model) {
-            return res.status(400).json({ error: 'Invalid category' });
+            return res.status(400).json({ success: false, error: 'Invalid category' });
         }
 
         const deleteResult = await Model.deleteMany({ wallet });
@@ -79,7 +79,7 @@ router.delete('/profile/:wallet/batch-clear/:category', async (req, res) => {
         });
     } catch (error) {
         console.error('Clear category error:', error);
-        res.status(500).json({ error: error.message || 'Failed to clear category' });
+        res.status(500).json({ success: false, error: error.message || 'Failed to clear category' });
     }
 });
 
@@ -185,7 +185,7 @@ router.get('/user/profile', requireAuth, async (req, res) => {
         res.json(enrichedProfile);
     } catch (error) {
         console.error('Get user profile error:', error);
-        res.status(500).json({ error: error.message || 'Failed to fetch user profile' });
+        res.status(500).json({ success: false, error: error.message || 'Failed to fetch user profile' });
     }
 });
 
@@ -231,7 +231,7 @@ router.put('/user/profile', requireAuth, async (req, res) => {
         res.json(profile);
     } catch (error) {
         console.error('Update user profile error:', error);
-        res.status(500).json({ error: error.message || 'Failed to update user profile' });
+        res.status(500).json({ success: false, error: error.message || 'Failed to update user profile' });
     }
 });
 
@@ -260,12 +260,12 @@ router.get('/public-profile/:identifier', async (req, res) => {
             });
 
             if (!ownerAccount) {
-                return res.status(404).json({ error: 'Profile not found', message: 'No profile found for this persona.' });
+                return res.status(404).json({ success: false, error: 'Profile not found', message: 'No profile found for this persona.' });
             }
 
             const contextDid = ownerAccount.context_dids.find(c => c.did === trimmedIdentifier);
             if (!contextDid) {
-                return res.status(404).json({ error: 'Profile not found' });
+                return res.status(404).json({ success: false, error: 'Profile not found' });
             }
 
             // Wallet-routing personas are payment pointers, not profile pages
@@ -283,7 +283,7 @@ router.get('/public-profile/:identifier', async (req, res) => {
 
             const fullProfile = await UserProfile.findOne({ wallet });
             if (!fullProfile) {
-                return res.status(404).json({ error: 'Profile not found' });
+                return res.status(404).json({ success: false, error: 'Profile not found' });
             }
 
             // Build filtered profile — only include what the user consented to share
@@ -380,7 +380,7 @@ router.get('/public-profile/:identifier', async (req, res) => {
 
                         const fullProfile = await UserProfile.findOne({ wallet });
                         if (!fullProfile) {
-                            return res.status(404).json({ error: 'Profile not found' });
+                            return res.status(404).json({ success: false, error: 'Profile not found' });
                         }
 
                         // Build filtered profile from actual disclosures
@@ -544,7 +544,7 @@ router.get('/public-profile/:identifier', async (req, res) => {
         res.json(publicProfile);
     } catch (error) {
         console.error('Get public profile error:', error);
-        res.status(500).json({ error: error.message || 'Failed to fetch public profile' });
+        res.status(500).json({ success: false, error: error.message || 'Failed to fetch public profile' });
     }
 });
 
@@ -571,7 +571,7 @@ router.get('/profile/:wallet', async (req, res) => {
         console.log(`Found profile:`, !!profile);
 
         if (!profile) {
-            return res.status(404).json({ error: 'Profile not found' });
+            return res.status(404).json({ success: false, error: 'Profile not found' });
         }
 
         // Ensure profile has human_id
@@ -589,7 +589,7 @@ router.get('/profile/:wallet', async (req, res) => {
         res.json(profile);
     } catch (error) {
         console.error('Get profile error:', error);
-        res.status(500).json({ error: error.message || 'Failed to fetch profile' });
+        res.status(500).json({ success: false, error: error.message || 'Failed to fetch profile' });
     }
 });
 
@@ -638,7 +638,7 @@ router.put('/profile/:wallet', async (req, res) => {
         res.json(profile);
     } catch (error) {
         console.error('Update profile error:', error);
-        res.status(500).json({ error: error.message || 'Failed to update profile' });
+        res.status(500).json({ success: false, error: error.message || 'Failed to update profile' });
     }
 });
 
@@ -688,7 +688,7 @@ router.get('/random-banner', async (req, res) => {
 router.post('/profile/:wallet/upload-avatar', upload.single('avatar'), async (req, res) => {
     try {
         if (!req.file) {
-            return res.status(400).json({ error: 'No file uploaded' });
+            return res.status(400).json({ success: false, error: 'No file uploaded' });
         }
 
         const { wallet } = req.params;
@@ -720,7 +720,7 @@ router.post('/profile/:wallet/upload-avatar', upload.single('avatar'), async (re
         });
     } catch (error) {
         console.error('Upload avatar error:', error);
-        res.status(500).json({ error: error.message || 'Failed to upload image' });
+        res.status(500).json({ success: false, error: error.message || 'Failed to upload image' });
     }
 });
 
@@ -739,7 +739,7 @@ router.get('/profile/:wallet/experience', async (req, res) => {
         res.json(experiences);
     } catch (error) {
         console.error('Get experiences error:', error);
-        res.status(500).json({ error: error.message || 'Failed to fetch experiences' });
+        res.status(500).json({ success: false, error: error.message || 'Failed to fetch experiences' });
     }
 });
 
@@ -758,7 +758,7 @@ router.post('/profile/:wallet/experience', async (req, res) => {
         res.status(201).json(experience);
     } catch (error) {
         console.error('Add experience error:', error);
-        res.status(500).json({ error: error.message || 'Failed to add experience' });
+        res.status(500).json({ success: false, error: error.message || 'Failed to add experience' });
     }
 });
 
@@ -783,13 +783,13 @@ router.put('/profile/:wallet/experience/:id', async (req, res) => {
         );
 
         if (!experience) {
-            return res.status(404).json({ error: 'Experience not found' });
+            return res.status(404).json({ success: false, error: 'Experience not found' });
         }
 
         res.json(experience);
     } catch (error) {
         console.error('Update experience error:', error);
-        res.status(500).json({ error: error.message || 'Failed to update experience' });
+        res.status(500).json({ success: false, error: error.message || 'Failed to update experience' });
     }
 });
 
@@ -804,13 +804,13 @@ router.delete('/profile/:wallet/experience/:id', async (req, res) => {
         const experience = await Experience.findOneAndDelete({ _id: id, wallet });
 
         if (!experience) {
-            return res.status(404).json({ error: 'Experience not found' });
+            return res.status(404).json({ success: false, error: 'Experience not found' });
         }
 
         res.json({ message: 'Experience deleted successfully' });
     } catch (error) {
         console.error('Delete experience error:', error);
-        res.status(500).json({ error: error.message || 'Failed to delete experience' });
+        res.status(500).json({ success: false, error: error.message || 'Failed to delete experience' });
     }
 });
 
@@ -825,7 +825,7 @@ router.get('/profile/:wallet/education', async (req, res) => {
         res.json(education);
     } catch (error) {
         console.error('Get education error:', error);
-        res.status(500).json({ error: error.message || 'Failed to fetch education' });
+        res.status(500).json({ success: false, error: error.message || 'Failed to fetch education' });
     }
 });
 
@@ -840,7 +840,7 @@ router.post('/profile/:wallet/education', async (req, res) => {
         res.status(201).json(education);
     } catch (error) {
         console.error('Add education error:', error);
-        res.status(500).json({ error: error.message || 'Failed to add education' });
+        res.status(500).json({ success: false, error: error.message || 'Failed to add education' });
     }
 });
 
@@ -859,13 +859,13 @@ router.put('/profile/:wallet/education/:id', async (req, res) => {
         );
 
         if (!education) {
-            return res.status(404).json({ error: 'Education not found' });
+            return res.status(404).json({ success: false, error: 'Education not found' });
         }
 
         res.json(education);
     } catch (error) {
         console.error('Update education error:', error);
-        res.status(500).json({ error: error.message || 'Failed to update education' });
+        res.status(500).json({ success: false, error: error.message || 'Failed to update education' });
     }
 });
 
@@ -876,13 +876,13 @@ router.delete('/profile/:wallet/education/:id', async (req, res) => {
         const education = await Education.findOneAndDelete({ _id: id, wallet });
 
         if (!education) {
-            return res.status(404).json({ error: 'Education not found' });
+            return res.status(404).json({ success: false, error: 'Education not found' });
         }
 
         res.json({ message: 'Education deleted successfully' });
     } catch (error) {
         console.error('Delete education error:', error);
-        res.status(500).json({ error: error.message || 'Failed to delete education' });
+        res.status(500).json({ success: false, error: error.message || 'Failed to delete education' });
     }
 });
 
@@ -897,7 +897,7 @@ router.get('/profile/:wallet/certifications', async (req, res) => {
         res.json(certifications);
     } catch (error) {
         console.error('Get certifications error:', error);
-        res.status(500).json({ error: error.message || 'Failed to fetch certifications' });
+        res.status(500).json({ success: false, error: error.message || 'Failed to fetch certifications' });
     }
 });
 
@@ -912,7 +912,7 @@ router.post('/profile/:wallet/certifications', async (req, res) => {
         res.status(201).json(certification);
     } catch (error) {
         console.error('Add certification error:', error);
-        res.status(500).json({ error: error.message || 'Failed to add certification' });
+        res.status(500).json({ success: false, error: error.message || 'Failed to add certification' });
     }
 });
 
@@ -932,13 +932,13 @@ router.put('/profile/:wallet/certifications/:id', async (req, res) => {
         );
 
         if (!certification) {
-            return res.status(404).json({ error: 'Certification not found' });
+            return res.status(404).json({ success: false, error: 'Certification not found' });
         }
 
         res.json(certification);
     } catch (error) {
         console.error('Update certification error:', error);
-        res.status(500).json({ error: error.message || 'Failed to update certification' });
+        res.status(500).json({ success: false, error: error.message || 'Failed to update certification' });
     }
 });
 
@@ -949,13 +949,13 @@ router.delete('/profile/:wallet/certifications/:id', async (req, res) => {
         const certification = await Certification.findOneAndDelete({ _id: id, wallet });
 
         if (!certification) {
-            return res.status(404).json({ error: 'Certification not found' });
+            return res.status(404).json({ success: false, error: 'Certification not found' });
         }
 
         res.json({ message: 'Certification deleted successfully' });
     } catch (error) {
         console.error('Delete certification error:', error);
-        res.status(500).json({ error: error.message || 'Failed to delete certification' });
+        res.status(500).json({ success: false, error: error.message || 'Failed to delete certification' });
     }
 });
 
@@ -970,7 +970,7 @@ router.get('/profile/:wallet/skills', async (req, res) => {
         res.json(skills);
     } catch (error) {
         console.error('Get skills error:', error);
-        res.status(500).json({ error: error.message || 'Failed to fetch skills' });
+        res.status(500).json({ success: false, error: error.message || 'Failed to fetch skills' });
     }
 });
 
@@ -1000,7 +1000,7 @@ router.post('/profile/:wallet/skills', async (req, res) => {
             stack: error.stack,
             name: error.name
         });
-        res.status(500).json({ error: error.message || 'Failed to add skill' });
+        res.status(500).json({ success: false, error: error.message || 'Failed to add skill' });
     }
 });
 
@@ -1018,13 +1018,13 @@ router.put('/profile/:wallet/skills/:id', async (req, res) => {
         );
 
         if (!skill) {
-            return res.status(404).json({ error: 'Skill not found' });
+            return res.status(404).json({ success: false, error: 'Skill not found' });
         }
 
         res.json(skill);
     } catch (error) {
         console.error('Update skill error:', error);
-        res.status(500).json({ error: error.message || 'Failed to update skill' });
+        res.status(500).json({ success: false, error: error.message || 'Failed to update skill' });
     }
 });
 
@@ -1035,13 +1035,13 @@ router.delete('/profile/:wallet/skills/:id', async (req, res) => {
         const skill = await Skill.findOneAndDelete({ _id: id, wallet });
 
         if (!skill) {
-            return res.status(404).json({ error: 'Skill not found' });
+            return res.status(404).json({ success: false, error: 'Skill not found' });
         }
 
         res.json({ message: 'Skill deleted successfully' });
     } catch (error) {
         console.error('Delete skill error:', error);
-        res.status(500).json({ error: error.message || 'Failed to delete skill' });
+        res.status(500).json({ success: false, error: error.message || 'Failed to delete skill' });
     }
 });
 
@@ -1057,7 +1057,7 @@ router.get('/profile/:wallet/projects', async (req, res) => {
         res.json(projects);
     } catch (error) {
         console.error('Get projects error:', error);
-        res.status(500).json({ error: error.message || 'Failed to fetch projects' });
+        res.status(500).json({ success: false, error: error.message || 'Failed to fetch projects' });
     }
 });
 
@@ -1072,7 +1072,7 @@ router.post('/profile/:wallet/projects', async (req, res) => {
         res.status(201).json(project);
     } catch (error) {
         console.error('Add project error:', error);
-        res.status(500).json({ error: error.message || 'Failed to add project' });
+        res.status(500).json({ success: false, error: error.message || 'Failed to add project' });
     }
 });
 
@@ -1090,13 +1090,13 @@ router.put('/profile/:wallet/projects/:id', async (req, res) => {
         );
 
         if (!project) {
-            return res.status(404).json({ error: 'Project not found' });
+            return res.status(404).json({ success: false, error: 'Project not found' });
         }
 
         res.json(project);
     } catch (error) {
         console.error('Update project error:', error);
-        res.status(500).json({ error: error.message || 'Failed to update project' });
+        res.status(500).json({ success: false, error: error.message || 'Failed to update project' });
     }
 });
 
@@ -1107,13 +1107,13 @@ router.delete('/profile/:wallet/projects/:id', async (req, res) => {
         const project = await Project.findOneAndDelete({ _id: id, wallet });
 
         if (!project) {
-            return res.status(404).json({ error: 'Project not found' });
+            return res.status(404).json({ success: false, error: 'Project not found' });
         }
 
         res.json({ message: 'Project deleted successfully' });
     } catch (error) {
         console.error('Delete project error:', error);
-        res.status(500).json({ error: error.message || 'Failed to delete project' });
+        res.status(500).json({ success: false, error: error.message || 'Failed to delete project' });
     }
 });
 
@@ -1128,7 +1128,7 @@ router.get('/profile/:wallet/awards', async (req, res) => {
         res.json(awards);
     } catch (error) {
         console.error('Get awards error:', error);
-        res.status(500).json({ error: error.message || 'Failed to fetch awards' });
+        res.status(500).json({ success: false, error: error.message || 'Failed to fetch awards' });
     }
 });
 
@@ -1143,7 +1143,7 @@ router.post('/profile/:wallet/awards', async (req, res) => {
         res.status(201).json(award);
     } catch (error) {
         console.error('Add award error:', error);
-        res.status(500).json({ error: error.message || 'Failed to add award' });
+        res.status(500).json({ success: false, error: error.message || 'Failed to add award' });
     }
 });
 
@@ -1161,13 +1161,13 @@ router.put('/profile/:wallet/awards/:id', async (req, res) => {
         );
 
         if (!award) {
-            return res.status(404).json({ error: 'Award not found' });
+            return res.status(404).json({ success: false, error: 'Award not found' });
         }
 
         res.json(award);
     } catch (error) {
         console.error('Update award error:', error);
-        res.status(500).json({ error: error.message || 'Failed to update award' });
+        res.status(500).json({ success: false, error: error.message || 'Failed to update award' });
     }
 });
 
@@ -1178,13 +1178,13 @@ router.delete('/profile/:wallet/awards/:id', async (req, res) => {
         const award = await Award.findOneAndDelete({ _id: id, wallet });
 
         if (!award) {
-            return res.status(404).json({ error: 'Award not found' });
+            return res.status(404).json({ success: false, error: 'Award not found' });
         }
 
         res.json({ message: 'Award deleted successfully' });
     } catch (error) {
         console.error('Delete award error:', error);
-        res.status(500).json({ error: error.message || 'Failed to delete award' });
+        res.status(500).json({ success: false, error: error.message || 'Failed to delete award' });
     }
 });
 
@@ -1199,7 +1199,7 @@ router.get('/profile/:wallet/languages', async (req, res) => {
         res.json(languages);
     } catch (error) {
         console.error('Get languages error:', error);
-        res.status(500).json({ error: error.message || 'Failed to fetch languages' });
+        res.status(500).json({ success: false, error: error.message || 'Failed to fetch languages' });
     }
 });
 
@@ -1214,7 +1214,7 @@ router.post('/profile/:wallet/languages', async (req, res) => {
         res.status(201).json(language);
     } catch (error) {
         console.error('Add language error:', error);
-        res.status(500).json({ error: error.message || 'Failed to add language' });
+        res.status(500).json({ success: false, error: error.message || 'Failed to add language' });
     }
 });
 
@@ -1232,13 +1232,13 @@ router.put('/profile/:wallet/languages/:id', async (req, res) => {
         );
 
         if (!language) {
-            return res.status(404).json({ error: 'Language not found' });
+            return res.status(404).json({ success: false, error: 'Language not found' });
         }
 
         res.json(language);
     } catch (error) {
         console.error('Update language error:', error);
-        res.status(500).json({ error: error.message || 'Failed to update language' });
+        res.status(500).json({ success: false, error: error.message || 'Failed to update language' });
     }
 });
 
@@ -1249,13 +1249,13 @@ router.delete('/profile/:wallet/languages/:id', async (req, res) => {
         const language = await Language.findOneAndDelete({ _id: id, wallet });
 
         if (!language) {
-            return res.status(404).json({ error: 'Language not found' });
+            return res.status(404).json({ success: false, error: 'Language not found' });
         }
 
         res.json({ message: 'Language deleted successfully' });
     } catch (error) {
         console.error('Delete language error:', error);
-        res.status(500).json({ error: error.message || 'Failed to delete language' });
+        res.status(500).json({ success: false, error: error.message || 'Failed to delete language' });
     }
 });
 
@@ -1270,7 +1270,7 @@ router.get('/profile/:wallet/volunteer', async (req, res) => {
         res.json(volunteer);
     } catch (error) {
         console.error('Get volunteer error:', error);
-        res.status(500).json({ error: error.message || 'Failed to fetch volunteer experience' });
+        res.status(500).json({ success: false, error: error.message || 'Failed to fetch volunteer experience' });
     }
 });
 
@@ -1285,7 +1285,7 @@ router.post('/profile/:wallet/volunteer', async (req, res) => {
         res.status(201).json(volunteer);
     } catch (error) {
         console.error('Add volunteer error:', error);
-        res.status(500).json({ error: error.message || 'Failed to add volunteer experience' });
+        res.status(500).json({ success: false, error: error.message || 'Failed to add volunteer experience' });
     }
 });
 
@@ -1303,13 +1303,13 @@ router.put('/profile/:wallet/volunteer/:id', async (req, res) => {
         );
 
         if (!volunteer) {
-            return res.status(404).json({ error: 'Volunteer experience not found' });
+            return res.status(404).json({ success: false, error: 'Volunteer experience not found' });
         }
 
         res.json(volunteer);
     } catch (error) {
         console.error('Update volunteer error:', error);
-        res.status(500).json({ error: error.message || 'Failed to update volunteer experience' });
+        res.status(500).json({ success: false, error: error.message || 'Failed to update volunteer experience' });
     }
 });
 
@@ -1320,13 +1320,13 @@ router.delete('/profile/:wallet/volunteer/:id', async (req, res) => {
         const volunteer = await Volunteer.findOneAndDelete({ _id: id, wallet });
 
         if (!volunteer) {
-            return res.status(404).json({ error: 'Volunteer experience not found' });
+            return res.status(404).json({ success: false, error: 'Volunteer experience not found' });
         }
 
         res.json({ message: 'Volunteer experience deleted successfully' });
     } catch (error) {
         console.error('Delete volunteer error:', error);
-        res.status(500).json({ error: error.message || 'Failed to delete volunteer experience' });
+        res.status(500).json({ success: false, error: error.message || 'Failed to delete volunteer experience' });
     }
 });
 
@@ -1383,7 +1383,7 @@ router.get('/debug/tier-status/:wallet', async (req, res) => {
         res.json(comparison);
     } catch (error) {
         console.error('Tier comparison error:', error);
-        res.status(500).json({ error: error.message });
+        res.status(500).json({ success: false, error: error.message });
     }
 });
 

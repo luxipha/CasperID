@@ -24,11 +24,11 @@ router.post('/request-verification', rateLimitMiddleware('verification_requests'
 
         // Validation
         if (!wallet || !tier) {
-            return res.status(400).json({ error: 'Wallet address and tier are required' });
+            return res.status(400).json({ success: false, error: 'Wallet address and tier are required' });
         }
 
         if (!['layer_1', 'layer_3'].includes(tier)) {
-            return res.status(400).json({ error: 'Invalid tier. Must be basic or full_kyc' });
+            return res.status(400).json({ success: false, error: 'Invalid tier. Must be basic or full_kyc' });
         }
 
         // Check if there's already a pending request for this wallet
@@ -136,7 +136,7 @@ router.post('/request-verification', rateLimitMiddleware('verification_requests'
         });
     } catch (error) {
         console.error('Request verification error:', error);
-        res.status(500).json({ error: error.message || 'Failed to create verification request' });
+        res.status(500).json({ success: false, error: error.message || 'Failed to create verification request' });
     }
 });
 
@@ -154,7 +154,7 @@ router.post('/mint-basic-id', rateLimitMiddleware('credential_minting'), async (
 
         // Validation
         if (!wallet) {
-            return res.status(400).json({ error: 'Wallet address is required' });
+            return res.status(400).json({ success: false, error: 'Wallet address is required' });
         }
 
         // Check if automatic minting is allowed
@@ -219,7 +219,7 @@ router.post('/mint-basic-id', rateLimitMiddleware('credential_minting'), async (
 
     } catch (error) {
         console.error('Mint basic ID error:', error);
-        res.status(500).json({ error: error.message || 'Failed to mint basic ID' });
+        res.status(500).json({ success: false, error: error.message || 'Failed to mint basic ID' });
     }
 });
 
@@ -232,7 +232,7 @@ router.get('/identity-status', async (req, res) => {
         const { wallet } = req.query;
 
         if (!wallet) {
-            return res.status(400).json({ error: 'Wallet address is required' });
+            return res.status(400).json({ success: false, error: 'Wallet address is required' });
         }
 
         // Handle multiple wallet formats: full public key, account-hash, human ID
@@ -377,7 +377,7 @@ router.get('/identity-status', async (req, res) => {
         });
     } catch (error) {
         console.error('Identity status error:', error);
-        res.status(500).json({ error: 'Failed to fetch identity status' });
+        res.status(500).json({ success: false, error: 'Failed to fetch identity status' });
     }
 });
 
@@ -401,7 +401,7 @@ router.get('/cns-profile/:username', async (req, res) => {
         }).sort({ created_at: -1 });
 
         if (!request) {
-            return res.status(404).json({ error: 'Profile not found' });
+            return res.status(404).json({ success: false, error: 'Profile not found' });
         }
 
         // Return public profile data
@@ -436,7 +436,7 @@ router.get('/cns-profile/:username', async (req, res) => {
         });
     } catch (error) {
         console.error('Get profile error:', error);
-        res.status(500).json({ error: 'Failed to fetch profile' });
+        res.status(500).json({ success: false, error: 'Failed to fetch profile' });
     }
 });
 
@@ -449,7 +449,7 @@ router.post('/verify-credential', async (req, res) => {
         const { credential } = req.body;
 
         if (!credential) {
-            return res.status(400).json({ error: 'Credential is required' });
+            return res.status(400).json({ success: false, error: 'Credential is required' });
         }
 
         // TODO: Implement JWT verification
@@ -460,7 +460,7 @@ router.post('/verify-credential', async (req, res) => {
         });
     } catch (error) {
         console.error('Verify credential error:', error);
-        res.status(500).json({ error: 'Failed to verify credential' });
+        res.status(500).json({ success: false, error: 'Failed to verify credential' });
     }
 });
 
@@ -473,7 +473,7 @@ router.post('/evaluate-requirements', async (req, res) => {
         const { wallet, requirements } = req.body;
 
         if (!wallet || !requirements) {
-            return res.status(400).json({ error: 'Wallet and requirements are required' });
+            return res.status(400).json({ success: false, error: 'Wallet and requirements are required' });
         }
 
         // Find credential
@@ -519,7 +519,7 @@ router.post('/evaluate-requirements', async (req, res) => {
         });
     } catch (error) {
         console.error('Evaluate requirements error:', error);
-        res.status(500).json({ error: 'Failed to evaluate requirements' });
+        res.status(500).json({ success: false, error: 'Failed to evaluate requirements' });
     }
 });
 

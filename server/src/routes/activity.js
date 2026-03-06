@@ -211,7 +211,7 @@ router.get('/activity-log', requireAuth, async (req, res) => {
 
     } catch (error) {
         console.error('Activity log error:', error);
-        res.status(500).json({ error: 'Failed to fetch activity log' });
+        res.status(500).json({ success: false, error: 'Failed to fetch activity log' });
     }
 });
 
@@ -253,7 +253,7 @@ router.get('/activity-log/:id', requireAuth, async (req, res) => {
         }
 
         if (!activity) {
-            return res.status(404).json({ error: 'Activity not found' });
+            return res.status(404).json({ success: false, error: 'Activity not found' });
         }
 
         // Enrich
@@ -278,7 +278,7 @@ router.get('/activity-log/:id', requireAuth, async (req, res) => {
 
     } catch (error) {
         console.error('Activity detail error:', error);
-        res.status(500).json({ error: 'Failed to fetch activity details' });
+        res.status(500).json({ success: false, error: 'Failed to fetch activity details' });
     }
 });
 

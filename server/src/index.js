@@ -62,7 +62,7 @@ app.use(express.json({
         try {
             JSON.parse(buf);
         } catch (e) {
-            res.status(400).json({ error: 'Invalid JSON' });
+            res.status(400).json({ success: false, error: 'Invalid JSON' });
             return;
         }
     }
@@ -206,7 +206,7 @@ app.use((err, req, res, next) => {
 
 // 404 handler
 app.use((req, res) => {
-    res.status(404).json({ error: 'Route not found' });
+    res.status(404).json({ success: false, error: 'Route not found' });
 });
 
 module.exports = app;

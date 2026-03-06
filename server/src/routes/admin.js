@@ -59,7 +59,7 @@ router.get('/verification-requests', adminAuthWithRateLimit, async (req, res) =>
         });
     } catch (error) {
         console.error('Get requests error:', error);
-        res.status(500).json({ error: 'Failed to fetch verification requests' });
+        res.status(500).json({ success: false, error: 'Failed to fetch verification requests' });
     }
 });
 
@@ -72,18 +72,18 @@ router.post('/issue-credential', adminAuthWithRateLimit, async (req, res) => {
         const { request_id, approve } = req.body;
 
         if (!request_id || approve === undefined) {
-            return res.status(400).json({ error: 'request_id and approve are required' });
+            return res.status(400).json({ success: false, error: 'request_id and approve are required' });
         }
 
         // Find verification request
         const request = await VerificationRequest.findById(request_id);
 
         if (!request) {
-            return res.status(404).json({ error: 'Verification request not found' });
+            return res.status(404).json({ success: false, error: 'Verification request not found' });
         }
 
         if (request.status !== 'pending') {
-            return res.status(400).json({ error: 'Request already processed' });
+            return res.status(400).json({ success: false, error: 'Request already processed' });
         }
 
         // Handle rejection
@@ -117,7 +117,7 @@ router.post('/issue-credential', adminAuthWithRateLimit, async (req, res) => {
         });
     } catch (error) {
         console.error('Issue credential error:', error);
-        res.status(500).json({ error: 'Failed to issue credential' });
+        res.status(500).json({ success: false, error: 'Failed to issue credential' });
     }
 });
 
@@ -130,17 +130,17 @@ router.post('/revoke', adminAuthWithRateLimit, async (req, res) => {
         const { wallet, reason } = req.body;
 
         if (!wallet) {
-            return res.status(400).json({ error: 'Wallet address is required' });
+            return res.status(400).json({ success: false, error: 'Wallet address is required' });
         }
 
         const credential = await Credential.findOne({ wallet });
 
         if (!credential) {
-            return res.status(404).json({ error: 'Credential not found' });
+            return res.status(404).json({ success: false, error: 'Credential not found' });
         }
 
         if (credential.revoked) {
-            return res.status(400).json({ error: 'Credential already revoked' });
+            return res.status(400).json({ success: false, error: 'Credential already revoked' });
         }
 
         // Mark as revoked
@@ -158,7 +158,7 @@ router.post('/revoke', adminAuthWithRateLimit, async (req, res) => {
         });
     } catch (error) {
         console.error('Revoke credential error:', error);
-        res.status(500).json({ error: 'Failed to revoke credential' });
+        res.status(500).json({ success: false, error: 'Failed to revoke credential' });
     }
 });
 
@@ -249,7 +249,7 @@ router.post('/sync-verified-profiles', adminAuthWithRateLimit, async (req, res) 
 
     } catch (error) {
         console.error('Manual sync error:', error);
-        res.status(500).json({ error: 'Failed to sync verified profiles' });
+        res.status(500).json({ success: false, error: 'Failed to sync verified profiles' });
     }
 });
 
@@ -320,7 +320,7 @@ router.post('/issue-missing-credentials', adminAuthWithRateLimit, async (req, re
 
     } catch (error) {
         console.error('Credential audit error:', error);
-        res.status(500).json({ error: 'Failed to run credential audit' });
+        res.status(500).json({ success: false, error: 'Failed to run credential audit' });
     }
 });
 

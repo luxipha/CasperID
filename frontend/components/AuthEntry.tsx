@@ -16,6 +16,15 @@ export const AuthEntry: React.FC<AuthEntryProps> = ({ onEmailSubmit, onReturning
   const [error, setError] = useState('');
   const { login } = useAuth();
 
+  // Detect the current device type
+  const getCurrentDeviceType = (): 'mobile' | 'tablet' | 'desktop' => {
+    const userAgent = navigator.userAgent.toLowerCase();
+    if (/mobile|android|iphone|ipad|ipod|blackberry|windows phone/.test(userAgent)) {
+      return /ipad|tablet/.test(userAgent) ? 'tablet' : 'mobile';
+    }
+    return 'desktop';
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email) return;
@@ -31,13 +40,26 @@ export const AuthEntry: React.FC<AuthEntryProps> = ({ onEmailSubmit, onReturning
         if ((response as any).userExists && (response as any).hasPasskey) {
           // Returning user - check for device type hint first
           try {
-            const { deviceType } = await login(email, true);
+            const { deviceType: passkeyDeviceType, transports } = await login(email, true);
+            const currentDevice = getCurrentDeviceType();
 
-            if (deviceType === 'mobile') {
-              // Priority: Mobile user - trigger QR code handoff flow
+            // Determine if passkey is on a different device
+            // If transports includes 'hybrid', it was registered via cross-device (QR scan)
+            const isHybridPasskey = transports?.includes('hybrid');
+            const passkeyOnMobile = passkeyDeviceType === 'mobile' || passkeyDeviceType === 'tablet';
+            const currentDeviceIsMobile = currentDevice === 'mobile' || currentDevice === 'tablet';
+
+            // Decision logic:
+            // 1. If current device matches passkey device type → native WebAuthn
+            // 2. If current device differs from passkey device → QR code flow
+            const needsCrossDeviceAuth = (currentDeviceIsMobile !== passkeyOnMobile) ||
+              (isHybridPasskey && currentDevice === 'desktop' && passkeyOnMobile);
+
+            if (needsCrossDeviceAuth) {
+              // Cross-device authentication needed - trigger QR code flow
               onBiometricLogin(email);
             } else {
-              // Desktop user - trigger native passkey/fingerprint prompt
+              // Same device as passkey - trigger native passkey/fingerprint prompt
               await login(email);
               onReturningUser(email);
             }
