@@ -413,6 +413,7 @@ export const CredentialVault: React.FC = () => {
                         <span className="material-symbols-outlined text-3xl text-white drop-shadow-sm">{vc.icon}</span>
                       </div>
                       <div className="flex flex-col items-end gap-2">
+                        {/* Primary Badge */}
                         <div className="px-3 py-1 rounded-full bg-white/20 backdrop-blur-md border border-white/20 text-[10px] font-black uppercase tracking-widest">
                           {vc.type}
                         </div>
@@ -423,14 +424,13 @@ export const CredentialVault: React.FC = () => {
                             target="_blank"
                             rel="noopener noreferrer"
                             onClick={(e) => e.stopPropagation()}
-                            className="group/zk px-2.5 py-1 rounded-full bg-purple-500/30 backdrop-blur-md border border-purple-300/40 text-[9px] font-black uppercase tracking-wider flex items-center gap-1.5 hover:bg-purple-500/50 transition-colors cursor-pointer"
+                            className="px-2 py-[2px] rounded-full bg-purple-500/80 backdrop-blur-md border border-purple-300 text-[8px] font-black uppercase tracking-wider flex items-center justify-center gap-1 hover:bg-purple-600 transition-colors cursor-pointer shadow-md w-fit"
                             title="View on Starknet Voyager"
                           >
-                            <svg className="w-3 h-3" viewBox="0 0 24 24" fill="currentColor">
-                              <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
+                            <svg className="w-2.5 h-2.5 text-white" viewBox="0 0 24 24" fill="currentColor">
+                              <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" />
                             </svg>
                             <span>ZK Anchored</span>
-                            <span className="material-symbols-outlined text-[10px] opacity-0 group-hover/zk:opacity-100 transition-opacity">open_in_new</span>
                           </a>
                         )}
                       </div>

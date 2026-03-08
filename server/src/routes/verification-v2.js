@@ -630,7 +630,11 @@ router.get('/history', async (req, res) => {
                 lastKycAt: new Date(cred.last_kyc_at * 1000),
                 lastLivenessAt: cred.last_liveness_at ? new Date(cred.last_liveness_at * 1000) : null,
                 revoked: cred.revoked,
-                credentialHash: cred.credential_hash
+                credentialHash: cred.credential_hash,
+                // Attach ZK data from the UserAccount to the credentials
+                zk_verified: sessionData.userAccount.zk_verified || false,
+                zk_transaction_hash: sessionData.userAccount.zk_transaction_hash || null,
+                zk_nullifier: sessionData.userAccount.zk_nullifier || null
             })),
             currentStatus: {
                 layerStatus: sessionData.userAccount.tier,
