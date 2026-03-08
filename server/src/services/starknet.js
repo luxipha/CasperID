@@ -185,7 +185,7 @@ function formatWalletToFelt(casperWallet) {
   if (hex.startsWith('0x')) hex = hex.slice(2);
 
   // Take the last 62 characters (248 bits) which easily fits in a 251-bit felt
-  const safeHex = '0x' + hex.slice(-62).padStart(1, '0');
+  const safeHex = '0x' + hex.slice(-62);
   return safeHex;
 }
 
@@ -267,15 +267,12 @@ async function isWalletVerified(walletAddress) {
   }
 
   try {
+    initializeProvider();
     const safeWallet = formatWalletToFelt(walletAddress);
-    const result = await provider.callContract({
-      contractAddress: CASPERID_ZK_CONTRACT,
-      entrypoint: 'is_verified',
-      calldata: [safeWallet]
-    });
-    return result[0] !== '0x0';
+    const result = await contract.is_verified(safeWallet);
+    return !!result;
   } catch (error) {
-    console.error('[Starknet] Verification check failed:', error);
+    console.error('[Starknet] Verification check failed:', error.message);
     return false;
   }
 }
@@ -291,16 +288,11 @@ async function isNullifierUsed(nullifier) {
   try {
     const MASK_251_BITS = (1n << 251n) - 1n;
     const safeNullifier = '0x' + (BigInt(nullifier) & MASK_251_BITS).toString(16);
-    const nullifierFelt = cairo.felt(safeNullifier);
 
-    const result = await provider.callContract({
-      contractAddress: CASPERID_ZK_CONTRACT,
-      entrypoint: 'is_nullifier_used',
-      calldata: [nullifierFelt]
-    });
-    return result[0] !== '0x0';
+    const result = await contract.is_nullifier_used(safeNullifier);
+    return !!result;
   } catch (error) {
-    console.error('[Starknet] Nullifier check failed:', error);
+    console.error('[Starknet] Error checking nullifier:', error.message);
     return false;
   }
 }
