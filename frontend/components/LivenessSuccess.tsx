@@ -162,7 +162,18 @@ export const LivenessSuccess: React.FC<LivenessSuccessProps> = ({ onDashboard, o
                   </div>
                 </div>
 
-                {/* Step 3: Minting (Completed) */}
+                {/* Step 3: Privacy Proof (Completed) */}
+                <div className="flex gap-6 items-start relative z-10">
+                  <div className="size-8 rounded-full bg-primary flex items-center justify-center text-white shadow-md">
+                    <span className="material-symbols-outlined text-sm font-bold">check</span>
+                  </div>
+                  <div className="flex flex-col">
+                    <span className="text-sm font-black text-text-main leading-tight">Privacy Proof</span>
+                    <span className="text-[11px] font-bold text-text-sub mt-0.5">Zero-Knowledge verification</span>
+                  </div>
+                </div>
+
+                {/* Step 4: Minting (Completed) */}
                 <div className="flex gap-6 items-start relative z-10">
                   <div className="size-8 rounded-full bg-primary flex items-center justify-center text-white shadow-md">
                     <span className="material-symbols-outlined text-sm font-bold">check</span>
@@ -173,7 +184,7 @@ export const LivenessSuccess: React.FC<LivenessSuccessProps> = ({ onDashboard, o
                   </div>
                 </div>
 
-                {/* Step 4: Success (Active) */}
+                {/* Step 5: Success (Active) */}
                 <div className="flex gap-6 items-start relative z-10">
                   <div className="size-8 rounded-full bg-white border-2 border-primary flex items-center justify-center text-primary font-black text-xs shadow-sm ring-4 ring-white">
                     <span className="material-symbols-outlined text-sm font-bold">check</span>

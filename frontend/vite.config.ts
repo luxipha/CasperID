@@ -12,15 +12,17 @@ export default defineConfig(({ mode }) => {
       host: '0.0.0.0',
       allowedHosts: true, // Allow ngrok and other tunnels
       headers: {
-        'ngrok-skip-browser-warning': 'true'
+        'ngrok-skip-browser-warning': 'true',
+        'Cross-Origin-Opener-Policy': 'same-origin',
+        'Cross-Origin-Embedder-Policy': 'credentialless',
       },
       // hmr: {
       //   clientPort: 443, // Ngrok uses 443 for HTTPS
       // },
       proxy: {
-        // Proxy API calls to backend during development
+        // Proxy API calls to local backend during development
         '/api': {
-          target: env.VITE_API_URL || 'http://localhost:3001',
+          target: env.VITE_LOCAL_BACKEND_URL || 'http://127.0.0.1:3001',
           changeOrigin: true,
           secure: false,
         },
@@ -74,11 +76,27 @@ export default defineConfig(({ mode }) => {
           ]
         },
         workbox: {
-          globPatterns: ['**/*.{js,css,html,ico,png,svg,woff,woff2}'],
+          globPatterns: ['**/*.{css,html,ico,png,svg,woff,woff2}'],
+          // Exclude large JS files (Barretenberg WASM is 65MB+)
+          globIgnores: ['**/assets/index-*.js'],
           cleanupOutdatedCaches: true,
           clientsClaim: true,
           skipWaiting: true,
-          maximumFileSizeToCacheInBytes: 10 * 1024 * 1024 // 10MB
+          maximumFileSizeToCacheInBytes: 100 * 1024 * 1024, // 100MB
+          // Cache JS files at runtime instead of precaching
+          runtimeCaching: [
+            {
+              urlPattern: /\.js$/,
+              handler: 'StaleWhileRevalidate',
+              options: {
+                cacheName: 'js-cache',
+                expiration: {
+                  maxEntries: 50,
+                  maxAgeSeconds: 60 * 60 * 24 * 7, // 7 days
+                },
+              },
+            },
+          ],
         },
         devOptions: {
           enabled: true,
@@ -89,6 +107,32 @@ export default defineConfig(({ mode }) => {
     define: {
       'process.env.API_KEY': JSON.stringify(env.GEMINI_API_KEY),
       'process.env.GEMINI_API_KEY': JSON.stringify(env.GEMINI_API_KEY)
+    },
+    build: {
+      target: 'esnext',
+    },
+    esbuild: {
+      supported: {
+        'top-level-await': true,
+      },
+    },
+    optimizeDeps: {
+      esbuildOptions: {
+        target: 'esnext',
+        supported: {
+          'top-level-await': true,
+        },
+      },
+      // Exclude Noir/Barretenberg packages from pre-bundling
+      // They use dynamic imports and WASM that don't work well with esbuild
+      exclude: [
+        '@noir-lang/noir_js',
+        '@noir-lang/backend_barretenberg',
+        '@aztec/bb.js',
+      ],
+    },
+    worker: {
+      format: 'es',
     },
     resolve: {
       alias: {

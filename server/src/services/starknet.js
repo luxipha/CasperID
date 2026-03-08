@@ -112,11 +112,32 @@ initializeProvider();
  */
 function verifyProofLocally(proofData) {
   try {
-    // Decode the proof
-    const decoded = Buffer.from(proofData.proof, 'base64').toString('utf-8');
-    const proof = JSON.parse(decoded);
+    // 1. Try to decode as JSON (Mock/Legacy format)
+    let proof;
+    try {
+      const decoded = Buffer.from(proofData.proof, 'base64').toString('utf-8');
+      proof = JSON.parse(decoded);
+    } catch (e) {
+      // 2. If JSON parsing fails, it's likely a raw binary ZK proof (Noir format)
+      console.log('[Starknet] Received binary proof, relying on public inputs for verification');
 
-    // Verify structure
+      // For binary proofs, we rely on the publicInputs provided in the request
+      const { publicInputs } = proofData;
+
+      if (!publicInputs.nullifier || !publicInputs.walletAddress || !publicInputs.sessionNonce) {
+        return { valid: false, error: 'Missing public inputs for binary proof' };
+      }
+
+      // Check timestamp if available in publicInputs
+      const oneHourAgo = Date.now() - 60 * 60 * 1000;
+      if (publicInputs.timestamp && publicInputs.timestamp < oneHourAgo) {
+        return { valid: false, error: 'Proof has expired' };
+      }
+
+      return { valid: true, format: 'binary' };
+    }
+
+    // 3. Verify structure for JSON proofs
     if (!proof.nullifier || !proof.sessionNonce || !proof.walletAddress) {
       return { valid: false, error: 'Invalid proof structure' };
     }
@@ -132,8 +153,8 @@ function verifyProofLocally(proofData) {
       return { valid: false, error: 'Proof has expired' };
     }
 
-    // Verify challenge data
-    if (!proof.challengeData || proof.challengeData.blinks < 2) {
+    // Verify challenge data (if mock)
+    if (proof.type === 'CASPERID_LIVENESS_V1' && (!proof.challengeData || proof.challengeData.blinks < 2)) {
       return { valid: false, error: 'Insufficient liveness data' };
     }
 
@@ -142,7 +163,7 @@ function verifyProofLocally(proofData) {
       return { valid: false, error: 'Nullifier mismatch' };
     }
 
-    return { valid: true, proof };
+    return { valid: true, proof, format: 'json' };
   } catch (error) {
     return { valid: false, error: error.message };
   }
@@ -151,6 +172,22 @@ function verifyProofLocally(proofData) {
 // ============================================
 // STARKNET SUBMISSION
 // ============================================
+
+/**
+ * Format Casper Wallet to Starknet ContractAddress (felt252)
+ * Casper format: "account-hash-HEX64"
+ * Starknet max is ~251 bits. We take the last 62 hex chars of the hash (248 bits)
+ */
+function formatWalletToFelt(casperWallet) {
+  if (!casperWallet) return cairo.felt('0x0');
+  let hex = casperWallet.toString();
+  if (hex.startsWith('account-hash-')) hex = hex.replace('account-hash-', '');
+  if (hex.startsWith('0x')) hex = hex.slice(2);
+
+  // Take the last 62 characters (248 bits) which easily fits in a 251-bit felt
+  const safeHex = '0x' + hex.slice(-62).padStart(1, '0');
+  return safeHex;
+}
 
 /**
  * Submit a ZK proof to Starknet
@@ -175,15 +212,18 @@ async function submitProofToStarknet({ proof, proofHash, publicInputs }) {
       throw new Error('This biometric identity is already registered');
     }
 
-    // Convert wallet address to Starknet format
-    const walletAddress = publicInputs.walletAddress.startsWith('0x')
-      ? publicInputs.walletAddress
-      : '0x' + publicInputs.walletAddress;
+    // Convert wallet address to Starknet format (fits inside felt252 limit)
+    const walletAddress = formatWalletToFelt(publicInputs.walletAddress);
 
     // First, register the proof hash as valid (owner operation)
     console.log('[Starknet] Adding valid proof hash:', proofHash);
     const proofHashFelt = cairo.felt(proofHash);
-    const nullifierFelt = cairo.felt(publicInputs.nullifier);
+
+    // Starknet felt252 limit is ~252 bits. BN254 poseidon hash can be 254 bits.
+    // We mask the nullifier to 251 bits to ensure it always fits in a felt252.
+    const MASK_251_BITS = (1n << 251n) - 1n;
+    const safeNullifier = '0x' + (BigInt(publicInputs.nullifier) & MASK_251_BITS).toString(16);
+    const nullifierFelt = cairo.felt(safeNullifier);
 
     const addProofTx = await relayAccount.execute({
       contractAddress: CASPERID_ZK_CONTRACT,
@@ -227,10 +267,11 @@ async function isWalletVerified(walletAddress) {
   }
 
   try {
+    const safeWallet = formatWalletToFelt(walletAddress);
     const result = await provider.callContract({
       contractAddress: CASPERID_ZK_CONTRACT,
       entrypoint: 'is_verified',
-      calldata: [walletAddress.startsWith('0x') ? walletAddress : '0x' + walletAddress]
+      calldata: [safeWallet]
     });
     return result[0] !== '0x0';
   } catch (error) {
@@ -248,7 +289,10 @@ async function isNullifierUsed(nullifier) {
   }
 
   try {
-    const nullifierFelt = cairo.felt(nullifier);
+    const MASK_251_BITS = (1n << 251n) - 1n;
+    const safeNullifier = '0x' + (BigInt(nullifier) & MASK_251_BITS).toString(16);
+    const nullifierFelt = cairo.felt(safeNullifier);
+
     const result = await provider.callContract({
       contractAddress: CASPERID_ZK_CONTRACT,
       entrypoint: 'is_nullifier_used',

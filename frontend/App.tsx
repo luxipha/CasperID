@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Routes, Route, useLocation, useNavigate, Navigate, useParams } from 'react-router-dom';
+import Intercom from '@intercom/messenger-js-sdk';
 import { Sidebar } from './components/Sidebar';
 import { Header } from './components/Header';
 import { MobileHeader } from './components/MobileHeader';
@@ -234,18 +235,22 @@ const App: React.FC = () => {
     }
   }, [location.pathname, isLoading]);
 
-  // Toggle Crisp chat visibility on mobile after login
+  // Intercom chat integration
   useEffect(() => {
-    // Only run if Crisp is loaded
-    const crisp = (window as any).$crisp;
-    if (crisp) {
-      const isMobile = window.innerWidth < 768; // Standard mobile breakpoint
-      // User specifically requested to remove chat support on mobile after login
-      if (user && isMobile) {
-        crisp.push(["do", "chat:hide"]);
-      } else {
-        crisp.push(["do", "chat:show"]);
-      }
+    if (user) {
+      // Boot with user data if authenticated
+      Intercom({
+        app_id: import.meta.env.VITE_INTERCOM_APP_ID || 'qh9dngzh',
+        name: user.display_name || user.cns_name || undefined,
+        email: user.email || undefined,
+        user_id: user.wallet || undefined,
+        created_at: user.created_at ? Math.floor(new Date(user.created_at).getTime() / 1000) : undefined
+      });
+    } else {
+      // Boot without user data for anonymous visitors
+      Intercom({
+        app_id: import.meta.env.VITE_INTERCOM_APP_ID || 'qh9dngzh',
+      });
     }
   }, [user]);
 
