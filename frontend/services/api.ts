@@ -35,7 +35,7 @@ class ApiService {
 
     this.client = axios.create({
       baseURL: this.baseURL,
-      timeout: 30000,
+      timeout: 120000, // 2 minutes for slow Starknet transactions
       withCredentials: true,
       headers: {
         'Content-Type': 'application/json',
@@ -106,8 +106,8 @@ class ApiService {
 
         // Handle CSRF token errors - refresh token and retry once
         if (error.response?.status === 403 &&
-            error.response?.data?.error?.includes('CSRF') &&
-            !originalRequest._csrfRetry) {
+          error.response?.data?.error?.includes('CSRF') &&
+          !originalRequest._csrfRetry) {
           originalRequest._csrfRetry = true;
           await this.refreshCsrfToken();
           // Update the header with new token

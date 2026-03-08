@@ -227,7 +227,7 @@ router.post('/ai/verify-liveness-sequence', upload.fields([
 
             // Generate a secure liveness session token for the ZK submission step
             const livenessSessionToken = crypto.randomBytes(32).toString('hex');
-            const livenessSessionExpiry = Date.now() + (10 * 60 * 1000); // 10 minutes
+            const livenessSessionExpiry = Date.now() + (30 * 60 * 1000); // 30 minutes
 
             // Store liveness session in UserAccount for validation during ZK submission
             await UserAccount.updateOne(
