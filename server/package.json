@@ -27,7 +27,7 @@
         "@paddlejs-models/ocr": "^1.2.4",
         "@simplewebauthn/server": "^13.2.2",
         "@simplewebauthn/typescript-types": "^8.3.4",
-        "axios": "^1.13.2",
+        "axios": "^1.13.6",
         "bcrypt": "^5.1.1",
         "blakejs": "^1.2.1",
         "casper-js-sdk": "^2.15.3",

@@ -1519,7 +1519,64 @@ const webhookSubscriptionSchema = new mongoose.Schema({
 const BusinessApp = mongoose.model('BusinessApp', businessAppSchema);
 const WebhookSubscription = mongoose.model('WebhookSubscription', webhookSubscriptionSchema);
 
+// ============================================
+// PAYMENTS
+// ============================================
+const paymentSchema = new mongoose.Schema({
+    reference: {
+        type: String,
+        required: true,
+        unique: true,
+        index: true
+    },
+    orderId: String,
+    type: {
+        type: String,
+        enum: ['fiat', 'crypto'],
+        required: true
+    },
+    provider: {
+        type: String,
+        enum: ['revenuecat', 'boomfi', 'direct'],
+        required: true
+    },
+    amount: {
+        type: Number,
+        required: true
+    },
+    currency: {
+        type: String,
+        default: 'USD'
+    },
+    payCurrency: String,
+    payAmount: String,
+    payAddress: String,
+    status: {
+        type: String,
+        enum: ['pending', 'confirming', 'completed', 'failed', 'expired', 'refunded'],
+        default: 'pending'
+    },
+    txHash: String,
+    metadata: {
+        domainName: String,
+        years: Number,
+        userId: String,
+        userWallet: String,
+        userEmail: String
+    },
+    created_at: { type: Date, default: Date.now },
+    completed_at: Date,
+    expires_at: Date
+});
+
+paymentSchema.index({ expires_at: 1 }, { expireAfterSeconds: 0 });
+
+const Payment = mongoose.model('Payment', paymentSchema);
+
 module.exports = {
+    // Payments
+    Payment,
+
     // Verification & Credentials
     VerificationRequest,
     Credential,

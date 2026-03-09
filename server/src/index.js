@@ -78,7 +78,13 @@ app.get('/api/csrf-token', getCsrfToken);
 
 // Apply CSRF protection to all state-changing requests (POST, PUT, DELETE, PATCH)
 // Skips GET, HEAD, OPTIONS automatically
-app.use(doubleCsrfProtection);
+app.use((req, res, next) => {
+    // Exempt external webhooks from CSRF protection
+    if (req.path.startsWith('/api/payment/revenuecat/webhook') || req.path.startsWith('/api/payment/boomfi/webhook')) {
+        return next();
+    }
+    doubleCsrfProtection(req, res, next);
+});
 
 // Serve static files from uploads directory
 const path = require('path');
@@ -187,6 +193,7 @@ app.use('/api', activityRoutes); // Activity log routes
 app.use('/api', verifiedProfilesRoutes); // Verified profiles for sitemap
 app.use('/api/notifications', require('./routes/notifications'));
 app.use('/api', require('./routes/cns')); // CNS Name Resolution & Registration
+app.use('/api/payment', require('./routes/payment')); // Premium CID Payments (RevenueCat & Boomfi)
 app.use('/api/pending-session', require('./routes/pending-session')); // Mobile Passkey Handoff
 app.use('/api/business', require('./routes/business')); // Business Platform (Identity-as-a-Service)
 app.use('/.well-known', require('./routes/well-known')); // JWKS + OpenID Connect Discovery

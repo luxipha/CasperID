@@ -26,8 +26,29 @@ export const RegisterCID: React.FC<RegisterCIDProps> = ({ onBack }) => {
   const [txHash, setTxHash] = useState<string | null>(null);
   const [showExplanationModal, setShowExplanationModal] = useState(false);
   const [timeLeft, setTimeLeft] = useState<{ days: number, hours: number, minutes: number, seconds: number } | null>(null);
+  const [userProfile, setUserProfile] = useState<{ email?: string; name?: string } | null>(null);
+
+  // Fetch user profile for pre-filling checkout
+  useEffect(() => {
+    const fetchProfile = async () => {
+      try {
+        const profile = await apiService.getUserProfile();
+        const fullName = [profile.first_name, profile.last_name].filter(Boolean).join(' ');
+        setUserProfile({
+          email: profile.email,
+          name: fullName || undefined
+        });
+      } catch {
+        // User might not be logged in, continue without pre-fill
+      }
+    };
+    fetchProfile();
+  }, []);
 
   useEffect(() => {
+    // Timer disabled by user request - unlocking registration
+    setTimeLeft(null);
+    /*
     const targetDate = new Date('2026-03-11T00:00:00Z'); // 14 days from Feb 25, 2026
     const timer = setInterval(() => {
       const now = new Date();
@@ -45,6 +66,7 @@ export const RegisterCID: React.FC<RegisterCIDProps> = ({ onBack }) => {
       }
     }, 1000);
     return () => clearInterval(timer);
+    */
   }, []);
 
   const pricing = [
@@ -91,18 +113,29 @@ export const RegisterCID: React.FC<RegisterCIDProps> = ({ onBack }) => {
     setRegistrationError(null);
 
     try {
-      const data = await apiService.registerCns(search, selectedYears);
-
-      if (data.success) {
-        setRegisteredName(data.name || `${search}.cid`);
-        setTxHash(data.txHash || null);
-        setStage('success');
+      if (paymentMethod === 'crypto') {
+        // Boomfi handles USDC/USDT selection on their checkout page
+        const data = await apiService.createBoomfiCheckout(search, selectedYears, 'USDC', userProfile || undefined);
+        if (data.success && data.checkoutUrl) {
+          window.location.href = data.checkoutUrl;
+          return;
+        } else {
+          setRegistrationError(data.error || 'Failed to initialize crypto checkout');
+          setStage('payment');
+        }
       } else {
-        setRegistrationError(data.error || 'Registration failed');
-        setStage('payment'); // Go back to payment stage on error
+        // Fiat logic - Card payment via RevenueCat
+        const data = await apiService.createRevenueCatCheckout(search, selectedYears);
+        if (data.success && data.checkoutUrl) {
+          window.location.href = data.checkoutUrl;
+          return;
+        } else {
+          setRegistrationError(data.error || 'Failed to initialize card checkout');
+          setStage('payment');
+        }
       }
     } catch (err) {
-      setRegistrationError('Failed to complete registration. Please try again.');
+      setRegistrationError('Failed to initialize payment checkout. Please try again.');
       setStage('payment');
     }
   };
@@ -205,32 +238,33 @@ export const RegisterCID: React.FC<RegisterCIDProps> = ({ onBack }) => {
               </div>
             </div>
 
-            <div className="space-y-4">
+            <div className="space-y-6">
               <p className="text-[11px] font-black text-text-sub uppercase tracking-widest opacity-60">Select Payment Method</p>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <button
                   onClick={() => setPaymentMethod('crypto')}
                   className={`p-6 rounded-[28px] border-2 transition-all flex flex-col gap-4 text-left ${paymentMethod === 'crypto' ? 'border-primary bg-primary/[0.02]' : 'border-gray-100 hover:border-gray-200'}`}
                 >
-                  <div className="size-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary">
-                    <span className="material-symbols-outlined">account_balance_wallet</span>
+                  <div className="size-10 rounded-xl bg-green-50 flex items-center justify-center text-green-500">
+                    <span className="material-symbols-outlined font-bold">paid</span>
                   </div>
                   <div>
-                    <h4 className="text-base font-black text-text-main">Pay with CSPR</h4>
-                    <p className="text-xs font-medium text-text-sub leading-relaxed">Direct from your connected wallet</p>
+                    <h4 className="text-base font-black text-text-main">Pay with Crypto</h4>
+                    <p className="text-xs font-medium text-text-sub leading-relaxed">Secure crypto checkout USDC/USDT</p>
                   </div>
                 </button>
 
+                {/* Card Option */}
                 <button
                   onClick={() => setPaymentMethod('fiat')}
-                  className={`p-6 rounded-[28px] border-2 transition-all flex flex-col gap-4 text-left ${paymentMethod === 'fiat' ? 'border-primary bg-primary/[0.02]' : 'border-gray-100 hover:border-gray-200'}`}
+                  className={`p-6 rounded-[28px] border-2 h-fit transition-all flex flex-col gap-4 text-left ${paymentMethod === 'fiat' ? 'border-primary bg-primary/[0.02]' : 'border-gray-100 hover:border-gray-200'}`}
                 >
                   <div className="size-10 rounded-xl bg-blue-50 flex items-center justify-center text-blue-500">
-                    <span className="material-symbols-outlined">payments</span>
+                    <span className="material-symbols-outlined">credit_card</span>
                   </div>
                   <div>
-                    <h4 className="text-base font-black text-text-main">Pay with Card / Apple Pay</h4>
-                    <p className="text-xs font-medium text-text-sub leading-relaxed">Fast fiat checkout via Stripe</p>
+                    <h4 className="text-base font-black text-text-main">Pay with Card</h4>
+                    <p className="text-xs font-medium text-text-sub leading-relaxed">Fast and secure fiat checkout</p>
                   </div>
                 </button>
               </div>
@@ -253,8 +287,8 @@ export const RegisterCID: React.FC<RegisterCIDProps> = ({ onBack }) => {
               disabled={!!timeLeft}
               className={`w-full h-16 rounded-[24px] font-black text-lg transition-all flex items-center justify-center gap-3 ${timeLeft ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : 'bg-primary text-white shadow-xl shadow-primary/30 hover:bg-primary/95 active:scale-[0.98]'}`}
             >
-              <span className="material-symbols-outlined">{timeLeft ? 'lock' : (paymentMethod === 'crypto' ? 'account_balance_wallet' : 'credit_card')}</span>
-              {timeLeft ? `Unlocking in ${timeLeft.days}d ${timeLeft.hours}h ${timeLeft.minutes}m` : 'Confirm & Pay'}
+              <span className="material-symbols-outlined">{paymentMethod === 'crypto' ? 'paid' : 'credit_card'}</span>
+              Confirm & Pay
             </button>
           </div>
         </div>
@@ -449,11 +483,10 @@ export const RegisterCID: React.FC<RegisterCIDProps> = ({ onBack }) => {
                 </div>
 
                 <button
-                  onClick={handleConfirmPayment}
-                  disabled={!!timeLeft}
-                  className={`w-full py-4 rounded-[20px] font-black text-lg transition-all ${timeLeft ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : 'bg-primary text-white shadow-xl shadow-primary/20 hover:opacity-90 active:scale-[0.98]'}`}
+                  onClick={handleRegister}
+                  className="w-full py-4 rounded-[20px] font-black text-lg transition-all bg-primary text-white shadow-xl shadow-primary/20 hover:opacity-90 active:scale-[0.98]"
                 >
-                  {timeLeft ? `Domain Registry Unlocks in ${timeLeft.days}d ${timeLeft.hours}h ${timeLeft.minutes}m` : 'Register & Pay'}
+                  Register & Pay
                 </button>
               </div>
             </>

@@ -173,7 +173,7 @@ export const DIDManagement: React.FC<DIDManagementProps> = ({ onCreateNew, onMan
             </div>
           </div>
           <button
-            onClick={() => onManageDID(getPrimaryIdentityName())}
+            onClick={onConfigureIdentity}
             className="relative z-10 text-xs font-bold text-primary flex items-center gap-1 hover:gap-2 transition-all"
           >
             Configure <span className="material-symbols-outlined text-sm">arrow_forward</span>

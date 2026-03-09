@@ -59,6 +59,7 @@ import ApplySuccessPage from './components/landing/ApplySuccess';
 import AffiliatePage from './components/landing/AffiliatePage';
 import ChangelogPage from './components/landing/casperos/changelog';
 import AdminPage from './admin/page';
+import { CnsSuccess } from './components/CnsSuccess';
 
 const PublicProfileContainerWrapper: React.FC = () => {
   const { slug } = useParams<{ slug: string }>();
@@ -84,9 +85,9 @@ const App: React.FC = () => {
   */
   // Check if a path is a reserved system path and should NOT be treated as a public profile
   const isReservedPath = (path: string) => {
-    const sysPaths = ['/', '/admin', '/pair', '/dashboard', '/login', '/auth', '/settings', '/integrations', '/verify', '/mobile', '/null', '/business', '/anra', '/adevaros', '/casperos', '/careers', '/apply-success', '/affiliate', '/profile', '/p', '/did'];
+    const sysPaths = ['/', '/admin', '/pair', '/dashboard', '/login', '/auth', '/settings', '/integrations', '/verify', '/mobile', '/null', '/business', '/anra', '/adevaros', '/casperos', '/careers', '/apply-success', '/affiliate', '/profile', '/p', '/did', '/cns-success'];
     const p = path.toLowerCase();
-    return sysPaths.includes(p) || p.startsWith('/verify/') || p.startsWith('/mobile/') || p.startsWith('/business/') || p.startsWith('/careers/') || p.startsWith('/profile/') || p.startsWith('/p/') || p.startsWith('/did/') || p === '/null';
+    return sysPaths.includes(p) || p.startsWith('/verify/') || p.startsWith('/mobile/') || p.startsWith('/business/') || p.startsWith('/careers/') || p.startsWith('/profile/') || p.startsWith('/p/') || p.startsWith('/did/') || p === '/null' || p === '/cns-success';
   };
 
   const location = useLocation();
@@ -107,6 +108,7 @@ const App: React.FC = () => {
     if (path === '/apply-success') return 'apply-success';
     if (path === '/affiliate') return 'affiliate';
     if (path === '/profile' || path.startsWith('/profile/')) return 'public-profile';
+    if (path === '/cns-success') return 'cns-success';
 
     // Check for credential verification route
     if (path.startsWith('/verify/')) return 'verify-credential';
@@ -299,7 +301,7 @@ const App: React.FC = () => {
       'overview', 'credentials', 'did-management', 'names',
       'kyc', 'integrations', 'data', 'activity',
       'settings', 'profile', 'names', 'did-export',
-      'did-import', 'master-identity-settings'
+      'did-import', 'master-identity-settings', 'names-mgmt', 'identity-settings'
     ];
 
     if (dashboardViews.includes(currentView) && location.pathname === '/dashboard') {
@@ -494,6 +496,19 @@ const App: React.FC = () => {
         );
       case 'names':
         return <RegisterCID onBack={() => setCurrentView('overview')} />;
+      case 'names-mgmt':
+        return <NameManagement onRegisterCID={() => setCurrentView('register-cid')} />;
+      case 'identity-settings':
+        return (
+          <MasterIdentitySettings
+            onBack={() => setCurrentView('did-management')}
+            onViewDIDDetails={(name) => {
+              setSelectedIdentityName(name);
+              setIsDIDDetailsModalOpen(true);
+            }}
+            onOpenPersonaModal={() => setIsPersonaModalOpen(true)}
+          />
+        );
       case 'register-cid':
         return <RegisterCID onBack={() => setCurrentView('overview')} />;
       case 'did-create':
@@ -540,6 +555,8 @@ const App: React.FC = () => {
         return <ApplySuccessPage onReturnToCareers={() => navigate('/careers')} />;
       case 'affiliate':
         return <AffiliatePage />;
+      case 'cns-success':
+        return <CnsSuccess />;
       case 'landing':
         return <LandingPage />;
       default:
