@@ -2,6 +2,7 @@ services:
   # Backend Staging
   - type: web
     name: casperid-server-staging
+    plan: free
     env: node
     rootDir: server
     buildCommand: npm install
@@ -29,6 +30,7 @@ services:
   # Frontend Staging
   - type: web
     name: casperid-frontend-staging
+    plan: free
     runtime: static
     rootDir: frontend
     buildCommand: npm install && VITE_API_URL="https://$API_HOST" npm run build
