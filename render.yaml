@@ -12,12 +12,12 @@ services:
       - key: NODE_ENV
         value: staging
       - key: MONGODB_URI
-        sync: false # Use staging DB connection string
+        sync: false
       - key: JWT_SECRET
         sync: false
       - key: FRONTEND_URL
         fromService:
-          type: web
+          type: static
           name: casperid-frontend-staging
           property: url
       - key: API_BASE_URL
@@ -27,12 +27,11 @@ services:
           property: url
 
   # Frontend Staging
-  - type: web # Render uses 'web' for everything in Blueprints, with 'env: static' for static sites
+  - type: static
     name: casperid-frontend-staging
-    env: static
     rootDir: frontend
     buildCommand: npm install && npm run build
-    publishPath: dist
+    staticPublishPath: dist
     routes:
       - type: rewrite
         source: /*
