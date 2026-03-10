@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { CIDExplanationModal } from './ui/CIDexplantionModal';
 import apiService from '../services/api';
+import { useAuth } from '../contexts/AuthContext';
 
 interface RegisterCIDProps {
   onBack: () => void;
@@ -14,6 +15,7 @@ interface NameCheckResult {
 }
 
 export const RegisterCID: React.FC<RegisterCIDProps> = ({ onBack }) => {
+  const { refreshUser } = useAuth();
   const [search, setSearch] = useState('');
   const [isChecking, setIsChecking] = useState(false);
   const [hasChecked, setHasChecked] = useState(false);
@@ -208,6 +210,8 @@ export const RegisterCID: React.FC<RegisterCIDProps> = ({ onBack }) => {
       if (data.success) {
         setTxHash(data.txHash || null);
         setRegisteredName(data.name || `${search}.cid`);
+        // Refresh user data to pick up the newly registered premium name
+        await refreshUser();
         setStage('success');
       } else {
         setRegistrationError(data.error || 'Failed to claim name with coupon');
@@ -264,7 +268,9 @@ export const RegisterCID: React.FC<RegisterCIDProps> = ({ onBack }) => {
           <div className="w-full bg-[#F8F9FB] rounded-[32px] p-8 mb-10 space-y-4">
             <div className="flex justify-between items-center">
               <span className="text-xs font-bold text-text-sub uppercase tracking-widest">Expiration</span>
-              <span className="text-sm font-black text-text-main">Oct 24, 2025</span>
+              <span className="text-sm font-black text-text-main">
+                {selectedYears === 100 ? 'Lifetime' : 'Oct 24, 2025'}
+              </span>
             </div>
             <div className="h-px bg-gray-200/50"></div>
             <div className="flex justify-between items-center">
@@ -274,9 +280,31 @@ export const RegisterCID: React.FC<RegisterCIDProps> = ({ onBack }) => {
               </span>
             </div>
           </div>
+          <div className="flex gap-4 w-full mb-6">
+            <button
+              onClick={() => {
+                const text = encodeURIComponent(`Just grabbed ${registeredName} on @CasperID! 🚀 My Web3 identity is officially live. Claim yours: casperid.com`);
+                window.open(`https://twitter.com/intent/tweet?text=${text}`, '_blank');
+              }}
+              className="flex-1 h-14 bg-[#1DA1F2] text-white rounded-2xl font-black text-sm flex items-center justify-center gap-2 hover:bg-[#1A91DA] transition-all"
+            >
+              <svg className="size-5 fill-current" viewBox="0 0 24 24">
+                <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
+              </svg>
+              Brag on X
+            </button>
+            <button
+              onClick={() => window.open(`https://${registeredName.split('.')[0]}.casperid.com`, '_blank')}
+              className="flex-1 h-14 bg-white border border-gray-100 text-text-main rounded-2xl font-black text-sm flex items-center justify-center gap-2 hover:bg-gray-50 transition-all shadow-sm"
+            >
+              <span className="material-symbols-outlined text-xl">visibility</span>
+              View Profile
+            </button>
+          </div>
+
           <button
             onClick={onBack}
-            className="w-full h-16 bg-primary text-white rounded-[24px] font-black text-lg shadow-xl shadow-primary/30 hover:bg-primary/95 transition-all active:scale-[0.98]"
+            className="w-full h-16 bg-primary/10 text-primary rounded-[24px] font-black text-lg hover:bg-primary/15 transition-all active:scale-[0.98]"
           >
             Return to Dashboard
           </button>

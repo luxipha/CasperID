@@ -53,6 +53,7 @@ import { useDocumentTitle } from './hooks/useDocumentTitle';
 // ApiTest removed - was for debugging
 // import { ApiTest } from './components/ApiTest';
 import LandingPage from './components/landing/LandingPage';
+import { getSubdomain } from './utils/subdomain';
 import CareersPage from './components/landing/CareerPage';
 import CareerDetailPage from './components/landing/CareerDetailPage';
 import ApplySuccessPage from './components/landing/ApplySuccess';
@@ -110,6 +111,10 @@ const App: React.FC = () => {
     if (path === '/profile' || path.startsWith('/profile/')) return 'public-profile';
     if (path === '/cns-success') return 'cns-success';
 
+    // Check for Subdomain Profile (e.g. alice.casperid.com)
+    const subdomain = getSubdomain();
+    if (subdomain) return 'public-profile';
+
     // Check for credential verification route
     if (path.startsWith('/verify/')) return 'verify-credential';
 
@@ -126,6 +131,11 @@ const App: React.FC = () => {
 
   const [currentView, setCurrentView] = useState('loading'); // Initialize with loading
   const [publicProfileSlug, setPublicProfileSlug] = useState<string | null>(() => {
+    // Priority 1: Subdomain
+    const subdomain = getSubdomain();
+    if (subdomain) return subdomain;
+
+    // Priority 2: Path-based slug
     const path = window.location.pathname;
     const slug = path.startsWith('/profile/') ? path.replace('/profile/', '') : path.substring(1);
     return (path.length > 1 && !isReservedPath(path) && slug !== 'null' && slug !== 'undefined') ? slug : null;
@@ -224,10 +234,17 @@ const App: React.FC = () => {
 
     // Update slugs/hashes based on URL
     const path = location.pathname;
-    const slug = path.substring(1);
-    if (path.length > 1 && !isReservedPath(path) && slug !== 'null' && slug !== 'undefined') {
-      const actualSlug = path.startsWith('/profile/') ? path.replace('/profile/', '') : slug;
-      setPublicProfileSlug(actualSlug);
+    const subdomain = getSubdomain();
+
+    if (subdomain) {
+      setPublicProfileSlug(subdomain);
+      setCurrentView('public-profile');
+    } else {
+      const slug = path.substring(1);
+      if (path.length > 1 && !isReservedPath(path) && slug !== 'null' && slug !== 'undefined') {
+        const actualSlug = path.startsWith('/profile/') ? path.replace('/profile/', '') : slug;
+        setPublicProfileSlug(actualSlug);
+      }
     }
     if (path.startsWith('/verify/')) {
       setCredentialHash(path.replace('/verify/', ''));

@@ -1,8 +1,13 @@
 import React, { useEffect } from 'react';
+import { useAuth } from '../contexts/AuthContext';
 
 export const CnsSuccess: React.FC = () => {
-    // Optional: We can parse the URL params to see the Boomfi orderId 
-    // and fetch the actual domain name. For now, we'll keep it simple.
+    const { refreshUser } = useAuth();
+
+    // Refresh user data to pick up the newly registered premium name
+    useEffect(() => {
+        refreshUser();
+    }, [refreshUser]);
 
     return (
         <div className="w-full min-h-[60vh] flex flex-col items-center justify-center p-6 animate-in zoom-in-95 duration-500">

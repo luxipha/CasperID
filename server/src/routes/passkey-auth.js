@@ -273,7 +273,8 @@ router.get('/register/:userId/status', async (req, res) => {
                     tier: userAccount.tier,
                     email_verified: userAccount.email_verified,
                     wallet: userAccount.wallet,
-                    metamask_connected: userAccount.metamask_connected
+                    metamask_connected: userAccount.metamask_connected,
+                    cns_name: userAccount.cns_name || null
                 }
             });
         } else {
@@ -654,7 +655,8 @@ router.get('/session', async (req, res) => {
                 tier: sessionData.userAccount.tier,
                 email_verified: sessionData.userAccount.email_verified,
                 wallet: sessionData.userAccount.wallet,
-                metamask_connected: sessionData.userAccount.metamask_connected
+                metamask_connected: sessionData.userAccount.metamask_connected,
+                cns_name: sessionData.userAccount.cns_name || null // Premium name if registered
             }
         });
 
