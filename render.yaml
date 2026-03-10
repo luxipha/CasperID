@@ -17,7 +17,7 @@ services:
         sync: false
       - key: FRONTEND_URL
         fromService:
-          type: static
+          type: web
           name: casperid-frontend-staging
           property: url
       - key: API_BASE_URL
@@ -27,8 +27,9 @@ services:
           property: url
 
   # Frontend Staging
-  - type: static
+  - type: web # Render uses 'web' for everything in Blueprints, with 'env: static' for static sites
     name: casperid-frontend-staging
+    env: static
     rootDir: frontend
     buildCommand: npm install && npm run build
     publishPath: dist
