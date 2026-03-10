@@ -17,7 +17,7 @@ services:
         sync: false
       - key: FRONTEND_HOST
         fromService:
-          type: static_site
+          type: web
           name: casperid-frontend-staging
           property: host
       - key: API_HOST
@@ -27,8 +27,9 @@ services:
           property: host
 
   # Frontend Staging
-  - type: static_site
+  - type: web
     name: casperid-frontend-staging
+    runtime: static
     rootDir: frontend
     buildCommand: npm install && VITE_API_URL="https://$API_HOST" npm run build
     staticPublishPath: dist
