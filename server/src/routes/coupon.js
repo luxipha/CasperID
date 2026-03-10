@@ -4,30 +4,7 @@ const Coupon = require('../database/coupon.model');
 const cnsResolver = require('../services/cns-resolver');
 const { UserAccount } = require('../database/models');
 
-// Middleware to validate session (Optional for validate, required for claim)
-const validateSession = async (req, res, next) => {
-    try {
-        const sessionToken = req.cookies.casperid_session ||
-            req.headers.authorization?.replace('Bearer ', '');
-
-        if (!sessionToken) {
-            return res.status(401).json({ success: false, error: 'Authentication required' });
-        }
-
-        const webauthnService = require('../services/webauthn');
-        const session = await webauthnService.verifySession(sessionToken);
-
-        if (!session || !session.isValid) {
-            return res.status(401).json({ success: false, error: 'Invalid or expired session' });
-        }
-
-        req.userAccount = session.userAccount;
-        next();
-    } catch (error) {
-        console.error('Session validation error:', error);
-        res.status(401).json({ success: false, error: 'Authentication failed' });
-    }
-};
+const { requireAuth } = require('../middleware/auth');
 
 /**
  * POST /api/coupon/validate
@@ -69,10 +46,10 @@ router.post('/validate', async (req, res) => {
  * POST /api/coupon/claim
  * Uses a valid coupon to register a CNS name for free
  */
-router.post('/claim', validateSession, async (req, res) => {
+router.post('/claim', requireAuth, async (req, res) => {
     try {
-        const { code, domainName, years } = req.body;
-        const wallet = req.userAccount.wallet;
+        const { code, domainName } = req.body;
+        const wallet = req.user.wallet;
 
         if (!code || !domainName) {
             return res.status(400).json({ success: false, error: 'Coupon code and domain name are required' });
@@ -96,9 +73,9 @@ router.post('/claim', validateSession, async (req, res) => {
         }
 
         // Check if name is already taken
-        const isAvailable = await cnsResolver.checkNameAvailability(domainName);
-        if (!isAvailable) {
-            return res.status(400).json({ success: false, error: 'Name is no longer available' });
+        const availability = await cnsResolver.isNameAvailable(domainName);
+        if (!availability.available) {
+            return res.status(400).json({ success: false, error: availability.reason || 'Name is no longer available' });
         }
 
         // Mark coupon as used BEFORE registering to prevent race conditions

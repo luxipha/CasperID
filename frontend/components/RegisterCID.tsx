@@ -18,14 +18,14 @@ export const RegisterCID: React.FC<RegisterCIDProps> = ({ onBack }) => {
   const [isChecking, setIsChecking] = useState(false);
   const [hasChecked, setHasChecked] = useState(false);
   const [checkResult, setCheckResult] = useState<NameCheckResult | null>(null);
-  const [selectedYears, setSelectedYears] = useState(2);
+  const [selectedYears, setSelectedYears] = useState(1); // Defaults to 1 for backward compatibility with backend expectations
   const [stage, setStage] = useState<RegistrationStage>('search');
   const [paymentMethod, setPaymentMethod] = useState<'crypto' | 'fiat'>('crypto');
   const [registrationError, setRegistrationError] = useState<string | null>(null);
   const [registeredName, setRegisteredName] = useState<string>('');
   const [txHash, setTxHash] = useState<string | null>(null);
   const [showExplanationModal, setShowExplanationModal] = useState(false);
-  const [timeLeft, setTimeLeft] = useState<{ days: number, hours: number, minutes: number, seconds: number } | null>(null);
+  const [lifetimeTimeLeft, setLifetimeTimeLeft] = useState<{ days: number, hours: number, minutes: number, seconds: number } | null>(null);
 
   // Promo Code States
   const [showPromoInput, setShowPromoInput] = useState(false);
@@ -53,36 +53,33 @@ export const RegisterCID: React.FC<RegisterCIDProps> = ({ onBack }) => {
   }, []);
 
   useEffect(() => {
-    // Timer disabled by user request - unlocking registration
-    setTimeLeft(null);
-    /*
-    const targetDate = new Date('2026-03-11T00:00:00Z'); // 14 days from Feb 25, 2026
+    // 100 days from today (March 10, 2026) -> approx June 18, 2026
+    const targetDate = new Date('2026-06-18T00:00:00Z');
     const timer = setInterval(() => {
       const now = new Date();
       const diff = targetDate.getTime() - now.getTime();
 
       if (diff <= 0) {
-        setTimeLeft(null);
+        setLifetimeTimeLeft(null);
         clearInterval(timer);
       } else {
         const days = Math.floor(diff / (1000 * 60 * 60 * 24));
         const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
         const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
         const seconds = Math.floor((diff % (1000 * 60)) / 1000);
-        setTimeLeft({ days, hours, minutes, seconds });
+        setLifetimeTimeLeft({ days, hours, minutes, seconds });
       }
     }, 1000);
     return () => clearInterval(timer);
-    */
   }, []);
 
   const pricing = [
     { years: 1, price: 3, discount: null, label: '1 Year', sub: 'Standard pricing' },
-    { years: 2, price: 5, discount: '16% Off included', label: '2 Years', recommended: true },
-    { years: 5, price: 10, discount: '33% Off included', label: '5 Years' }
+    { years: 3, price: 5, discount: '20% Off included', label: '3 Years' },
+    { years: 100, price: 10, discount: '33% Off included', label: 'Lifetime', sub: 'No renewal fees. Yours forever.', recommended: true, isLifetime: true }
   ];
 
-  const basePrice = pricing.find(p => p.years === selectedYears)?.price || 0;
+  const basePrice = pricing.find(p => p.years === selectedYears)?.price || pricing[0].price;
   const targetPrice = isPromoApplied ? 0 : basePrice;
   const [displayPrice, setDisplayPrice] = useState(basePrice);
 
@@ -312,7 +309,7 @@ export const RegisterCID: React.FC<RegisterCIDProps> = ({ onBack }) => {
                 <div className="size-12 rounded-2xl bg-primary/10 flex items-center justify-center text-primary font-black">.CID</div>
                 <div>
                   <h3 className="text-lg font-black text-text-main">{search}.cid</h3>
-                  <p className="text-xs font-bold text-text-sub uppercase tracking-widest">Registration Period: {selectedYears} Years</p>
+                  <p className="text-xs font-bold text-text-sub uppercase tracking-widest">Registration Period: {selectedYears === 100 ? 'Lifetime' : `${selectedYears} Years`}</p>
                 </div>
               </div>
               <div className="text-right">
@@ -369,8 +366,8 @@ export const RegisterCID: React.FC<RegisterCIDProps> = ({ onBack }) => {
             )}
             <button
               onClick={isPromoApplied ? handleClaimCoupon : handleConfirmPayment}
-              disabled={(!!timeLeft && !isPromoApplied)}
-              className={`w-full h-16 rounded-[24px] font-black text-lg transition-all flex items-center justify-center gap-3 ${(timeLeft && !isPromoApplied) ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : 'bg-primary text-white shadow-xl shadow-primary/30 hover:bg-primary/95 active:scale-[0.98]'}`}
+              disabled={(!!lifetimeTimeLeft && !isPromoApplied)}
+              className={`w-full h-16 rounded-[24px] font-black text-lg transition-all flex items-center justify-center gap-3 ${(lifetimeTimeLeft && !isPromoApplied) ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : 'bg-primary text-white shadow-xl shadow-primary/30 hover:bg-primary/95 active:scale-[0.98]'}`}
             >
               {!isPromoApplied && (
                 <span className="material-symbols-outlined">{paymentMethod === 'crypto' ? 'paid' : 'credit_card'}</span>
@@ -539,15 +536,15 @@ export const RegisterCID: React.FC<RegisterCIDProps> = ({ onBack }) => {
                   {pricing.map((option) => (
                     <div
                       key={option.years}
-                      onClick={() => setSelectedYears(option.years)}
-                      className={`relative p-8 rounded-[28px] border-2 transition-all cursor-pointer group flex flex-col justify-between h-[200px] ${selectedYears === option.years
+                      onClick={() => !isPromoApplied && setSelectedYears(option.years)}
+                      className={`relative p-8 rounded-[28px] border-2 transition-all group flex flex-col justify-between h-[210px] ${isPromoApplied && option.years !== 1 ? 'opacity-40 cursor-not-allowed' : 'cursor-pointer'} ${selectedYears === option.years
                         ? 'border-primary bg-primary/[0.01]'
                         : 'border-gray-50 bg-[#FCFDFF] hover:border-gray-200'
                         }`}
                     >
                       {option.recommended && (
-                        <div className="absolute top-0 right-8 -translate-y-1/2">
-                          <span className="px-3 py-1.5 bg-secondary text-primary rounded-lg text-[9px] font-black uppercase tracking-widest shadow-sm">RECOMMENDED</span>
+                        <div className="absolute top-0 right-8 -translate-y-1/2 flex flex-col items-end">
+                          <span className="px-3 py-1.5 bg-secondary text-primary rounded-lg text-[9px] font-black uppercase tracking-widest shadow-sm">EARLY ADOPTER PERK</span>
                         </div>
                       )}
 
@@ -560,8 +557,14 @@ export const RegisterCID: React.FC<RegisterCIDProps> = ({ onBack }) => {
                       </div>
 
                       <div className="space-y-1">
+                        {(option as any).isLifetime && lifetimeTimeLeft && (
+                          <div className="flex items-center gap-1.5 text-[10px] font-black text-[#FF8A00] mb-2 bg-[#FF8A00]/10 px-2 py-1.5 rounded-lg w-fit">
+                            <span className="material-symbols-outlined text-[14px]">timer</span>
+                            Ends in {lifetimeTimeLeft.days}d {lifetimeTimeLeft.hours}h
+                          </div>
+                        )}
                         {option.discount && <p className="text-[11px] font-black text-green-600">{option.discount}</p>}
-                        {option.sub && <p className="text-[11px] font-bold text-text-sub opacity-40">{option.sub}</p>}
+                        {option.sub && <p className={`text-[11px] font-bold text-text-sub ${(option as any).isLifetime ? '' : 'opacity-40'}`}>{option.sub}</p>}
                       </div>
                     </div>
                   ))}
@@ -575,7 +578,7 @@ export const RegisterCID: React.FC<RegisterCIDProps> = ({ onBack }) => {
                     </div>
                     <div>
                       <h4 className="text-sm font-black text-text-main leading-tight">One-time payment</h4>
-                      <p className="text-[11px] font-medium text-text-sub leading-relaxed mt-0.5">No recurring monthly fees</p>
+                      <p className="text-[11px] font-medium text-text-sub leading-relaxed mt-0.5">No recurring annual fees</p>
                     </div>
                   </div>
                   <div className="flex items-center gap-4">
