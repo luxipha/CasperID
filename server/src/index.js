@@ -74,6 +74,11 @@ app.use(cors({
             return callback(null, true);
         }
 
+        // Allow any Render staging URL
+        if (origin.endsWith('.onrender.com')) {
+            return callback(null, true);
+        }
+
         callback(new Error('Not allowed by CORS'));
     },
     credentials: true
