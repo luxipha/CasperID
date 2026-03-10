@@ -81,7 +81,9 @@ app.use(cors({
 
         callback(new Error('Not allowed by CORS'));
     },
-    credentials: true
+    credentials: true,
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-CSRF-Token', 'ngrok-skip-browser-warning'],
+    exposedHeaders: ['X-CSRF-Token']
 }));
 app.use(express.json({
     limit: '50mb',
