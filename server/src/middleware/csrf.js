@@ -12,6 +12,19 @@ const CSRF_SECRET = process.env.CSRF_SECRET || crypto.randomBytes(32).toString('
 // Determine if we're in production (HTTPS required for __Host- prefix)
 const isProduction = process.env.NODE_ENV === 'production';
 
+// Check if we're in a cross-origin staging environment (e.g., Render with separate frontend/backend subdomains)
+const frontendUrl = process.env.FRONTEND_URL || '';
+const apiUrl = process.env.API_BASE_URL || '';
+const isRenderStaging = frontendUrl.includes('.onrender.com') || apiUrl.includes('.onrender.com');
+const isNgrok = frontendUrl.includes('ngrok') || apiUrl.includes('ngrok');
+const isCrossOriginStaging = isRenderStaging || isNgrok;
+
+// For cross-origin staging (Render, ngrok), we can't use __Host- prefix because:
+// 1. __Host- cookies can't have a domain attribute
+// 2. Different subdomains (frontend vs API) need to share the cookie
+// 3. We need sameSite=none for cross-origin requests, which requires secure=true
+const cookieName = (isProduction && !isRenderStaging) ? '__Host-csrf' : 'csrf-token';
+
 const {
     generateCsrfToken,
     doubleCsrfProtection,
@@ -27,13 +40,12 @@ const {
         const identifier = `${req.ip || 'unknown'}-${req.headers['user-agent'] || 'unknown'}`;
         return crypto.createHash('sha256').update(identifier).digest('hex').slice(0, 32);
     },
-    // __Host- prefix requires secure cookies (HTTPS), use simple name in dev
-    cookieName: isProduction ? '__Host-csrf' : 'csrf-token',
+    cookieName,
     cookieOptions: {
         httpOnly: true,
-        // When using ngrok subdomains, we need SameSite=None and Secure=true
-        sameSite: (isProduction || process.env.FRONTEND_URL?.includes('ngrok')) ? 'none' : 'lax',
-        secure: isProduction || process.env.FRONTEND_URL?.includes('ngrok'),
+        // Cross-origin staging requires SameSite=None and Secure=true
+        sameSite: (isProduction || isCrossOriginStaging) ? 'none' : 'lax',
+        secure: isProduction || isCrossOriginStaging,
         path: '/'
     },
     size: 64, // Token size in bytes
