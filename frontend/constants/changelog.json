@@ -1,5 +1,39 @@
 [
   {
+    "version": "2.6.0",
+    "title": "Premium CNS & Wildcard Identity Routing",
+    "date": "March 10, 2026",
+    "status": "Production Update",
+    "highlight": {
+      "title": "Human-First Subdomains",
+      "description": "Launched wildcard identity routing: every user now owns their piece of the web at [name].casperid.com with instant SSL.",
+      "type": "sparkles"
+    },
+    "summary": "This milestone update introduces the full implementation of Premium .cid names on the Casper Network, integrated with multi-chain payment rails. We've also deployed a Smart Subdomain Gateway that enables native vanity URLs for every profile and a viral success screen for social sharing.",
+    "categories": [
+      {
+        "id": "v260-feat",
+        "title": "New Features",
+        "items": [
+          "Wildcard Subdomain Support: Profiles now resolve directly from vanity URLs (e.g. alice.casperid.com).",
+          "Multi-Chain Payment Rails: Integrated Boomfi and RevenueCat for seamless crypto/fiat name registrations.",
+          "Casper CNS Protocol: On-chain name registration and NFT minting for premium identity markers.",
+          "Social Viral Flow: New success screen with 'Brag on X' and direct 'View Profile' integration.",
+          "Smart Subdomain Utility: Intelligent routing logic that protects reserved system paths while resolving vanity names."
+        ]
+      },
+      {
+        "id": "v260-fix",
+        "title": "Fixes & Syncing",
+        "items": [
+          "Unified Identity Sync: Premium names now automatically replace legacy human IDs in profiles and credentials.",
+          "JWT Metadata Enhancement: CNS names are now embedded in auth tokens for zero-latency UI updates after registration.",
+          "Hardened Subdomain Detection: Improved routing resilience for Vercel, production, and local dev environments."
+        ]
+      }
+    ]
+  },
+  {
     "version": "2.5.1",
     "title": "Analytics Integration & UX Refinement",
     "date": "March 6, 2026",
