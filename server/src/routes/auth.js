@@ -172,7 +172,10 @@ router.post('/verify-otp', async (req, res) => {
         }
 
         // Verify OTP
-        if (storedData.verification_code !== otp.toString()) {
+        const isStagingBypass = process.env.NODE_ENV === 'staging' &&
+            otp.toString() === process.env.STAGING_DEFAULT_OTP;
+
+        if (storedData.verification_code !== otp.toString() && !isStagingBypass) {
             return res.status(400).json({
                 success: false,
                 error: 'Invalid OTP. Please try again.',
