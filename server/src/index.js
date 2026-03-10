@@ -194,6 +194,7 @@ app.use('/api', verifiedProfilesRoutes); // Verified profiles for sitemap
 app.use('/api/notifications', require('./routes/notifications'));
 app.use('/api', require('./routes/cns')); // CNS Name Resolution & Registration
 app.use('/api/payment', require('./routes/payment')); // Premium CID Payments (RevenueCat & Boomfi)
+app.use('/api/coupon', require('./routes/coupon')); // Coupon validation and claiming
 app.use('/api/pending-session', require('./routes/pending-session')); // Mobile Passkey Handoff
 app.use('/api/business', require('./routes/business')); // Business Platform (Identity-as-a-Service)
 app.use('/.well-known', require('./routes/well-known')); // JWKS + OpenID Connect Discovery

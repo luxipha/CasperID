@@ -26,6 +26,13 @@ export const RegisterCID: React.FC<RegisterCIDProps> = ({ onBack }) => {
   const [txHash, setTxHash] = useState<string | null>(null);
   const [showExplanationModal, setShowExplanationModal] = useState(false);
   const [timeLeft, setTimeLeft] = useState<{ days: number, hours: number, minutes: number, seconds: number } | null>(null);
+
+  // Promo Code States
+  const [showPromoInput, setShowPromoInput] = useState(false);
+  const [promoCode, setPromoCode] = useState('');
+  const [isPromoApplied, setIsPromoApplied] = useState(false);
+  const [promoError, setPromoError] = useState<string | null>(null);
+
   const [userProfile, setUserProfile] = useState<{ email?: string; name?: string } | null>(null);
 
   // Fetch user profile for pre-filling checkout
@@ -75,7 +82,37 @@ export const RegisterCID: React.FC<RegisterCIDProps> = ({ onBack }) => {
     { years: 5, price: 10, discount: '33% Off included', label: '5 Years' }
   ];
 
-  const currentPrice = pricing.find(p => p.years === selectedYears)?.price || 0;
+  const basePrice = pricing.find(p => p.years === selectedYears)?.price || 0;
+  const targetPrice = isPromoApplied ? 0 : basePrice;
+  const [displayPrice, setDisplayPrice] = useState(basePrice);
+
+  useEffect(() => {
+    const duration = isPromoApplied ? 1000 : 250; // 1s rollout for promo
+    const startP = displayPrice;
+    const startTime = performance.now();
+    let animId: number;
+
+    const animate = (currentTime: number) => {
+      const elapsed = currentTime - startTime;
+      const progress = Math.min(elapsed / duration, 1);
+
+      // easeOutExpo for a premium rolling down effect
+      const easeOut = progress === 1 ? 1 : 1 - Math.pow(2, -10 * progress);
+      setDisplayPrice(startP + (targetPrice - startP) * easeOut);
+
+      if (progress < 1) {
+        animId = requestAnimationFrame(animate);
+      } else {
+        setDisplayPrice(targetPrice);
+      }
+    };
+    animId = requestAnimationFrame(animate);
+
+    return () => cancelAnimationFrame(animId);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [targetPrice, isPromoApplied]);
+
+  const currentPrice = displayPrice;
 
   const handleCheckAvailability = async () => {
     if (!search.trim()) return;
@@ -136,6 +173,51 @@ export const RegisterCID: React.FC<RegisterCIDProps> = ({ onBack }) => {
       }
     } catch (err) {
       setRegistrationError('Failed to initialize payment checkout. Please try again.');
+      setStage('payment');
+    }
+  };
+
+  const [isApplyingPromo, setIsApplyingPromo] = useState(false);
+
+  const handleApplyPromo = async () => {
+    setPromoError(null);
+    if (!promoCode.trim()) {
+      setPromoError('Please enter a code');
+      return;
+    }
+
+    setIsApplyingPromo(true);
+    try {
+      const data = await apiService.validateCoupon(promoCode);
+      if (data.success) {
+        setIsPromoApplied(true);
+        setShowPromoInput(false);
+      } else {
+        setPromoError(data.error || 'Invalid coupon code');
+      }
+    } catch (err: any) {
+      setPromoError(err.message || 'Error validating coupon');
+    } finally {
+      setIsApplyingPromo(false);
+    }
+  };
+
+  const handleClaimCoupon = async () => {
+    setStage('processing');
+    setRegistrationError(null);
+
+    try {
+      const data = await apiService.claimCoupon(promoCode, search, selectedYears);
+      if (data.success) {
+        setTxHash(data.txHash || null);
+        setRegisteredName(data.name || `${search}.cid`);
+        setStage('success');
+      } else {
+        setRegistrationError(data.error || 'Failed to claim name with coupon');
+        setStage('payment');
+      }
+    } catch (err: any) {
+      setRegistrationError(err.message || 'Failed to claim name. Please try again.');
       setStage('payment');
     }
   };
@@ -206,6 +288,7 @@ export const RegisterCID: React.FC<RegisterCIDProps> = ({ onBack }) => {
     );
   }
 
+
   if (stage === 'payment') {
     return (
       <div className="w-full max-w-2xl mx-auto space-y-8 animate-in slide-in-from-right-8 duration-500 pb-20">
@@ -238,37 +321,39 @@ export const RegisterCID: React.FC<RegisterCIDProps> = ({ onBack }) => {
               </div>
             </div>
 
-            <div className="space-y-6">
-              <p className="text-[11px] font-black text-text-sub uppercase tracking-widest opacity-60">Select Payment Method</p>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <button
-                  onClick={() => setPaymentMethod('crypto')}
-                  className={`p-6 rounded-[28px] border-2 transition-all flex flex-col gap-4 text-left ${paymentMethod === 'crypto' ? 'border-primary bg-primary/[0.02]' : 'border-gray-100 hover:border-gray-200'}`}
-                >
-                  <div className="size-10 rounded-xl bg-green-50 flex items-center justify-center text-green-500">
-                    <span className="material-symbols-outlined font-bold">paid</span>
-                  </div>
-                  <div>
-                    <h4 className="text-base font-black text-text-main">Pay with Crypto</h4>
-                    <p className="text-xs font-medium text-text-sub leading-relaxed">Secure crypto checkout USDC/USDT</p>
-                  </div>
-                </button>
+            {!isPromoApplied && (
+              <div className="space-y-6">
+                <p className="text-[11px] font-black text-text-sub uppercase tracking-widest opacity-60">Select Payment Method</p>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <button
+                    onClick={() => setPaymentMethod('crypto')}
+                    className={`p-6 rounded-[28px] border-2 transition-all flex flex-col gap-4 text-left ${paymentMethod === 'crypto' ? 'border-primary bg-primary/[0.02]' : 'border-gray-100 hover:border-gray-200'}`}
+                  >
+                    <div className="size-10 rounded-xl bg-green-50 flex items-center justify-center text-green-500">
+                      <span className="material-symbols-outlined font-bold">paid</span>
+                    </div>
+                    <div>
+                      <h4 className="text-base font-black text-text-main">Pay with Crypto</h4>
+                      <p className="text-xs font-medium text-text-sub leading-relaxed">Secure crypto checkout USDC/USDT</p>
+                    </div>
+                  </button>
 
-                {/* Card Option */}
-                <button
-                  onClick={() => setPaymentMethod('fiat')}
-                  className={`p-6 rounded-[28px] border-2 h-fit transition-all flex flex-col gap-4 text-left ${paymentMethod === 'fiat' ? 'border-primary bg-primary/[0.02]' : 'border-gray-100 hover:border-gray-200'}`}
-                >
-                  <div className="size-10 rounded-xl bg-blue-50 flex items-center justify-center text-blue-500">
-                    <span className="material-symbols-outlined">credit_card</span>
-                  </div>
-                  <div>
-                    <h4 className="text-base font-black text-text-main">Pay with Card</h4>
-                    <p className="text-xs font-medium text-text-sub leading-relaxed">Fast and secure fiat checkout</p>
-                  </div>
-                </button>
+                  {/* Card Option */}
+                  <button
+                    onClick={() => setPaymentMethod('fiat')}
+                    className={`p-6 rounded-[28px] border-2 h-fit transition-all flex flex-col gap-4 text-left ${paymentMethod === 'fiat' ? 'border-primary bg-primary/[0.02]' : 'border-gray-100 hover:border-gray-200'}`}
+                  >
+                    <div className="size-10 rounded-xl bg-blue-50 flex items-center justify-center text-blue-500">
+                      <span className="material-symbols-outlined">credit_card</span>
+                    </div>
+                    <div>
+                      <h4 className="text-base font-black text-text-main">Pay with Card</h4>
+                      <p className="text-xs font-medium text-text-sub leading-relaxed">Fast and secure fiat checkout</p>
+                    </div>
+                  </button>
+                </div>
               </div>
-            </div>
+            )}
           </div>
 
           <div className="p-10 border-t border-gray-50 flex flex-col gap-6">
@@ -283,13 +368,64 @@ export const RegisterCID: React.FC<RegisterCIDProps> = ({ onBack }) => {
               </div>
             )}
             <button
-              onClick={handleConfirmPayment}
-              disabled={!!timeLeft}
-              className={`w-full h-16 rounded-[24px] font-black text-lg transition-all flex items-center justify-center gap-3 ${timeLeft ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : 'bg-primary text-white shadow-xl shadow-primary/30 hover:bg-primary/95 active:scale-[0.98]'}`}
+              onClick={isPromoApplied ? handleClaimCoupon : handleConfirmPayment}
+              disabled={(!!timeLeft && !isPromoApplied)}
+              className={`w-full h-16 rounded-[24px] font-black text-lg transition-all flex items-center justify-center gap-3 ${(timeLeft && !isPromoApplied) ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : 'bg-primary text-white shadow-xl shadow-primary/30 hover:bg-primary/95 active:scale-[0.98]'}`}
             >
-              <span className="material-symbols-outlined">{paymentMethod === 'crypto' ? 'paid' : 'credit_card'}</span>
-              Confirm & Pay
+              {!isPromoApplied && (
+                <span className="material-symbols-outlined">{paymentMethod === 'crypto' ? 'paid' : 'credit_card'}</span>
+              )}
+              {isPromoApplied ? 'Claim Name Now' : 'Confirm & Pay'}
             </button>
+
+            {/* Promo Code Section - Placed Below Button */}
+            <div className="w-full flex flex-col items-center pt-2">
+              {!showPromoInput && !isPromoApplied ? (
+                <button
+                  onClick={() => setShowPromoInput(true)}
+                  className="text-sm font-bold text-text-sub hover:text-primary transition-colors flex items-center gap-2"
+                >
+                  <span className="material-symbols-outlined text-[18px]">local_offer</span>
+                  Got a coupon?
+                </button>
+              ) : showPromoInput && !isPromoApplied ? (
+                <div className="w-full max-w-sm mt-2 relative">
+                  <div className="relative flex items-center">
+                    <input
+                      type="text"
+                      value={promoCode}
+                      onChange={(e) => setPromoCode(e.target.value.toUpperCase())}
+                      placeholder="ENTER CODE..."
+                      className={`w-full h-[52px] pl-5 pr-[100px] rounded-[16px] border-2 bg-white text-base font-bold text-text-main focus:outline-none uppercase placeholder:text-gray-400 placeholder:font-bold ${promoError ? 'border-red-400 focus:border-red-500 hover:border-red-500' : 'border-[#bca7f7] focus:border-[#a385f5] hover:border-[#bca7f7]'}`}
+                    />
+                    <button
+                      onClick={handleApplyPromo}
+                      disabled={isApplyingPromo}
+                      className={`absolute right-1.5 h-[40px] px-6 rounded-[12px] bg-[#1a1f2e] text-white text-sm font-bold hover:bg-black transition-colors ${isApplyingPromo ? 'opacity-50 cursor-not-allowed' : ''}`}
+                    >
+                      {isApplyingPromo ? '...' : 'Apply'}
+                    </button>
+                  </div>
+                  {promoError && (
+                    <p className="text-sm font-bold text-red-500 mt-2 text-left w-full pl-2">{promoError}</p>
+                  )}
+                </div>
+              ) : isPromoApplied ? (
+                <div className="inline-flex items-center gap-2 px-4 py-2 mt-2 rounded-xl bg-green-50/80 border border-green-200">
+                  <span className="material-symbols-outlined text-green-500 text-[18px]">check_circle</span>
+                  <span className="text-sm font-black text-green-700 uppercase tracking-tight">100% OFF ({promoCode} applied)</span>
+                  <button
+                    onClick={() => {
+                      setIsPromoApplied(false);
+                      setPromoCode('');
+                    }}
+                    className="ml-3 text-gray-400 hover:text-red-500 transition-colors focus:outline-none"
+                  >
+                    <span className="material-symbols-outlined text-[16px]">close</span>
+                  </button>
+                </div>
+              ) : null}
+            </div>
           </div>
         </div>
       </div>

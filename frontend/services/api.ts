@@ -31,7 +31,7 @@ class ApiService {
     const isLocalhost = typeof window !== 'undefined' &&
       (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
 
-    this.baseURL = (import.meta as any).env.VITE_API_URL || (isLocalhost ? 'http://localhost:3001' : '');
+    this.baseURL = import.meta.env.VITE_API_URL || (isLocalhost ? 'http://localhost:3001' : '');
 
     this.client = axios.create({
       baseURL: this.baseURL,
@@ -1620,7 +1620,7 @@ class ApiService {
 
   async createRevenueCatCheckout(domainName: string, years: number): Promise<ApiResponse> {
     try {
-      const response = await this.client.post('/api/payment/revenuecat/create', {
+      const response = await this.client.post('/api/revenuecat/create', {
         domainName,
         years
       });
@@ -1630,6 +1630,27 @@ class ApiService {
     }
   }
 
+  async validateCoupon(code: string): Promise<ApiResponse> {
+    try {
+      const response = await this.client.post('/api/coupon/validate', { code });
+      return response.data;
+    } catch (error) {
+      throw this.handleError(error);
+    }
+  }
+
+  async claimCoupon(code: string, domainName: string, years: number): Promise<ApiResponse> {
+    try {
+      const response = await this.client.post('/api/coupon/claim', {
+        code,
+        domainName,
+        years
+      });
+      return response.data;
+    } catch (error) {
+      throw this.handleError(error);
+    }
+  }
 
   async getMyNames(): Promise<ApiResponse> {
     try {

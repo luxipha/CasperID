@@ -155,8 +155,8 @@ router.post('/revenuecat/create', async (req, res) => {
         // return res.json({ success: true, checkoutUrl: session.url });
 
         // Placeholder that mimics the real behavior for now
-        // Real RevenueCat Purchase Link provided by user
-        const purchaseLink = `https://pay.rev.cat/xkvcmsuutoelrqal/?app_user_id=${reference}`;
+        // Real RevenueCat Purchase Link provided by user - direct to checkout using package_id
+        const purchaseLink = `https://pay.rev.cat/xkvcmsuutoelrqal/${reference}?package_id=$rc_annual`;
 
         res.json({
             success: true,
@@ -280,8 +280,8 @@ router.post('/boomfi/create', async (req, res) => {
         console.error('[Payment] Boomfi API Error:', error.response?.data || error.message);
 
         const errorMessage = error.response?.data?.message ||
-                            error.response?.data?.error ||
-                            'Failed to initialize crypto checkout session';
+            error.response?.data?.error ||
+            'Failed to initialize crypto checkout session';
 
         res.status(500).json({ error: errorMessage });
     }
@@ -327,7 +327,7 @@ router.post('/boomfi/webhook', express.raw({ type: 'application/json' }), async 
         // Handle payment completion based on Boomfi event naming: Payment.Completed, Payment.Updated
         const eventType = payload.event;
         const isCompleted = eventType === 'Payment.Completed' ||
-                           (eventType === 'Payment.Updated' && payload.status === 'Completed');
+            (eventType === 'Payment.Updated' && payload.status === 'Completed');
 
         if (isCompleted) {
             const paymentId = payload.id;

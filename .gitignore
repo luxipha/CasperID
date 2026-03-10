@@ -86,3 +86,5 @@ github-actions-key.json
 casperid_zk/target/
 casperid_zk/.snfoundry_cache/
 casperid_zk/.scarb/
+
+coupon.md
