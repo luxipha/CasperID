@@ -9,11 +9,21 @@ const mongoSanitize = require('express-mongo-sanitize');
 const app = express();
 app.set('trust proxy', true);
 const PORT = process.env.PORT || 3001;
-const API_BASE_URL = process.env.API_BASE_URL || (process.env.API_HOST ? `https://${process.env.API_HOST}` : `http://localhost:${PORT}`);
-const FRONTEND_URL = process.env.FRONTEND_URL || (process.env.FRONTEND_HOST ? `https://${process.env.FRONTEND_HOST}` : 'http://localhost:3000');
 
-console.log(`[${new Date().toISOString()}] 🚀 Bootstrap: Target port is ${PORT}`);
-console.log(`[${new Date().toISOString()}] 🌐 API Base URL: ${API_BASE_URL}`);
+// Robust URL construction for Render
+const getRenderUrl = (host, fallback) => {
+    if (!host) return fallback;
+    if (host.startsWith('http')) return host;
+    // If it's a Render host without the domain, append it
+    const domain = host.includes('.') ? host : `${host}.onrender.com`;
+    return `https://${domain}`;
+};
+
+const API_BASE_URL = process.env.API_BASE_URL || getRenderUrl(process.env.RENDER_EXTERNAL_HOSTNAME || process.env.API_HOST, `http://localhost:${PORT}`);
+const FRONTEND_URL = process.env.FRONTEND_URL || getRenderUrl(process.env.FRONTEND_HOST, 'http://localhost:3000');
+
+console.log(`[${new Date().toISOString()}]  Bootstrap: Target port is ${PORT}`);
+console.log(`[${new Date().toISOString()}]  API Base URL: ${API_BASE_URL}`);
 console.log(`[${new Date().toISOString()}]  Frontend URL: ${FRONTEND_URL}`);
 console.log(`[${new Date().toISOString()}]  Environment Keys Loaded: ${Object.keys(process.env).join(', ')}`);
 
@@ -22,12 +32,17 @@ app.use(helmet({
     contentSecurityPolicy: {
         directives: {
             defaultSrc: ["'self'"],
-            styleSrc: ["'self'", "'unsafe-inline'"],
-            scriptSrc: ["'self'"],
-            imgSrc: ["'self'", "data:", "https:"],
+            styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
+            scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'", "https://*.intercom.io", "https://*.walletconnect.org", "https://*.walletconnect.com"],
+            imgSrc: ["'self'", "data:", "https:", "blob:"],
+            connectSrc: ["'self'", "https:", "wss:", "https://*.onrender.com", "http://localhost:*"],
+            frameSrc: ["'self'", "https://*.walletconnect.org", "https://*.walletconnect.com", "https://*.intercom.io"],
+            fontSrc: ["'self'", "https://fonts.gstatic.com"],
+            objectSrc: ["'none'"],
         },
     },
-    crossOriginEmbedderPolicy: false
+    crossOriginEmbedderPolicy: false,
+    crossOriginResourcePolicy: { policy: "cross-origin" }
 }));
 
 // MongoDB injection prevention

@@ -30,10 +30,10 @@ services:
   # Frontend Staging
   - type: web
     name: casperid-frontend-staging
-    # Note: Static sites are free by default and don't support the 'plan' field in Blueprints
     runtime: static
     rootDir: frontend
-    buildCommand: npm install && VITE_API_URL="https://$API_HOST" npm run build
+    # Hardcode the staging URL in the build command to ensure resolution
+    buildCommand: npm install && VITE_API_URL="https://casperid-server-staging.onrender.com" npm run build
     staticPublishPath: dist
     routes:
       - type: rewrite
