@@ -10,8 +10,11 @@ const app = express();
 app.set('trust proxy', true);
 const PORT = process.env.PORT || 3001;
 const API_BASE_URL = process.env.API_BASE_URL || (process.env.API_HOST ? `https://${process.env.API_HOST}` : `http://localhost:${PORT}`);
+const FRONTEND_URL = process.env.FRONTEND_URL || (process.env.FRONTEND_HOST ? `https://${process.env.FRONTEND_HOST}` : 'http://localhost:3000');
+
 console.log(`[${new Date().toISOString()}] 🚀 Bootstrap: Target port is ${PORT}`);
 console.log(`[${new Date().toISOString()}] 🌐 API Base URL: ${API_BASE_URL}`);
+console.log(`[${new Date().toISOString()}] 🖥️  Frontend URL: ${FRONTEND_URL}`);
 
 // Security Middleware
 app.use(helmet({
@@ -39,6 +42,7 @@ app.use(cors({
             'https://casper-id.netlify.app',
             'https://casperid.com',
             'https://www.casperid.com',
+            FRONTEND_URL,
             process.env.FRONTEND_URL
         ].filter(Boolean);
 

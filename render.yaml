@@ -15,33 +15,32 @@ services:
         sync: false
       - key: JWT_SECRET
         sync: false
-      - key: FRONTEND_URL
+      - key: FRONTEND_HOST
         fromService:
-          type: web
+          type: static_site
           name: casperid-frontend-staging
-          property: url
-      - key: API_BASE_URL
+          property: host
+      - key: API_HOST
         fromService:
           type: web
           name: casperid-server-staging
-          property: url
+          property: host
 
   # Frontend Staging
-  - type: web
+  - type: static_site
     name: casperid-frontend-staging
-    runtime: static
     rootDir: frontend
-    buildCommand: npm install && npm run build
+    buildCommand: npm install && VITE_API_URL="https://$API_HOST" npm run build
     staticPublishPath: dist
     routes:
       - type: rewrite
         source: /*
         destination: /index.html
     envVars:
-      - key: VITE_API_URL
+      - key: API_HOST
         fromService:
           type: web
           name: casperid-server-staging
-          property: url
+          property: host
       - key: VITE_NODE_ENV
         value: staging
