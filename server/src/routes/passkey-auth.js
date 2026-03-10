@@ -79,7 +79,7 @@ router.post('/register/begin', passkeyRateLimit, extractViewer, validatePasskeyR
                 email: email,
                 name: name,
                 options: result.options,
-                serverUrl: process.env.API_BASE_URL || 'http://localhost:3001',
+                serverUrl: process.env.API_BASE_URL || (process.env.API_HOST ? `https://${process.env.API_HOST}` : 'http://localhost:3001'),
                 expiresAt: Date.now() + result.expiresIn
             };
 
@@ -157,8 +157,8 @@ router.post('/register/finish', passkeyRateLimit, validatePasskeyAuth, extractAp
         // Set session cookie (user is now logged in)
         // Use secure cookies when accessed via HTTPS (ngrok, production, etc.)
         const isSecure = process.env.NODE_ENV === 'production' ||
-                         req.secure ||
-                         req.headers['x-forwarded-proto'] === 'https';
+            req.secure ||
+            req.headers['x-forwarded-proto'] === 'https';
         res.cookie('casperid_session', registrationResult.sessionToken, {
             httpOnly: true,
             secure: isSecure,
@@ -251,8 +251,8 @@ router.get('/register/:userId/status', async (req, res) => {
             // Set session cookie for the polling desktop device
             // This allows cross-device registration to work properly
             const isSecure = process.env.NODE_ENV === 'production' ||
-                             req.secure ||
-                             req.headers['x-forwarded-proto'] === 'https';
+                req.secure ||
+                req.headers['x-forwarded-proto'] === 'https';
             res.cookie('casperid_session', latestSession.session_token, {
                 httpOnly: true,
                 secure: isSecure,
@@ -559,8 +559,8 @@ router.post('/auth/finish', extractApp, async (req, res) => {
         // Set session cookie (optional - can also use token)
         // Use secure cookies when accessed via HTTPS (ngrok, production, etc.)
         const isSecure = process.env.NODE_ENV === 'production' ||
-                         req.secure ||
-                         req.headers['x-forwarded-proto'] === 'https';
+            req.secure ||
+            req.headers['x-forwarded-proto'] === 'https';
         res.cookie('casperid_session', authResult.sessionToken, {
             httpOnly: true,
             secure: isSecure,
@@ -685,8 +685,8 @@ router.post('/logout', async (req, res) => {
 
         // Clear session cookie (must use same options as when setting)
         const isSecure = process.env.NODE_ENV === 'production' ||
-                         req.secure ||
-                         req.headers['x-forwarded-proto'] === 'https';
+            req.secure ||
+            req.headers['x-forwarded-proto'] === 'https';
         res.clearCookie('casperid_session', {
             httpOnly: true,
             secure: isSecure,
@@ -810,8 +810,8 @@ router.post('/pairing/complete', async (req, res) => {
         // Set session cookie for new device
         // Use secure cookies when accessed via HTTPS (ngrok, production, etc.)
         const isSecure = process.env.NODE_ENV === 'production' ||
-                         req.secure ||
-                         req.headers['x-forwarded-proto'] === 'https';
+            req.secure ||
+            req.headers['x-forwarded-proto'] === 'https';
         res.cookie('casperid_session', pairingResult.sessionToken, {
             httpOnly: true,
             secure: isSecure,

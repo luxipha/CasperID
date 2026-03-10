@@ -9,7 +9,9 @@ const mongoSanitize = require('express-mongo-sanitize');
 const app = express();
 app.set('trust proxy', true);
 const PORT = process.env.PORT || 3001;
+const API_BASE_URL = process.env.API_BASE_URL || (process.env.API_HOST ? `https://${process.env.API_HOST}` : `http://localhost:${PORT}`);
 console.log(`[${new Date().toISOString()}] 🚀 Bootstrap: Target port is ${PORT}`);
+console.log(`[${new Date().toISOString()}] 🌐 API Base URL: ${API_BASE_URL}`);
 
 // Security Middleware
 app.use(helmet({

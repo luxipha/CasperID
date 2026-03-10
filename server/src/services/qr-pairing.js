@@ -47,7 +47,7 @@ class QRPairingService {
                 type: 'casperid_pairing',
                 pairingId,
                 pairingToken,
-                serverUrl: process.env.API_BASE_URL || 'https://api.casperid.com',
+                serverUrl: process.env.API_BASE_URL || (process.env.API_HOST ? `https://${process.env.API_HOST}` : 'https://api.casperid.com'),
                 expiresAt: expiresAt.getTime(),
                 userHint: userAccount.recovery_email.split('@')[0] + '@***' // Privacy-safe hint
             };
