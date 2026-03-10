@@ -14,7 +14,8 @@ const FRONTEND_URL = process.env.FRONTEND_URL || (process.env.FRONTEND_HOST ? `h
 
 console.log(`[${new Date().toISOString()}] 🚀 Bootstrap: Target port is ${PORT}`);
 console.log(`[${new Date().toISOString()}] 🌐 API Base URL: ${API_BASE_URL}`);
-console.log(`[${new Date().toISOString()}] 🖥️  Frontend URL: ${FRONTEND_URL}`);
+console.log(`[${new Date().toISOString()}]  Frontend URL: ${FRONTEND_URL}`);
+console.log(`[${new Date().toISOString()}]  Environment Keys Loaded: ${Object.keys(process.env).join(', ')}`);
 
 // Security Middleware
 app.use(helmet({

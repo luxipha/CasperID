@@ -38,9 +38,9 @@ class EmailService {
         });
 
         this.imapConfig = {
-            user: process.env.SUPPORT_EMAIL || 'support@ile.africa',
-            password: process.env.SUPPORT_EMAIL_PASSWORD,
-            host: process.env.SUPPORT_EMAIL_HOST || 'mail.ile.africa',
+            user: process.env.SUPPORT_EMAIL || process.env.SMTP_USER || 'support@ile.africa',
+            password: process.env.SUPPORT_EMAIL_PASSWORD || process.env.SMTP_PASS,
+            host: process.env.SUPPORT_EMAIL_HOST || process.env.SMTP_HOST || 'mail.ile.africa',
             port: imapPort,
             tls: useSSL,
             secure: useSSL,
@@ -48,7 +48,7 @@ class EmailService {
             tlsOptions: {
                 // Enable TLS certificate verification in production (prevents MITM attacks)
                 rejectUnauthorized: process.env.NODE_ENV === 'production' || process.env.TLS_REJECT_UNAUTHORIZED !== 'false',
-                servername: process.env.SUPPORT_EMAIL_HOST || 'mail.ile.africa'
+                servername: process.env.SUPPORT_EMAIL_HOST || process.env.SMTP_HOST || 'mail.ile.africa'
             },
             authTimeout: 30000,
             connTimeout: 30000,
@@ -57,12 +57,12 @@ class EmailService {
 
         // SMTP Configuration for sending emails
         this.smtpConfig = {
-            host: process.env.SUPPORT_EMAIL_HOST || 'mail.ile.africa',
-            port: parseInt(process.env.SUPPORT_EMAIL_PORT) || 587,
-            secure: parseInt(process.env.SUPPORT_EMAIL_PORT) === 465, // true for 465, false for other ports
+            host: process.env.SUPPORT_EMAIL_HOST || process.env.SMTP_HOST || 'mail.ile.africa',
+            port: parseInt(process.env.SUPPORT_EMAIL_PORT || process.env.SMTP_PORT) || 587,
+            secure: (parseInt(process.env.SUPPORT_EMAIL_PORT || process.env.SMTP_PORT) === 465), // true for 465, false for other ports
             auth: {
-                user: process.env.SUPPORT_EMAIL || 'support@ile.africa',
-                pass: process.env.SUPPORT_EMAIL_PASSWORD
+                user: process.env.SUPPORT_EMAIL || process.env.SMTP_USER || 'support@ile.africa',
+                pass: process.env.SUPPORT_EMAIL_PASSWORD || process.env.SMTP_PASS
             },
             tls: {
                 // Enable TLS certificate verification in production (prevents MITM attacks)
