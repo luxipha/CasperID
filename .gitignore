@@ -88,3 +88,12 @@ casperid_zk/.snfoundry_cache/
 casperid_zk/.scarb/
 
 coupon.md
+
+# Scripts and Tests
+scripts/
+script/
+test/
+tests/
+server/scripts/
+server/tests/
+frontend/tests/
