@@ -284,8 +284,14 @@ class EmailService {
         try {
             console.log(`📧 Sending OTP ${otp} to ${email}`);
 
+            // Staging Bypass: Don't wait for real SMTP send to avoid UI hangs
+            if (process.env.NODE_ENV === 'staging') {
+                console.log(`[STAGING] Bypassing real SMTP send for ${email}. Default OTP 123456 or generated OTP will work.`);
+                return { success: true, messageId: 'staging-bypass-' + Date.now() };
+            }
+
             const mailOptions = {
-                from: `"CasperID Security" <${process.env.SUPPORT_EMAIL}>`,
+                from: `"CasperID Security" <${process.env.SUPPORT_EMAIL || process.env.SMTP_USER}>`,
                 to: email,
                 subject: 'Your CasperID Verification Code',
                 html: `
