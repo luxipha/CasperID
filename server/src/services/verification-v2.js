@@ -560,10 +560,25 @@ class VerificationServiceV2 {
             const sharedData = {};
             const availableFields = [
                 'first_name', 'last_name', 'email', 'phone_number',
-                'city', 'country', 'pronouns', 'headline', 'about'
+                'city', 'country', 'pronouns', 'headline', 'about', 'age'
             ];
 
             requestedFields.forEach(field => {
+                if (field === 'age' && profile.date_of_birth) {
+                    // Calculate age from date_of_birth
+                    const dob = new Date(profile.date_of_birth);
+                    if (!isNaN(dob.getTime())) {
+                        const today = new Date();
+                        let age = today.getFullYear() - dob.getFullYear();
+                        const m = today.getMonth() - dob.getMonth();
+                        if (m < 0 || (m === 0 && today.getDate() < dob.getDate())) {
+                            age--;
+                        }
+                        sharedData.age = age;
+                    }
+                    return;
+                }
+
                 if (availableFields.includes(field) && profile[field]) {
                     sharedData[field] = profile[field];
                 }

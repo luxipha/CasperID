@@ -6,11 +6,13 @@ import { IdentityToolModal } from './ui/IdentityToolModal';
 interface SelectiveDisclosureModalProps {
     isOpen: boolean;
     onClose: () => void;
+    initialSelectedFields?: string[];
 }
 
 const fields = [
     { id: 'first_name', label: 'First Name', icon: 'person' },
     { id: 'last_name', label: 'Last Name', icon: 'person' },
+    { id: 'age', label: 'Verified Age', icon: 'history_edu' },
     { id: 'email', label: 'Email Address', icon: 'mail' },
     { id: 'phone_number', label: 'Phone Number', icon: 'phone' },
     { id: 'city', label: 'City', icon: 'location_city' },
@@ -21,13 +23,20 @@ const fields = [
 export const SelectiveDisclosureModal: React.FC<SelectiveDisclosureModalProps> = ({
     isOpen,
     onClose,
+    initialSelectedFields
 }) => {
     const [profile, setProfile] = useState<any>(null);
     const [loading, setLoading] = useState(true);
     const [generating, setGenerating] = useState(false);
     const [sharePackage, setSharePackage] = useState<any>(null);
-    const [selectedFields, setSelectedFields] = useState<string[]>(['first_name', 'last_name']);
+    const [selectedFields, setSelectedFields] = useState<string[]>(initialSelectedFields || ['first_name', 'last_name']);
     const [copied, setCopied] = useState(false);
+
+    useEffect(() => {
+        if (isOpen && initialSelectedFields) {
+            setSelectedFields(initialSelectedFields);
+        }
+    }, [isOpen, initialSelectedFields]);
 
     useEffect(() => {
         if (isOpen) {
@@ -171,7 +180,7 @@ export const SelectiveDisclosureModal: React.FC<SelectiveDisclosureModalProps> =
             ) : (
                 <div className="space-y-3">
                     {fields.map((field) => {
-                        const hasValue = profile && profile[field.id];
+                        const hasValue = profile && (field.id === 'age' ? !!profile.date_of_birth : !!profile[field.id]);
                         const isSelected = selectedFields.includes(field.id);
                         return (
                             <div
@@ -189,27 +198,46 @@ export const SelectiveDisclosureModal: React.FC<SelectiveDisclosureModalProps> =
                                     <div>
                                         <p className="text-[14px] font-bold text-text-main leading-tight">{field.label}</p>
                                         <p className="text-[11px] text-text-sub font-medium mt-0.5 max-w-[180px] truncate">
-                                            {hasValue ? (field.id === 'address' ? 'Verified Address' : profile[field.id]) : 'Not Provided'}
+                                            {(() => {
+                                                if (!hasValue) return field.id === 'age' ? 'Layer 3 Required' : 'Not Provided';
+
+                                                if (field.id === 'age') {
+                                                    const dob = new Date(profile.date_of_birth);
+                                                    const today = new Date();
+                                                    let age = today.getFullYear() - dob.getFullYear();
+                                                    const m = today.getMonth() - dob.getMonth();
+                                                    if (m < 0 || (m === 0 && today.getDate() < dob.getDate())) {
+                                                        age--;
+                                                    }
+                                                    return `${age} years (Verified)`;
+                                                }
+
+                                                if (field.id === 'address') return 'Verified Address';
+
+                                                return profile[field.id];
+                                            })()}
                                         </p>
                                     </div>
                                 </div>
 
-                                <label className={`relative inline-flex items-center ${!hasValue ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'}`}>
-                                    <input
-                                        type="checkbox"
-                                        className="sr-only peer"
-                                        disabled={!hasValue}
-                                        checked={isSelected}
-                                        onChange={() => handleToggle(field.id)}
-                                    />
-                                    <div className="w-10 h-5 bg-gray-200 rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-primary peer-disabled:opacity-40"></div>
-                                </label>
-                                {!hasValue && (
-                                    <span className="text-[10px] font-bold text-amber-600 flex items-center gap-0.5 animate-pulse mt-1">
-                                        <span className="material-symbols-outlined text-[12px]">warning</span>
-                                        Missing Info
-                                    </span>
-                                )}
+                                <div className="flex flex-col items-end gap-1">
+                                    <label className={`relative inline-flex items-center ${!hasValue ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'}`}>
+                                        <input
+                                            type="checkbox"
+                                            className="sr-only peer"
+                                            disabled={!hasValue}
+                                            checked={isSelected}
+                                            onChange={() => handleToggle(field.id)}
+                                        />
+                                        <div className="w-10 h-5 bg-gray-200 rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-primary peer-disabled:opacity-40"></div>
+                                    </label>
+                                    {!hasValue && (
+                                        <span className="text-[9px] font-bold text-amber-600 flex items-center gap-0.5 animate-pulse">
+                                            <span className="material-symbols-outlined text-[12px]">warning</span>
+                                            {field.id === 'age' ? 'Level 3 Req' : 'Missing'}
+                                        </span>
+                                    )}
+                                </div>
                             </div>
                         );
                     })}
