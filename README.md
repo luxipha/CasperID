@@ -166,9 +166,6 @@ CasperID/
 - `POST /api/ai/parse-resume` - Extract structured data from resumes
 - `POST /api/ai/generate-cover-letter` - Create personalized cover letters
 
-## 📊 Datadog Integration
-
-CasperID features comprehensive observability:
 
 ### Metrics Tracked
 - **Token Usage**: Gemini API costs per verification

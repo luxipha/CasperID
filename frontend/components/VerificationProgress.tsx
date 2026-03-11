@@ -59,9 +59,9 @@ export const VerificationProgress: React.FC<VerificationProgressProps> = ({ onCo
     }, [onComplete, isProcessComplete]);
 
     const steps = [
-        { label: 'Verifying biometric data...', id: 0 },
-        { label: 'Minting Layer 2 Credential...', id: 1 },
-        { label: 'Updating on-chain profile...', id: 2 },
+        { label: 'Generating Privacy Proof...', id: 0 },
+        { label: 'Anchoring to Starknet...', id: 1 },
+        { label: 'Minting Layer 2 Credential...', id: 2 },
     ];
 
     return (

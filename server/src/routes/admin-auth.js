@@ -63,10 +63,10 @@ router.post('/login', adminLoginRateLimit, async (req, res) => {
         console.error('Admin login error:', error);
 
         if (error.message.includes('locked')) {
-            return res.status(423).json({ error: error.message });
+            return res.status(423).json({ success: false, error: error.message });
         }
 
-        res.status(500).json({ error: 'Login failed' });
+        res.status(500).json({ success: false, error: 'Login failed' });
     }
 });
 
@@ -101,10 +101,10 @@ router.post('/change-password', adminAuth, async (req, res) => {
         console.error('Change password error:', error);
 
         if (error.message.includes('incorrect')) {
-            return res.status(400).json({ error: error.message });
+            return res.status(400).json({ success: false, error: error.message });
         }
 
-        res.status(500).json({ error: 'Failed to change password' });
+        res.status(500).json({ success: false, error: 'Failed to change password' });
     }
 });
 
@@ -153,10 +153,10 @@ router.post('/create-user', adminAuth, async (req, res) => {
         console.error('Create admin error:', error);
 
         if (error.message.includes('already exists')) {
-            return res.status(409).json({ error: error.message });
+            return res.status(409).json({ success: false, error: error.message });
         }
 
-        res.status(500).json({ error: 'Failed to create admin user' });
+        res.status(500).json({ success: false, error: 'Failed to create admin user' });
     }
 });
 
@@ -175,7 +175,7 @@ router.get('/profile', adminAuth, async (req, res) => {
         });
     } catch (error) {
         console.error('Get admin profile error:', error);
-        res.status(500).json({ error: 'Failed to get profile' });
+        res.status(500).json({ success: false, error: 'Failed to get profile' });
     }
 });
 
@@ -192,7 +192,7 @@ router.post('/logout', adminAuth, async (req, res) => {
         });
     } catch (error) {
         console.error('Admin logout error:', error);
-        res.status(500).json({ error: 'Logout failed' });
+        res.status(500).json({ success: false, error: 'Logout failed' });
     }
 });
 
@@ -219,7 +219,7 @@ router.post('/rotate-jwt-secret', adminAuth, async (req, res) => {
 
     } catch (error) {
         console.error('JWT rotation error:', error);
-        res.status(500).json({ error: 'Failed to rotate JWT secret' });
+        res.status(500).json({ success: false, error: 'Failed to rotate JWT secret' });
     }
 });
 
@@ -238,7 +238,7 @@ router.get('/jwt-status', adminAuth, async (req, res) => {
 
     } catch (error) {
         console.error('JWT status error:', error);
-        res.status(500).json({ error: 'Failed to get JWT status' });
+        res.status(500).json({ success: false, error: 'Failed to get JWT status' });
     }
 });
 

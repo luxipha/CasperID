@@ -13,6 +13,10 @@ interface Credential {
   date: string;
   color: string;
   icon: string;
+  // ZK verification fields
+  zkVerified?: boolean;
+  zkTransactionHash?: string;
+  zkNullifier?: string;
 }
 
 interface Identity {
@@ -93,11 +97,13 @@ export const CredentialVault: React.FC = () => {
               social: 'group',
             };
             const cnsName = (profileRes as any).cns_name;
+            const humanId = (profileRes as any).human_id;
             const displayAlias = ctx.alias || ctx.context;
+            const nameRoot = cnsName ? `${cnsName}.cid` : (humanId || null);
             identitiesList.push({
               id: ctx.did,
               type: 'persona',
-              name: cnsName ? `${displayAlias}.${cnsName}.cid` : displayAlias,
+              name: nameRoot ? `${displayAlias}.${nameRoot}` : displayAlias,
               context: ctx.context,
               did: ctx.did,
               createdAt: ctx.created_at || new Date().toISOString(),
@@ -124,7 +130,11 @@ export const CredentialVault: React.FC = () => {
               year: 'numeric'
             }),
             color: getTierColor(cred.tier),
-            icon: getTierIcon(cred.tier)
+            icon: getTierIcon(cred.tier),
+            // ZK verification data
+            zkVerified: cred.zk_verified || false,
+            zkTransactionHash: cred.zk_transaction_hash || null,
+            zkNullifier: cred.zk_nullifier || null
           }));
 
           setCredentials(mappedCredentials);
@@ -186,8 +196,10 @@ export const CredentialVault: React.FC = () => {
       const cnsName = (userProfile as any)?.cns_name;
       return cnsName ? `${baseUrl}/${cnsName}.cid` : `${baseUrl}/profile/${(userProfile as any)?.wallet}`;
     } else {
-      const cnsName = (userProfile as any)?.cns_name;
-      return cnsName ? `${baseUrl}/${identity.context}.${cnsName}.cid` : `${baseUrl}/did/${identity.did}`;
+      // Prefer subdomain format: alias.name (strip .cid from identity.name if present)
+      // identity.name is already e.g. "gig.vawa-bitu-sabo.cid" or "gig.premiumname.cid"
+      const subdomainSlug = identity.name.replace(/\.cid$/, '');
+      return `${baseUrl}/did/${subdomainSlug}`;
     }
   };
 
@@ -400,8 +412,27 @@ export const CredentialVault: React.FC = () => {
                       <div className="size-12 rounded-xl bg-white/20 backdrop-blur-xl border border-white/30 flex items-center justify-center shadow-lg">
                         <span className="material-symbols-outlined text-3xl text-white drop-shadow-sm">{vc.icon}</span>
                       </div>
-                      <div className="px-3 py-1 rounded-full bg-white/20 backdrop-blur-md border border-white/20 text-[10px] font-black uppercase tracking-widest">
-                        {vc.type}
+                      <div className="flex flex-col items-end gap-2">
+                        {/* Primary Badge */}
+                        <div className="px-3 py-1 rounded-full bg-white/20 backdrop-blur-md border border-white/20 text-[10px] font-black uppercase tracking-widest">
+                          {vc.type}
+                        </div>
+                        {/* ZK Privacy Shield Badge */}
+                        {vc.zkVerified && (
+                          <a
+                            href={`https://sepolia.voyager.online/tx/${vc.zkTransactionHash}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            onClick={(e) => e.stopPropagation()}
+                            className="px-2 py-[2px] rounded-full bg-purple-500/80 backdrop-blur-md border border-purple-300 text-[8px] font-black uppercase tracking-wider flex items-center justify-center gap-1 hover:bg-purple-600 transition-colors cursor-pointer shadow-md w-fit"
+                            title="View on Starknet Voyager"
+                          >
+                            <svg className="w-2.5 h-2.5 text-white" viewBox="0 0 24 24" fill="currentColor">
+                              <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" />
+                            </svg>
+                            <span>ZK Anchored</span>
+                          </a>
+                        )}
                       </div>
                     </div>
 

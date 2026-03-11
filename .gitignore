@@ -45,8 +45,10 @@ yarn-error.log*
 next-env.d.ts
 
 # Rust
-target/
-Cargo.lock
+/target/
+/Cargo.lock
+/casperid_zk/target/
+/casperid_zk/.snfoundry_cache/
 
 # Strategy & Confidential Documents
 STRATEGY.md
@@ -55,6 +57,7 @@ MARKET_ANALYSIS.md
 COMPETITIVE_INTEL.md
 ZK.md
 *.confidential.md
+!casperid_zk/SETUP.md
 
 # Private keys and secrets
 *.pem
@@ -63,9 +66,12 @@ keys/
 secrets/
 /server/.env
 .admin-credentials
+
+# Specific docs to ignore
 *.md
 roadmap.md
 /server/*.md
+
 /extension/
 /secrets.json
 /scripts
@@ -75,3 +81,19 @@ github-actions-key.json
 /server/uploads
 /server/scripts
 /server/src/tests
+
+# Starknet / ZK specifics
+casperid_zk/target/
+casperid_zk/.snfoundry_cache/
+casperid_zk/.scarb/
+
+coupon.md
+
+# Scripts and Tests
+scripts/
+script/
+test/
+tests/
+server/scripts/
+server/tests/
+frontend/tests/

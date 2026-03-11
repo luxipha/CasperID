@@ -9,19 +9,40 @@ const mongoSanitize = require('express-mongo-sanitize');
 const app = express();
 app.set('trust proxy', true);
 const PORT = process.env.PORT || 3001;
-console.log(`[${new Date().toISOString()}] 🚀 Bootstrap: Target port is ${PORT}`);
+
+// Robust URL construction for Render
+const getRenderUrl = (host, fallback) => {
+    if (!host) return fallback;
+    if (host.startsWith('http')) return host;
+    // If it's a Render host without the domain, append it
+    const domain = host.includes('.') ? host : `${host}.onrender.com`;
+    return `https://${domain}`;
+};
+
+const API_BASE_URL = process.env.API_BASE_URL || getRenderUrl(process.env.RENDER_EXTERNAL_HOSTNAME || process.env.API_HOST, `http://localhost:${PORT}`);
+const FRONTEND_URL = process.env.FRONTEND_URL || getRenderUrl(process.env.FRONTEND_HOST, 'http://localhost:3000');
+
+console.log(`[${new Date().toISOString()}]  Bootstrap: Target port is ${PORT}`);
+console.log(`[${new Date().toISOString()}]  API Base URL: ${API_BASE_URL}`);
+console.log(`[${new Date().toISOString()}]  Frontend URL: ${FRONTEND_URL}`);
+console.log(`[${new Date().toISOString()}]  Environment Keys Loaded: ${Object.keys(process.env).join(', ')}`);
 
 // Security Middleware
 app.use(helmet({
     contentSecurityPolicy: {
         directives: {
             defaultSrc: ["'self'"],
-            styleSrc: ["'self'", "'unsafe-inline'"],
-            scriptSrc: ["'self'"],
-            imgSrc: ["'self'", "data:", "https:"],
+            styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
+            scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'", "https://*.intercom.io", "https://*.walletconnect.org", "https://*.walletconnect.com"],
+            imgSrc: ["'self'", "data:", "https:", "blob:"],
+            connectSrc: ["'self'", "https:", "wss:", "https://*.onrender.com", "http://localhost:*"],
+            frameSrc: ["'self'", "https://*.walletconnect.org", "https://*.walletconnect.com", "https://*.intercom.io"],
+            fontSrc: ["'self'", "https://fonts.gstatic.com"],
+            objectSrc: ["'none'"],
         },
     },
-    crossOriginEmbedderPolicy: false
+    crossOriginEmbedderPolicy: false,
+    crossOriginResourcePolicy: { policy: "cross-origin" }
 }));
 
 // MongoDB injection prevention
@@ -37,6 +58,7 @@ app.use(cors({
             'https://casper-id.netlify.app',
             'https://casperid.com',
             'https://www.casperid.com',
+            FRONTEND_URL,
             process.env.FRONTEND_URL
         ].filter(Boolean);
 
@@ -52,9 +74,16 @@ app.use(cors({
             return callback(null, true);
         }
 
+        // Allow any Render staging URL
+        if (origin.endsWith('.onrender.com')) {
+            return callback(null, true);
+        }
+
         callback(new Error('Not allowed by CORS'));
     },
-    credentials: true
+    credentials: true,
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-CSRF-Token', 'ngrok-skip-browser-warning'],
+    exposedHeaders: ['X-CSRF-Token']
 }));
 app.use(express.json({
     limit: '50mb',
@@ -62,13 +91,29 @@ app.use(express.json({
         try {
             JSON.parse(buf);
         } catch (e) {
-            res.status(400).json({ error: 'Invalid JSON' });
+            res.status(400).json({ success: false, error: 'Invalid JSON' });
             return;
         }
     }
 }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 app.use(cookieParser());
+
+// CSRF Protection
+const { doubleCsrfProtection, csrfErrorHandler, getCsrfToken } = require('./middleware/csrf');
+
+// CSRF token endpoint - frontend should call this on initialization
+app.get('/api/csrf-token', getCsrfToken);
+
+// Apply CSRF protection to all state-changing requests (POST, PUT, DELETE, PATCH)
+// Skips GET, HEAD, OPTIONS automatically
+app.use((req, res, next) => {
+    // Exempt external webhooks from CSRF protection
+    if (req.path.startsWith('/api/payment/revenuecat/webhook') || req.path.startsWith('/api/payment/boomfi/webhook')) {
+        return next();
+    }
+    doubleCsrfProtection(req, res, next);
+});
 
 // Serve static files from uploads directory
 const path = require('path');
@@ -165,6 +210,7 @@ app.use('/api/admin', adminRoutes);
 app.use('/api/admin', adminAuthRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api', aiRoutes);
+app.use('/api', require('./routes/zk')); // ZK Proof Submission (Starknet)
 app.use('/api/casperid', casperidAuthRoutes);
 app.use('/api/passkey', passkeyAuthRoutes); // Passkey authentication (Layer 0/1)
 app.use('/api/passkey/pairing/otp', require('./routes/otp-pairing')); // OTP Pairing (Extension-to-Web)
@@ -176,12 +222,17 @@ app.use('/api', activityRoutes); // Activity log routes
 app.use('/api', verifiedProfilesRoutes); // Verified profiles for sitemap
 app.use('/api/notifications', require('./routes/notifications'));
 app.use('/api', require('./routes/cns')); // CNS Name Resolution & Registration
+app.use('/api/payment', require('./routes/payment')); // Premium CID Payments (RevenueCat & Boomfi)
+app.use('/api/coupon', require('./routes/coupon')); // Coupon validation and claiming
 app.use('/api/pending-session', require('./routes/pending-session')); // Mobile Passkey Handoff
 app.use('/api/business', require('./routes/business')); // Business Platform (Identity-as-a-Service)
 app.use('/.well-known', require('./routes/well-known')); // JWKS + OpenID Connect Discovery
 app.use('/api/careers', require('./routes/careers')); // Career applications
 app.use('/api/affiliates', require('./routes/affiliates')); // Affiliate applications
 app.use('/api/quest', require('./routes/quest')); // Gamified Quest System
+
+// CSRF error handler (must be before general error handler)
+app.use(csrfErrorHandler);
 
 // Error handling middleware
 app.use((err, req, res, next) => {
@@ -194,7 +245,7 @@ app.use((err, req, res, next) => {
 
 // 404 handler
 app.use((req, res) => {
-    res.status(404).json({ error: 'Route not found' });
+    res.status(404).json({ success: false, error: 'Route not found' });
 });
 
 module.exports = app;

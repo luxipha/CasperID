@@ -38,9 +38,9 @@ class EmailService {
         });
 
         this.imapConfig = {
-            user: process.env.SUPPORT_EMAIL || 'support@ile.africa',
-            password: process.env.SUPPORT_EMAIL_PASSWORD,
-            host: process.env.SUPPORT_EMAIL_HOST || 'mail.ile.africa',
+            user: process.env.SUPPORT_EMAIL || process.env.SMTP_USER || 'support@ile.africa',
+            password: process.env.SUPPORT_EMAIL_PASSWORD || process.env.SMTP_PASS,
+            host: process.env.SUPPORT_EMAIL_HOST || process.env.SMTP_HOST || 'mail.ile.africa',
             port: imapPort,
             tls: useSSL,
             secure: useSSL,
@@ -48,7 +48,7 @@ class EmailService {
             tlsOptions: {
                 // Enable TLS certificate verification in production (prevents MITM attacks)
                 rejectUnauthorized: process.env.NODE_ENV === 'production' || process.env.TLS_REJECT_UNAUTHORIZED !== 'false',
-                servername: process.env.SUPPORT_EMAIL_HOST || 'mail.ile.africa'
+                servername: process.env.SUPPORT_EMAIL_HOST || process.env.SMTP_HOST || 'mail.ile.africa'
             },
             authTimeout: 30000,
             connTimeout: 30000,
@@ -57,12 +57,12 @@ class EmailService {
 
         // SMTP Configuration for sending emails
         this.smtpConfig = {
-            host: process.env.SUPPORT_EMAIL_HOST || 'mail.ile.africa',
-            port: parseInt(process.env.SUPPORT_EMAIL_PORT) || 587,
-            secure: parseInt(process.env.SUPPORT_EMAIL_PORT) === 465, // true for 465, false for other ports
+            host: process.env.SUPPORT_EMAIL_HOST || process.env.SMTP_HOST || 'mail.ile.africa',
+            port: parseInt(process.env.SUPPORT_EMAIL_PORT || process.env.SMTP_PORT) || 587,
+            secure: (parseInt(process.env.SUPPORT_EMAIL_PORT || process.env.SMTP_PORT) === 465), // true for 465, false for other ports
             auth: {
-                user: process.env.SUPPORT_EMAIL || 'support@ile.africa',
-                pass: process.env.SUPPORT_EMAIL_PASSWORD
+                user: process.env.SUPPORT_EMAIL || process.env.SMTP_USER || 'support@ile.africa',
+                pass: process.env.SUPPORT_EMAIL_PASSWORD || process.env.SMTP_PASS
             },
             tls: {
                 // Enable TLS certificate verification in production (prevents MITM attacks)
@@ -284,8 +284,14 @@ class EmailService {
         try {
             console.log(`📧 Sending OTP ${otp} to ${email}`);
 
+            // Staging Bypass: Don't wait for real SMTP send to avoid UI hangs
+            if (process.env.NODE_ENV === 'staging') {
+                console.log(`[STAGING] Bypassing real SMTP send for ${email}. Default OTP 123456 or generated OTP will work.`);
+                return { success: true, messageId: 'staging-bypass-' + Date.now() };
+            }
+
             const mailOptions = {
-                from: `"CasperID Security" <${process.env.SUPPORT_EMAIL}>`,
+                from: `"CasperID Security" <${process.env.SUPPORT_EMAIL || process.env.SMTP_USER}>`,
                 to: email,
                 subject: 'Your CasperID Verification Code',
                 html: `
@@ -356,7 +362,7 @@ class EmailService {
                     tier === 'layer_1' ? '#ca8a04' : '#6b7280';
 
             const mailOptions = {
-                from: `"CasperID Careers" <careers@casperid.com>`,
+                from: `"CasperID Careers" <${process.env.SUPPORT_EMAIL}>`,
                 to: 'careers@casperid.com', // Send to careers team
                 replyTo: applicantEmail,
                 subject: `New Application: ${jobTitle} - ${applicantName}`,
@@ -438,7 +444,7 @@ class EmailService {
             console.log(`📧 Sending Affiliate Application from ${applicantEmail}`);
 
             const mailOptions = {
-                from: `"CasperID Partners" <careers@casperid.com>`,
+                from: `"CasperID Partners" <${process.env.SUPPORT_EMAIL}>`,
                 to: 'careers@casperid.com',
                 replyTo: applicantEmail,
                 subject: `New Affiliate Application - ${applicantName}`,

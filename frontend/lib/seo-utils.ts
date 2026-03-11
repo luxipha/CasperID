@@ -2,7 +2,7 @@
  * SEO utilities for generating user-friendly URLs
  */
 
-import { UserProfile } from './api-client';
+import { UserProfile } from '../types';
 
 /**
  * Generate a slug from a string (remove special characters, spaces, etc.)

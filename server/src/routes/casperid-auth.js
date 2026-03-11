@@ -5,7 +5,7 @@
 
 const express = require('express');
 const router = express.Router();
-const { Credential, LoginSession } = require('../database/models');
+const { Credential, LoginSession, UserAccount } = require('../database/models');
 const { generateToken, verifyToken, refreshToken } = require('../utils/jwt-manager');
 const { generateNonce, validateNonce, verifyWalletSignature, createSignatureMessage } = require('../utils/signature-verifier');
 
@@ -71,10 +71,14 @@ router.post('/login', async (req, res) => {
             });
         }
 
+        // Fetch user account to get premium cns_name if available
+        const userAccount = await UserAccount.findOne({ wallet });
+
         // Prepare user data for token
         const userData = {
             wallet: credential.wallet,
             humanId: credential.human_id || 'unknown',
+            cnsName: userAccount?.cns_name || null, // Include premium name if registered
             verified: true,
             tier: credential.tier,
             sharedData: requestedData || []
@@ -108,6 +112,7 @@ router.post('/login', async (req, res) => {
             user: {
                 wallet: credential.wallet,
                 humanId: credential.human_id,
+                cnsName: userAccount?.cns_name || null,
                 verified: true,
                 tier: credential.tier,
                 sharedData: userData.sharedData

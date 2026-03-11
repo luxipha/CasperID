@@ -5,6 +5,7 @@ import { useAuth } from '../contexts/AuthContext';
 
 export const ReusableTools: React.FC = () => {
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
+  const [initialFields, setInitialFields] = useState<string[] | undefined>(undefined);
   const { user } = useAuth();
 
   // Determine liveness status from real user data
@@ -39,6 +40,10 @@ export const ReusableTools: React.FC = () => {
 
   const handleToolClick = (toolId: string) => {
     if (toolId === 'share') {
+      setInitialFields(['first_name', 'last_name']);
+      setIsShareModalOpen(true);
+    } else if (toolId === 'proof') {
+      setInitialFields(['age', 'city', 'country']);
       setIsShareModalOpen(true);
     }
   };
@@ -86,6 +91,7 @@ export const ReusableTools: React.FC = () => {
       <SelectiveDisclosureModal
         isOpen={isShareModalOpen}
         onClose={() => setIsShareModalOpen(false)}
+        initialSelectedFields={initialFields}
       />
     </section>
   );

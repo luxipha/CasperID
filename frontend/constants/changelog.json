@@ -1,5 +1,139 @@
 [
   {
+    "version": "2.6.0",
+    "title": "Premium CNS & Wildcard Identity Routing",
+    "date": "March 10, 2026",
+    "status": "Production Update",
+    "highlight": {
+      "title": "Human-First Subdomains",
+      "description": "Launched wildcard identity routing: every user now owns their piece of the web at [name].casperid.com with instant SSL.",
+      "type": "sparkles"
+    },
+    "summary": "This milestone update introduces the full implementation of Premium .cid names on the Casper Network and the deployment of our Hybrid Privacy Infrastructure. We've integrated Noir-based ZK circuits with Starknet to enable anonymous biometric nullifiers, alongside a Smart Subdomain Gateway for native vanity URLs.",
+    "categories": [
+      {
+        "id": "v260-feat",
+        "title": "New Features",
+        "items": [
+          "CasperID ZK 2.0: Launched the 'Privacy Bridge' using Noir ZK Circuits for anonymous biometric verification.",
+          "Starknet Proof Verification: Integrated on-chain logging of anonymous 'Nullifiers' to prevent Sybil attacks without doxxing users.",
+          "Wildcard Subdomain Support: Profiles now resolve directly from vanity URLs (e.g. alice.casperid.com).",
+          "Multi-Chain Payment Rails: Integrated Boomfi and RevenueCat for crypto/fiat name registrations.",
+          "Casper CNS Protocol: On-chain name registration and NFT minting for premium identity markers.",
+          "Social Viral Flow: New success screen with 'Brag on X' and direct 'View Profile' integration."
+        ]
+      },
+      {
+        "id": "v260-fix",
+        "title": "Fixes & Syncing",
+        "items": [
+          "Hybrid Attestation Model: Updated Noir circuit to verify server-side face-matching signatures for enhanced security.",
+          "Unified Identity Sync: Premium names now automatically replace legacy human IDs in profiles and credentials.",
+          "JWT Metadata Enhancement: CNS names are now embedded in auth tokens for zero-latency UI updates."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "2.5.1",
+    "title": "Analytics Integration & UX Refinement",
+    "date": "March 6, 2026",
+    "status": "Production Update",
+    "highlight": {
+      "title": "Integrated Behavioral Analytics",
+      "description": "Deployed Microsoft Clarity, Hotjar, and Google Tag Manager to gain deep insights into user identity verification hurdles.",
+      "type": "sparkles"
+    },
+    "summary": "This update focuses on infrastructure for user behavior analysis and refining the Trust Score logic for improved accuracy. We've also hardened analytics reliability by optimizing script load order and improved mobile responsiveness across the roadmap and profile views.",
+    "categories": [
+      {
+        "id": "v251-feat",
+        "title": "New Features",
+        "items": [
+          "Integrated Microsoft Clarity, Hotjar, and Google Tag Manager for comprehensive behavioral analytics.",
+          "Implemented optimized analytics load-order: moved high-priority tracking scripts to the top of the <head> for maximum data reliability."
+        ]
+      },
+      {
+        "id": "v251-fix",
+        "title": "Fixes & Improvements",
+        "items": [
+          "Refined Trust Score calculation logic to ensure real-time accuracy across complex profile states.",
+          "Enhanced Roadmap Contrast: Improved legibility of detail panels against dark backgrounds for better accessibility.",
+          "Optimized Profile Responsiveness: Fixed layout shifts on mobile viewports for public identity pages.",
+          "Aligned mail sender configurations for consistent system notification delivery."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "2.5.0",
+    "title": "Global Trust Score & Application Guard",
+    "date": "March 4, 2026",
+    "status": "Production Release",
+    "highlight": {
+      "title": "Profile Score Required to Apply",
+      "description": "Introduced a unified 0–100 Trust Score combining identity verification tier and profile completeness. Users must score 60+ to submit job applications.",
+      "type": "sparkles"
+    },
+    "summary": "This release introduces a Global Trust Score that merges identity verification (Layer 1/2/3) with profile completeness (experience, education, skills, certifications, projects, awards, languages, social links, and more). The Apply button on job listings now displays the applicant's live score, and a Profile Completion Modal guides low-scoring users to improve their profile or verify their identity before applying.",
+    "categories": [
+      {
+        "id": "v250-feat",
+        "title": "New Features",
+        "items": [
+          "Global Trust Score engine: a unified 0–100 score combining Identity Tier (50 pts) and Profile Completeness (50 pts) with no additional API calls.",
+          "Application Guard: Apply button on job listings shows the user's live score badge and blocks submissions below 60 points.",
+          "Profile Completion Modal: surfaces when score is below threshold, showing a progress bar, threshold marker, top improvement tips, and CTAs to complete profile or verify identity.",
+          "CTAs in modal navigate directly to /dashboard?view=profile and /dashboard?view=kyc for a frictionless fix flow.",
+          "Dashboard Trust Score card updated to reflect the new unified score instead of the previous identity-tier-only estimate."
+        ]
+      },
+      {
+        "id": "v250-fix",
+        "title": "Fixes",
+        "items": [
+          "Fixed Vite deprecation warning: updated import.meta.glob from deprecated `as: 'raw'` to `query: '?raw', import: 'default'` syntax.",
+          "Fixed navigation from Profile Completion Modal using window.location.href instead of React Router navigate to correctly trigger the app's view-sync on query string changes."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "2.4.0",
+    "title": "Persona Identity & Responsive Web",
+    "date": "March 2, 2026",
+    "status": "Production Release",
+    "highlight": {
+      "title": "Human-Readable Personas",
+      "description": "Launched subdomain-based URLs for context identities, moving from raw DIDs to user-friendly paths like /did/game.bika.",
+      "type": "sparkles"
+    },
+    "summary": "This release standardizes persona profiles with human-readable URLs, hardens CNS name resolution for all human ID formats, and significantly improves the mobile experience for public profile viewers.",
+    "categories": [
+      {
+        "id": "v240-imp",
+        "title": "Improvements",
+        "items": [
+          "Standardized Persona URLs: Transitioned context profiles to subdomain-based paths (e.g., /did/game.bika).",
+          "Public Profile Responsiveness: Optimized header and card layouts for mobile and tablet viewports.",
+          "Credential Vault UX: Updated identity sharing logic to generate human-readable URLs by default.",
+          "Enhanced CNS Logic: Added robust handling for multi-word and single-word human ID resolution."
+        ]
+      },
+      {
+        "id": "v240-fix",
+        "title": "Fixes",
+        "items": [
+          "Hardened Persona Privacy: Fixed disclosure filtering to correctly apply user consent settings across all profiles.",
+          "AI Liveness Stability: Implemented robust JSON parsing for Gemini responses to handle markdown code fences.",
+          "Aligned Profile Identifiers: Corrected DID labels in profile views to show identity aliases instead of pending status.",
+          "Synchronized Data Schemas: Aligned frontend disclosure keys with backend database models for accurate field display."
+        ]
+      }
+    ]
+  },
+  {
     "version": "2.3.0",
     "title": "OTP Pairing & Browser Extension Co-pilot",
     "date": "February 27, 2026",

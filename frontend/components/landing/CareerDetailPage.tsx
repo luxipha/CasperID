@@ -2,11 +2,13 @@ import React, { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { FooterMarketing } from '../FooterMarketing';
 import HeaderMarketing from '../HeaderMarketing';
-import { ArrowLeft, CheckCircle, Star, Zap, FileText, Loader2, Brain, Wallet, GraduationCap, Globe } from 'lucide-react';
+import { ArrowLeft, CheckCircle, Star, Zap, FileText, Loader2, Brain, Wallet, GraduationCap, Globe, ShieldCheck } from 'lucide-react';
 import { getJobBySlug, Job } from '@/utils/jobLoader';
 import { useAuth } from '../../contexts/AuthContext';
 import { useDocumentTitle } from '../../hooks/useDocumentTitle';
 import { apiService } from '../../services/api';
+import { calculateGlobalTrustScore, APPLY_THRESHOLD, getScoreGradient, TrustScoreBreakdown } from '../../utils/trustScore';
+import ProfileCompletionModal from './ProfileCompletionModal';
 
 interface CareerDetailPageProps {
     onBack: () => void;
@@ -31,10 +33,15 @@ const CareerDetailPage: React.FC<CareerDetailPageProps> = ({ onBack, onApplySucc
     });
     const [isLoadingJob, setIsLoadingJob] = useState(true);
     const [isApplying, setIsApplying] = useState(false);
+    const [showTrustModal, setShowTrustModal] = useState(false);
+
+    const { user, isAuthenticated } = useAuth();
+
+    const trustScore: TrustScoreBreakdown = calculateGlobalTrustScore(user);
+    const canApply = isAuthenticated && user && trustScore.total >= APPLY_THRESHOLD;
 
     useDocumentTitle(job ? `${job.title} | Careers | CasperID` : 'CasperID | Join the Team');
 
-    const { user, isAuthenticated } = useAuth();
 
     useEffect(() => {
         const loadJob = async () => {
@@ -87,7 +94,7 @@ const CareerDetailPage: React.FC<CareerDetailPageProps> = ({ onBack, onApplySucc
         });
     };
 
-    const handleApply = async () => {
+    const submitApplication = async () => {
         if (!isAuthenticated || !user) {
             window.location.href = '/dashboard';
             return;
@@ -108,6 +115,19 @@ const CareerDetailPage: React.FC<CareerDetailPageProps> = ({ onBack, onApplySucc
         } finally {
             setIsApplying(false);
         }
+    };
+
+    const handleApply = () => {
+        if (!isAuthenticated || !user) {
+            window.location.href = '/dashboard';
+            return;
+        }
+        // Guard: show modal if score below threshold
+        if (trustScore.total < APPLY_THRESHOLD) {
+            setShowTrustModal(true);
+            return;
+        }
+        submitApplication();
     };
 
     if (isLoadingJob) {
@@ -153,15 +173,47 @@ const CareerDetailPage: React.FC<CareerDetailPageProps> = ({ onBack, onApplySucc
                             {job.title}
                         </h1>
 
-                        <div className="flex flex-wrap gap-4">
-                            <button
-                                onClick={handleApply}
-                                disabled={isApplying}
-                                className="px-8 py-4 bg-primary text-white rounded-2xl font-bold text-lg hover:bg-primary/90 transition-all shadow-lg shadow-primary/20 flex items-center gap-2"
-                            >
-                                {isApplying ? <Loader2 className="animate-spin" size={20} /> : <Zap size={20} />}
-                                {isAuthenticated && user ? 'Apply now with CasperID' : 'Log in to Apply'}
-                            </button>
+                        <div className="flex flex-wrap gap-4 items-center">
+                            {isAuthenticated && user ? (
+                                <button
+                                    onClick={handleApply}
+                                    disabled={isApplying}
+                                    className={`px-8 py-4 rounded-2xl font-bold text-lg transition-all flex items-center gap-3 ${canApply
+                                        ? 'bg-primary text-white hover:bg-primary/90 shadow-lg shadow-primary/20'
+                                        : 'bg-gray-100 text-gray-500 cursor-pointer hover:bg-gray-200'
+                                        }`}
+                                >
+                                    {isApplying ? (
+                                        <Loader2 className="animate-spin" size={20} />
+                                    ) : canApply ? (
+                                        <Zap size={20} />
+                                    ) : (
+                                        <ShieldCheck size={20} />
+                                    )}
+                                    <span>
+                                        {isApplying ? 'Submitting...' : canApply ? 'Apply with CasperID' : 'Apply now with CasperID'}
+                                    </span>
+                                    {/* Score Badge */}
+                                    <span className={`text-xs font-black px-2.5 py-1 rounded-full ${canApply ? 'bg-white/20 text-white' : 'bg-amber-100 text-amber-700'
+                                        }`}>
+                                        {trustScore.total}%
+                                    </span>
+                                </button>
+                            ) : (
+                                <button
+                                    onClick={handleApply}
+                                    className="px-8 py-4 bg-primary text-white rounded-2xl font-bold text-lg hover:bg-primary/90 transition-all shadow-lg shadow-primary/20 flex items-center gap-2"
+                                >
+                                    <Zap size={20} /> Log in to Apply
+                                </button>
+                            )}
+
+                            {/* Low score nudge */}
+                            {isAuthenticated && user && !canApply && (
+                                <p className="text-sm text-amber-600 font-semibold">
+                                    Needs {APPLY_THRESHOLD}% to apply
+                                </p>
+                            )}
                         </div>
                     </div>
 
@@ -276,6 +328,19 @@ const CareerDetailPage: React.FC<CareerDetailPageProps> = ({ onBack, onApplySucc
                 </div>
             </div>
             <FooterMarketing />
+
+            {/* Profile Completion Modal (Trust Score Guard) */}
+            {showTrustModal && (
+                <ProfileCompletionModal
+                    score={trustScore}
+                    jobTitle={job?.title || 'this position'}
+                    onClose={() => setShowTrustModal(false)}
+                    onApplyAnyway={() => {
+                        setShowTrustModal(false);
+                        submitApplication();
+                    }}
+                />
+            )}
         </div>
     );
 };

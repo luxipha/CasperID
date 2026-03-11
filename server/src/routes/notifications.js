@@ -22,7 +22,7 @@ router.get('/', requireAuth, async (req, res) => {
         });
     } catch (error) {
         console.error('Get notifications error:', error);
-        res.status(500).json({ error: 'Failed to fetch notifications' });
+        res.status(500).json({ success: false, error: 'Failed to fetch notifications' });
     }
 });
 
@@ -35,7 +35,7 @@ router.get('/preferences', requireAuth, async (req, res) => {
         const userAccount = await UserAccount.findOne({ wallet: req.user.wallet });
 
         if (!userAccount) {
-            return res.status(404).json({ error: 'User account not found' });
+            return res.status(404).json({ success: false, error: 'User account not found' });
         }
 
         res.json({
@@ -48,7 +48,7 @@ router.get('/preferences', requireAuth, async (req, res) => {
         });
     } catch (error) {
         console.error('Get preferences error:', error);
-        res.status(500).json({ error: 'Failed to fetch preferences' });
+        res.status(500).json({ success: false, error: 'Failed to fetch preferences' });
     }
 });
 
@@ -71,7 +71,7 @@ router.patch('/preferences', requireAuth, async (req, res) => {
         });
 
         if (Object.keys(sanitizedUpdates).length === 0) {
-            return res.status(400).json({ error: 'No valid preferences provided' });
+            return res.status(400).json({ success: false, error: 'No valid preferences provided' });
         }
 
         const userAccount = await UserAccount.findOneAndUpdate(
@@ -86,7 +86,7 @@ router.patch('/preferences', requireAuth, async (req, res) => {
         });
     } catch (error) {
         console.error('Update preferences error:', error);
-        res.status(500).json({ error: 'Failed to update preferences' });
+        res.status(500).json({ success: false, error: 'Failed to update preferences' });
     }
 });
 
@@ -106,7 +106,7 @@ router.post('/:id/read', requireAuth, async (req, res) => {
         );
 
         if (!notification) {
-            return res.status(404).json({ error: 'Notification not found' });
+            return res.status(404).json({ success: false, error: 'Notification not found' });
         }
 
         res.json({
@@ -115,7 +115,7 @@ router.post('/:id/read', requireAuth, async (req, res) => {
         });
     } catch (error) {
         console.error('Mark notification read error:', error);
-        res.status(500).json({ error: 'Failed to update notification' });
+        res.status(500).json({ success: false, error: 'Failed to update notification' });
     }
 });
 
@@ -137,7 +137,7 @@ router.get('/access-logs', requireAuth, async (req, res) => {
         });
     } catch (error) {
         console.error('Get access logs error:', error);
-        res.status(500).json({ error: 'Failed to fetch access logs' });
+        res.status(500).json({ success: false, error: 'Failed to fetch access logs' });
     }
 });
 

@@ -1,41 +1,26 @@
 
-import React, { useState, useEffect } from 'react';
-import { apiService } from '../services/api';
+import React, { useState } from 'react';
+import { useAuth } from '../contexts/AuthContext';
 
 interface ViewDIDProps {
   onBack: () => void;
 }
 
-interface UserData {
-  did_address?: string;
-  wallet?: string;
-  email?: string;
-  tier?: string;
-  created_at?: string;
-  metamask_connected?: boolean;
-  metamask_address?: string;
-}
-
 export const ManageDID: React.FC<ViewDIDProps> = ({ onBack }) => {
-  const [userData, setUserData] = useState<UserData | null>(null);
-  const [loading, setLoading] = useState(true);
+  // Use AuthContext instead of fetching profile data again
+  const { user, isLoading: loading } = useAuth();
   const [copied, setCopied] = useState(false);
 
-  useEffect(() => {
-    const fetchUserData = async () => {
-      try {
-        console.log('🔍 [ManageDID] Fetching user profile...');
-        const profile = await apiService.getUserProfile();
-        console.log('📋 [ManageDID] User profile:', profile);
-        setUserData(profile as any);
-      } catch (error) {
-        console.error('❌ [ManageDID] Failed to fetch user data:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchUserData();
-  }, []);
+  // Map auth user to the expected format
+  const userData = user ? {
+    did_address: user.did_address,
+    wallet: user.wallet,
+    email: user.email,
+    tier: user.tier,
+    created_at: user.created_at,
+    metamask_connected: user.metamask_connected,
+    metamask_address: user.metamask_address
+  } : null;
 
   const handleCopyDID = () => {
     if (userData?.did_address) {

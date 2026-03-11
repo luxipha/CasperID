@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Copy, RefreshCw, Eye, EyeOff, Plus, Trash2, Download, ChevronDown, X, Check } from 'lucide-react';
-
-const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:8080';
+import { apiService } from '../../services/api';
 
 interface BusinessApp {
   app_id: string;
@@ -11,23 +10,6 @@ interface BusinessApp {
   request_count: number;
   last_used_at: string | null;
   created_at: string;
-}
-
-async function fetchWithAuth(path: string, opts: RequestInit = {}) {
-  const cookie = document.cookie;
-  const sessionToken = cookie.match(/casperid_session=([^;]+)/)?.[1]
-    || localStorage.getItem('casperid_token')
-    || '';
-
-  return fetch(`${API_BASE}${path}`, {
-    ...opts,
-    credentials: 'include',
-    headers: {
-      'Content-Type': 'application/json',
-      ...(sessionToken ? { Authorization: `Bearer ${sessionToken}` } : {}),
-      ...opts.headers
-    }
-  });
 }
 
 const APIManagement: React.FC = () => {
@@ -60,9 +42,7 @@ const APIManagement: React.FC = () => {
   const loadApps = useCallback(async () => {
     setIsLoading(true);
     try {
-      const res = await fetchWithAuth('/api/business/apps');
-      if (!res.ok) throw new Error('Failed to load apps');
-      const data = await res.json();
+      const data = await apiService.getBusinessApps();
       setApps(data.apps || []);
       if (data.apps?.length > 0 && !selectedApp) {
         setSelectedApp(data.apps[0]);
@@ -93,11 +73,11 @@ const APIManagement: React.FC = () => {
     setIsCreating(true);
     try {
       const origins = newAppOrigins.split(',').map(s => s.trim()).filter(Boolean);
-      const res = await fetchWithAuth('/api/business/apps', {
-        method: 'POST',
-        body: JSON.stringify({ name: newAppName, allowed_origins: origins, environment: newAppEnv })
+      const data = await apiService.createBusinessApp({
+        name: newAppName,
+        allowed_origins: origins,
+        environment: newAppEnv
       });
-      const data = await res.json();
       if (!data.success) throw new Error(data.error);
 
       setShowNewSecret(data.api_secret);
@@ -117,8 +97,7 @@ const APIManagement: React.FC = () => {
     if (!confirm('Rotate the API secret? Any services using the current secret will stop working immediately.')) return;
     setIsRotating(true);
     try {
-      const res = await fetchWithAuth(`/api/business/apps/${selectedApp.app_id}/rotate-key`, { method: 'POST' });
-      const data = await res.json();
+      const data = await apiService.rotateBusinessAppKey(selectedApp.app_id);
       if (!data.success) throw new Error(data.error);
       setShowNewSecret(data.api_secret);
       showToast('Secret rotated. Update your environment variables.');
@@ -133,8 +112,7 @@ const APIManagement: React.FC = () => {
     if (!selectedApp) return;
     if (!confirm(`Delete "${selectedApp.name}"? This action cannot be undone.`)) return;
     try {
-      const res = await fetchWithAuth(`/api/business/apps/${selectedApp.app_id}`, { method: 'DELETE' });
-      const data = await res.json();
+      const data = await apiService.deleteBusinessApp(selectedApp.app_id);
       if (!data.success) throw new Error(data.error);
       showToast('App deleted');
       setSelectedApp(null);

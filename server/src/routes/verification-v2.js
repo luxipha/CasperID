@@ -174,14 +174,14 @@ router.post('/layer3/documents/upload', upload.fields([
             req.headers.authorization?.replace('Bearer ', '');
 
         if (!sessionToken) {
-            return res.status(401).json({ error: 'Authentication required' });
+            return res.status(401).json({ success: false, error: 'Authentication required' });
         }
 
         const webauthnService = require('../services/webauthn');
         const sessionData = await webauthnService.validateSession(sessionToken);
 
         if (!sessionData) {
-            return res.status(401).json({ error: 'Invalid or expired session' });
+            return res.status(401).json({ success: false, error: 'Invalid or expired session' });
         }
 
         const userAccount = sessionData.userAccount;
@@ -197,19 +197,19 @@ router.post('/layer3/documents/upload', upload.fields([
         const { document_type } = req.body;
 
         if (!document_type || !['passport', 'drivers_license', 'national_id'].includes(document_type)) {
-            return res.status(400).json({ error: 'Invalid document_type' });
+            return res.status(400).json({ success: false, error: 'Invalid document_type' });
         }
 
         const frontImage = req.files?.front_image?.[0];
         const backImage = req.files?.back_image?.[0];
 
         if (!frontImage) {
-            return res.status(400).json({ error: 'front_image is required' });
+            return res.status(400).json({ success: false, error: 'front_image is required' });
         }
 
         // Passport only needs front, others need both
         if (document_type !== 'passport' && !backImage) {
-            return res.status(400).json({ error: 'back_image is required for ID/Driver\'s License' });
+            return res.status(400).json({ success: false, error: 'back_image is required for ID/Driver\'s License' });
         }
 
 
@@ -362,14 +362,14 @@ router.post('/layer3/submit', async (req, res) => {
             req.headers.authorization?.replace('Bearer ', '');
 
         if (!sessionToken) {
-            return res.status(401).json({ error: 'Authentication required' });
+            return res.status(401).json({ success: false, error: 'Authentication required' });
         }
 
         const webauthnService = require('../services/webauthn');
         const sessionData = await webauthnService.validateSession(sessionToken);
 
         if (!sessionData) {
-            return res.status(401).json({ error: 'Invalid or expired session' });
+            return res.status(401).json({ success: false, error: 'Invalid or expired session' });
         }
 
         const userAccount = sessionData.userAccount;
@@ -379,7 +379,7 @@ router.post('/layer3/submit', async (req, res) => {
         const fullUserAccount = await UserAccount.findOne({ wallet: userAccount.wallet });
 
         if (!fullUserAccount) {
-            return res.status(404).json({ error: 'User account not found' });
+            return res.status(404).json({ success: false, error: 'User account not found' });
         }
 
         // Validate Layer 2 complete
@@ -392,7 +392,7 @@ router.post('/layer3/submit', async (req, res) => {
         const { document_data, upload_id, liveness_verified } = req.body;
 
         if (!document_data || !upload_id) {
-            return res.status(400).json({ error: 'Missing required fields' });
+            return res.status(400).json({ success: false, error: 'Missing required fields' });
         }
 
         const { VerificationRequest } = require('../database/models');
@@ -630,7 +630,11 @@ router.get('/history', async (req, res) => {
                 lastKycAt: new Date(cred.last_kyc_at * 1000),
                 lastLivenessAt: cred.last_liveness_at ? new Date(cred.last_liveness_at * 1000) : null,
                 revoked: cred.revoked,
-                credentialHash: cred.credential_hash
+                credentialHash: cred.credential_hash,
+                // Attach ZK data from the UserAccount to the credentials
+                zk_verified: sessionData.userAccount.zk_verified || false,
+                zk_transaction_hash: sessionData.userAccount.zk_transaction_hash || null,
+                zk_nullifier: sessionData.userAccount.zk_nullifier || null
             })),
             currentStatus: {
                 layerStatus: sessionData.userAccount.tier,

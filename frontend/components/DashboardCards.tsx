@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { apiService } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
+import { calculateGlobalTrustScore, getScoreGradient } from '../utils/trustScore';
 
 export const IdentityStatusCard: React.FC = () => {
   const { user } = useAuth();
@@ -241,35 +242,17 @@ export const ReusableKYCCard: React.FC = () => {
 
 export const TrustScoreCard: React.FC = () => {
   const { user } = useAuth();
-  const [score, setScore] = useState(0);
-  const [scoreLabel, setScoreLabel] = useState('No verification');
 
-  useEffect(() => {
-    // Calculate trust score based on tier
-    const calculateScore = () => {
-      switch (user?.tier) {
-        case 'layer_3':
-          return { score: 95, label: 'Fully verified identity' };
-        case 'layer_2':
-          return { score: 70, label: 'Liveness verified' };
-        case 'layer_1':
-          return { score: 40, label: 'Email verified only' };
-        default:
-          return { score: 5, label: 'No verification completed' };
-      }
-    };
+  const trustResult = calculateGlobalTrustScore(user);
+  const score = trustResult.total;
+  const scoreLabel = (() => {
+    if (score >= 80) return 'Excellent – Fully verified profile';
+    if (score >= 60) return 'Good – Eligible to apply for jobs';
+    if (score >= 40) return 'Fair – Complete your profile';
+    return 'Incomplete – Add profile data to apply';
+  })();
 
-    const result = calculateScore();
-    setScore(result.score);
-    setScoreLabel(result.label);
-  }, [user]);
-
-  const getScoreColor = () => {
-    if (score >= 80) return 'from-green-500 to-emerald-600';
-    if (score >= 50) return 'from-yellow-500 to-orange-500';
-    if (score >= 20) return 'from-orange-500 to-red-500';
-    return 'from-gray-400 to-gray-500';
-  };
+  const gradient = getScoreGradient(score);
 
   return (
     <div id="tour-trust-card" className="bg-white p-7 rounded-[32px] shadow-soft h-full relative overflow-hidden flex flex-col justify-between border border-gray-50">
@@ -285,15 +268,15 @@ export const TrustScoreCard: React.FC = () => {
 
         <div className="w-full bg-gray-100 h-1.5 rounded-full overflow-hidden mb-8">
           <div
-            className={`bg-gradient-to-r ${getScoreColor()} h-full rounded-full transition-all duration-1000`}
+            className={`bg-gradient-to-r ${gradient} h-full rounded-full transition-all duration-1000`}
             style={{ width: `${score}%` }}
           ></div>
         </div>
       </div>
 
       <div className="flex items-center gap-3 bg-gray-50/80 rounded-2xl p-4">
-        <span className={`material-icons-outlined text-[20px] ${score >= 70 ? 'text-green-600' : 'text-text-sub'}`}>
-          {score >= 70 ? 'verified' : 'hourglass_empty'}
+        <span className={`material-icons-outlined text-[20px] ${score >= 60 ? 'text-green-600' : 'text-text-sub'}`}>
+          {score >= 60 ? 'verified' : 'hourglass_empty'}
         </span>
         <p className="text-[13px] text-text-sub font-semibold tracking-tight">{scoreLabel}</p>
       </div>

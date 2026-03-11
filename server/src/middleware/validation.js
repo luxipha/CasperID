@@ -1,6 +1,7 @@
 const { body, param, query, validationResult } = require('express-validator');
 const { rateLimitMiddleware } = require('../utils/rate-limiter');
 const { normalizeEmail } = require('../utils/email-normalizer');
+const FileType = require('file-type');
 
 /**
  * Input validation middleware using express-validator
@@ -195,15 +196,28 @@ const validateMetaMaskLinking = [
 ];
 
 /**
- * Sanitize file upload data
+ * Allowed file types based on magic bytes (MIME types)
  */
-const validateFileUpload = (req, res, next) => {
+const ALLOWED_FILE_TYPES = new Set([
+    'image/jpeg',
+    'image/png',
+    'image/gif',
+    'image/webp',
+    'video/mp4',
+    'video/webm',
+    'video/quicktime'  // .mov files
+]);
+
+/**
+ * Sanitize file upload data - validates using magic bytes for security
+ */
+const validateFileUpload = async (req, res, next) => {
     if (req.files) {
         for (const fieldName in req.files) {
-            const files = Array.isArray(req.files[fieldName]) 
-                ? req.files[fieldName] 
+            const files = Array.isArray(req.files[fieldName])
+                ? req.files[fieldName]
                 : [req.files[fieldName]];
-            
+
             for (const file of files) {
                 // Check file size
                 if (file.size > 10 * 1024 * 1024) { // 10MB
@@ -212,22 +226,33 @@ const validateFileUpload = (req, res, next) => {
                         error: `File ${file.originalname} is too large. Max size is 10MB.`
                     });
                 }
-                
-                // Check file type
-                const allowedTypes = /jpeg|jpg|png|gif|mp4|webm|mov/;
-                const isValidType = allowedTypes.test(file.mimetype) && 
-                                  allowedTypes.test(file.originalname.toLowerCase());
-                
-                if (!isValidType) {
+
+                // Check file type using magic bytes (not just extension/mimetype)
+                // This prevents attackers from uploading executables disguised as images
+                const fileBuffer = file.buffer || file.data;
+                if (!fileBuffer) {
                     return res.status(400).json({
                         success: false,
-                        error: `File ${file.originalname} has invalid type. Only images and videos allowed.`
+                        error: `File ${file.originalname} could not be validated.`
                     });
                 }
+
+                const detectedType = await FileType.fromBuffer(fileBuffer);
+
+                if (!detectedType || !ALLOWED_FILE_TYPES.has(detectedType.mime)) {
+                    const detected = detectedType ? detectedType.mime : 'unknown';
+                    return res.status(400).json({
+                        success: false,
+                        error: `File ${file.originalname} has invalid type (detected: ${detected}). Only images and videos allowed.`
+                    });
+                }
+
+                // Attach the verified mime type to the file object for downstream use
+                file.verifiedMimeType = detectedType.mime;
             }
         }
     }
-    
+
     next();
 };
 

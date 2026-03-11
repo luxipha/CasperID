@@ -69,11 +69,11 @@ router.post('/ai/verify-liveness', upload.single('photo'), async (req, res) => {
         const { expectedGesture } = req.body;
 
         if (!req.file) {
-            return res.status(400).json({ error: 'Photo is required' });
+            return res.status(400).json({ success: false, error: 'Photo is required' });
         }
 
         if (!expectedGesture) {
-            return res.status(400).json({ error: 'Expected gesture is required' });
+            return res.status(400).json({ success: false, error: 'Expected gesture is required' });
         }
 
         const result = await verifyLivenessGesture(req.file.buffer, expectedGesture);
@@ -134,20 +134,20 @@ router.post('/ai/verify-liveness-sequence', upload.fields([
             req.headers.authorization?.replace('Bearer ', '');
 
         if (!sessionToken) {
-            return res.status(401).json({ error: 'Authentication required' });
+            return res.status(401).json({ success: false, error: 'Authentication required' });
         }
 
         const webauthnService = require('../services/webauthn');
         const sessionData = await webauthnService.validateSession(sessionToken);
 
         if (!sessionData) {
-            return res.status(401).json({ error: 'Invalid or expired session' });
+            return res.status(401).json({ success: false, error: 'Invalid or expired session' });
         }
 
         const userAccount = sessionData.userAccount;
 
         if (!req.files || Object.keys(req.files).length === 0) {
-            return res.status(400).json({ error: 'Video frames are required' });
+            return res.status(400).json({ success: false, error: 'Video frames are required' });
         }
 
         const frameCount = parseInt(totalFrames) || Object.keys(req.files).length;
@@ -162,7 +162,7 @@ router.post('/ai/verify-liveness-sequence', upload.fields([
         }
 
         if (frames.length < 10) {
-            return res.status(400).json({ error: 'Insufficient frames for liveness verification' });
+            return res.status(400).json({ success: false, error: 'Insufficient frames for liveness verification' });
         }
 
 
@@ -171,11 +171,8 @@ router.post('/ai/verify-liveness-sequence', upload.fields([
 
         // 2. If Passed, Handle Based on Layer
         if (result.passed) {
-            const { Credential, UserAccount } = require('../database/models');
+            const { UserAccount } = require('../database/models');
             const crypto = require('crypto');
-            const jwt = require('jsonwebtoken');
-            const casperService = require('../services/casper');
-            const { walletToHuman } = require('../utils/wallet-to-human');
             const fs = require('fs');
             const path = require('path');
 
@@ -223,90 +220,36 @@ router.post('/ai/verify-liveness-sequence', upload.fields([
                 });
             }
 
-            // Layer 2 flow - Mint credential immediately
-            console.log(`[AI] Layer 2 liveness passed for ${userAccount.wallet}. Minting credential...`);
+            // Layer 2 flow - DON'T mint credential yet!
+            // The credential will be minted AFTER successful Starknet ZK submission
+            // This prevents out-of-sync states between Casper and Starknet
+            console.log(`[AI] Layer 2 liveness passed for ${userAccount.wallet}. Awaiting ZK submission...`);
 
-            const now = Math.floor(Date.now() / 1000); // Unix timestamp
+            // Generate a secure liveness session token for the ZK submission step
+            const livenessSessionToken = crypto.randomBytes(32).toString('hex');
+            const livenessSessionExpiry = Date.now() + (30 * 60 * 1000); // 30 minutes
 
-            // Create credential JSON
-            const credentialData = {
-                subject_wallet: userAccount.wallet,
-                tier: 'layer_2',
-                last_kyc_at: now,
-                last_liveness_at: now,
-                issuer: process.env.ISSUER_ID || 'CasperID-Demo',
-                issued_at: now,
-                expires_at: 0
-            };
-
-            // Sign credential (JWT)
-            const credential_json = jwt.sign(
-                credentialData,
-                process.env.JWT_SECRET,
-                { expiresIn: '10y' }
-            );
-
-            // Compute credential hash
-            const credential_hash = crypto
-                .createHash('sha256')
-                .update(credential_json)
-                .digest('hex');
-
-            // Call Casper contract to upgrade verification tier
-            const tx_hash = await casperService.updateTier(
-                userAccount.wallet,
-                'layer_2'
-            );
-
-            // Generate human-friendly ID
-            const { humanId } = walletToHuman(userAccount.wallet);
-
-            // Check if credential exists (upgrade scenario)
-            const existingCredential = await Credential.findOne({
-                wallet: userAccount.wallet,
-                revoked: false
-            });
-
-            if (existingCredential) {
-                // Upgrade existing credential
-                await Credential.findOneAndUpdate(
-                    { wallet: userAccount.wallet, revoked: false },
-                    {
-                        tier: 'layer_2',
-                        last_kyc_at: now,
-                        last_liveness_at: now,
-                        credential_json,
-                        credential_hash,
-                        onchain_tx_hash: tx_hash,
+            // Store liveness session in UserAccount for validation during ZK submission
+            await UserAccount.updateOne(
+                { _id: userAccount._id },
+                {
+                    $set: {
+                        liveness_session_token: livenessSessionToken,
+                        liveness_session_expiry: livenessSessionExpiry,
+                        liveness_passed_at: new Date(),
                         updated_at: new Date()
-                    },
-                    { new: true }
-                );
-                console.log(`[AI] Upgraded credential for wallet: ${userAccount.wallet}`);
-            } else {
-                // Create new credential
-                const credential = new Credential({
-                    wallet: userAccount.wallet,
-                    human_id: humanId,
-                    tier: 'layer_2',
-                    last_kyc_at: now,
-                    last_liveness_at: now,
-                    issuer_id: process.env.ISSUER_ID || 'CasperID-Demo',
-                    credential_json,
-                    credential_hash,
-                    onchain_tx_hash: tx_hash
-                });
-                await credential.save();
-                console.log(`[AI] Created new Layer 2 credential for wallet: ${userAccount.wallet}`);
-            }
+                    }
+                }
+            );
 
-            // Update UserAccount status
-            if (userAccount.tier !== 'layer_2' && userAccount.tier !== 'layer_3') {
-                await UserAccount.updateOne(
-                    { _id: userAccount._id },
-                    { $set: { tier: 'layer_2', updated_at: new Date() } }
-                );
-            }
+            // Return success with session token - credential minting happens after ZK
+            return res.json({
+                ...result,
+                layer: 2,
+                next_step: 'zk_submit',
+                liveness_session: livenessSessionToken,
+                message: 'Liveness verification complete. Proceeding to ZK proof submission.'
+            });
         }
 
         res.json(result);
@@ -328,7 +271,7 @@ router.get('/cns/info', async (req, res) => {
         const { wallet } = req.query;
 
         if (!wallet) {
-            return res.status(400).json({ error: 'Wallet address is required' });
+            return res.status(400).json({ success: false, error: 'Wallet address is required' });
         }
 
         // Optionally include profile data for better name suggestions
@@ -357,7 +300,7 @@ router.get('/cns/check-availability', async (req, res) => {
         const { name } = req.query;
 
         if (!name) {
-            return res.status(400).json({ error: 'Name is required' });
+            return res.status(400).json({ success: false, error: 'Name is required' });
         }
 
         const isAvailable = await checkNameAvailability(name);
@@ -417,7 +360,7 @@ router.post('/cns/claim', async (req, res) => {
 router.post('/ai/parse-resume', upload.single('resume'), async (req, res) => {
     try {
         if (!req.file) {
-            return res.status(400).json({ error: 'Resume file is required' });
+            return res.status(400).json({ success: false, error: 'Resume file is required' });
         }
 
         console.log(`[AI] Parsing resume: ${req.file.originalname} (${req.file.mimetype})`);

@@ -25,9 +25,8 @@ export const OnboardingStart: React.FC<OnboardingStartProps> = ({ email, onConti
           setPlatformBiometricsAvailable(available);
 
           // Trigger friendly Casper bot message if legacy
-          if (available === false && (window as any).$crisp) {
-            (window as any).$crisp.push(["do", "chat:open"]);
-            (window as any).$crisp.push(["do", "message:show", ["text", "Hey there! Casper here. 👻 I noticed your device doesn't have a biometric scanner (Face ID/Fingerprint). No worries! You can use your phone to secure your account. Just click 'Use my phone instead' and I'll help you sync up! 📱"]]);
+          if (available === false && (window as any).Intercom) {
+            (window as any).Intercom('showNewMessage', "Hey there! I noticed your device doesn't have a biometric scanner (Face ID/Fingerprint). No worries! You can use your phone to secure your account. Just click 'Use my phone instead' and I'll help you sync up! 📱");
           }
         } catch (err) {
           console.error('Error checking biometrics:', err);

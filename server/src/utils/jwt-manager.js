@@ -27,6 +27,7 @@ function generateToken(userData, platform) {
     const payload = {
         wallet: userData.wallet,
         humanId: userData.humanId,
+        cnsName: userData.cnsName || null, // Premium name if registered
         verified: userData.verified,
         tier: userData.tier,
         sharedData: userData.sharedData || [],
@@ -54,6 +55,7 @@ function generateBusinessToken(userData, appId) {
         // User identity
         wallet: userData.wallet,
         humanId: userData.humanId,
+        cnsName: userData.cnsName || null, // Premium name if registered
         verified: userData.verified,
         tier: userData.tier,
         sharedData: userData.sharedData || [],

@@ -256,12 +256,17 @@ async function resolveMarkovName(markovId) {
 
     if (profile) {
         const userAccount = await UserAccount.findOne({ wallet: profile.wallet });
+
+        // Check if user has a premium cns_name - if so, use that instead
+        const displayName = userAccount?.cns_name || markovId;
+        const isPremium = !!userAccount?.cns_name;
+
         return new ResolvedName({
-            name: `${markovId}.cid`,
+            name: `${displayName}.cid`,
             did: userAccount?.did_address,
             wallet: profile.wallet,
             tier: userAccount?.tier || 'layer_0',
-            isPremium: false,
+            isPremium: isPremium,
             contextType: 'master',
             profileData: profile,
             verified: userAccount?.tier && userAccount.tier !== 'layer_0'
@@ -272,12 +277,17 @@ async function resolveMarkovName(markovId) {
     const credential = await Credential.findOne({ human_id: markovId, revoked: false });
     if (credential) {
         const userAccount = await UserAccount.findOne({ wallet: credential.wallet });
+
+        // Check if user has a premium cns_name - if so, use that instead
+        const displayName = userAccount?.cns_name || markovId;
+        const isPremium = !!userAccount?.cns_name;
+
         return new ResolvedName({
-            name: `${markovId}.cid`,
+            name: `${displayName}.cid`,
             did: userAccount?.did_address,
             wallet: credential.wallet,
             tier: credential.tier,
-            isPremium: false,
+            isPremium: isPremium,
             contextType: 'master',
             profileData: await getProfileData(credential.wallet),
             verified: true
@@ -339,25 +349,18 @@ async function resolveRootName(rootName) {
  */
 async function findNameOwner(rootName) {
     // First check if it's a premium name (stored in cns_name field)
-    let userAccount = await UserAccount.findOne({ cns_name: rootName });
+    const premiumAccount = await UserAccount.findOne({ cns_name: rootName });
+    if (premiumAccount) return premiumAccount;
 
-    if (userAccount) {
-        return userAccount;
+    // Always fall back to human_id lookup — works for any format (single-word or hyphenated)
+    const profile = await UserProfile.findOne({ human_id: rootName });
+    if (profile) {
+        return await UserAccount.findOne({ wallet: profile.wallet });
     }
 
-    // Check if it's a Markov name
-    if (isMarkovName(rootName)) {
-        // Find by human_id in profile
-        const profile = await UserProfile.findOne({ human_id: rootName });
-        if (profile) {
-            return await UserAccount.findOne({ wallet: profile.wallet });
-        }
-
-        // Find by human_id in credential
-        const credential = await Credential.findOne({ human_id: rootName, revoked: false });
-        if (credential) {
-            return await UserAccount.findOne({ wallet: credential.wallet });
-        }
+    const credential = await Credential.findOne({ human_id: rootName, revoked: false });
+    if (credential) {
+        return await UserAccount.findOne({ wallet: credential.wallet });
     }
 
     return null;
@@ -503,6 +506,31 @@ async function registerPremiumName(wallet, name) {
             }
         }
     );
+
+    // 3. Sync premium name to UserProfile and Credential for consistency
+    // This ensures the new name appears everywhere in the system
+    const newHumanId = parsed.root; // Premium name becomes the new human_id
+
+    await UserProfile.updateOne(
+        { wallet },
+        {
+            $set: {
+                human_id: newHumanId,
+                cns_name: parsed.root
+            }
+        }
+    );
+
+    await Credential.updateMany(
+        { wallet, revoked: false },
+        {
+            $set: {
+                human_id: newHumanId
+            }
+        }
+    );
+
+    console.log(`[CNS] Synced premium name "${parsed.root}" to UserProfile and Credential for wallet ${wallet}`);
 
     return {
         success: true,

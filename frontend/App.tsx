@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Routes, Route, useLocation, useNavigate, Navigate, useParams } from 'react-router-dom';
+import Intercom from '@intercom/messenger-js-sdk';
 import { Sidebar } from './components/Sidebar';
 import { Header } from './components/Header';
 import { MobileHeader } from './components/MobileHeader';
@@ -52,6 +53,7 @@ import { useDocumentTitle } from './hooks/useDocumentTitle';
 // ApiTest removed - was for debugging
 // import { ApiTest } from './components/ApiTest';
 import LandingPage from './components/landing/LandingPage';
+import { getSubdomain } from './utils/subdomain';
 import CareersPage from './components/landing/CareerPage';
 import CareerDetailPage from './components/landing/CareerDetailPage';
 import ApplySuccessPage from './components/landing/ApplySuccess';
@@ -61,10 +63,17 @@ import AdminPage from './admin/page';
 import { Tour } from './components/Tour';
 import { QuestModal } from './components/QuestModal';
 import { apiService } from './services/api';
+import { CnsSuccess } from './components/CnsSuccess';
 
 const PublicProfileContainerWrapper: React.FC = () => {
   const { slug } = useParams<{ slug: string }>();
   return slug ? <PublicProfileContainer walletOrUsername={slug} /> : null;
+};
+
+// Handles /did/:didSlug routes (e.g. /did/did:casper:context:gig:abc123)
+const DIDProfileWrapper: React.FC = () => {
+  const { '*': didSlug } = useParams<{ '*': string }>();
+  return didSlug ? <PublicProfileContainer walletOrUsername={didSlug} /> : null;
 };
 
 const PRouteRedirect: React.FC = () => {
@@ -80,9 +89,9 @@ const App: React.FC = () => {
   */
   // Check if a path is a reserved system path and should NOT be treated as a public profile
   const isReservedPath = (path: string) => {
-    const sysPaths = ['/', '/admin', '/pair', '/dashboard', '/login', '/auth', '/settings', '/integrations', '/verify', '/mobile', '/null', '/business', '/anra', '/adevaros', '/casperos', '/careers', '/apply-success', '/affiliate', '/profile', '/p'];
+    const sysPaths = ['/', '/admin', '/pair', '/dashboard', '/login', '/auth', '/settings', '/integrations', '/verify', '/mobile', '/null', '/business', '/anra', '/adevaros', '/casperos', '/careers', '/apply-success', '/affiliate', '/profile', '/p', '/did', '/cns-success'];
     const p = path.toLowerCase();
-    return sysPaths.includes(p) || p.startsWith('/verify/') || p.startsWith('/mobile/') || p.startsWith('/business/') || p.startsWith('/careers/') || p.startsWith('/profile/') || p.startsWith('/p/') || p === '/null';
+    return sysPaths.includes(p) || p.startsWith('/verify/') || p.startsWith('/mobile/') || p.startsWith('/business/') || p.startsWith('/careers/') || p.startsWith('/profile/') || p.startsWith('/p/') || p.startsWith('/did/') || p === '/null' || p === '/cns-success';
   };
 
   const location = useLocation();
@@ -90,16 +99,24 @@ const App: React.FC = () => {
 
   const getInitialView = () => {
     const path = location.pathname;
+    const searchParams = new URLSearchParams(location.search);
+    const viewParam = searchParams.get('view');
 
     // Check for explicit system routes
     if (path === '/') return 'landing';
     if (path === '/anra' || path === '/adevaros' || path === '/casperos') return 'landing';
     if (path === '/admin') return 'admin';
-    if (path === '/pair' || path === '/dashboard') return 'dashboard-home';
+    if (path === '/pair' || (path === '/dashboard' && !viewParam)) return 'dashboard-home';
+    if (path === '/dashboard' && viewParam) return viewParam;
     if (path === '/careers' || path.startsWith('/careers/')) return 'careers';
     if (path === '/apply-success') return 'apply-success';
     if (path === '/affiliate') return 'affiliate';
     if (path === '/profile' || path.startsWith('/profile/')) return 'public-profile';
+    if (path === '/cns-success') return 'cns-success';
+
+    // Check for Subdomain Profile (e.g. alice.casperid.com)
+    const subdomain = getSubdomain();
+    if (subdomain) return 'public-profile';
 
     // Check for credential verification route
     if (path.startsWith('/verify/')) return 'verify-credential';
@@ -117,6 +134,11 @@ const App: React.FC = () => {
 
   const [currentView, setCurrentView] = useState('loading'); // Initialize with loading
   const [publicProfileSlug, setPublicProfileSlug] = useState<string | null>(() => {
+    // Priority 1: Subdomain
+    const subdomain = getSubdomain();
+    if (subdomain) return subdomain;
+
+    // Priority 2: Path-based slug
     const path = window.location.pathname;
     const slug = path.startsWith('/profile/') ? path.replace('/profile/', '') : path.substring(1);
     return (path.length > 1 && !isReservedPath(path) && slug !== 'null' && slug !== 'undefined') ? slug : null;
@@ -205,7 +227,9 @@ const App: React.FC = () => {
     if (initialView === 'dashboard-home') {
       // If on dashboard path, we let the auth effect handle it or default to overview
       if (isAuthenticated && user) {
-        setCurrentView('overview');
+        const searchParams = new URLSearchParams(location.search);
+        const viewParam = searchParams.get('view');
+        setCurrentView(viewParam || 'overview');
       } else {
         setCurrentView('auth-entry');
       }
@@ -215,10 +239,17 @@ const App: React.FC = () => {
 
     // Update slugs/hashes based on URL
     const path = location.pathname;
-    const slug = path.substring(1);
-    if (path.length > 1 && !isReservedPath(path) && slug !== 'null' && slug !== 'undefined') {
-      const actualSlug = path.startsWith('/profile/') ? path.replace('/profile/', '') : slug;
-      setPublicProfileSlug(actualSlug);
+    const subdomain = getSubdomain();
+
+    if (subdomain) {
+      setPublicProfileSlug(subdomain);
+      setCurrentView('public-profile');
+    } else {
+      const slug = path.substring(1);
+      if (path.length > 1 && !isReservedPath(path) && slug !== 'null' && slug !== 'undefined') {
+        const actualSlug = path.startsWith('/profile/') ? path.replace('/profile/', '') : slug;
+        setPublicProfileSlug(actualSlug);
+      }
     }
     if (path.startsWith('/verify/')) {
       setCredentialHash(path.replace('/verify/', ''));
@@ -228,18 +259,22 @@ const App: React.FC = () => {
     }
   }, [location.pathname, isLoading]);
 
-  // Toggle Crisp chat visibility on mobile after login
+  // Intercom chat integration
   useEffect(() => {
-    // Only run if Crisp is loaded
-    const crisp = (window as any).$crisp;
-    if (crisp) {
-      const isMobile = window.innerWidth < 768; // Standard mobile breakpoint
-      // User specifically requested to remove chat support on mobile after login
-      if (user && isMobile) {
-        crisp.push(["do", "chat:hide"]);
-      } else {
-        crisp.push(["do", "chat:show"]);
-      }
+    if (user) {
+      // Boot with user data if authenticated
+      Intercom({
+        app_id: import.meta.env.VITE_INTERCOM_APP_ID || 'qh9dngzh',
+        name: user.display_name || user.cns_name || undefined,
+        email: user.email || undefined,
+        user_id: user.wallet || undefined,
+        created_at: user.created_at ? Math.floor(new Date(user.created_at).getTime() / 1000) : undefined
+      });
+    } else {
+      // Boot without user data for anonymous visitors
+      Intercom({
+        app_id: import.meta.env.VITE_INTERCOM_APP_ID || 'qh9dngzh',
+      });
     }
   }, [user]);
 
@@ -258,10 +293,14 @@ const App: React.FC = () => {
         const isAuthView = ['auth-entry', 'otp-verify', 'onboarding-start', 'pairing', 'loading', 'handoff'].includes(currentView);
 
         if (isAuthView) {
-          if (user.wallet && user.human_id) {
-            setCurrentView('overview');
-          } else if (user.wallet) {
-            setCurrentView('overview');
+          if (user.wallet) {
+            if (location.pathname === '/dashboard') {
+              const searchParams = new URLSearchParams(location.search);
+              const viewParam = searchParams.get('view');
+              setCurrentView(viewParam || 'overview');
+            } else {
+              setCurrentView('overview');
+            }
           } else {
             setCurrentView('onboarding-progress');
           }
@@ -275,6 +314,25 @@ const App: React.FC = () => {
       }
     }
   }, [isLoading, isAuthenticated, user, currentView]);
+
+  // Sync currentView to URL query params for dashboard persistence
+  useEffect(() => {
+    if (isLoading || !isAuthenticated || currentView === 'loading') return;
+
+    const dashboardViews = [
+      'overview', 'credentials', 'did-management', 'names',
+      'kyc', 'integrations', 'data', 'activity',
+      'settings', 'profile', 'names', 'did-export',
+      'did-import', 'master-identity-settings', 'names-mgmt', 'identity-settings'
+    ];
+
+    if (dashboardViews.includes(currentView) && location.pathname === '/dashboard') {
+      const searchParams = new URLSearchParams(location.search);
+      if (searchParams.get('view') !== currentView) {
+        navigate(`/dashboard?view=${currentView}`, { replace: true });
+      }
+    }
+  }, [currentView, location.pathname, location.search, navigate, isLoading, isAuthenticated]);
 
   useEffect(() => {
     const handleOpenKYC = () => {
@@ -473,6 +531,19 @@ const App: React.FC = () => {
         );
       case 'names':
         return <RegisterCID onBack={() => setCurrentView('overview')} />;
+      case 'names-mgmt':
+        return <NameManagement onRegisterCID={() => setCurrentView('register-cid')} />;
+      case 'identity-settings':
+        return (
+          <MasterIdentitySettings
+            onBack={() => setCurrentView('did-management')}
+            onViewDIDDetails={(name) => {
+              setSelectedIdentityName(name);
+              setIsDIDDetailsModalOpen(true);
+            }}
+            onOpenPersonaModal={() => setIsPersonaModalOpen(true)}
+          />
+        );
       case 'register-cid':
         return <RegisterCID onBack={() => setCurrentView('overview')} />;
       case 'did-create':
@@ -519,6 +590,8 @@ const App: React.FC = () => {
         return <ApplySuccessPage onReturnToCareers={() => navigate('/careers')} />;
       case 'affiliate':
         return <AffiliatePage />;
+      case 'cns-success':
+        return <CnsSuccess />;
       case 'landing':
         return <LandingPage />;
       default:
@@ -635,6 +708,7 @@ const App: React.FC = () => {
         <Route path="/apply-success" element={<ApplySuccessPage onReturnToCareers={() => navigate('/careers')} />} />
         <Route path="/affiliate" element={<AffiliatePage />} />
         <Route path="/profile/:slug" element={<PublicProfileContainerWrapper />} />
+        <Route path="/did/*" element={<DIDProfileWrapper />} />
         <Route path="/p/:slug" element={<PRouteRedirect />} />
 
         {/* Dashboard Route - must be before /:slug catch-all */}
