@@ -142,6 +142,9 @@ export default function LandingPage({ initialView = 'main' }: LandingPageProps) 
                 <a href="#developers" className="hover:text-slate-900 transition">
                   Developers
                 </a>
+                <a onClick={() => navigate('/events')} className="hover:text-slate-900 transition cursor-pointer">
+                  Events
+                </a>
                 <a
                   onClick={() => handleNavigate('anra')}
                   className={`hover:text-slate-900 transition cursor-pointer flex items-center gap-0.5 ${currentLandingView === 'anra' ? 'text-indigo-600 font-bold' : ''}`}
@@ -367,6 +370,7 @@ export default function LandingPage({ initialView = 'main' }: LandingPageProps) 
             <a onClick={() => { setIsMenuOpen(false); handleNavigate('main'); }} href="#blogs" className="hover:text-indigo-600 transition">Resources</a>
             <a onClick={() => setIsMenuOpen(false)} href="#roadmap" className="hover:text-indigo-600 transition">Roadmap</a>
             <a onClick={() => setIsMenuOpen(false)} href="#developers" className="hover:text-indigo-600 transition">Developers</a>
+            <a onClick={() => navigate('/events')} className="hover:text-indigo-600 transition cursor-pointer">Events</a>
             <a onClick={() => { setIsMenuOpen(false); handleNavigate('anra'); }} className="hover:text-indigo-600 transition cursor-pointer">anra</a>
             <div className="flex flex-col gap-4 mt-8 w-full max-w-sm">
               <a href="/dashboard" className="w-full text-center py-4 bg-indigo-100 text-indigo-700 rounded-2xl text-lg font-bold">Get CasperID</a>

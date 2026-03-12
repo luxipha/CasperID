@@ -10,6 +10,7 @@ import { IdentityStatusCard, ReusableKYCCard, TrustScoreCard } from './component
 import { ConnectedPlatforms } from './components/ConnectedPlatforms';
 import { ReusableTools } from './components/ReusableTools';
 import { HumanFirstIdentity } from './components/HumanFirstIdentity';
+import { QuestTourCard } from './components/QuestTourCard';
 import { RecentActivity } from './components/RecentActivity';
 import { Integrations } from './components/Integrations';
 import { DataControls } from './components/DataControls';
@@ -58,6 +59,7 @@ import CareersPage from './components/landing/CareerPage';
 import CareerDetailPage from './components/landing/CareerDetailPage';
 import ApplySuccessPage from './components/landing/ApplySuccess';
 import AffiliatePage from './components/landing/AffiliatePage';
+import EventsPage from './components/landing/EventsPage';
 import ChangelogPage from './components/landing/casperos/changelog';
 import AdminPage from './admin/page';
 import { Tour } from './components/Tour';
@@ -89,7 +91,7 @@ const App: React.FC = () => {
   */
   // Check if a path is a reserved system path and should NOT be treated as a public profile
   const isReservedPath = (path: string) => {
-    const sysPaths = ['/', '/admin', '/pair', '/dashboard', '/login', '/auth', '/settings', '/integrations', '/verify', '/mobile', '/null', '/business', '/anra', '/adevaros', '/casperos', '/careers', '/apply-success', '/affiliate', '/profile', '/p', '/did', '/cns-success'];
+    const sysPaths = ['/', '/admin', '/pair', '/dashboard', '/login', '/auth', '/settings', '/integrations', '/verify', '/mobile', '/null', '/business', '/anra', '/adevaros', '/casperos', '/careers', '/apply-success', '/affiliate', '/events', '/profile', '/p', '/did', '/cns-success'];
     const p = path.toLowerCase();
     return sysPaths.includes(p) || p.startsWith('/verify/') || p.startsWith('/mobile/') || p.startsWith('/business/') || p.startsWith('/careers/') || p.startsWith('/profile/') || p.startsWith('/p/') || p.startsWith('/did/') || p === '/null' || p === '/cns-success';
   };
@@ -111,6 +113,7 @@ const App: React.FC = () => {
     if (path === '/careers' || path.startsWith('/careers/')) return 'careers';
     if (path === '/apply-success') return 'apply-success';
     if (path === '/affiliate') return 'affiliate';
+    if (path === '/events') return 'events';
     if (path === '/profile' || path.startsWith('/profile/')) return 'public-profile';
     if (path === '/cns-success') return 'cns-success';
 
@@ -165,6 +168,8 @@ const App: React.FC = () => {
   const { user, isLoading, isAuthenticated, refreshUser } = useAuth();
   const [runTour, setRunTour] = useState(false);
   const [isQuestModalOpen, setIsQuestModalOpen] = useState(false);
+  const [showHumanFirstCard, setShowHumanFirstCard] = useState(true);
+  const [showQuestTourCard, setShowQuestTourCard] = useState(true);
 
   // --- Page Title Logic ---
   const getPageTitle = () => {
@@ -185,6 +190,9 @@ const App: React.FC = () => {
     }
     if (path === '/changelog') {
       return 'Changelog | CasperID';
+    }
+    if (path === '/events') {
+      return 'Events | CasperID';
     }
 
     // Dynamic Route placeholders (Hooks in components will handle more specific titles)
@@ -390,13 +398,10 @@ const App: React.FC = () => {
   const handleTourFinish = async () => {
     setRunTour(false);
     if (user) {
-      try {
-        await apiService.post('/api/quest/claim', { questId: 'tour_complete', userId: user.user_id });
-        await refreshUser(); // Update XP in Header
-        setIsQuestModalOpen(true); // Open quest modal to show success
-      } catch (err) {
-        console.error('App: Failed to claim tour quest', err);
-      }
+      // Refresh user to get updated tour_completed status
+      await refreshUser();
+      // Open quest modal so user can manually claim the tour quest
+      setIsQuestModalOpen(true);
     }
   };
 
@@ -590,6 +595,8 @@ const App: React.FC = () => {
         return <ApplySuccessPage onReturnToCareers={() => navigate('/careers')} />;
       case 'affiliate':
         return <AffiliatePage />;
+      case 'events':
+        return <EventsPage />;
       case 'cns-success':
         return <CnsSuccess />;
       case 'landing':
@@ -667,8 +674,22 @@ const App: React.FC = () => {
               </div>
               <div className="flex flex-col gap-8">
                 <ReusableTools />
-                <HumanFirstIdentity onNavigate={setCurrentView} />
               </div>
+            </div>
+
+            {/* Floating Stacked Cards - Layered Priority */}
+            <div className="hidden md:flex fixed bottom-8 right-8 z-50 flex-col gap-4 w-[360px]">
+              {showQuestTourCard ? (
+                <QuestTourCard
+                  onAction={() => setIsQuestModalOpen(true)}
+                  onClose={() => setShowQuestTourCard(false)}
+                />
+              ) : showHumanFirstCard ? (
+                <HumanFirstIdentity
+                  onNavigate={setCurrentView}
+                  onClose={() => setShowHumanFirstCard(false)}
+                />
+              ) : null}
             </div>
 
             {/* Desktop Activity Log Summary */}
@@ -707,6 +728,7 @@ const App: React.FC = () => {
         <Route path="/careers/:id" element={<CareerDetailPage onBack={() => navigate('/careers')} onApplySuccess={(jobTitle) => navigate('/apply-success', { state: { jobTitle } })} />} />
         <Route path="/apply-success" element={<ApplySuccessPage onReturnToCareers={() => navigate('/careers')} />} />
         <Route path="/affiliate" element={<AffiliatePage />} />
+        <Route path="/events" element={<EventsPage />} />
         <Route path="/profile/:slug" element={<PublicProfileContainerWrapper />} />
         <Route path="/did/*" element={<DIDProfileWrapper />} />
         <Route path="/p/:slug" element={<PRouteRedirect />} />

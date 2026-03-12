@@ -3,11 +3,12 @@ import React from 'react';
 
 interface HumanFirstIdentityProps {
   onNavigate?: (view: string) => void;
+  onClose?: () => void;
 }
 
-export const HumanFirstIdentity: React.FC<HumanFirstIdentityProps> = ({ onNavigate }) => {
+export const HumanFirstIdentity: React.FC<HumanFirstIdentityProps> = ({ onNavigate, onClose }) => {
   return (
-    <div className="md:fixed md:bottom-8 md:right-8 md:z-50 md:w-[360px] md:animate-in md:fade-in md:slide-in-from-bottom-8">
+    <div className="md:animate-in md:fade-in md:slide-in-from-bottom-8">
       <div className="bg-[#1A1A2E] rounded-3xl p-6 relative overflow-hidden shadow-xl md:border md:border-white/5 group">
         <div className="relative z-10">
           <h4 className="text-white font-bold mb-1 text-sm">Human-First Identity</h4>
@@ -23,7 +24,10 @@ export const HumanFirstIdentity: React.FC<HumanFirstIdentityProps> = ({ onNaviga
               <span className="material-icons-outlined text-xs group-hover/link:translate-x-1 transition-transform">arrow_forward</span>
             </button>
             {/* Desktop Close Button */}
-            <button className="hidden md:block text-white/20 hover:text-white transition-colors">
+            <button
+              onClick={onClose}
+              className="hidden md:block text-white/20 hover:text-white transition-colors"
+            >
               <span className="material-symbols-outlined text-lg">close</span>
             </button>
           </div>

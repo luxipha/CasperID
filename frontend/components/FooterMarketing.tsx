@@ -13,6 +13,7 @@ export function FooterMarketing({ className, onNavigate }: { className?: string;
     { label: "Pricing", href: "#developers" },
     { label: "Use Cases", href: "#use-cases" },
     { label: "Careers", href: "/careers" },
+    { label: "Events", href: "/events" },
     { label: "Relationship Managers", href: "/affiliate" },
   ];
 

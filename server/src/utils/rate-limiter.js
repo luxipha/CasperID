@@ -28,6 +28,11 @@ const RATE_LIMITS = {
         windowMs: 5 * 60 * 1000, // 5 minutes
         max: 3, // 3 minting attempts per 5 minutes
         blockDurationMs: 15 * 60 * 1000 // 15 minutes block
+    },
+    quest_claim: {
+        windowMs: 60 * 1000, // 1 minute
+        max: 10, // 10 claim attempts per minute
+        blockDurationMs: 5 * 60 * 1000 // 5 minutes block
     }
 };
 

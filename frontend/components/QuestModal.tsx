@@ -12,6 +12,8 @@ interface Quest {
     xp: number;
     icon: string;
     completed: boolean;
+    eligible: boolean;
+    reason?: string;
 }
 
 interface QuestModalProps {
@@ -23,7 +25,8 @@ interface QuestModalProps {
 export const QuestModal: React.FC<QuestModalProps> = ({ isOpen, onClose, onStartTour }) => {
     const { user, refreshUser } = useAuth();
     const [quests, setQuests] = useState<Quest[]>([]);
-    const [isLoading, setIsLoading] = useState(false);
+    const [claimingId, setClaimingId] = useState<string | null>(null);
+    const [error, setError] = useState<string | null>(null);
 
     useEffect(() => {
         if (user && isOpen) {
@@ -33,23 +36,40 @@ export const QuestModal: React.FC<QuestModalProps> = ({ isOpen, onClose, onStart
 
     const fetchQuestStatus = async () => {
         try {
-            const res = await apiService.get(`/api/quest/status?userId=${user?.user_id}`);
+            setError(null);
+            const res = await apiService.get('/api/quest/status');
             if (res.success) {
-                // Merge completed status with available quests from backend
+                // Backend now returns eligibility info directly
                 setQuests(res.availableQuests.map((q: any) => ({
-                    ...q,
-                    completed: res.completedQuests.includes(q.id)
+                    id: q.id,
+                    title: q.title,
+                    xp: q.xp,
+                    icon: q.icon,
+                    completed: q.completed,
+                    eligible: q.eligible,
+                    reason: q.reason
                 })));
             }
-        } catch (err) {
+        } catch (err: any) {
             console.error('QuestModal: Failed to fetch status', err);
+            setError('Failed to load quests');
         }
     };
 
     const handleClaim = async (questId: string) => {
+        const quest = quests.find(q => q.id === questId);
+
+        // Double-check eligibility before claiming
+        if (quest && !quest.eligible) {
+            setError(quest.reason || 'Complete the task first');
+            return;
+        }
+
         try {
-            setIsLoading(true);
-            const res = await apiService.post('/api/quest/claim', { questId, userId: user?.user_id });
+            setClaimingId(questId);
+            setError(null);
+            const res = await apiService.post('/api/quest/claim', { questId });
+
             if (res.success) {
                 confetti({
                     particleCount: 150,
@@ -58,13 +78,14 @@ export const QuestModal: React.FC<QuestModalProps> = ({ isOpen, onClose, onStart
                     colors: ['#8652E2', '#6D36D6', '#CCE2A3'],
                 });
                 await fetchQuestStatus();
-                // Refresh user for Header XP update
                 await refreshUser();
             }
-        } catch (err) {
+        } catch (err: any) {
             console.error('QuestModal: Failed to claim', err);
+            const errorMsg = err?.response?.data?.error || err?.message || 'Failed to claim quest';
+            setError(errorMsg);
         } finally {
-            setIsLoading(false);
+            setClaimingId(null);
         }
     };
 
@@ -80,10 +101,10 @@ export const QuestModal: React.FC<QuestModalProps> = ({ isOpen, onClose, onStart
             icon="bolt"
             iconBg="bg-amber-500 text-white"
             description="Complete these identity milestones to level up your trust score and earn exclusive CasperID XP."
-            actionLabel={quests[0].completed ? "Continue Exploring" : "Start Onboarding Tour"}
-            actionIcon={quests[0].completed ? "explore" : "play_arrow"}
+            actionLabel={quests.length > 0 && quests[0].completed ? "Continue Exploring" : "Start Onboarding Tour"}
+            actionIcon={quests.length > 0 && quests[0].completed ? "explore" : "play_arrow"}
             onAction={() => {
-                if (!quests[0].completed) {
+                if (quests.length > 0 && !quests[0].completed) {
                     onStartTour();
                     onClose();
                 } else {
@@ -92,6 +113,18 @@ export const QuestModal: React.FC<QuestModalProps> = ({ isOpen, onClose, onStart
             }}
         >
             <div className="space-y-4">
+                {/* Error message */}
+                {error && (
+                    <motion.div
+                        initial={{ opacity: 0, y: -10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className="p-3 rounded-xl bg-red-50 border border-red-200 text-red-600 text-sm flex items-center gap-2"
+                    >
+                        <span className="material-symbols-outlined text-[18px]">error</span>
+                        {error}
+                    </motion.div>
+                )}
+
                 {quests.map((quest) => (
                     <motion.div
                         key={quest.id}
@@ -115,18 +148,28 @@ export const QuestModal: React.FC<QuestModalProps> = ({ isOpen, onClose, onStart
                                 </h4>
                                 <div className="flex items-center gap-1.5 mt-0.5">
                                     <span className="text-[10px] font-black text-primary uppercase tracking-wider">+{quest.xp} XP</span>
+                                    {/* Show reason if not eligible and not completed */}
+                                    {!quest.completed && !quest.eligible && quest.reason && (
+                                        <span className="text-[10px] text-gray-400 ml-2">• {quest.reason}</span>
+                                    )}
                                 </div>
                             </div>
                         </div>
 
                         {!quest.completed && (
-                            <button
-                                onClick={() => handleClaim(quest.id)}
-                                disabled={isLoading}
-                                className="text-[11px] font-black text-primary bg-primary/5 px-3 py-1.5 rounded-lg hover:bg-primary/10 transition-colors uppercase tracking-widest"
-                            >
-                                Claim
-                            </button>
+                            quest.eligible ? (
+                                <button
+                                    onClick={() => handleClaim(quest.id)}
+                                    disabled={claimingId === quest.id}
+                                    className="text-[11px] font-black text-primary bg-primary/5 px-3 py-1.5 rounded-lg hover:bg-primary/10 transition-colors uppercase tracking-widest disabled:opacity-50"
+                                >
+                                    {claimingId === quest.id ? 'Claiming...' : 'Claim'}
+                                </button>
+                            ) : (
+                                <span className="text-[11px] font-bold text-gray-400 bg-gray-100 px-3 py-1.5 rounded-lg uppercase tracking-widest">
+                                    Locked
+                                </span>
+                            )
                         )}
                     </motion.div>
                 ))}

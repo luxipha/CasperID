@@ -656,7 +656,9 @@ router.get('/session', async (req, res) => {
                 email_verified: sessionData.userAccount.email_verified,
                 wallet: sessionData.userAccount.wallet,
                 metamask_connected: sessionData.userAccount.metamask_connected,
-                cns_name: sessionData.userAccount.cns_name || null // Premium name if registered
+                cns_name: sessionData.userAccount.cns_name || null, // Premium name if registered
+                points: sessionData.userAccount.points || 0,
+                completed_quests: sessionData.userAccount.completed_quests || []
             }
         });
 

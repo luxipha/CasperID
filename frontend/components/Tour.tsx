@@ -1,5 +1,6 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import Joyride, { Step, CallBackProps, STATUS } from 'react-joyride';
+import { apiService } from '../services/api';
 
 interface TourProps {
     run: boolean;
@@ -83,11 +84,17 @@ export const Tour: React.FC<TourProps> = ({ run, onFinish }) => {
         }
     ]);
 
-    const handleJoyrideCallback = (data: CallBackProps) => {
+    const handleJoyrideCallback = async (data: CallBackProps) => {
         const { status } = data;
         const finishedStatuses: string[] = [STATUS.FINISHED, STATUS.SKIPPED];
 
         if (finishedStatuses.includes(status)) {
+            // Mark tour as completed in backend (for quest eligibility)
+            try {
+                await apiService.post('/api/quest/complete-tour', {});
+            } catch (err) {
+                console.error('Failed to mark tour as completed:', err);
+            }
             onFinish();
         }
     };

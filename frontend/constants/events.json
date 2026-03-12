@@ -1,0 +1,203 @@
+{
+    "events": [
+        {
+            "id": "1",
+            "title": "CasperID Global Hackathon 2026",
+            "description": "Build the next generation of privacy-preserving applications using the MCI Algorithm. $50,000 in prizes.",
+            "fullContent": "The CasperID Global Hackathon is our flagship developer event. We are looking for innovative solutions that leverage the MCI (Multi-Context Identity) algorithm to solve real-world privacy challenges. Whether you are building DeFi protocols, social networks, or enterprise tools, CasperID provides the root identity layer you need.",
+            "date": "April 15 - May 15, 2026",
+            "location": "Global / Online",
+            "type": "Hackathon",
+            "status": "Upcoming",
+            "image": "https://picsum.photos/seed/hackathon/800/450",
+            "rewardPool": "$50,000",
+            "attendees": 1240,
+            "agenda": [
+                {
+                    "time": "April 15",
+                    "activity": "Opening Ceremony & Team Formation"
+                },
+                {
+                    "time": "April 20",
+                    "activity": "Technical Workshop: MCI Integration"
+                },
+                {
+                    "time": "May 10",
+                    "activity": "Submission Deadline"
+                },
+                {
+                    "time": "May 15",
+                    "activity": "Winners Announcement"
+                }
+            ],
+            "speakers": [
+                {
+                    "name": "Dr. Sarah Chen",
+                    "role": "Lead Cryptographer",
+                    "avatar": "https://api.dicebear.com/7.x/avataaars/svg?seed=Sarah"
+                },
+                {
+                    "name": "Marcus Thorne",
+                    "role": "Head of Engineering",
+                    "avatar": "https://api.dicebear.com/7.x/avataaars/svg?seed=Marcus"
+                }
+            ]
+        },
+        {
+            "id": "2",
+            "title": "Identity Governance Summit",
+            "description": "Join the core team to discuss the future of .cid registry and decentralized governance models.",
+            "fullContent": "Shape the future of decentralized identity. The Identity Governance Summit brings together stakeholders, developers, and community members to vote on key protocol upgrades and the long-term roadmap of the .cid registry.",
+            "date": "March 28, 2026",
+            "location": "Zug, Switzerland",
+            "type": "Governance",
+            "status": "Upcoming",
+            "image": "https://picsum.photos/seed/summit/800/450",
+            "attendees": 450,
+            "agenda": [
+                {
+                    "time": "09:00 AM",
+                    "activity": "Keynote: The State of Decentralized ID"
+                },
+                {
+                    "time": "11:00 AM",
+                    "activity": "Panel: Privacy vs. Compliance"
+                },
+                {
+                    "time": "02:00 PM",
+                    "activity": "Governance Voting Session"
+                }
+            ],
+            "speakers": [
+                {
+                    "name": "Elena Rossi",
+                    "role": "Governance Lead",
+                    "avatar": "https://api.dicebear.com/7.x/avataaars/svg?seed=Elena"
+                }
+            ]
+        },
+        {
+            "id": "3",
+            "title": "Monthly Community Call #14",
+            "description": "Product updates, roadmap reveal for Q2, and live Q&A with the engineering leads.",
+            "fullContent": "Get the latest updates directly from the CasperID core team. We will be revealing the Q2 roadmap, demonstrating new MCI features, and answering your questions live.",
+            "date": "March 20, 2026",
+            "location": "Discord / YouTube",
+            "type": "Community Call",
+            "status": "Upcoming",
+            "image": "https://picsum.photos/seed/call/800/450",
+            "attendees": 890,
+            "agenda": [
+                {
+                    "time": "04:00 PM",
+                    "activity": "Q1 Recap & Q2 Roadmap Reveal"
+                },
+                {
+                    "time": "04:30 PM",
+                    "activity": "Live Demo: MCI v2.0"
+                },
+                {
+                    "time": "05:00 PM",
+                    "activity": "Community Q&A"
+                }
+            ]
+        },
+        {
+            "id": "4",
+            "title": "ZK-Proof Workshop: Advanced MCI",
+            "description": "Deep dive into implementing zero-knowledge proofs for enterprise identity solutions.",
+            "fullContent": "A technical deep-dive into the mathematics and implementation of zero-knowledge proofs within the CasperID framework. Perfect for developers looking to build enterprise-grade privacy solutions.",
+            "date": "March 15, 2026",
+            "location": "Online Workshop",
+            "type": "Workshop",
+            "status": "Live",
+            "image": "https://picsum.photos/seed/workshop/800/450",
+            "attendees": 320,
+            "agenda": [
+                {
+                    "time": "10:00 AM",
+                    "activity": "Introduction to ZK-SNARKs"
+                },
+                {
+                    "time": "11:30 AM",
+                    "activity": "MCI Circuit Design"
+                },
+                {
+                    "time": "01:00 PM",
+                    "activity": "Hands-on Implementation"
+                }
+            ]
+        },
+        {
+            "id": "5",
+            "title": "Identity Pioneer Program v1",
+            "description": "Our first major community onboarding event. Exclusive badges for early adopters.",
+            "fullContent": "The Identity Pioneer Program celebrates our earliest supporters. By participating in this campaign, you earn exclusive on-chain badges that grant early access to future protocol features.",
+            "date": "Jan - Feb 2026",
+            "location": "Global",
+            "type": "Campaign",
+            "status": "Past",
+            "image": "https://picsum.photos/seed/pioneer/800/450",
+            "rewardPool": "Limited Badges"
+        }
+    ],
+    "featuredCampaign": {
+        "title": "SEA Full Speed Scratch & Win",
+        "description": "Complete identity verification tasks to earn scratch attempts. Win exclusive .cid domains and CSPR tokens instantly.",
+        "rewardPool": "50,000 CSPR Pool",
+        "participants": "12k+ Participants",
+        "image": "https://picsum.photos/seed/casper-event/800/600"
+    },
+    "tasks": [
+        {
+            "title": "Identity Verification",
+            "desc": "Complete your root identity verification on the CasperID network.",
+            "reward": "1",
+            "current": 0,
+            "total": 1,
+            "unit": "verification"
+        },
+        {
+            "title": "Social Connection Task",
+            "desc": "Link your X (Twitter) and Discord accounts to your CasperID profile.",
+            "reward": "1",
+            "current": 1,
+            "total": 2,
+            "unit": "accounts"
+        },
+        {
+            "title": "Referral Milestone",
+            "desc": "Invite friends to join the CasperID network and verify their identities.",
+            "reward": "2",
+            "current": 12,
+            "total": 20,
+            "unit": "referrals"
+        }
+    ],
+    "scratchIncentives": [
+        {
+            "label": "Free .cid Domain",
+            "isWin": true,
+            "rarity": "Common"
+        },
+        {
+            "label": "10 CSPR",
+            "isWin": true,
+            "rarity": "Common"
+        },
+        {
+            "label": "50 CSPR",
+            "isWin": true,
+            "rarity": "Uncommon"
+        },
+        {
+            "label": "Rare .cid Name",
+            "isWin": true,
+            "rarity": "Rare"
+        },
+        {
+            "label": "Try Again",
+            "isWin": false
+        }
+    ]
+}

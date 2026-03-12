@@ -782,6 +782,21 @@ const userAccountSchema = new mongoose.Schema({
     completed_quests: [{
         type: String // Quest ID or handle
     }],
+    // Onboarding/Tour tracking
+    tour_completed: {
+        type: Boolean,
+        default: false
+    },
+    tour_completed_at: {
+        type: Date
+    },
+    onboarding_completed: {
+        type: Boolean,
+        default: false
+    },
+    onboarding_completed_at: {
+        type: Date
+    },
     // ZK Verification (Starknet)
     zk_verified: {
         type: Boolean,
