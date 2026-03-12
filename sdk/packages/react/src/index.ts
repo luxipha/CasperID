@@ -1,3 +1,6 @@
+// Styles (optional - consumers can import separately)
+import './index.css';
+
 // Main component
 export { CasperIDModal } from './CasperIDModal';
 export { default } from './CasperIDModal';
@@ -28,4 +31,11 @@ export type {
     SDKMode,
     VerificationTier,
     ScreenProps,
+    DocumentType,
+    ExtractedDocumentData,
+    KYCState,
+    OTPState,
 } from './types';
+
+// Utilities
+export { fetchWithTimeout, ApiError, handleApiResponse } from './utils/fetchWithTimeout';

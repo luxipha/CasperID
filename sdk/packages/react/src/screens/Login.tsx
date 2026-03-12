@@ -2,33 +2,53 @@ import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Mail, Verified, Lock, ArrowRight, Loader2 } from 'lucide-react';
 import type { SendOTPResponse } from '../types';
+import { t } from '../utils/i18n';
 
 interface LoginProps {
     onNext: (email: string, verificationId: string) => void;
+    onPasskeyUser?: (email: string) => void;
     onError?: (error: string) => void;
     apiBaseUrl?: string;
+    previewMode?: boolean;
+    language?: string;
 }
 
-const Login: React.FC<LoginProps> = ({ onNext, onError, apiBaseUrl = 'https://apis.casperid.com' }) => {
+const Login: React.FC<LoginProps> = ({
+    onNext,
+    onPasskeyUser,
+    onError,
+    apiBaseUrl = 'https://apis.casperid.com',
+    previewMode = false,
+    language = 'EN'
+}) => {
     const [email, setEmail] = useState('');
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState('');
 
     const handleSubmit = async () => {
         if (!email.trim()) {
-            setError('Please enter your email');
+            setError(t('error_email_required', language));
             return;
         }
 
         // Basic email validation
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
         if (!emailRegex.test(email)) {
-            setError('Please enter a valid email address');
+            setError(t('error_invalid_email', language));
             return;
         }
 
         setIsLoading(true);
         setError('');
+
+        if (previewMode) {
+            // Mock delay and success for preview
+            setTimeout(() => {
+                setIsLoading(false);
+                onNext(email.trim().toLowerCase(), 'mock-v-id-123456789');
+            }, 1000);
+            return;
+        }
 
         try {
             const response = await fetch(`${apiBaseUrl}/api/auth/send-otp`, {
@@ -39,28 +59,38 @@ const Login: React.FC<LoginProps> = ({ onNext, onError, apiBaseUrl = 'https://ap
                 body: JSON.stringify({ email: email.trim().toLowerCase() }),
             });
 
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({}));
+                throw new Error(errorData.error || `Request failed with status ${response.status}`);
+            }
+
             const data: SendOTPResponse = await response.json();
 
             if (data.success) {
+                // Returning user with passkey - route to passkey auth
                 if (data.userExists && data.hasPasskey) {
-                    // User has passkey - could redirect to passkey flow
-                    // For now, still send OTP for fallback
-                    setError('You have a passkey registered. Please use extension sign-in.');
+                    if (onPasskeyUser) {
+                        onPasskeyUser(email.trim().toLowerCase());
+                    } else {
+                        // Fallback: show message if no handler provided
+                        setError(t('error_passkey_registered', language));
+                    }
                     setIsLoading(false);
                     return;
                 }
 
+                // New user or user without passkey - proceed to OTP
                 if (data.verificationId) {
                     onNext(email.trim().toLowerCase(), data.verificationId);
                 } else {
-                    setError('Failed to send verification code. Please try again.');
+                    setError(t('error_send_code_failed', language));
                 }
             } else {
-                setError(data.error || 'Failed to send verification code');
-                onError?.(data.error || 'Failed to send verification code');
+                setError(data.error || t('error_send_code_failed', language));
+                onError?.(data.error || t('error_send_code_failed', language));
             }
         } catch (err) {
-            const errorMessage = 'Unable to connect. Please check your internet connection.';
+            const errorMessage = t('error_connection_failed', language);
             setError(errorMessage);
             onError?.(errorMessage);
         } finally {
@@ -82,20 +112,20 @@ const Login: React.FC<LoginProps> = ({ onNext, onError, apiBaseUrl = 'https://ap
             className="flex-1 flex flex-col px-8 pt-12"
         >
             <div className="mb-8">
-                <h2 className="text-3xl font-extrabold text-main tracking-tight leading-tight">Welcome back</h2>
+                <h2 className="text-3xl font-extrabold text-main tracking-tight leading-tight">{t('welcome_back', language)}</h2>
                 <p className="text-muted mt-3 text-sm leading-relaxed">
-                    Enter your email to receive a verification code.
+                    {t('enter_email', language)}
                 </p>
             </div>
 
             <div className="space-y-6">
                 <div className="space-y-2">
                     <label className="text-xs font-bold text-slate-500 uppercase tracking-widest ml-1">
-                        Email Address
+                        {t('email_address', language)}
                     </label>
                     <div className="relative">
                         <input
-                            className={`w-full dark:bg-black/20 bg-slate-100/50 border ${error ? 'border-red-400 dark:border-red-500' : 'dark:border-white/10 border-slate-200'} rounded-2xl h-14 px-5 text-main placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-[var(--casperid-primary,#8651e1)]/30 transition-all font-medium`}
+                            className={`w-full dark:bg-black/20 bg-slate-100/50 border ${error ? 'border-red-400 dark:border-red-500' : 'dark:border-white/10 border-slate-200'} rounded-2xl h-14 px-5 text-main placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-30 transition-all font-medium`}
                             placeholder="name@example.com"
                             type="email"
                             value={email}
@@ -119,16 +149,16 @@ const Login: React.FC<LoginProps> = ({ onNext, onError, apiBaseUrl = 'https://ap
                 <button
                     onClick={handleSubmit}
                     disabled={isLoading}
-                    className="w-full h-14 bg-[var(--casperid-primary,#8651e1)] hover:bg-[var(--casperid-primary,#8651e1)]/90 text-white font-bold rounded-2xl shadow-xl shadow-[var(--casperid-primary,#8651e1)]/30 flex items-center justify-center gap-2 transition-transform active:scale-[0.98] disabled:opacity-70 disabled:cursor-not-allowed"
+                    className="w-full h-14 bg-brand hover:bg-brand/90 text-white font-bold rounded-2xl shadow-xl shadow-brand flex items-center justify-center gap-2 transition-transform active:scale-[0.98] disabled:opacity-70 disabled:cursor-not-allowed"
                 >
                     {isLoading ? (
                         <>
                             <Loader2 className="w-5 h-5 animate-spin" />
-                            <span>Sending Code...</span>
+                            <span>{t('sending_code', language)}</span>
                         </>
                     ) : (
                         <>
-                            <span>Continue</span>
+                            <span>{t('continue', language)}</span>
                             <ArrowRight className="w-5 h-5" />
                         </>
                     )}
@@ -136,17 +166,17 @@ const Login: React.FC<LoginProps> = ({ onNext, onError, apiBaseUrl = 'https://ap
             </div>
 
             <div className="mt-auto pb-8">
-                <div className="p-4 dark:bg-white/5 bg-slate-100/50 rounded-2xl border dark:border-white/5 border-slate-200/50 mb-6">
+                <div className="p-4 dark:bg-white/5 bg-slate-100/50 rounded-2xl mb-6">
                     <div className="flex items-start gap-3">
                         <Verified className="text-[#6DE8EC] w-5 h-5 mt-0.5 shrink-0" />
                         <p className="text-[11px] text-muted leading-normal font-medium">
-                            Your data is encrypted and never stored on central servers. Powered by Casper Network.
+                            {t('security_notice', language)}
                         </p>
                     </div>
                 </div>
                 <div className="flex items-center justify-center gap-2 opacity-50">
                     <Lock className="text-muted w-3 h-3" />
-                    <span className="text-[10px] uppercase tracking-[0.2em] font-bold text-muted">End-to-End Encrypted</span>
+                    <span className="text-[10px] uppercase tracking-[0.2em] font-bold text-muted">{t('e2e_encrypted', language)}</span>
                 </div>
             </div>
         </motion.div>

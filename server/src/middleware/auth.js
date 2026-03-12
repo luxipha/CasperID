@@ -48,7 +48,9 @@ const adminAuth = async (req, res, next) => {
         next();
     } catch (error) {
         console.error('Admin auth error:', error);
-        res.status(500).json({ error: 'Authentication error' });
+        if (!res.headersSent) {
+            res.status(500).json({ error: 'Authentication error' });
+        }
     }
 };
 
@@ -119,7 +121,9 @@ const requireAuth = async (req, res, next) => {
         next();
     } catch (error) {
         console.error('Auth middleware error:', error);
-        res.status(500).json({ error: 'Internal server error' });
+        if (!res.headersSent) {
+            res.status(500).json({ error: 'Internal server error' });
+        }
     }
 };
 

@@ -1,7 +1,10 @@
 export type Screen =
     | 'AuthSelection'
     | 'Login'
+    | 'PasskeyAuth'       // Returning user biometric authentication
+    | 'PasskeyRegister'   // New user passkey creation
     | 'PinVerification'
+    | 'L1Setup'           // Wallet/DID generation progress
     | 'SecurityUpgrade'
     | 'FaceScan'
     | 'VerifyIdentityChoice'
@@ -45,11 +48,23 @@ export interface CasperIDModalProps {
     previewMode?: boolean;
     /** Force a specific screen (used by Design Studio step navigation) */
     initialScreen?: Screen;
+    /** Base URL for API requests. Defaults to https://apis.casperid.com */
+    apiBaseUrl?: string;
+    /** Terms of Service URL */
+    termsUrl?: string;
+    /** Privacy Policy URL */
+    privacyUrl?: string;
+    /** Logo URL for branding */
+    logoUrl?: string;
+    /** Default language for the SDK (e.g., 'EN', 'ES', 'FR') */
+    language?: string;
 }
 
 export interface ScreenProps {
     onNext: (screen?: Screen) => void;
     theme: 'light' | 'dark';
+    apiBaseUrl?: string;
+    language?: string;
 }
 
 // OTP Authentication State
@@ -71,8 +86,17 @@ export interface SendOTPResponse {
 export interface VerifyOTPResponse {
     success: boolean;
     sessionToken?: string;
+    expiresAt?: string;
     error?: string;
     attemptsLeft?: number;
+    userExists?: boolean;
+    hasPasskey?: boolean;
+    userAccount?: {
+        user_id: string;
+        wallet?: string;
+        tier?: string;
+        did_address?: string;
+    } | null;
 }
 
 // SDK Configuration
@@ -171,4 +195,115 @@ export interface Layer3SubmitResponse {
     status?: string;
     message?: string;
     error?: string;
+}
+
+// Passkey / WebAuthn Types
+export interface PasskeyRegisterInitResponse {
+    success: boolean;
+    options?: PublicKeyCredentialCreationOptionsJSON;
+    error?: string;
+}
+
+export interface PasskeyRegisterCompleteResponse {
+    success: boolean;
+    credential_id?: string;
+    session_token?: string;
+    expires_at?: string;
+    user?: {
+        user_id: string;
+        email: string;
+        tier: string;
+    };
+    error?: string;
+}
+
+export interface PasskeyAuthInitResponse {
+    success: boolean;
+    options?: PublicKeyCredentialRequestOptionsJSON;
+    error?: string;
+}
+
+export interface PasskeyAuthCompleteResponse {
+    success: boolean;
+    session_token?: string;
+    expires_at?: string;
+    user?: {
+        user_id: string;
+        email: string;
+        wallet?: string;
+        tier: string;
+        did_address?: string;
+    };
+    error?: string;
+}
+
+// WebAuthn JSON types (for transport)
+export interface PublicKeyCredentialCreationOptionsJSON {
+    challenge: string;
+    rp: {
+        name: string;
+        id?: string;
+    };
+    user: {
+        id: string;
+        name: string;
+        displayName: string;
+    };
+    pubKeyCredParams: Array<{
+        type: 'public-key';
+        alg: number;
+    }>;
+    timeout?: number;
+    attestation?: AttestationConveyancePreference;
+    authenticatorSelection?: {
+        authenticatorAttachment?: AuthenticatorAttachment;
+        residentKey?: ResidentKeyRequirement;
+        requireResidentKey?: boolean;
+        userVerification?: UserVerificationRequirement;
+    };
+    excludeCredentials?: Array<{
+        type: 'public-key';
+        id: string;
+        transports?: AuthenticatorTransport[];
+    }>;
+}
+
+export interface PublicKeyCredentialRequestOptionsJSON {
+    challenge: string;
+    timeout?: number;
+    rpId?: string;
+    allowCredentials?: Array<{
+        type: 'public-key';
+        id: string;
+        transports?: AuthenticatorTransport[];
+    }>;
+    userVerification?: UserVerificationRequirement;
+}
+
+// L1 Setup Types
+export interface WalletGenerateResponse {
+    success: boolean;
+    wallet?: string;
+    error?: string;
+}
+
+export interface DIDMintResponse {
+    success: boolean;
+    did_address?: string;
+    transaction_hash?: string;
+    error?: string;
+}
+
+// Auth State for SDK internal use
+export interface AuthState {
+    email: string;
+    sessionToken?: string;
+    userExists: boolean;
+    hasPasskey: boolean;
+    userAccount?: {
+        user_id: string;
+        wallet?: string;
+        tier?: string;
+        did_address?: string;
+    } | null;
 }

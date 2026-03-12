@@ -63,21 +63,25 @@ router.post('/apps', requireAuth, rateLimitMiddleware('business_api_key_create')
 
         await newApp.save();
 
-        return res.status(201).json({
-            success: true,
-            message: 'App created. Save your api_secret now — it will not be shown again.',
-            app: {
-                app_id: newApp.app_id,
-                name: newApp.name,
-                environment: newApp.environment,
-                allowed_origins: newApp.allowed_origins,
-                created_at: newApp.created_at
-            },
-            api_secret // plaintext shown ONLY here, one time
-        });
+        if (!res.headersSent) {
+            return res.status(201).json({
+                success: true,
+                message: 'App created. Save your api_secret now — it will not be shown again.',
+                app: {
+                    app_id: newApp.app_id,
+                    name: newApp.name,
+                    environment: newApp.environment,
+                    allowed_origins: newApp.allowed_origins,
+                    created_at: newApp.created_at
+                },
+                api_secret // plaintext shown ONLY here, one time
+            });
+        }
     } catch (error) {
         console.error('[Business] App creation failed:', error);
-        res.status(500).json({ success: false, error: 'Failed to create app' });
+        if (!res.headersSent) {
+            res.status(500).json({ success: false, error: 'Failed to create app' });
+        }
     }
 });
 
@@ -148,14 +152,18 @@ router.post('/apps/:app_id/rotate-key', requireAuth, rateLimitMiddleware('busine
             { api_secret_hash: new_hash, updated_at: new Date() }
         );
 
-        return res.json({
-            success: true,
-            message: 'API secret rotated. Save your new api_secret — it will not be shown again.',
-            api_secret: new_secret
-        });
+        if (!res.headersSent) {
+            return res.json({
+                success: true,
+                message: 'API secret rotated. Save your new api_secret — it will not be shown again.',
+                api_secret: new_secret
+            });
+        }
     } catch (error) {
         console.error('[Business] Key rotation failed:', error);
-        return res.status(500).json({ success: false, error: 'Failed to rotate key' });
+        if (!res.headersSent) {
+            return res.status(500).json({ success: false, error: 'Failed to rotate key' });
+        }
     }
 });
 
@@ -359,21 +367,25 @@ router.post('/webhooks/:webhook_id/test', requireAuth, rateLimitMiddleware('busi
         // Use the shared sendTestWebhook function (logs the delivery)
         const result = await sendTestWebhook(webhook, testPayload);
 
-        res.json({
-            success: result.success,
-            message: result.success ? 'Test webhook delivered successfully' : 'Test webhook delivery failed',
-            payload: testPayload,
-            delivery: {
-                id: result.delivery_id,
-                status_code: result.status_code,
-                duration_ms: result.duration_ms,
-                error: result.error
-            }
-        });
+        if (!res.headersSent) {
+            res.json({
+                success: result.success,
+                message: result.success ? 'Test webhook delivered successfully' : 'Test webhook delivery failed',
+                payload: testPayload,
+                delivery: {
+                    id: result.delivery_id,
+                    status_code: result.status_code,
+                    duration_ms: result.duration_ms,
+                    error: result.error
+                }
+            });
+        }
 
     } catch (error) {
         console.error('[Business] Test webhook failed:', error);
-        res.status(500).json({ success: false, error: 'Failed to trigger test webhook' });
+        if (!res.headersSent) {
+            res.status(500).json({ success: false, error: 'Failed to trigger test webhook' });
+        }
     }
 });
 

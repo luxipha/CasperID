@@ -131,21 +131,30 @@ async function checkRateLimit(ip, endpoint) {
  */
 function rateLimitMiddleware(endpoint) {
     return async (req, res, next) => {
+        // Skip if response already started (another middleware sent a response)
+        if (res.headersSent) {
+            return;
+        }
+
         try {
             const ip = req.ip || req.connection.remoteAddress || req.socket.remoteAddress;
-            
+
             const result = await checkRateLimit(ip, endpoint);
-            
+
             if (!result.allowed) {
-                return res.status(429).json({
-                    error: 'Too many requests',
-                    message: result.message,
-                    resetTime: result.resetTime
-                });
+                if (!res.headersSent) {
+                    return res.status(429).json({
+                        error: 'Too many requests',
+                        message: result.message,
+                        resetTime: result.resetTime
+                    });
+                }
+                return;
             }
 
-            // Add rate limit headers
-            if (result.resetTime) {
+            // Add rate limit headers BEFORE calling next()
+            // Check if headers haven't been sent yet
+            if (result.resetTime && !res.headersSent) {
                 res.set({
                     'X-RateLimit-Reset': Math.ceil(result.resetTime.getTime() / 1000),
                     'X-RateLimit-Remaining': result.remaining || 0
@@ -156,7 +165,9 @@ function rateLimitMiddleware(endpoint) {
         } catch (error) {
             console.error('Rate limiting error:', error);
             // Don't block requests if rate limiting fails
-            next();
+            if (!res.headersSent) {
+                next();
+            }
         }
     };
 }

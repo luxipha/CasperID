@@ -2,6 +2,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { CasperIDModal } from '../../../sdk/packages/react/src/CasperIDModal';
+import '../../../sdk/packages/react/src/index.css';
 import type { Screen } from '../../../sdk/packages/react/src/types';
 
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:8080';
@@ -285,7 +286,7 @@ const SDKDesign: React.FC = () => {
                 </div>
 
                 {/* Live SDK Preview */}
-                <div className="lg:col-span-7 flex flex-col items-center justify-center bg-background-light/50 rounded-3xl border-2 border-dashed border-border-muted p-8 min-h-[680px] gap-6">
+                <div className={`lg:col-span-7 flex flex-col items-center justify-center rounded-3xl border-2 border-dashed border-border-muted p-8 min-h-[680px] gap-6 transition-colors duration-500 ${isDark ? 'bg-slate-900' : 'bg-background-light/50'}`}>
                     {/* "Live Preview" badge */}
                     <div className="flex items-center gap-2 self-start">
                         <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
@@ -295,11 +296,11 @@ const SDKDesign: React.FC = () => {
                     {/* Real CasperIDModal in previewMode, scaled to phone proportions */}
                     <div
                         style={{
-                            width: 400,
-                            height: 750,
-                            transform: 'scale(0.82)',
+                            width: 380,
+                            height: 1000,
+                            transform: 'scale(0.7)',
                             transformOrigin: 'top center',
-                            marginBottom: -((750 * (1 - 0.82)) / 2),
+                            marginBottom: -300,
                         }}
                     >
                         <CasperIDModal
@@ -307,6 +308,8 @@ const SDKDesign: React.FC = () => {
                             apiKey={selectedAppId || 'preview'}
                             previewMode={true}
                             initialScreen={SCREEN_ORDER[activeStep] ?? 'AuthSelection'}
+                            logoUrl={logoUrl}
+                            apiBaseUrl={API_BASE}
                             theme={{
                                 primaryColor,
                                 borderRadius,

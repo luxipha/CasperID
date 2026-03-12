@@ -3,26 +3,32 @@ import { motion } from 'framer-motion';
 import { Camera, HelpCircle, Flashlight, Loader2, AlertCircle, RotateCcw } from 'lucide-react';
 import type { DocumentType, DocumentUploadResponse, ExtractedDocumentData } from '../types';
 
+import { t } from '../utils/i18n';
+
 interface DocumentScanProps {
     requestId: string;
     documentType: DocumentType;
-    onNext: (extractedData: ExtractedDocumentData, uploadId: string) => void;
+    onNext: (extractedData: ExtractedDocumentData, docUploadId: string) => void;
     onError?: (error: string) => void;
     apiBaseUrl?: string;
+    previewMode?: boolean;
+    language?: string;
 }
 
-const documentTypeLabels: Record<DocumentType, string> = {
-    passport: 'Passport',
-    drivers_license: 'Driver License',
-    national_id: 'ID Card'
-};
+const getDocumentTypeLabels = (language: string) => ({
+    passport: t('passport', language),
+    drivers_license: t('drivers_license', language),
+    national_id: t('national_id', language)
+});
 
 const DocumentScan: React.FC<DocumentScanProps> = ({
     requestId,
     documentType,
     onNext,
     onError,
-    apiBaseUrl = 'https://apis.casperid.com'
+    apiBaseUrl = 'https://apis.casperid.com',
+    previewMode = false,
+    language = 'EN'
 }) => {
     const videoRef = useRef<HTMLVideoElement>(null);
     const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -68,7 +74,7 @@ const DocumentScan: React.FC<DocumentScanProps> = ({
                         };
                     }
                 } catch (fallbackErr) {
-                    setError('Unable to access camera. Please check permissions.');
+                    setError(t('unable_access_camera', language));
                     onError?.('Camera access failed');
                 }
             }
@@ -120,7 +126,25 @@ const DocumentScan: React.FC<DocumentScanProps> = ({
 
     // Confirm and proceed
     const handleConfirm = async () => {
-        if (!capturedImage) return;
+        setIsUploading(true);
+
+        if (previewMode) {
+            setTimeout(() => {
+                setIsUploading(false);
+                onNext({
+                    first_name: 'JOHN',
+                    last_name: 'DOE',
+                    date_of_birth: '01 JAN 1990',
+                    nationality: 'Nigerian'
+                }, 'mock-upload-id-789');
+            }, 2000);
+            return;
+        }
+
+        if (!capturedImage) {
+            setIsUploading(false); // Ensure loading state is reset if no image
+            return;
+        }
 
         if (scanSide === 'front' && documentType !== 'passport') {
             // For non-passport documents, need back side too
@@ -128,6 +152,7 @@ const DocumentScan: React.FC<DocumentScanProps> = ({
             setCapturedImage(null);
             setCapturedImageUrl(null);
             setScanSide('back');
+            setIsUploading(false); // Reset loading state after setting side
             return;
         }
 
@@ -154,6 +179,11 @@ const DocumentScan: React.FC<DocumentScanProps> = ({
                     'X-Request-Id': requestId
                 }
             });
+
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({}));
+                throw new Error(errorData.error || `Document upload failed with status ${response.status}`);
+            }
 
             const data: DocumentUploadResponse = await response.json();
 
@@ -196,7 +226,9 @@ const DocumentScan: React.FC<DocumentScanProps> = ({
             <div className="relative z-10 p-6 flex flex-col items-center">
                 <div className="text-center px-4 py-2 dark:bg-black/40 bg-white/40 backdrop-blur-xl rounded-full border dark:border-white/10 border-black/5">
                     <h3 className="text-main text-sm font-medium tracking-wide uppercase">
-                        Scan {scanSide === 'front' ? 'front' : 'back'} of your {documentTypeLabels[documentType]}
+                        {t('scan_instruction', language)
+                            .replace('{side}', t(scanSide, language))
+                            .replace('{docType}', getDocumentTypeLabels(language)[documentType])}
                     </h3>
                 </div>
             </div>
@@ -255,11 +287,11 @@ const DocumentScan: React.FC<DocumentScanProps> = ({
             )}
 
             {/* Bottom controls */}
-            <div className="relative z-10 p-8 dark:bg-black/60 bg-white/60 backdrop-blur-2xl border-t dark:border-white/10 border-black/5 rounded-t-[2.5rem]">
+            <div className="relative z-10 p-8 dark:bg-black/60 bg-white/60 backdrop-blur-2xl border-t dark:border-white/10 border-black/5 rounded-t-3xl">
                 <p className="text-muted text-xs text-center mb-6 font-medium">
                     {capturedImageUrl
-                        ? 'Review your capture. Ensure all text is clearly visible.'
-                        : 'Align your document within the glowing frame. Ensure all four corners are visible.'}
+                        ? t('review_capture', language)
+                        : t('align_document', language)}
                 </p>
 
                 <div className="flex items-center justify-between gap-4">
@@ -268,40 +300,40 @@ const DocumentScan: React.FC<DocumentScanProps> = ({
                             <button
                                 onClick={handleRetake}
                                 disabled={isUploading}
-                                className="w-12 h-12 rounded-full dark:bg-white/5 bg-black/5 flex items-center justify-center text-muted disabled:opacity-50"
+                                className="w-12 h-12 rounded-xl dark:bg-white/5 bg-black/5 flex items-center justify-center text-muted disabled:opacity-50"
                             >
                                 <RotateCcw className="w-6 h-6" />
                             </button>
                             <button
                                 onClick={handleConfirm}
                                 disabled={isUploading}
-                                className="flex-1 bg-[var(--casperid-primary,#8651e1)] hover:bg-[var(--casperid-primary,#8651e1)]/90 text-white h-14 rounded-2xl flex items-center justify-center gap-2 font-bold text-lg transition-all active:scale-95 shadow-[0_0_25px_rgba(130,66,240,0.5)] disabled:opacity-70"
+                                className="flex-1 bg-brand hover:bg-brand/90 text-white h-14 rounded-2xl flex items-center justify-center gap-2 font-bold text-lg transition-all active:scale-95 shadow-[0_0_25px_rgba(130,66,240,0.5)] disabled:opacity-70"
                             >
                                 {isUploading ? (
                                     <>
                                         <Loader2 className="w-6 h-6 animate-spin" />
-                                        <span>Processing...</span>
+                                        <span>{t('processing', language)}</span>
                                     </>
                                 ) : (
-                                    <span>{scanSide === 'front' && documentType !== 'passport' ? 'Next: Back Side' : 'Confirm'}</span>
+                                    <span>{scanSide === 'front' && documentType !== 'passport' ? t('next_back_side', language) : t('confirm', language)}</span>
                                 )}
                             </button>
                             <div className="w-12 h-12" /> {/* Spacer for alignment */}
                         </>
                     ) : (
                         <>
-                            <button className="w-12 h-12 rounded-full dark:bg-white/5 bg-black/5 flex items-center justify-center text-muted">
+                            <button className="w-12 h-12 rounded-xl dark:bg-white/5 bg-black/5 flex items-center justify-center text-muted">
                                 <Flashlight className="w-6 h-6" />
                             </button>
                             <button
                                 onClick={handleCapture}
                                 disabled={!cameraReady}
-                                className="flex-1 bg-[var(--casperid-primary,#8651e1)] hover:bg-[var(--casperid-primary,#8651e1)]/90 text-white h-14 rounded-2xl flex items-center justify-center gap-2 font-bold text-lg transition-all active:scale-95 shadow-[0_0_25px_rgba(130,66,240,0.5)] disabled:opacity-50"
+                                className="flex-1 bg-brand hover:bg-brand/90 text-white h-14 rounded-2xl flex items-center justify-center gap-2 font-bold text-lg transition-all active:scale-95 shadow-[0_0_25px_rgba(130,66,240,0.5)] disabled:opacity-50"
                             >
                                 <Camera className="w-6 h-6" />
-                                <span>Capture</span>
+                                <span>{t('capture', language)}</span>
                             </button>
-                            <button className="w-12 h-12 rounded-full dark:bg-white/5 bg-black/5 flex items-center justify-center text-muted">
+                            <button className="w-12 h-12 rounded-xl dark:bg-white/5 bg-black/5 flex items-center justify-center text-muted">
                                 <HelpCircle className="w-6 h-6" />
                             </button>
                         </>

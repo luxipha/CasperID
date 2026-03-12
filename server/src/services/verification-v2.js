@@ -25,7 +25,7 @@ class VerificationServiceV2 {
      */
     async startLayer2Verification(sessionToken, options = {}) {
         try {
-            const { linkWallet = false, purpose = 'Layer 2 Verification' } = options;
+            const { linkWallet = false, purpose = 'Layer 2 Verification', appId = 'casperid-internal' } = options;
 
             // Validate user session
             const sessionData = await this.validateUserSession(sessionToken);
@@ -56,7 +56,7 @@ class VerificationServiceV2 {
             const verificationRequest = new VerificationRequestV2({
                 request_id: requestId,
                 user_id: userAccount.user_id,
-                dapp_id: 'casperid-internal', // Internal verification
+                dapp_id: appId, // Use provided appId
                 verification_tier: 'layer_2',
                 requested_fields: ['liveness_verified'],
                 purpose,
@@ -90,7 +90,8 @@ class VerificationServiceV2 {
         try {
             const {
                 verificationMethod = 'document_upload', // 'document_upload' or 'nimc'
-                purpose = 'Layer 3 KYC Verification'
+                purpose = 'Layer 3 KYC Verification',
+                appId = 'casperid-internal'
             } = options;
 
             // Validate user session
@@ -111,7 +112,7 @@ class VerificationServiceV2 {
             const verificationRequest = new VerificationRequestV2({
                 request_id: requestId,
                 user_id: userAccount.user_id,
-                dapp_id: 'casperid-internal',
+                dapp_id: appId,
                 verification_tier: 'layer_3',
                 requested_fields: ['identity_verified', 'liveness_verified'],
                 purpose,
@@ -321,10 +322,22 @@ class VerificationServiceV2 {
             verificationRequest.proof_data = proofData;
             await verificationRequest.save();
 
-            // Update user account status
-            userAccount.tier = 'layer_2';
             userAccount.updated_at = new Date();
             await userAccount.save();
+
+            // Dispatch webhook if this is an external app
+            if (verificationRequest.dapp_id && verificationRequest.dapp_id !== 'casperid-internal') {
+                const { dispatchEvent } = require('../utils/webhook-dispatcher');
+                const { WEBHOOK_EVENTS } = require('../constants/webhook-events');
+                
+                dispatchEvent(verificationRequest.dapp_id, WEBHOOK_EVENTS.KYC_COMPLETED, {
+                    user_id: userAccount.user_id,
+                    wallet: userAccount.wallet,
+                    tier: 'layer_2',
+                    completed_at: new Date().toISOString(),
+                    verification_type: 'liveness'
+                }).catch(err => console.error('KYC Webhook dispatch error (L2):', err));
+            }
 
             return {
                 success: true,
@@ -387,6 +400,20 @@ class VerificationServiceV2 {
             userAccount.tier = 'layer_3';
             userAccount.updated_at = new Date();
             await userAccount.save();
+
+            // Dispatch webhook if this is an external app
+            if (verificationRequest.dapp_id && verificationRequest.dapp_id !== 'casperid-internal') {
+                const { dispatchEvent } = require('../utils/webhook-dispatcher');
+                const { WEBHOOK_EVENTS } = require('../constants/webhook-events');
+
+                dispatchEvent(verificationRequest.dapp_id, WEBHOOK_EVENTS.KYC_COMPLETED, {
+                    user_id: userAccount.user_id,
+                    wallet: userAccount.wallet,
+                    tier: 'layer_3',
+                    completed_at: new Date().toISOString(),
+                    verification_type: 'document'
+                }).catch(err => console.error('KYC Webhook dispatch error (L3):', err));
+            }
 
             return {
                 success: true,

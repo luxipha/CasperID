@@ -7,6 +7,9 @@ import Footer from './shared/Footer';
 
 import AuthSelection from './screens/AuthSelection';
 import Login from './screens/Login';
+import PasskeyAuth from './screens/PasskeyAuth';
+import PasskeyRegister from './screens/PasskeyRegister';
+import L1Setup from './screens/L1Setup';
 import PinVerification from './screens/PinVerification';
 import SecurityUpgrade from './screens/SecurityUpgrade';
 import FaceScan from './screens/FaceScan';
@@ -25,7 +28,10 @@ import type {
     KYCState,
     DocumentType,
     ExtractedDocumentData,
-    StartVerificationResponse
+    StartVerificationResponse,
+    AuthState,
+    PasskeyAuthCompleteResponse,
+    PasskeyRegisterCompleteResponse
 } from './types';
 
 // Resolve 'system' mode to actual light/dark
@@ -36,7 +42,7 @@ function resolveMode(mode: SDKMode = 'light'): 'light' | 'dark' {
     return mode;
 }
 
-const FOOTER_SCREENS: Screen[] = ['AuthSelection', 'Login', 'PinVerification'];
+const FOOTER_SCREENS: Screen[] = ['AuthSelection', 'Login', 'PasskeyAuth', 'PinVerification', 'PasskeyRegister'];
 
 // Default API base URL
 const DEFAULT_API_BASE_URL = 'https://apis.casperid.com';
@@ -58,6 +64,11 @@ export const CasperIDModal: React.FC<CasperIDModalProps> = ({
     mode = 'login',
     previewMode = false,
     initialScreen,
+    apiBaseUrl,
+    termsUrl = '#',
+    privacyUrl = '#',
+    logoUrl,
+    language = 'EN',
 }) => {
     const {
         primaryColor = '#8651e1',
@@ -75,20 +86,51 @@ export const CasperIDModal: React.FC<CasperIDModalProps> = ({
     const [otpState, setOtpState] = useState<OTPState>({ email: '', verificationId: '' });
     const [sessionToken, setSessionToken] = useState<string | null>(null);
 
+    // Auth state - tracks user status through the flow
+    const [authState, setAuthState] = useState<AuthState>({
+        email: '',
+        userExists: false,
+        hasPasskey: false,
+        userAccount: null
+    });
+
     // KYC flow state
     const [kycState, setKycState] = useState<KYCState>(initialKYCState);
     const [uploadId, setUploadId] = useState<string>('');
     const [credentialHash, setCredentialHash] = useState<string>('');
 
-    // API base URL (could be configurable via props in the future)
-    const apiBaseUrl = DEFAULT_API_BASE_URL;
+    // API base URL - use custom URL if provided, otherwise default
+    const finalApiBaseUrl = apiBaseUrl || DEFAULT_API_BASE_URL;
+
+    // Normalize border radius to always have 'px' suffix
+    const normalizedRadius = borderRadius.toString().endsWith('px')
+        ? borderRadius.toString()
+        : `${borderRadius}px`;
+
+    // Normalize font family
+    const normalizedFont = fontFamily.includes(' ')
+        ? `"${fontFamily}", sans-serif`
+        : `${fontFamily}, sans-serif`;
+
+    // Generate a unique ID for scoped styles
+    const modalId = React.useId().replace(/:/g, '');
 
     // Apply CSS variables + theme class to the modal root
     const cssVars = {
         '--casperid-primary': primaryColor,
-        '--casperid-radius': `${borderRadius}px`,
-        '--casperid-font': fontFamily,
+        '--casperid-radius': normalizedRadius,
+        '--casperid-font': normalizedFont,
     } as React.CSSProperties;
+
+    // Generate scoped CSS for proper variable inheritance
+    const scopedStyles = `
+        #casperid-modal-${modalId},
+        #casperid-modal-${modalId} * {
+            --casperid-primary: ${primaryColor};
+            --casperid-radius: ${normalizedRadius};
+            --casperid-font: ${normalizedFont};
+        }
+    `;
 
     // Sync system theme
     useEffect(() => {
@@ -102,13 +144,20 @@ export const CasperIDModal: React.FC<CasperIDModalProps> = ({
         }
     }, [themeMode]);
 
-    // Reset to first screen when opened (unless previewMode controls it via initialScreen)
+    // Sync screen in previewMode when initialScreen prop changes
+    useEffect(() => {
+        if (previewMode && initialScreen) {
+            setScreen(initialScreen);
+        }
+    }, [previewMode, initialScreen]);
+
+    // Reset to first screen when opened (for real usage)
     useEffect(() => {
         if (isOpen && !previewMode) {
             setScreen(initialScreen ?? (mode === 'verify' ? 'SecurityUpgrade' : 'AuthSelection'));
-            // Reset all state when modal opens
             setOtpState({ email: '', verificationId: '' });
             setSessionToken(null);
+            setAuthState({ email: '', userExists: false, hasPasskey: false, userAccount: null });
             setKycState(initialKYCState);
             setUploadId('');
             setCredentialHash('');
@@ -141,6 +190,11 @@ export const CasperIDModal: React.FC<CasperIDModalProps> = ({
                 })
             });
 
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({}));
+                throw new Error(errorData.error || `Request failed with status ${response.status}`);
+            }
+
             const data: StartVerificationResponse = await response.json();
 
             if (data.success && data.verification) {
@@ -154,27 +208,133 @@ export const CasperIDModal: React.FC<CasperIDModalProps> = ({
                 throw new Error(data.error || 'Failed to start verification');
             }
         } catch (err) {
-            console.error('Failed to start verification:', err);
             onError?.(err instanceof Error ? err : new Error('Failed to start verification'));
             return null;
         }
     }, [apiBaseUrl, apiKey, onError]);
 
-    // Handle successful OTP verification
-    const handleOTPSuccess = useCallback((token: string) => {
+    // Handle successful OTP verification - new user needs passkey registration
+    const handleOTPSuccess = useCallback((token: string, userAccount?: AuthState['userAccount']) => {
         setSessionToken(token);
-        // Continue to next screen (SecurityUpgrade or IdentityVerified based on requiredTier)
-        go('SecurityUpgrade');
+        setAuthState(prev => ({
+            ...prev,
+            sessionToken: token,
+            userAccount: userAccount || null
+        }));
+
+        // Check if user already has L1 setup (wallet + DID)
+        if (userAccount?.wallet && userAccount?.did_address) {
+            // User has L1, check if they need passkey registration
+            if (!authState.hasPasskey) {
+                go('PasskeyRegister');
+            } else {
+                // Has passkey and L1, check tier requirements
+                proceedBasedOnTier(userAccount.tier);
+            }
+        } else {
+            // New user - needs passkey registration then L1 setup
+            go('PasskeyRegister');
+        }
+    }, [go, authState.hasPasskey]);
+
+    // Handle passkey user detected (returning user with passkey)
+    const handlePasskeyUser = useCallback((email: string) => {
+        setAuthState(prev => ({ ...prev, email, hasPasskey: true, userExists: true }));
+        go('PasskeyAuth');
     }, [go]);
+
+    // Handle successful passkey authentication (returning user)
+    const handlePasskeyAuthSuccess = useCallback((token: string, user?: PasskeyAuthCompleteResponse['user']) => {
+        setSessionToken(token);
+        setAuthState(prev => ({
+            ...prev,
+            sessionToken: token,
+            userAccount: user ? {
+                user_id: user.user_id,
+                wallet: user.wallet,
+                tier: user.tier,
+                did_address: user.did_address
+            } : null
+        }));
+
+        // Returning user - check tier requirements
+        proceedBasedOnTier(user?.tier);
+    }, []);
+
+    // Handle successful passkey registration (new user)
+    const handlePasskeyRegisterSuccess = useCallback((user?: PasskeyRegisterCompleteResponse['user']) => {
+        setAuthState(prev => ({
+            ...prev,
+            hasPasskey: true,
+            userAccount: user ? {
+                user_id: user.user_id,
+                tier: user.tier
+            } : prev.userAccount
+        }));
+
+        // After passkey registration, proceed to L1 setup
+        go('L1Setup');
+    }, [go]);
+
+    // Handle L1 setup completion (wallet + DID created)
+    const handleL1SetupSuccess = useCallback((wallet: string, didAddress: string) => {
+        setAuthState(prev => ({
+            ...prev,
+            userAccount: {
+                ...prev.userAccount,
+                user_id: prev.userAccount?.user_id || '',
+                wallet,
+                did_address: didAddress,
+                tier: 'layer_1'
+            }
+        }));
+
+        // L1 complete - check tier requirements
+        proceedBasedOnTier('layer_1');
+    }, []);
+
+    // Determine next step based on user's tier and required tier
+    const proceedBasedOnTier = useCallback((currentTier?: string) => {
+        const tier = currentTier || 'layer_0';
+
+        // If no specific tier required, or user meets requirement, go to success
+        if (!requiredTier) {
+            go('IdentityVerified');
+            return;
+        }
+
+        // Map requiredTier to layer format
+        const requiredLayer = requiredTier === 'L1' ? 'layer_1' :
+                              requiredTier === 'L2' ? 'layer_2' :
+                              requiredTier === 'L3' ? 'layer_3' : 'layer_1';
+
+        // Check if user already meets the requirement
+        const tierOrder = ['layer_0', 'layer_1', 'layer_2', 'layer_3'];
+        const currentIndex = tierOrder.indexOf(tier);
+        const requiredIndex = tierOrder.indexOf(requiredLayer);
+
+        if (currentIndex >= requiredIndex) {
+            // User meets requirement
+            go('IdentityVerified');
+        } else if (requiredIndex >= 2) {
+            // Need L2 or L3 - start with SecurityUpgrade prompt
+            go('SecurityUpgrade');
+        } else {
+            // Just need L1, which should be done by now
+            go('IdentityVerified');
+        }
+    }, [requiredTier, go]);
 
     // Handle extension login success
     const handleExtensionSuccess = useCallback((userData: any) => {
-        // Extension auth is complete - generate token and proceed
-        const mockToken = `cid_ext_${apiKey}_${Date.now()}`;
-        setSessionToken(mockToken);
+        // Extension auth is complete - use token from extension if provided
+        const token = userData?.sessionToken || userData?.token;
+        if (token) {
+            setSessionToken(token);
+        }
         // Skip to appropriate screen based on user's tier
         go('SecurityUpgrade');
-    }, [apiKey, go]);
+    }, [go]);
 
     // Handle SecurityUpgrade start
     const handleSecurityUpgradeNext = useCallback(async () => {
@@ -238,10 +398,13 @@ export const CasperIDModal: React.FC<CasperIDModalProps> = ({
 
     // Handle final success (after permissions approved)
     const handleSuccess = useCallback(() => {
-        const token = sessionToken || `cid_${apiKey}_${Date.now()}`;
-        onSuccess?.(token);
+        if (!sessionToken) {
+            onError?.(new Error('No valid session token available'));
+            return;
+        }
+        onSuccess?.(sessionToken);
         onClose?.();
-    }, [apiKey, sessionToken, onSuccess, onClose]);
+    }, [sessionToken, onSuccess, onClose, onError]);
 
     // Handle errors
     const handleError = useCallback((error: string) => {
@@ -251,6 +414,7 @@ export const CasperIDModal: React.FC<CasperIDModalProps> = ({
     // Login screen handlers
     const handleLoginNext = useCallback((email: string, verificationId: string) => {
         setOtpState({ email, verificationId });
+        setAuthState(prev => ({ ...prev, email }));
         go('PinVerification');
     }, [go]);
 
@@ -265,14 +429,53 @@ export const CasperIDModal: React.FC<CasperIDModalProps> = ({
                         onNext={(method) => go(method === 'otp' ? 'Login' : 'SecurityUpgrade')}
                         onExtensionSuccess={handleExtensionSuccess}
                         onError={handleError}
+                        language={language}
                     />
                 );
             case 'Login':
                 return (
                     <Login
                         onNext={handleLoginNext}
+                        onPasskeyUser={handlePasskeyUser}
                         onError={handleError}
-                        apiBaseUrl={apiBaseUrl}
+                        apiBaseUrl={finalApiBaseUrl}
+                        previewMode={previewMode}
+                        language={language}
+                    />
+                );
+            case 'PasskeyAuth':
+                return (
+                    <PasskeyAuth
+                        email={authState.email}
+                        onSuccess={handlePasskeyAuthSuccess}
+                        onError={handleError}
+                        onFallbackToOTP={() => go('Login')}
+                        apiBaseUrl={finalApiBaseUrl}
+                        previewMode={previewMode}
+                        language={language}
+                    />
+                );
+            case 'PasskeyRegister':
+                return (
+                    <PasskeyRegister
+                        email={authState.email || otpState.email}
+                        sessionToken={sessionToken || ''}
+                        onSuccess={handlePasskeyRegisterSuccess}
+                        onError={handleError}
+                        apiBaseUrl={finalApiBaseUrl}
+                        previewMode={previewMode}
+                        language={language}
+                    />
+                );
+            case 'L1Setup':
+                return (
+                    <L1Setup
+                        sessionToken={sessionToken || ''}
+                        onSuccess={handleL1SetupSuccess}
+                        onError={handleError}
+                        apiBaseUrl={finalApiBaseUrl}
+                        previewMode={previewMode}
+                        language={language}
                     />
                 );
             case 'PinVerification':
@@ -282,7 +485,9 @@ export const CasperIDModal: React.FC<CasperIDModalProps> = ({
                         verificationId={otpState.verificationId}
                         onNext={handleOTPSuccess}
                         onError={handleError}
-                        apiBaseUrl={apiBaseUrl}
+                        apiBaseUrl={finalApiBaseUrl}
+                        previewMode={previewMode}
+                        language={language}
                     />
                 );
             case 'SecurityUpgrade':
@@ -290,6 +495,7 @@ export const CasperIDModal: React.FC<CasperIDModalProps> = ({
                     <SecurityUpgrade
                         onNext={handleSecurityUpgradeNext}
                         onSkip={() => go('IdentityVerified')}
+                        language={language}
                     />
                 );
             case 'FaceScan':
@@ -298,13 +504,16 @@ export const CasperIDModal: React.FC<CasperIDModalProps> = ({
                         requestId={kycState.requestId}
                         onNext={handleFaceScanNext}
                         onError={handleError}
-                        apiBaseUrl={apiBaseUrl}
+                        apiBaseUrl={finalApiBaseUrl}
+                        previewMode={previewMode}
+                        language={language}
                     />
                 );
             case 'VerifyIdentityChoice':
                 return (
                     <VerifyIdentityChoice
                         onNext={handleDocumentTypeSelected}
+                        language={language}
                     />
                 );
             case 'DocumentScan':
@@ -314,7 +523,9 @@ export const CasperIDModal: React.FC<CasperIDModalProps> = ({
                         documentType={kycState.documentType || 'passport'}
                         onNext={handleDocumentScanNext}
                         onError={handleError}
-                        apiBaseUrl={apiBaseUrl}
+                        apiBaseUrl={finalApiBaseUrl}
+                        previewMode={previewMode}
+                        language={language}
                     />
                 );
             case 'ReviewData':
@@ -327,7 +538,9 @@ export const CasperIDModal: React.FC<CasperIDModalProps> = ({
                         onNext={handleReviewDataNext}
                         onRetake={handleDocumentRetake}
                         onError={handleError}
-                        apiBaseUrl={apiBaseUrl}
+                        apiBaseUrl={finalApiBaseUrl}
+                        previewMode={previewMode}
+                        language={language}
                     />
                 );
             case 'MintingIdentity':
@@ -336,13 +549,15 @@ export const CasperIDModal: React.FC<CasperIDModalProps> = ({
                         requestId={kycState.requestId}
                         onNext={handleMintingNext}
                         onError={handleError}
-                        apiBaseUrl={apiBaseUrl}
+                        apiBaseUrl={finalApiBaseUrl}
+                        previewMode={previewMode}
+                        language={language}
                     />
                 );
             case 'IdentityVerified':
-                return <IdentityVerified onNext={() => go('PermissionsRequest')} />;
+                return <IdentityVerified onNext={() => go('PermissionsRequest')} language={language} />;
             case 'PermissionsRequest':
-                return <PermissionsRequest onApprove={handleSuccess} onDeny={() => onClose?.()} />;
+                return <PermissionsRequest onApprove={handleSuccess} onDeny={() => onClose?.()} language={language} />;
             default:
                 return null;
         }
@@ -351,97 +566,104 @@ export const CasperIDModal: React.FC<CasperIDModalProps> = ({
     // In previewMode, render the card directly (no fixed overlay)
     if (previewMode) {
         return (
-            <div style={cssVars} className={`relative ${resolvedTheme}`}>
-                <GlassContainer className="backdrop-blur-3xl">
-                    <Header
-                        onClose={onClose}
-                        showClose={screen !== 'AuthSelection'}
-                        subtitle={screen === 'PermissionsRequest' ? 'PERMISSION REQUEST' : 'SECURE SDK'}
-                        theme={resolvedTheme}
-                        toggleTheme={toggleTheme}
-                    />
-                    <div className="flex-1 flex flex-col relative overflow-hidden">
-                        <AnimatePresence mode="wait">
-                            <motion.div key={screen} className="flex-1 flex flex-col">
-                                {renderScreen()}
-                            </motion.div>
-                        </AnimatePresence>
-                    </div>
-                    {FOOTER_SCREENS.includes(screen) && (
-                        <Footer>
-                            <p className="text-[11px] text-slate-500 font-medium">
-                                By connecting, you agree to our{' '}
-                                <a className="text-[var(--casperid-primary,#8651e1)] hover:underline ml-1" href="#">Terms of Service</a>
-                                {' '}&amp;{' '}
-                                <a className="text-[var(--casperid-primary,#8651e1)] hover:underline ml-1" href="#">Privacy Policy</a>
-                            </p>
-                        </Footer>
-                    )}
-                </GlassContainer>
-            </div>
+            <>
+                <style>{scopedStyles}</style>
+                <div id={`casperid-modal-${modalId}`} style={cssVars} className={`relative ${resolvedTheme}`}>
+                    <GlassContainer className="backdrop-blur-3xl" theme={resolvedTheme}>
+                        <Header
+                            onClose={onClose}
+                            showClose={screen !== 'AuthSelection'}
+                            subtitle={screen === 'PermissionsRequest' ? 'PERMISSION REQUEST' : 'SECURE SDK'}
+                            theme={resolvedTheme}
+                            toggleTheme={toggleTheme}
+                        />
+                        <div className="flex-1 flex flex-col relative overflow-hidden">
+                            <AnimatePresence mode="wait">
+                                <motion.div key={screen} className="flex-1 flex flex-col">
+                                    {renderScreen()}
+                                </motion.div>
+                            </AnimatePresence>
+                        </div>
+                        {FOOTER_SCREENS.includes(screen) && (
+                            <Footer>
+                                <p className="text-[11px] text-slate-500 font-medium">
+                                    By connecting, you agree to our{' '}
+                                    <a className="text-brand hover:underline ml-1" href={termsUrl} target="_blank" rel="noopener noreferrer">Terms of Service</a>
+                                    {' '}&amp;{' '}
+                                    <a className="text-brand hover:underline ml-1" href={privacyUrl} target="_blank" rel="noopener noreferrer">Privacy Policy</a>
+                                </p>
+                            </Footer>
+                        )}
+                    </GlassContainer>
+                </div>
+            </>
         );
     }
 
     return (
-        // Overlay backdrop — sits on top of the host app
-        <div
-            className="fixed inset-0 z-[9999] flex items-center justify-center p-4"
-            style={{ backgroundColor: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(6px)' }}
-            onClick={(e) => e.target === e.currentTarget && onClose?.()}
-        >
-            {/* Ambient glows — inside the overlay, behind the card */}
-            <div className="absolute inset-0 pointer-events-none overflow-hidden">
-                <div
-                    className="absolute top-[-10%] left-[-10%] w-[60%] h-[40%] rounded-full blur-[120px]"
-                    style={{ backgroundColor: `${primaryColor}1a` }}
-                />
-                <div className="absolute bottom-[-5%] right-[-5%] w-[50%] h-[30%] bg-[#6DE8EC]/5 blur-[100px] rounded-full" />
-            </div>
-
-            {/* The glass modal card */}
-            <motion.div
-                initial={{ opacity: 0, scale: 0.95, y: 20 }}
-                animate={{ opacity: 1, scale: 1, y: 0 }}
-                exit={{ opacity: 0, scale: 0.95, y: 20 }}
-                transition={{ type: 'spring', damping: 28, stiffness: 300 }}
-                style={cssVars}
-                className={`relative selection:bg-[var(--casperid-primary,#8651e1)]/30 ${resolvedTheme}`}
+        <>
+            <style>{scopedStyles}</style>
+            {/* Overlay backdrop — sits on top of the host app */}
+            <div
+                className="fixed inset-0 z-[9999] flex items-center justify-center p-4"
+                style={{ backgroundColor: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(6px)' }}
+                onClick={(e) => e.target === e.currentTarget && onClose?.()}
             >
-                <GlassContainer className="backdrop-blur-3xl">
-                    <Header
-                        onClose={onClose}
-                        showClose={screen !== 'AuthSelection'}
-                        subtitle={screen === 'PermissionsRequest' ? 'PERMISSION REQUEST' : 'SECURE SDK'}
-                        theme={resolvedTheme}
-                        toggleTheme={toggleTheme}
+                {/* Ambient glows — inside the overlay, behind the card */}
+                <div className="absolute inset-0 pointer-events-none overflow-hidden">
+                    <div
+                        className="absolute top-[-10%] left-[-10%] w-[60%] h-[40%] rounded-full blur-[120px]"
+                        style={{ backgroundColor: `${primaryColor}1a` }}
                     />
+                    <div className="absolute bottom-[-5%] right-[-5%] w-[50%] h-[30%] bg-[#6DE8EC]/5 blur-[100px] rounded-full" />
+                </div>
 
-                    <div className="flex-1 flex flex-col relative overflow-hidden">
-                        <AnimatePresence mode="wait">
-                            <motion.div key={screen} className="flex-1 flex flex-col">
-                                {renderScreen()}
-                            </motion.div>
-                        </AnimatePresence>
-                    </div>
+                {/* The glass modal card */}
+                <motion.div
+                    id={`casperid-modal-${modalId}`}
+                    initial={{ opacity: 0, scale: 0.95, y: 20 }}
+                    animate={{ opacity: 1, scale: 1, y: 0 }}
+                    exit={{ opacity: 0, scale: 0.95, y: 20 }}
+                    transition={{ type: 'spring', damping: 28, stiffness: 300 }}
+                    style={cssVars}
+                    className={`relative selection:bg-brand/30 ${resolvedTheme}`}
+                >
+                    <GlassContainer className="backdrop-blur-3xl" theme={resolvedTheme}>
+                        <Header
+                            onClose={onClose}
+                            showClose={screen !== 'AuthSelection'}
+                            subtitle={screen === 'PermissionsRequest' ? 'PERMISSION REQUEST' : 'SECURE SDK'}
+                            theme={resolvedTheme}
+                            toggleTheme={toggleTheme}
+                        />
 
-                    {/* Footer with ToS links, shown on early screens */}
-                    {FOOTER_SCREENS.includes(screen) && (
-                        <Footer>
-                            <p className="text-[11px] text-slate-500 font-medium">
-                                By connecting, you agree to our{' '}
-                                <a className="text-[var(--casperid-primary,#8651e1)] hover:underline ml-1" href="#">
-                                    Terms of Service
-                                </a>{' '}
-                                &amp;{' '}
-                                <a className="text-[var(--casperid-primary,#8651e1)] hover:underline ml-1" href="#">
-                                    Privacy Policy
-                                </a>
-                            </p>
-                        </Footer>
-                    )}
-                </GlassContainer>
-            </motion.div>
-        </div>
+                        <div className="flex-1 flex flex-col relative overflow-hidden">
+                            <AnimatePresence mode="wait">
+                                <motion.div key={screen} className="flex-1 flex flex-col">
+                                    {renderScreen()}
+                                </motion.div>
+                            </AnimatePresence>
+                        </div>
+
+                        {/* Footer with ToS links, shown on early screens */}
+                        {FOOTER_SCREENS.includes(screen) && (
+                            <Footer>
+                                <p className="text-[11px] text-slate-500 font-medium">
+                                    By connecting, you agree to our{' '}
+                                    <a className="text-brand hover:underline ml-1" href={termsUrl} target="_blank" rel="noopener noreferrer">
+                                        Terms of Service
+                                    </a>{' '}
+                                    &amp;{' '}
+                                    <a className="text-brand hover:underline ml-1" href={privacyUrl} target="_blank" rel="noopener noreferrer">
+                                        Privacy Policy
+                                    </a>
+                                </p>
+                            </Footer>
+                        )}
+                    </GlassContainer>
+                </motion.div>
+            </div>
+        </>
     );
 };
 

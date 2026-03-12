@@ -57,12 +57,12 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const navItems = [
     { to: '/business', icon: 'dashboard', label: 'Overview' },
     { to: '/business/integrations', icon: 'account_tree', label: 'Integrations' },
+    { to: '/business/sdk-design', icon: 'palette', label: 'SDK Design' },
     { to: '/business/api-management', icon: 'api', label: 'API Management' },
     { to: '/business/webhooks', icon: 'webhook', label: 'Webhooks' },
     { to: '/business/analytics', icon: 'bar_chart', label: 'Analytics' },
     { to: '/business/billing', icon: 'payments', label: 'Billing' },
     { to: '/business/docs', icon: 'description', label: 'Docs' },
-    { to: '/business/sdk-design', icon: 'palette', label: 'SDK Design' },
   ];
 
   const closeSidebar = () => setIsSidebarOpen(false);

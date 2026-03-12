@@ -2,13 +2,23 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import { Delete, ArrowRight, Loader2, RefreshCw } from 'lucide-react';
 import type { VerifyOTPResponse } from '../types';
+import { t } from '../utils/i18n';
+
+interface UserAccountInfo {
+    user_id: string;
+    wallet?: string;
+    tier?: string;
+    did_address?: string;
+}
 
 interface PinVerificationProps {
     email: string;
     verificationId: string;
-    onNext: (sessionToken: string) => void;
+    onNext: (sessionToken: string, userAccount?: UserAccountInfo | null) => void;
     onError?: (error: string) => void;
     apiBaseUrl?: string;
+    previewMode?: boolean;
+    language?: string;
 }
 
 const PinVerification: React.FC<PinVerificationProps> = ({
@@ -16,7 +26,9 @@ const PinVerification: React.FC<PinVerificationProps> = ({
     verificationId,
     onNext,
     onError,
-    apiBaseUrl = 'https://apis.casperid.com'
+    apiBaseUrl = 'https://apis.casperid.com',
+    previewMode = false,
+    language = 'EN'
 }) => {
     const [pin, setPin] = useState<string[]>(['', '', '', '', '', '']);
     const [isVerifying, setIsVerifying] = useState(false);
@@ -70,12 +82,20 @@ const PinVerification: React.FC<PinVerificationProps> = ({
     const handleVerify = async () => {
         const otp = pin.join('');
         if (otp.length !== 6) {
-            setError('Please enter all 6 digits');
+            setError(t('error_pin_incomplete', language));
             return;
         }
 
         setIsVerifying(true);
         setError('');
+
+        if (previewMode) {
+            setTimeout(() => {
+                setIsVerifying(false);
+                onNext('mock-session-token', null);
+            }, 1000);
+            return;
+        }
 
         try {
             const response = await fetch(`${apiBaseUrl}/api/auth/verify-otp`, {
@@ -89,21 +109,26 @@ const PinVerification: React.FC<PinVerificationProps> = ({
                 }),
             });
 
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({}));
+                throw new Error(errorData.error || `Verification failed with status ${response.status}`);
+            }
+
             const data: VerifyOTPResponse = await response.json();
 
             if (data.success && data.sessionToken) {
-                onNext(data.sessionToken);
+                onNext(data.sessionToken, data.userAccount);
             } else {
-                setError(data.error || 'Invalid code. Please try again.');
+                setError(data.error || t('invalid_code', language));
                 if (data.attemptsLeft !== undefined) {
-                    setError(`Invalid code. ${data.attemptsLeft} attempts remaining.`);
+                    setError(t('invalid_code_attempts', language).replace('{attempts}', data.attemptsLeft.toString()));
                 }
                 // Clear pin on error
                 setPin(['', '', '', '', '', '']);
-                onError?.(data.error || 'Verification failed');
+                onError?.(data.error || t('verification_failed', language));
             }
         } catch (err) {
-            const errorMessage = 'Unable to verify. Please try again.';
+            const errorMessage = t('error_verify_failed', language);
             setError(errorMessage);
             setPin(['', '', '', '', '', '']);
             onError?.(errorMessage);
@@ -118,6 +143,15 @@ const PinVerification: React.FC<PinVerificationProps> = ({
         setIsResending(true);
         setError('');
 
+        if (previewMode) {
+            setTimeout(() => {
+                setIsResending(false);
+                setResendCooldown(60);
+                setPin(['', '', '', '', '', '']);
+            }, 800);
+            return;
+        }
+
         try {
             const response = await fetch(`${apiBaseUrl}/api/auth/resend-otp`, {
                 method: 'POST',
@@ -127,6 +161,11 @@ const PinVerification: React.FC<PinVerificationProps> = ({
                 body: JSON.stringify({ verificationId: currentVerificationId }),
             });
 
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({}));
+                throw new Error(errorData.error || `Request failed with status ${response.status}`);
+            }
+
             const data = await response.json();
 
             if (data.success) {
@@ -134,10 +173,10 @@ const PinVerification: React.FC<PinVerificationProps> = ({
                 setPin(['', '', '', '', '', '']);
                 // Note: verificationId stays the same for resend
             } else {
-                setError(data.error || 'Failed to resend code');
+                setError(data.error || t('error_resend_failed', language));
             }
         } catch (err) {
-            setError('Failed to resend code. Please try again.');
+            setError(t('error_resend_failed', language));
         } finally {
             setIsResending(false);
         }
@@ -154,9 +193,9 @@ const PinVerification: React.FC<PinVerificationProps> = ({
             className="flex-1 flex flex-col px-8 pt-12"
         >
             <div className="space-y-2 mb-8">
-                <h1 className="text-3xl font-bold tracking-tight text-main">Verify Your Email</h1>
+                <h1 className="text-3xl font-bold tracking-tight text-main">{t('verify_email', language)}</h1>
                 <p className="text-muted text-sm font-medium">
-                    Enter the 6-digit code sent to <span className="text-main font-semibold">{maskedEmail}</span>
+                    {t('enter_code', language)} <span className="text-main font-semibold">{maskedEmail}</span>
                 </p>
             </div>
 
@@ -165,15 +204,14 @@ const PinVerification: React.FC<PinVerificationProps> = ({
                 {pin.map((digit, i) => (
                     <div
                         key={i}
-                        className={`size-12 rounded-full glass-container flex items-center justify-center text-xl font-bold border transition-all ${
-                            digit
-                                ? 'text-[#6DE8EC] dark:border-[#6DE8EC]/30 border-[#6DE8EC]/50'
-                                : 'text-muted dark:border-white/10 border-slate-200'
-                        } ${error ? 'border-red-400 dark:border-red-500' : ''}`}
+                        className={`size-12 rounded-2xl dark:bg-black/20 bg-slate-100/50 flex items-center justify-center text-xl font-bold border transition-all ${digit
+                            ? 'text-brand dark:border-brand-30 border-brand-50'
+                            : 'text-muted dark:border-white/10 border-slate-200'
+                            } ${error ? 'border-red-400 dark:border-red-500' : ''}`}
                     >
                         {digit}
                         {!digit && pin.findIndex(d => d === '') === i && (
-                            <div className="w-0.5 h-5 bg-[var(--casperid-primary,#8651e1)] animate-pulse" />
+                            <div className="w-0.5 h-6 bg-brand animate-pulse" />
                         )}
                     </div>
                 ))}
@@ -218,16 +256,16 @@ const PinVerification: React.FC<PinVerificationProps> = ({
                 <button
                     onClick={handleVerify}
                     disabled={isVerifying || pin.some(d => d === '')}
-                    className="w-full h-14 bg-[var(--casperid-primary,#8651e1)] hover:bg-[var(--casperid-primary,#8651e1)]/90 text-white font-bold rounded-full transition-all shadow-lg shadow-[var(--casperid-primary,#8651e1)]/20 flex items-center justify-center gap-2 group disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="w-full h-14 bg-brand hover:bg-brand/90 text-white font-bold rounded-2xl transition-all shadow-lg shadow-brand flex items-center justify-center gap-2 group disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                     {isVerifying ? (
                         <>
                             <Loader2 className="w-5 h-5 animate-spin" />
-                            <span>Verifying...</span>
+                            <span>{t('verifying', language)}</span>
                         </>
                     ) : (
                         <>
-                            <span>Verify</span>
+                            <span>{t('verify', language)}</span>
                             <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
                         </>
                     )}
@@ -235,19 +273,19 @@ const PinVerification: React.FC<PinVerificationProps> = ({
                 <button
                     onClick={handleResend}
                     disabled={resendCooldown > 0 || isResending}
-                    className="w-full h-14 dark:bg-white/5 hover:dark:bg-white/10 bg-slate-100 hover:bg-slate-200 text-muted font-bold rounded-full transition-all border dark:border-white/10 border-slate-200 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="w-full h-14 dark:bg-white/5 hover:dark:bg-white/10 bg-slate-100 hover:bg-slate-200 text-muted font-bold rounded-2xl transition-all border dark:border-white/10 border-slate-200 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                     {isResending ? (
                         <>
                             <Loader2 className="w-4 h-4 animate-spin" />
-                            <span>Sending...</span>
+                            <span>{t('sending', language)}</span>
                         </>
                     ) : resendCooldown > 0 ? (
-                        <span>Resend Code ({resendCooldown}s)</span>
+                        <span>{t('resend_code', language)} ({resendCooldown}s)</span>
                     ) : (
                         <>
                             <RefreshCw className="w-4 h-4" />
-                            <span>Resend Code</span>
+                            <span>{t('resend_code', language)}</span>
                         </>
                     )}
                 </button>

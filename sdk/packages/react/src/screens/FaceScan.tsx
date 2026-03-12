@@ -3,26 +3,32 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Lock, Camera, AlertCircle, Loader2 } from 'lucide-react';
 import type { LivenessResponse } from '../types';
 
+import { t } from '../utils/i18n';
+
 interface FaceScanProps {
     requestId: string;
-    onNext: (livenessVerified: boolean) => void;
+    onNext: (livenessVerified: boolean) => Promise<void>;
     onError?: (error: string) => void;
     apiBaseUrl?: string;
+    previewMode?: boolean;
+    language?: string;
 }
 
 const instructions = [
-    'Position your face in the frame',
-    'Blink your eyes slowly',
-    'Turn your head left',
-    'Turn your head right',
-    'Processing...',
+    'position_face',
+    'blink_slowly',
+    'turn_head_left',
+    'turn_head_right',
+    'processing',
 ];
 
 const FaceScan: React.FC<FaceScanProps> = ({
     requestId,
     onNext,
     onError,
-    apiBaseUrl = 'https://apis.casperid.com'
+    apiBaseUrl = 'https://apis.casperid.com',
+    previewMode = false,
+    language = 'EN'
 }) => {
     const videoRef = useRef<HTMLVideoElement>(null);
     const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -50,12 +56,11 @@ const FaceScan: React.FC<FaceScanProps> = ({
                     };
                 }
             } catch (err: any) {
-                console.error('Camera error:', err);
                 if (err.name === 'NotAllowedError') {
                     setCameraPermissionDenied(true);
-                    setError('Camera permission denied. Please allow camera access.');
+                    setError(t('camera_permission_denied', language));
                 } else {
-                    setError('Unable to access camera. Please check your device.');
+                    setError(t('unable_access_camera', language));
                 }
                 onError?.('Camera access failed');
             }
@@ -132,6 +137,15 @@ const FaceScan: React.FC<FaceScanProps> = ({
     // Submit liveness check
     const submitLiveness = async () => {
         setIsProcessing(true);
+        setStep(4); // "Processing..."
+
+        if (previewMode) {
+            setTimeout(() => {
+                setIsProcessing(false);
+                onNext(true);
+            }, 2000);
+            return;
+        }
 
         try {
             const formData = new FormData();
@@ -153,6 +167,11 @@ const FaceScan: React.FC<FaceScanProps> = ({
                 body: formData,
                 credentials: 'include'
             });
+
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({}));
+                throw new Error(errorData.error || `Liveness check failed with status ${response.status}`);
+            }
 
             const data: LivenessResponse = await response.json();
 
@@ -200,11 +219,11 @@ const FaceScan: React.FC<FaceScanProps> = ({
                 </p>
                 <button
                     onClick={() => window.location.reload()}
-                    className="px-6 py-3 bg-[var(--casperid-primary,#8651e1)] text-white rounded-xl font-bold"
+                    className="px-6 py-3 bg-brand text-white rounded-2xl font-bold"
                 >
                     Try Again
                 </button>
-            </motion.div>
+            </motion.div >
         );
     }
 
@@ -225,10 +244,10 @@ const FaceScan: React.FC<FaceScanProps> = ({
 
             {/* Top badge */}
             <div className="relative z-40 pt-12 pb-4 flex items-center justify-center">
-                <div className="flex items-center gap-2 px-4 py-1.5 dark:bg-black/40 bg-white/40 backdrop-blur-md rounded-full border dark:border-white/5 border-black/5">
+                <div className="flex items-center gap-2 px-4 py-1.5 dark:bg-black/40 bg-white/40 backdrop-blur-md rounded-xl border dark:border-white/5 border-black/5">
                     <div className={`w-2 h-2 rounded-full ${cameraReady ? 'bg-[#6fe8ec] shadow-[0_0_8px_#6fe8ec]' : 'bg-yellow-500 animate-pulse'}`} />
                     <span className="text-[10px] text-muted uppercase tracking-[0.2em] font-bold">
-                        {cameraReady ? 'Live Camera' : 'Initializing...'}
+                        {cameraReady ? t('live_camera', language) : t('initializing', language)}
                     </span>
                 </div>
             </div>
@@ -283,13 +302,13 @@ const FaceScan: React.FC<FaceScanProps> = ({
                         <p className="text-red-500 font-bold text-lg mb-4">{error}</p>
                         <button
                             onClick={handleRetry}
-                            className="px-6 py-2 bg-red-500 text-white rounded-full font-bold"
+                            className="px-6 py-2 bg-red-500 text-white rounded-xl font-bold"
                         >
                             Try Again
                         </button>
                     </div>
                 ) : (
-                    <div className="dark:bg-[#0a1515]/95 bg-white/90 backdrop-blur-2xl border dark:border-white/10 border-black/5 w-full p-6 rounded-[2.5rem] text-center shadow-2xl">
+                    <div className="dark:bg-[#0a1515]/95 bg-white/90 backdrop-blur-2xl border dark:border-white/10 border-black/5 w-full p-6 rounded-2xl text-center shadow-2xl">
                         <AnimatePresence mode="wait">
                             <motion.p
                                 key={step}
@@ -304,13 +323,13 @@ const FaceScan: React.FC<FaceScanProps> = ({
                                         Verifying...
                                     </span>
                                 ) : (
-                                    instructions[step]
+                                    t(instructions[step], language)
                                 )}
                             </motion.p>
                         </AnimatePresence>
                         <div className="flex items-center justify-center gap-2 text-muted text-[10px] font-bold uppercase tracking-widest">
                             <Lock className="w-3 h-3" />
-                            Secure Face Scan • Encrypted
+                            {t('secure_face_scan_desc', language)}
                         </div>
                     </div>
                 )}
@@ -328,7 +347,7 @@ const FaceScan: React.FC<FaceScanProps> = ({
                     ))}
                 </div>
 
-                <div className="px-6 py-2.5 dark:bg-black/60 bg-white/60 backdrop-blur-md rounded-full border dark:border-white/5 border-black/5 flex items-center gap-3">
+                <div className="px-6 py-2.5 dark:bg-black/60 bg-white/60 backdrop-blur-md rounded-xl border dark:border-white/5 border-black/5 flex items-center gap-3">
                     <div
                         className={`w-2 h-2 rounded-full ${isProcessing
                             ? 'bg-yellow-400 animate-pulse'
@@ -338,7 +357,7 @@ const FaceScan: React.FC<FaceScanProps> = ({
                             }`}
                     />
                     <span className="text-[10px] dark:text-slate-400 text-slate-600 uppercase tracking-[0.25em] font-black">
-                        {isProcessing ? 'Analyzing Liveness' : step === instructions.length - 1 ? 'Calibration Complete' : 'Awaiting Calibration'}
+                        {isProcessing ? t('analyzing_liveness', language) : step === instructions.length - 1 ? t('calibration_complete', language) : t('awaiting_calibration', language)}
                     </span>
                 </div>
             </footer>

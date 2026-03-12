@@ -27,10 +27,11 @@ app.use(helmet({
 // MongoDB injection prevention
 app.use(mongoSanitize());
 
-// Core Middleware
+// Core Middleware - Dynamic CORS with BusinessApp origin lookup
 app.use(cors({
-    origin: function (origin, callback) {
-        const allowedOrigins = [
+    origin: async function (origin, callback) {
+        // Static whitelist for core CasperID domains
+        const coreOrigins = [
             'http://localhost:3000',
             'http://localhost:3002',
             'http://localhost:5173',
@@ -48,22 +49,50 @@ app.use(cors({
             return callback(null, true);
         }
 
-        if (allowedOrigins.includes(origin)) {
+        // Check core origins first (fast path)
+        if (coreOrigins.includes(origin)) {
             return callback(null, true);
         }
 
-        callback(new Error('Not allowed by CORS'));
+        // Dynamic check: Look up BusinessApp allowed_origins from database
+        try {
+            const { BusinessApp } = require('./database/models');
+            const app = await BusinessApp.findOne({
+                allowed_origins: origin,
+                active: true
+            });
+            if (app) {
+                return callback(null, true);
+            }
+        } catch (err) {
+            // Database not ready yet or query failed - don't block core functionality
+            console.warn('CORS DB lookup failed:', err.message);
+        }
+
+        // In development, allow localhost on any port
+        if (process.env.NODE_ENV !== 'production' && origin.startsWith('http://localhost:')) {
+            return callback(null, true);
+        }
+
+        const error = new Error('Not allowed by CORS');
+        error.status = 403;
+        callback(error);
     },
     credentials: true
 }));
 app.use(express.json({
     limit: '50mb',
     verify: (req, res, buf) => {
-        try {
-            JSON.parse(buf);
-        } catch (e) {
-            res.status(400).json({ error: 'Invalid JSON' });
-            return;
+        // Only validate non-empty bodies
+        if (buf && buf.length > 0) {
+            try {
+                JSON.parse(buf);
+            } catch (e) {
+                // Throw error to let Express handle it properly
+                const error = new Error('Invalid JSON');
+                error.status = 400;
+                throw error;
+            }
         }
     }
 }));
@@ -184,10 +213,17 @@ app.use('/api/affiliates', require('./routes/affiliates')); // Affiliate applica
 
 // Error handling middleware
 app.use((err, req, res, next) => {
-    console.error(err.stack);
-    res.status(500).json({
-        error: 'Internal server error',
-        message: process.env.NODE_ENV === 'development' ? err.message : 'Something went wrong'
+    // Don't log stack for expected errors like invalid JSON
+    if (err.status && err.status < 500) {
+        console.warn(`[${new Date().toISOString()}] Client error:`, err.message);
+    } else {
+        console.error(err.stack);
+    }
+
+    const statusCode = err.status || err.statusCode || 500;
+    res.status(statusCode).json({
+        error: statusCode < 500 ? err.message : 'Internal server error',
+        message: process.env.NODE_ENV === 'development' ? err.message : undefined
     });
 });
 

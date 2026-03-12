@@ -3,6 +3,7 @@ const router = express.Router();
 const verificationServiceV2 = require('../services/verification-v2');
 const multer = require('multer');
 const path = require('path');
+const { extractApp } = require('../middleware/app-auth');
 
 /**
  * Verification V2 Routes
@@ -45,7 +46,7 @@ const upload = multer({
  * Start Layer 2 verification
  * POST /api/v2/verification/layer2/start
  */
-router.post('/layer2/start', async (req, res) => {
+router.post('/layer2/start', extractApp, async (req, res) => {
     try {
         const sessionToken = req.cookies.casperid_session ||
             req.headers.authorization?.replace('Bearer ', '');
@@ -61,7 +62,8 @@ router.post('/layer2/start', async (req, res) => {
 
         const result = await verificationServiceV2.startLayer2Verification(sessionToken, {
             linkWallet,
-            purpose
+            purpose,
+            appId: req.businessApp?.app_id // Pass appId from context
         });
 
         res.json({
@@ -126,7 +128,7 @@ router.post('/liveness', upload.fields([
  * Start Layer 3 verification
  * POST /api/v2/verification/layer3/start
  */
-router.post('/layer3/start', async (req, res) => {
+router.post('/layer3/start', extractApp, async (req, res) => {
     try {
         const sessionToken = req.cookies.casperid_session ||
             req.headers.authorization?.replace('Bearer ', '');
@@ -142,7 +144,8 @@ router.post('/layer3/start', async (req, res) => {
 
         const result = await verificationServiceV2.startLayer3Verification(sessionToken, {
             verificationMethod,
-            purpose
+            purpose,
+            appId: req.businessApp?.app_id // Pass appId from context
         });
 
         res.json({

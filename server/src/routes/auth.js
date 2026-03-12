@@ -222,6 +222,17 @@ router.post('/verify-otp', async (req, res) => {
             expiresAt
         });
 
+        // Check if user has passkey credentials
+        let hasPasskey = false;
+        if (userAccount) {
+            const { PasskeyCredential } = require('../database/models');
+            const passkeyCount = await PasskeyCredential.countDocuments({
+                user_id: userAccount.user_id,
+                revoked: false
+            });
+            hasPasskey = passkeyCount > 0;
+        }
+
         res.json({
             success: true,
             message: 'OTP verified successfully',
@@ -229,7 +240,14 @@ router.post('/verify-otp', async (req, res) => {
             verified: true,
             sessionToken: token,
             expiresAt: expiresAt.toISOString(),
-            userExists: !!userAccount
+            userExists: !!userAccount,
+            hasPasskey,
+            userAccount: userAccount ? {
+                user_id: userAccount.user_id,
+                wallet: userAccount.wallet,
+                tier: userAccount.tier || 'layer_0',
+                did_address: userAccount.did_address
+            } : null
         });
 
     } catch (error) {

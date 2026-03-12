@@ -3,6 +3,8 @@ import { motion } from 'framer-motion';
 import { User, CreditCard, Calendar, Globe, CheckCircle2, Sparkles, AlertCircle, Users } from 'lucide-react';
 import type { ExtractedDocumentData, DocumentType, Layer3SubmitResponse } from '../types';
 
+import { t } from '../utils/i18n';
+
 interface ReviewDataProps {
     requestId: string;
     documentType: DocumentType;
@@ -12,13 +14,15 @@ interface ReviewDataProps {
     onRetake?: () => void;
     onError?: (error: string) => void;
     apiBaseUrl?: string;
+    previewMode?: boolean;
+    language?: string;
 }
 
-const documentTypeLabels: Record<DocumentType, string> = {
-    passport: 'Passport',
-    drivers_license: 'Driver License',
-    national_id: 'ID Card'
-};
+const getDocumentTypeLabels = (language: string) => ({
+    passport: t('passport', language),
+    drivers_license: t('drivers_license', language),
+    national_id: t('national_id', language)
+});
 
 const ReviewData: React.FC<ReviewDataProps> = ({
     requestId,
@@ -28,7 +32,9 @@ const ReviewData: React.FC<ReviewDataProps> = ({
     onNext,
     onRetake,
     onError,
-    apiBaseUrl = 'https://apis.casperid.com'
+    apiBaseUrl = 'https://apis.casperid.com',
+    previewMode = false,
+    language = 'EN'
 }) => {
     // Editable fields state - initialize with extracted data
     const [formData, setFormData] = useState({
@@ -49,12 +55,28 @@ const ReviewData: React.FC<ReviewDataProps> = ({
     const handleConfirm = async () => {
         // Validate required fields
         if (!formData.firstName || !formData.lastName || !formData.documentNumber) {
-            setError('Please fill in all required fields.');
+            setError(t('error_required_fields', language));
             return;
         }
 
         setIsSubmitting(true);
         setError('');
+
+        if (previewMode) {
+            setTimeout(() => {
+                setIsSubmitting(false);
+                onNext({
+                    first_name: formData.firstName,
+                    last_name: formData.lastName,
+                    document_number: formData.documentNumber,
+                    date_of_birth: formData.dateOfBirth,
+                    nationality: formData.nationality,
+                    gender: formData.gender,
+                    document_type: documentType
+                });
+            }, 1500);
+            return;
+        }
 
         try {
             // Submit confirmed data to the backend using /layer3/submit endpoint
@@ -78,6 +100,11 @@ const ReviewData: React.FC<ReviewDataProps> = ({
                     }
                 })
             });
+
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({}));
+                throw new Error(errorData.error || `Data submission failed with status ${response.status}`);
+            }
 
             const data: Layer3SubmitResponse = await response.json();
 
@@ -118,15 +145,15 @@ const ReviewData: React.FC<ReviewDataProps> = ({
                 {[1, 2, 3, 0].map((fill, i) => (
                     <div
                         key={i}
-                        className={`h-1 flex-1 rounded-full ${fill ? 'bg-[var(--casperid-primary,#8651e1)]' : 'bg-[var(--casperid-primary,#8651e1)]/20'}`}
+                        className={`h-1 flex-1 rounded-xl ${fill ? 'bg-brand' : 'bg-brand/20'}`}
                     />
                 ))}
             </div>
 
             <div className="mb-6">
-                <h1 className="text-2xl font-bold text-main mb-2">Review Data</h1>
+                <h1 className="text-2xl font-bold text-main mb-2">{t('review_data', language)}</h1>
                 <p className="text-muted text-sm leading-relaxed">
-                    Verify your extracted identity information. This data will be used to mint your CasperID.
+                    {t('verify_data_desc', language)}
                 </p>
             </div>
 
@@ -134,7 +161,7 @@ const ReviewData: React.FC<ReviewDataProps> = ({
             {confidence > 0 && (
                 <div className="mb-6 p-3 rounded-xl dark:bg-white/5 bg-black/5 border dark:border-white/10 border-black/5">
                     <div className="flex items-center justify-between mb-2">
-                        <span className="text-xs font-semibold text-muted">OCR Confidence</span>
+                        <span className="text-xs font-semibold text-muted">{t('ocr_confidence', language)}</span>
                         <span className={`text-xs font-bold ${confidencePercent >= 80 ? 'text-green-500' : confidencePercent >= 60 ? 'text-yellow-500' : 'text-red-500'}`}>
                             {confidencePercent}%
                         </span>
@@ -147,7 +174,7 @@ const ReviewData: React.FC<ReviewDataProps> = ({
                     </div>
                     {confidencePercent < 80 && (
                         <p className="text-[10px] text-yellow-500 mt-2">
-                            Please verify the extracted data carefully.
+                            {t('verify_data_carefully', language)}
                         </p>
                     )}
                 </div>
@@ -163,107 +190,96 @@ const ReviewData: React.FC<ReviewDataProps> = ({
 
             <div className="space-y-5">
                 {/* First Name */}
-                <div className="space-y-2">
-                    <label className="text-xs font-semibold uppercase tracking-wider text-[var(--casperid-primary,#8651e1)]/80 ml-1">
-                        First Name *
+                <div className="space-y-3">
+                    <label className="text-xs font-bold uppercase tracking-[0.15em] text-brand ml-1">
+                        {t('full_name', language)}
                     </label>
-                    <div className="dark:bg-white/5 bg-black/5 rounded-2xl flex items-center px-4 py-3 border dark:border-white/10 border-black/5 focus-within:ring-2 focus-within:ring-[var(--casperid-primary,#8651e1)]/40 transition-all">
-                        <User className="text-[var(--casperid-primary,#8651e1)]/60 mr-3 w-5 h-5" />
-                        <input
-                            className="bg-transparent border-none p-0 w-full focus:ring-0 text-main font-medium focus:outline-none"
-                            type="text"
-                            value={formData.firstName}
-                            onChange={(e) => handleInputChange('firstName', e.target.value)}
-                            placeholder="Enter first name"
-                        />
-                    </div>
-                </div>
-
-                {/* Last Name */}
-                <div className="space-y-2">
-                    <label className="text-xs font-semibold uppercase tracking-wider text-[var(--casperid-primary,#8651e1)]/80 ml-1">
-                        Last Name *
-                    </label>
-                    <div className="dark:bg-white/5 bg-black/5 rounded-2xl flex items-center px-4 py-3 border dark:border-white/10 border-black/5 focus-within:ring-2 focus-within:ring-[var(--casperid-primary,#8651e1)]/40 transition-all">
-                        <Users className="text-[var(--casperid-primary,#8651e1)]/60 mr-3 w-5 h-5" />
-                        <input
-                            className="bg-transparent border-none p-0 w-full focus:ring-0 text-main font-medium focus:outline-none"
-                            type="text"
-                            value={formData.lastName}
-                            onChange={(e) => handleInputChange('lastName', e.target.value)}
-                            placeholder="Enter last name"
-                        />
+                    <div className="flex items-center px-1 transition-all">
+                        <User className="text-brand mr-4 w-6 h-6 shrink-0" />
+                        <div className="flex flex-col w-full">
+                            <input
+                                className="bg-transparent border-none p-0 w-full focus:ring-0 text-main font-bold text-lg focus:outline-none placeholder:text-slate-300"
+                                type="text"
+                                value={`${formData.firstName} ${formData.lastName}`}
+                                onChange={(e) => {
+                                    const parts = e.target.value.split(' ');
+                                    handleInputChange('firstName', parts[0] || '');
+                                    handleInputChange('lastName', parts.slice(1).join(' ') || '');
+                                }}
+                                placeholder={t('enter_first_name', language)}
+                            />
+                        </div>
                     </div>
                 </div>
 
                 {/* Document Number */}
-                <div className="space-y-2">
-                    <label className="text-xs font-semibold uppercase tracking-wider text-[var(--casperid-primary,#8651e1)]/80 ml-1">
-                        {documentTypeLabels[documentType]} Number *
+                <div className="space-y-3">
+                    <label className="text-xs font-bold uppercase tracking-[0.15em] text-brand ml-1">
+                        {t('id_number', language)}
                     </label>
-                    <div className="dark:bg-white/5 bg-black/5 rounded-2xl flex items-center px-4 py-3 border dark:border-white/10 border-black/5 focus-within:ring-2 focus-within:ring-[var(--casperid-primary,#8651e1)]/40 transition-all">
-                        <CreditCard className="text-[var(--casperid-primary,#8651e1)]/60 mr-3 w-5 h-5" />
+                    <div className="flex items-center px-1 transition-all">
+                        <CreditCard className="text-brand mr-4 w-6 h-6 shrink-0" />
                         <input
-                            className="bg-transparent border-none p-0 w-full focus:ring-0 text-main font-medium focus:outline-none"
+                            className="bg-transparent border-none p-0 w-full focus:ring-0 text-main font-bold text-lg focus:outline-none placeholder:text-slate-300"
                             type="text"
                             value={formData.documentNumber}
                             onChange={(e) => handleInputChange('documentNumber', e.target.value)}
-                            placeholder="Enter document number"
+                            placeholder={t('enter_doc_number', language)}
                         />
                     </div>
                 </div>
 
                 {/* Date of Birth */}
-                <div className="space-y-2">
-                    <label className="text-xs font-semibold uppercase tracking-wider text-[var(--casperid-primary,#8651e1)]/80 ml-1">
-                        Date of Birth
+                <div className="space-y-3">
+                    <label className="text-xs font-bold uppercase tracking-[0.15em] text-brand ml-1">
+                        {t('date_of_birth', language)}
                     </label>
-                    <div className="dark:bg-white/5 bg-black/5 rounded-2xl flex items-center px-4 py-3 border dark:border-white/10 border-black/5 focus-within:ring-2 focus-within:ring-[var(--casperid-primary,#8651e1)]/40 transition-all">
-                        <Calendar className="text-[var(--casperid-primary,#8651e1)]/60 mr-3 w-5 h-5" />
+                    <div className="flex items-center px-1 transition-all">
+                        <Calendar className="text-brand mr-4 w-6 h-6 shrink-0" />
                         <input
-                            className="bg-transparent border-none p-0 w-full focus:ring-0 text-main font-medium focus:outline-none"
+                            className="bg-transparent border-none p-0 w-full focus:ring-0 text-main font-bold text-lg focus:outline-none placeholder:text-slate-300"
                             type="text"
                             value={formData.dateOfBirth}
                             onChange={(e) => handleInputChange('dateOfBirth', e.target.value)}
-                            placeholder="DD/MM/YYYY"
+                            placeholder={t('date_format', language)}
                         />
                     </div>
                 </div>
 
                 {/* Nationality */}
-                <div className="space-y-2">
-                    <label className="text-xs font-semibold uppercase tracking-wider text-[var(--casperid-primary,#8651e1)]/80 ml-1">
-                        Nationality
+                <div className="space-y-3">
+                    <label className="text-xs font-bold uppercase tracking-[0.15em] text-brand ml-1">
+                        {t('nationality', language)}
                     </label>
-                    <div className="dark:bg-white/5 bg-black/5 rounded-2xl flex items-center px-4 py-3 border dark:border-white/10 border-black/5 focus-within:ring-2 focus-within:ring-[var(--casperid-primary,#8651e1)]/40 transition-all">
-                        <Globe className="text-[var(--casperid-primary,#8651e1)]/60 mr-3 w-5 h-5" />
+                    <div className="flex items-center px-1 transition-all">
+                        <Globe className="text-brand mr-4 w-6 h-6 shrink-0" />
                         <input
-                            className="bg-transparent border-none p-0 w-full focus:ring-0 text-main font-medium focus:outline-none"
+                            className="bg-transparent border-none p-0 w-full focus:ring-0 text-main font-bold text-lg focus:outline-none placeholder:text-slate-300"
                             type="text"
                             value={formData.nationality}
                             onChange={(e) => handleInputChange('nationality', e.target.value)}
-                            placeholder="Enter nationality"
+                            placeholder={t('enter_nationality', language)}
                         />
                     </div>
                 </div>
 
                 {/* Document scan thumbnail */}
-                <div className="mt-8 relative h-32 w-full rounded-2xl overflow-hidden border border-[var(--casperid-primary,#8651e1)]/20 group">
-                    <div className="absolute inset-0 bg-gradient-to-tr from-[var(--casperid-primary,#8651e1)]/20 to-cyan-500/10 blur-sm" />
-                    <div className="absolute inset-0 bg-[var(--casperid-primary,#8651e1)]/10 flex flex-col items-center justify-center p-4">
+                <div className="mt-8 relative h-32 w-full rounded-2xl overflow-hidden border border-brand-20 group">
+                    <div className="absolute inset-0 bg-gradient-to-tr from-brand-20 to-cyan-500/10 blur-sm" />
+                    <div className="absolute inset-0 bg-brand/10 flex flex-col items-center justify-center p-4">
                         <div className="flex items-center gap-3">
-                            <CheckCircle2 className="text-[var(--casperid-primary,#8651e1)] w-5 h-5" />
+                            <CheckCircle2 className="text-brand w-5 h-5" />
                             <span className="text-xs font-bold dark:text-slate-200 text-slate-700">
-                                {documentTypeLabels[documentType]} Scanned Successfully
+                                {t('scanned_successfully', language)}
                             </span>
                         </div>
                         {onRetake && (
                             <button
                                 onClick={onRetake}
-                                className="mt-2 text-[10px] text-[var(--casperid-primary,#8651e1)] underline font-medium"
+                                className="mt-2 text-[10px] text-brand underline font-medium"
                                 type="button"
                             >
-                                Retake Photo
+                                {t('retake_photo', language)}
                             </button>
                         )}
                     </div>
@@ -274,22 +290,22 @@ const ReviewData: React.FC<ReviewDataProps> = ({
                 <button
                     onClick={handleConfirm}
                     disabled={isSubmitting}
-                    className="w-full bg-[var(--casperid-primary,#8651e1)] hover:bg-[var(--casperid-primary,#8651e1)]/90 text-white font-bold py-4 rounded-2xl shadow-lg shadow-[var(--casperid-primary,#8651e1)]/30 flex items-center justify-center gap-2 transition-transform active:scale-95 disabled:opacity-70"
+                    className="w-full bg-brand hover:bg-brand/90 text-white font-bold py-4 rounded-2xl shadow-lg shadow-brand flex items-center justify-center gap-2 transition-transform active:scale-95 disabled:opacity-70"
                 >
                     {isSubmitting ? (
                         <>
                             <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                            <span>Submitting...</span>
+                            <span>{t('submitting', language)}</span>
                         </>
                     ) : (
                         <>
-                            <span>Confirm & Mint</span>
+                            <span>{t('confirm_mint', language)}</span>
                             <Sparkles className="w-5 h-5" />
                         </>
                     )}
                 </button>
                 <p className="text-center text-[10px] mt-4 text-slate-500">
-                    Secured by CasperID Protocol.
+                    {t('secured_by_casper', language)}
                 </p>
             </div>
         </motion.div>
