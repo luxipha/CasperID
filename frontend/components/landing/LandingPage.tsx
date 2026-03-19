@@ -140,9 +140,6 @@ export default function LandingPage({ initialView = 'main' }: LandingPageProps) 
                   Roadmap
                 </a>
                 <a href="#developers" className="hover:text-slate-900 transition">
-                  Developers
-                </a>
-                <a onClick={() => navigate('/business')} className="hover:text-slate-900 transition cursor-pointer">
                   Business
                 </a>
                 <a
@@ -208,39 +205,37 @@ export default function LandingPage({ initialView = 'main' }: LandingPageProps) 
               <div className="absolute inset-0 bg-[radial-gradient(1px_1px_at_20%_30%,rgba(99,102,241,0.2),transparent),radial-gradient(1px_1px_at_80%_20%,rgba(79,70,229,0.15),transparent)] opacity-30" />
               <div className="relative z-10 h-full max-w-6xl mx-auto px-4 md:px-6 flex flex-col md:flex-row items-center justify-center gap-8 md:gap-12">
                 <div className="flex-1 flex flex-col items-center text-center space-y-3 md:space-y-4">
-                  <div className="text-xs uppercase tracking-[0.2em] text-slate-400">
-                    Available at no charge
-                  </div>
-                  <div className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold text-slate-900">
-                    For developers
-                  </div>
-                  <div className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-semibold text-slate-600">
-                    A verified identity you can reuse everywhere
-                  </div>
-                  <a
-                    href="https://chromewebstore.google.com/detail/oecccgmhmojgniechnclmffchodmdjmd"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="mt-4 px-5 md:px-6 py-2.5 md:py-3 rounded-full bg-slate-900 text-white text-sm font-semibold shadow-sm hover:bg-slate-800 transition-colors inline-block"
-                  >
-                    Download for Chrome
-                  </a>
-                </div>
-                <div className="flex-1 flex flex-col items-center text-center space-y-3 md:space-y-4">
                   <div className="text-xs uppercase tracking-[0.2em] text-indigo-500 font-bold">
                     Now live
                   </div>
                   <div className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold text-slate-900">
-                    For organizations
+                    For Businesses
                   </div>
                   <div className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-semibold text-slate-600">
                     Identity infrastructure for real teams
                   </div>
                   <button
                     onClick={() => navigate('/business')}
-                    className="mt-4 px-5 md:px-6 py-2.5 md:py-3 rounded-full bg-indigo-600 text-white text-sm font-semibold shadow-lg shadow-indigo-200 hover:bg-indigo-700 transition-all active:scale-95"
+                    className="mt-4 px-5 md:px-6 py-2.5 md:py-3 rounded-full bg-slate-900 text-white text-sm font-semibold shadow-sm hover:bg-slate-800 transition-colors active:scale-95"
                   >
-                    Open Business Platform
+                    Get started
+                  </button>
+                </div>
+                <div className="flex-1 flex flex-col items-center text-center space-y-3 md:space-y-4 opacity-40 grayscale pointer-events-none">
+                  <div className="text-xs uppercase tracking-[0.2em] text-slate-400">
+                    Coming Soon
+                  </div>
+                  <div className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold text-slate-900">
+                    For organizations
+                  </div>
+                  <div className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-semibold text-slate-600">
+                    Enterprise-grade identity management
+                  </div>
+                  <button
+                    disabled
+                    className="mt-4 px-5 md:px-6 py-2.5 md:py-3 rounded-full bg-slate-200 text-slate-500 text-sm font-semibold cursor-not-allowed"
+                  >
+                    Get started
                   </button>
                 </div>
               </div>
@@ -375,8 +370,7 @@ export default function LandingPage({ initialView = 'main' }: LandingPageProps) 
           <div className="flex flex-col items-center justify-center h-full gap-8 text-2xl font-bold text-slate-900 px-6">
             <a onClick={() => { setIsMenuOpen(false); handleNavigate('main'); }} href="#blogs" className="hover:text-indigo-600 transition">Resources</a>
             <a onClick={() => setIsMenuOpen(false)} href="#roadmap" className="hover:text-indigo-600 transition">Roadmap</a>
-            <a onClick={() => setIsMenuOpen(false)} href="#developers" className="hover:text-indigo-600 transition">Developers</a>
-            <a onClick={() => { setIsMenuOpen(false); navigate('/business'); }} className="hover:text-indigo-600 transition cursor-pointer">Business</a>
+            <a onClick={() => setIsMenuOpen(false)} href="#developers" className="hover:text-indigo-600 transition">Business</a>
             <a onClick={() => { setIsMenuOpen(false); handleNavigate('anra'); }} className="hover:text-indigo-600 transition cursor-pointer">anra</a>
             <div className="flex flex-col gap-4 mt-8 w-full max-w-sm">
               <a href="/dashboard" className="w-full text-center py-4 bg-indigo-100 text-indigo-700 rounded-2xl text-lg font-bold">Get CasperID</a>
