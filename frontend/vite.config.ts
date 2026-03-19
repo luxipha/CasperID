@@ -166,6 +166,8 @@ export default defineConfig(({ mode }) => {
         'react': path.resolve(__dirname, 'node_modules/react'),
         'react-dom': path.resolve(__dirname, 'node_modules/react-dom'),
         'framer-motion': path.resolve(__dirname, 'node_modules/framer-motion'),
+        // Resolve tailwindcss from frontend's node_modules for SDK source imports
+        'tailwindcss': path.resolve(__dirname, 'node_modules/tailwindcss'),
       }
     }
   };
