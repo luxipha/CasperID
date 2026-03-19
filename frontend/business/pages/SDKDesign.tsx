@@ -3,7 +3,6 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Monitor, Smartphone } from 'lucide-react';
 import { CasperIDModal } from '../../../sdk/packages/react/src/CasperIDModal';
-import '../../../sdk/packages/react/src/index.css';
 import type { Screen } from '../../../sdk/packages/react/src/types';
 
 // Safe way to access import.meta.env to avoid lint errors

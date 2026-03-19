@@ -236,7 +236,7 @@ export default function LandingPage({ initialView = 'main' }: LandingPageProps) 
                   <div className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-semibold text-slate-600">
                     Identity infrastructure for real teams
                   </div>
-                  <button 
+                  <button
                     onClick={() => navigate('/business')}
                     className="mt-4 px-5 md:px-6 py-2.5 md:py-3 rounded-full bg-indigo-600 text-white text-sm font-semibold shadow-lg shadow-indigo-200 hover:bg-indigo-700 transition-all active:scale-95"
                   >

@@ -1,5 +1,6 @@
 @import "tailwindcss";
 @config "./tailwind.config.js";
+@import "../sdk/packages/react/src/index.css";
 
 /* Global Styles */
 :root {
@@ -29,49 +30,4 @@ body {
 .no-scrollbar {
     -ms-overflow-style: none;
     scrollbar-width: none;
-}
-
-/* ============================================
-   SDK Glass Components — used by CasperIDModal preview
-   ============================================ */
-@layer components {
-
-    /* Light mode (default) */
-    .glass-container {
-        backdrop-filter: blur(32px);
-        -webkit-backdrop-filter: blur(32px);
-        background: rgba(255, 255, 255, 0.85);
-        border: 1px solid rgba(0, 0, 0, 0.06);
-        transition: all 0.5s;
-    }
-
-    /* Dark mode — applied when .dark class is on an ancestor */
-    .dark .glass-container {
-        background: rgba(255, 255, 255, 0.03);
-        border-color: rgba(255, 255, 255, 0.1);
-        box-shadow: none;
-    }
-
-    .light .glass-container {
-        box-shadow:
-            0 20px 50px -12px rgba(0, 0, 0, 0.08),
-            0 0 0 1px rgba(0, 0, 0, 0.02);
-    }
-
-    /* Theme-aware text helpers inside SDK modal */
-    .dark .text-main {
-        color: #ffffff;
-    }
-
-    .light .text-main {
-        color: #0f172a;
-    }
-
-    .dark .text-muted {
-        color: #94a3b8;
-    }
-
-    .light .text-muted {
-        color: #64748b;
-    }
 }
