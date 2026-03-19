@@ -37,18 +37,6 @@ const Billing: React.FC = () => {
         <p className="text-text-muted">Manage your subscription plan, payment methods, and monitor usage metrics.</p>
       </div>
 
-      {/* Coming Soon Banner */}
-      <div className="bg-linear-to-r from-primary/10 to-cyan-500/10 border border-primary/20 rounded-2xl p-6 flex items-center gap-4">
-        <div className="w-12 h-12 rounded-full bg-primary/20 flex items-center justify-center">
-          <span className="material-symbols-outlined text-primary text-2xl">rocket_launch</span>
-        </div>
-        <div className="flex-1">
-          <h3 className="text-text-main font-bold">Billing Integration Coming Soon</h3>
-          <p className="text-text-muted text-sm">We're working on subscription plans and payment processing. Currently, the platform is free to use during beta.</p>
-        </div>
-        <span className="px-3 py-1 bg-amber-100 text-amber-700 text-xs font-bold rounded-full">Beta</span>
-      </div>
-
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Current Plan Card */}
         <div className="lg:col-span-1 flex flex-col justify-between rounded-xl bg-white p-6 border border-border-muted shadow-sm">

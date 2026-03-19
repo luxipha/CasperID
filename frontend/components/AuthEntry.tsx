@@ -7,9 +7,17 @@ interface AuthEntryProps {
   onEmailSubmit: (email: string, verificationId: string) => void;
   onReturningUser: (email: string) => void;
   onBiometricLogin: (email?: string) => void;
+  appLogo?: string;
+  appName?: string;
 }
 
-export const AuthEntry: React.FC<AuthEntryProps> = ({ onEmailSubmit, onReturningUser, onBiometricLogin }) => {
+export const AuthEntry: React.FC<AuthEntryProps> = ({ 
+  onEmailSubmit, 
+  onReturningUser, 
+  onBiometricLogin,
+  appLogo,
+  appName
+}) => {
   const [email, setEmail] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isVerifying, setIsVerifying] = useState(false);
@@ -99,12 +107,35 @@ export const AuthEntry: React.FC<AuthEntryProps> = ({ onEmailSubmit, onReturning
       <div className="w-full max-w-[480px] z-10 flex flex-col items-center gap-10">
         {/* Branding */}
         <div className="flex flex-col items-center gap-4">
-          <div className="size-16 flex items-center justify-center rotate-12 transition-transform hover:rotate-0 cursor-default">
-            <Logo showName={false} className="scale-[2.0]" />
-          </div>
+          {appLogo ? (
+            <div className="flex items-center gap-6 mb-2">
+              <div className="size-16 rounded-2xl bg-white shadow-lg flex items-center justify-center border border-gray-100 overflow-hidden p-2 transform -rotate-6 transition-transform hover:rotate-0">
+                <img src={appLogo} alt={appName} className="w-full h-full object-contain" />
+              </div>
+              <div className="text-text-sub/30 animate-pulse">
+                <span className="material-symbols-outlined text-2xl">sync_alt</span>
+              </div>
+              <div className="size-16 rounded-2xl bg-primary shadow-lg flex items-center justify-center transform rotate-6 transition-transform hover:rotate-0">
+                <Logo showName={false} className="scale-[1.5] invert brightness-0" />
+              </div>
+            </div>
+          ) : (
+            <div className="size-16 flex items-center justify-center rotate-12 transition-transform hover:rotate-0 cursor-default">
+              <Logo showName={false} className="scale-[2.0]" />
+            </div>
+          )}
+          
           <div className="text-center">
-            <h1 className="text-3xl font-black text-text-main tracking-tight leading-none">CasperID</h1>
-            <p className="text-text-sub text-[10px] font-black uppercase tracking-[0.3em] opacity-40 mt-1">Sovereign Identity Layer</p>
+            <h1 className="text-3xl font-black text-text-main tracking-tight leading-none">
+              {appLogo ? (
+                <>Authorize <span className="text-primary">{appName}</span></>
+              ) : (
+                'CasperID'
+              )}
+            </h1>
+            <p className="text-text-sub text-[10px] font-black uppercase tracking-[0.3em] opacity-40 mt-1">
+              {appLogo ? 'Secure Identity Connection' : 'Sovereign Identity Layer'}
+            </p>
           </div>
         </div>
 

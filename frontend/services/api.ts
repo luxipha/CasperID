@@ -1860,6 +1860,15 @@ class ApiService {
       throw this.handleError(error);
     }
   }
+
+  async getAppMetadata(appId: string): Promise<ApiResponse> {
+    try {
+      const response = await this.client.get(`/api/business/app-metadata/${appId}`);
+      return response.data;
+    } catch (error) {
+      throw this.handleError(error);
+    }
+  }
 }
 
 // Export singleton instance

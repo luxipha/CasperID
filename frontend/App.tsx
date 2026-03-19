@@ -159,6 +159,7 @@ const App: React.FC = () => {
   const [isConnectWalletOpen, setIsConnectWalletOpen] = useState(false);
   const [isMobileDrawerOpen, setIsMobileDrawerOpen] = useState(false);
   const [isScannerOpen, setIsScannerOpen] = useState(false);
+  const [appMetadata, setAppMetadata] = useState<{ name: string; logo_url: string; theme?: any } | null>(null);
   const { user, isLoading, isAuthenticated } = useAuth();
 
   // --- Page Title Logic ---
@@ -272,6 +273,29 @@ const App: React.FC = () => {
       });
     }
   }, [user]);
+
+  // Fetch App Metadata if app_id is present in URL
+  useEffect(() => {
+    const searchParams = new URLSearchParams(location.search);
+    const appId = searchParams.get('app_id');
+    
+    if (appId) {
+      const fetchMetadata = async () => {
+        try {
+          const { apiService } = await import('./services/api');
+          const response = await apiService.getAppMetadata(appId);
+          if (response.success && response.app) {
+            setAppMetadata(response.app);
+          }
+        } catch (error) {
+          console.error('Failed to fetch app metadata:', error);
+        }
+      };
+      fetchMetadata();
+    } else {
+      setAppMetadata(null);
+    }
+  }, [location.search]);
 
   // Set initial view based on authentication and completion state
   React.useEffect(() => {
@@ -429,6 +453,8 @@ const App: React.FC = () => {
             onEmailSubmit={handleEmailSubmit}
             onReturningUser={handleToOverview}
             onBiometricLogin={handleBiometricLogin}
+            appLogo={appMetadata?.logo_url}
+            appName={appMetadata?.name}
           />
         );
       case 'otp-verify':
@@ -785,8 +811,8 @@ const App: React.FC = () => {
       <ConsentRequestModal
         isOpen={isConsentModalOpen}
         onClose={() => setIsConsentModalOpen(false)}
-        appName="CasperSwap"
-        appLogo="https://casperswap.xyz/logo.png"
+        appName={appMetadata?.name || "CasperSwap"}
+        appLogo={appMetadata?.logo_url || "https://casperswap.xyz/logo.png"}
         onApprove={() => {
           setIsConsentModalOpen(false);
         }}

@@ -142,6 +142,9 @@ export default function LandingPage({ initialView = 'main' }: LandingPageProps) 
                 <a href="#developers" className="hover:text-slate-900 transition">
                   Developers
                 </a>
+                <a onClick={() => navigate('/business')} className="hover:text-slate-900 transition cursor-pointer">
+                  Business
+                </a>
                 <a
                   onClick={() => handleNavigate('anra')}
                   className={`hover:text-slate-900 transition cursor-pointer flex items-center gap-0.5 ${currentLandingView === 'anra' ? 'text-indigo-600 font-bold' : ''}`}
@@ -214,15 +217,18 @@ export default function LandingPage({ initialView = 'main' }: LandingPageProps) 
                   <div className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-semibold text-slate-600">
                     A verified identity you can reuse everywhere
                   </div>
-                  <div
-                    className="mt-4 px-5 md:px-6 py-2.5 md:py-3 rounded-full bg-slate-100 text-slate-400 text-sm font-semibold border border-slate-200 cursor-default inline-block"
+                  <a
+                    href="https://chromewebstore.google.com/detail/oecccgmhmojgniechnclmffchodmdjmd"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="mt-4 px-5 md:px-6 py-2.5 md:py-3 rounded-full bg-slate-900 text-white text-sm font-semibold shadow-sm hover:bg-slate-800 transition-colors inline-block"
                   >
                     Download for Chrome
-                  </div>
+                  </a>
                 </div>
                 <div className="flex-1 flex flex-col items-center text-center space-y-3 md:space-y-4">
-                  <div className="text-xs uppercase tracking-[0.2em] text-slate-400">
-                    Coming soon
+                  <div className="text-xs uppercase tracking-[0.2em] text-indigo-500 font-bold">
+                    Now live
                   </div>
                   <div className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold text-slate-900">
                     For organizations
@@ -230,8 +236,11 @@ export default function LandingPage({ initialView = 'main' }: LandingPageProps) 
                   <div className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-semibold text-slate-600">
                     Identity infrastructure for real teams
                   </div>
-                  <button className="mt-4 px-5 md:px-6 py-2.5 md:py-3 rounded-full bg-white text-slate-800 text-sm font-semibold border border-slate-200 shadow-sm">
-                    Notify me
+                  <button 
+                    onClick={() => navigate('/business')}
+                    className="mt-4 px-5 md:px-6 py-2.5 md:py-3 rounded-full bg-indigo-600 text-white text-sm font-semibold shadow-lg shadow-indigo-200 hover:bg-indigo-700 transition-all active:scale-95"
+                  >
+                    Open Business Platform
                   </button>
                 </div>
               </div>
@@ -367,6 +376,7 @@ export default function LandingPage({ initialView = 'main' }: LandingPageProps) 
             <a onClick={() => { setIsMenuOpen(false); handleNavigate('main'); }} href="#blogs" className="hover:text-indigo-600 transition">Resources</a>
             <a onClick={() => setIsMenuOpen(false)} href="#roadmap" className="hover:text-indigo-600 transition">Roadmap</a>
             <a onClick={() => setIsMenuOpen(false)} href="#developers" className="hover:text-indigo-600 transition">Developers</a>
+            <a onClick={() => { setIsMenuOpen(false); navigate('/business'); }} className="hover:text-indigo-600 transition cursor-pointer">Business</a>
             <a onClick={() => { setIsMenuOpen(false); handleNavigate('anra'); }} className="hover:text-indigo-600 transition cursor-pointer">anra</a>
             <div className="flex flex-col gap-4 mt-8 w-full max-w-sm">
               <a href="/dashboard" className="w-full text-center py-4 bg-indigo-100 text-indigo-700 rounded-2xl text-lg font-bold">Get CasperID</a>

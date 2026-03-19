@@ -37,6 +37,7 @@ const IntegrationDetail: React.FC = () => {
   // Form state
   const [name, setName] = useState('');
   const [website, setWebsite] = useState('');
+  const [environment, setEnvironment] = useState<'sandbox' | 'production'>('sandbox');
   const [listingStatus, setListingStatus] = useState<'listed' | 'unlisted'>('unlisted');
   const [tier, setTier] = useState('L2');
   const [proofs, setProofs] = useState<string[]>(['liveness', 'email']);
@@ -54,6 +55,7 @@ const IntegrationDetail: React.FC = () => {
           setApp(a);
           setName(a.name);
           setWebsite(a.website_url || '');
+          setEnvironment(a.environment || 'sandbox');
           setListingStatus(a.listing_status || 'unlisted');
           setTier(a.sdk_config?.requiredTier || 'L2');
           setProofs(a.sdk_config?.proofs || ['liveness', 'email']);
@@ -78,6 +80,7 @@ const IntegrationDetail: React.FC = () => {
       const response = await apiService.patch(`/api/business/apps/${id}`, {
         name,
         website_url: website,
+        environment,
         listing_status: listingStatus,
         sdk_config: {
           requiredTier: tier,
@@ -89,6 +92,8 @@ const IntegrationDetail: React.FC = () => {
         setToastMessage('Changes saved successfully!');
         setShowToast(true);
         setTimeout(() => setShowToast(false), 3000);
+        // Update local app state to reflect new environment badge
+        if (app) setApp({ ...app, environment });
       }
     } catch (err: any) {
       setToastMessage(err.message || 'Failed to save changes');
@@ -223,6 +228,22 @@ const IntegrationDetail: React.FC = () => {
                   placeholder="https://example.com"
                 />
               </div>
+              <div className="flex items-center justify-between p-4 rounded-xl bg-background-light/50 border border-border-muted">
+                <div className="flex flex-col gap-0.5">
+                  <span className="text-sm font-bold text-text-main">Production Mode</span>
+                  <span className="text-xs text-text-muted">Enable production environment to list in public directory</span>
+                </div>
+                <label className="relative inline-flex items-center cursor-pointer">
+                  <input
+                    type="checkbox"
+                    className="sr-only peer"
+                    checked={environment === 'production'}
+                    onChange={(e) => setEnvironment(e.target.checked ? 'production' : 'sandbox')}
+                  />
+                  <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                </label>
+              </div>
+
               <div className="flex items-center justify-between p-4 rounded-xl bg-background-light/50 border border-border-muted">
                 <div className="flex flex-col gap-0.5">
                   <span className="text-sm font-bold text-text-main">List in Public Directory</span>

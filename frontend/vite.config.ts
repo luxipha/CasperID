@@ -1,8 +1,30 @@
 import path from 'path';
-import { defineConfig, loadEnv } from 'vite';
+import { defineConfig, loadEnv, PluginOption } from 'vite';
 import react from '@vitejs/plugin-react';
 import tailwindcss from '@tailwindcss/vite';
 import { VitePWA } from 'vite-plugin-pwa';
+
+// Plugin to suppress HMR console logs in browser
+function suppressHmrLogs(): PluginOption {
+  return {
+    name: 'suppress-hmr-logs',
+    transformIndexHtml(html) {
+      return html.replace(
+        '</head>',
+        `<script>
+          (function() {
+            const originalLog = console.log;
+            console.log = function(...args) {
+              if (args[0] && typeof args[0] === 'string' && args[0].includes('[vite] hot updated')) return;
+              originalLog.apply(console, args);
+            };
+          })();
+        </script>
+        </head>`
+      );
+    }
+  };
+}
 
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, '.', '');
@@ -16,9 +38,6 @@ export default defineConfig(({ mode }) => {
         'Cross-Origin-Opener-Policy': 'same-origin',
         'Cross-Origin-Embedder-Policy': 'credentialless',
       },
-      // hmr: {
-      //   clientPort: 443, // Ngrok uses 443 for HTTPS
-      // },
       proxy: {
         // Proxy API calls to local backend during development
         '/api': {
@@ -37,6 +56,7 @@ export default defineConfig(({ mode }) => {
     plugins: [
       react(),
       tailwindcss(),
+      suppressHmrLogs(),
       VitePWA({
         registerType: 'autoUpdate',
         includeAssets: [
