@@ -171,51 +171,64 @@ router.post('/ai/verify-liveness-sequence', upload.fields([
 
         // 2. If Passed, Handle Based on Layer
         if (result.passed) {
-            const { UserAccount } = require('../database/models');
+            const { Credential, UserAccount, VerificationRequestV2 } = require('../database/models');
             const crypto = require('crypto');
             const fs = require('fs');
             const path = require('path');
 
-            // Check if this is Layer 3 flow (user already has Layer 2)
-            if (userAccount.tier === 'layer_2') {
+            // Check if there's an active Layer 3 verification request for this user
+            const pendingLayer3Request = await VerificationRequestV2.findOne({
+                user_id: userAccount.user_id,
+                verification_tier: 'layer_3',
+                status: { $in: ['pending', 'in_progress'] }
+            });
+
+            // Check if this is Layer 3 flow (user already has Layer 2 OR has pending Layer 3 request)
+            if (userAccount.tier === 'layer_2' || pendingLayer3Request) {
                 // Layer 3 flow - DON'T mint credential yet
-                // Save key frames for admin review
+                // Upload key frames to ImageKit for admin review
 
-                // Save 5 key frames to disk for admin review
-                const uploadsDir = path.join(__dirname, '../../uploads/liveness');
-                if (!fs.existsSync(uploadsDir)) {
-                    fs.mkdirSync(uploadsDir, { recursive: true });
-                }
-
+                const imagekit = require('../services/imagekit');
                 const frameInterval = Math.floor(frames.length / 5);
                 const keyFrameIndices = [0, frameInterval, frameInterval * 2, frameInterval * 3, frames.length - 1];
-                const savedFramePaths = [];
+                const livenessFrameUrls = [];
+
+                console.log(`[AI] Layer 3 liveness passed. Uploading ${keyFrameIndices.length} frames to ImageKit...`);
 
                 for (const idx of keyFrameIndices) {
                     if (frames[idx]) {
-                        const frameId = `${userAccount.wallet.slice(-12)}-${Date.now()}-${idx}`;
-                        const framePath = path.join(uploadsDir, `${frameId}.jpg`);
-                        fs.writeFileSync(framePath, frames[idx]);
-                        savedFramePaths.push(`/uploads/liveness/${frameId}.jpg`);
+                        try {
+                            const uploadResponse = await imagekit.files.upload({
+                                file: frames[idx].toString('base64'),
+                                fileName: `liveness-${userAccount.user_id}-${Date.now()}-${idx}`,
+                                folder: '/liveness-frames',
+                                useUniqueFileName: true
+                            });
+                            livenessFrameUrls.push(uploadResponse.url);
+                        } catch (uploadError) {
+                            console.warn(`[AI] Failed to upload liveness frame ${idx}:`, uploadError.message);
+                        }
                     }
                 }
 
-                // Store liveness result with frame paths for the verification request
-                // We'll use a simple file-based approach for now
-                const livenessDataPath = path.join(uploadsDir, `${userAccount.wallet.slice(-20)}-result.json`);
-                fs.writeFileSync(livenessDataPath, JSON.stringify({
-                    wallet: userAccount.wallet,
-                    passed: true,
-                    completed_at: new Date().toISOString(),
-                    frame_paths: savedFramePaths,
-                    analysis: result
-                }));
+                // Store liveness frames in the VerificationRequestV2
+                if (pendingLayer3Request && livenessFrameUrls.length > 0) {
+                    pendingLayer3Request.verification_data = {
+                        ...pendingLayer3Request.verification_data,
+                        liveness_verified: true,
+                        liveness_completed_at: new Date().toISOString(),
+                        liveness_frame_urls: livenessFrameUrls,
+                        liveness_confidence: result.confidence || 0
+                    };
+                    await pendingLayer3Request.save();
+                    console.log(`[AI] Stored ${livenessFrameUrls.length} liveness frames in VerificationRequestV2`);
+                }
 
                 return res.json({
                     ...result,
                     layer: 3,
                     next_step: 'review_submit',
-                    liveness_frames: savedFramePaths,
+                    liveness_frames: livenessFrameUrls,
                     message: 'Liveness verification complete. Please proceed to submit your verification request.'
                 });
             }

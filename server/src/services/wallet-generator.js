@@ -212,8 +212,15 @@ class WalletGeneratorService {
     }
 
     /**
-     * Sign transaction using restored wallet
-     * This method restores the private key, signs, and immediately discards
+     * Sign a payload using the user's self-custody Ed25519 wallet.
+     * The private key is reconstructed from the user's deterministic seed,
+     * used to produce a real 64-byte Ed25519 signature, then immediately
+     * cleared from memory.
+     *
+     * @param {string} userId          - User account ID
+     * @param {Buffer|Uint8Array} transactionData - Raw bytes to sign (typically a SHA-256 digest)
+     * @param {string} purpose         - Descriptive label (e.g. 'verification_proof')
+     * @returns {{ signature, publicKey, walletAddress, purpose }}
      */
     async signTransactionForUser(userId, transactionData, purpose = 'verification') {
         try {
@@ -233,20 +240,31 @@ class WalletGeneratorService {
                 userAccount.user_salt
             );
 
-            // Sign the transaction using Casper SDK
-            // Note: For actual signing, we'd need to use proper Casper signing methods
-            // For now, create a mock signature for the proof-of-concept
-            const messageHash = crypto.createHash('sha256').update(transactionData).digest();
-            const signature = messageHash.toString('hex'); // Placeholder signature
+            // Build the Casper AsymmetricKey pair (gives us the .sign() method)
+            const keyPair = Keys.Ed25519.parseKeyPair(
+                wallet.publicKey,   // Uint8Array
+                wallet.privateKey   // Uint8Array  
+            );
 
-            // Immediately clear the private key from memory
+            // Produce a real 64-byte Ed25519 signature
+            const signatureBytes = keyPair.sign(Buffer.isBuffer(transactionData)
+                ? transactionData
+                : Buffer.from(transactionData));
+
+            const signature = Buffer.from(signatureBytes).toString('hex');
+            const publicKeyHex = Buffer.from(wallet.publicKey).toString('hex');
+            const walletAddress = wallet.walletAddress;
+
+            // Zero private key bytes from memory immediately after use
+            if (wallet.privateKey instanceof Uint8Array) {
+                wallet.privateKey.fill(0);
+            }
             wallet.privateKey = null;
-            delete wallet.privateKey;
 
             return {
-                signature: signature,
-                publicKey: Buffer.from(wallet.publicKey).toString('hex'),
-                walletAddress: wallet.walletAddress,
+                signature,
+                publicKey: publicKeyHex,
+                walletAddress,
                 purpose
             };
 

@@ -26,6 +26,12 @@ export default defineConfig(({ mode }) => {
           changeOrigin: true,
           secure: false,
         },
+        // Proxy well-known endpoints (JWKS, OpenID Connect discovery)
+        '/.well-known': {
+          target: env.VITE_API_URL || 'http://localhost:3001',
+          changeOrigin: true,
+          secure: false,
+        },
       },
     },
     plugins: [
@@ -83,8 +89,8 @@ export default defineConfig(({ mode }) => {
           clientsClaim: true,
           skipWaiting: true,
           maximumFileSizeToCacheInBytes: 100 * 1024 * 1024, // 100MB
-          // Cache JS files at runtime instead of precaching
-          runtimeCaching: [
+          // Only enable runtime caching for JS in production to avoid dev-server ENOENT errors
+          runtimeCaching: mode === 'production' ? [
             {
               urlPattern: /\.js$/,
               handler: 'StaleWhileRevalidate',
@@ -96,7 +102,7 @@ export default defineConfig(({ mode }) => {
                 },
               },
             },
-          ],
+          ] : [],
         },
         devOptions: {
           enabled: true,
@@ -137,6 +143,9 @@ export default defineConfig(({ mode }) => {
     resolve: {
       alias: {
         '@': path.resolve(__dirname, '.'),
+        'react': path.resolve(__dirname, 'node_modules/react'),
+        'react-dom': path.resolve(__dirname, 'node_modules/react-dom'),
+        'framer-motion': path.resolve(__dirname, 'node_modules/framer-motion'),
       }
     }
   };

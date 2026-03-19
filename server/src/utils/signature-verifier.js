@@ -1,10 +1,13 @@
 /**
- * Signature Verifier for Casper Wallet Signatures
- * Handles nonce generation and validation
+ * Signature Verifier — Multi-algorithm
+ * Supports:
+ *   - Ethereum / MetaMask (ECDSA secp256k1, EIP-191 personal_sign)
+ *   - Casper Wallet (Ed25519)
  */
 
 const crypto = require('crypto');
 const { Keys } = require('casper-js-sdk');
+const { ethers } = require('ethers');
 
 // In-memory nonce storage (in production, use Redis)
 const nonces = new Map();
@@ -73,40 +76,85 @@ function cleanupExpiredNonces() {
     }
 }
 
+// ─── Ethereum / ECDSA ───────────────────────────────────────────────────────
+
 /**
- * Verify Casper wallet signature
- * @param {string} message - Original message that was signed
- * @param {string} signature - Signature hex string
- * @param {string} publicKey - Public key hex string
- * @returns {boolean} True if signature is valid
+ * Verify an EIP-191 personal_sign signature from MetaMask.
+ * Recovers the signer address and compares it to the expected address.
+ *
+ * @param {string} message   - The plaintext message that was signed
+ * @param {string} signature - 0x-prefixed hex signature (65 bytes)
+ * @param {string} address   - Expected Ethereum address (0x…)
+ * @returns {boolean}
  */
-function verifyWalletSignature(message, signature, publicKey) {
+function verifyEcdsaSignature(message, signature, address) {
     try {
-        // Convert hex strings to Uint8Array
-        const messageBytes = Buffer.from(message, 'utf8');
-        const signatureBytes = Buffer.from(signature, 'hex');
-        const publicKeyBytes = Buffer.from(publicKey, 'hex');
-
-        // Create public key object
-        // Casper uses Ed25519 by default
-        const pubKey = Keys.Ed25519.parsePublicKey(publicKeyBytes);
-
-        // Verify signature
-        const isValid = pubKey.verify(messageBytes, signatureBytes);
-
-        console.log('[Signature] Verification result:', isValid);
+        const recovered = ethers.verifyMessage(message, signature);
+        const isValid = recovered.toLowerCase() === address.toLowerCase();
+        console.log('[Signature/ECDSA] Recovered:', recovered, '| Expected:', address, '| Valid:', isValid);
         return isValid;
     } catch (error) {
-        console.error('[Signature] Verification error:', error.message);
+        console.error('[Signature/ECDSA] Verification error:', error.message);
         return false;
     }
 }
 
+// ─── Casper / Ed25519 ───────────────────────────────────────────────────────
+
+/**
+ * Verify a Casper Ed25519 wallet signature.
+ *
+ * @param {string} message   - The plaintext message that was signed
+ * @param {string} signature - Hex signature string
+ * @param {string} publicKey - Hex public key string (32 bytes)
+ * @returns {boolean}
+ */
+function verifyCasperSignature(message, signature, publicKey) {
+    try {
+        const messageBytes = Buffer.from(message, 'utf8');
+        const signatureBytes = Buffer.from(signature, 'hex');
+        const publicKeyBytes = Buffer.from(publicKey, 'hex');
+
+        const pubKey = Keys.Ed25519.parsePublicKey(publicKeyBytes);
+        const isValid = pubKey.verify(messageBytes, signatureBytes);
+
+        console.log('[Signature/Ed25519] Verification result:', isValid);
+        return isValid;
+    } catch (error) {
+        console.error('[Signature/Ed25519] Verification error:', error.message);
+        return false;
+    }
+}
+
+// ─── Unified entry point ─────────────────────────────────────────────────────
+
+/**
+ * Verify a wallet signature.
+ *
+ * Automatically detects the signature algorithm:
+ *   - Ethereum address (0x + 40 hex chars) → ECDSA / EIP-191 personal_sign
+ *   - Everything else                       → Casper Ed25519
+ *
+ * @param {string} message          - Original message that was signed
+ * @param {string} signature        - Signature string (hex)
+ * @param {string} publicKeyOrAddress - Ethereum address OR Casper public key hex
+ * @returns {boolean} True if signature is valid
+ */
+function verifyWalletSignature(message, signature, publicKeyOrAddress) {
+    // Ethereum address: 0x followed by exactly 40 hex characters
+    if (/^0x[0-9a-fA-F]{40}$/.test(publicKeyOrAddress)) {
+        return verifyEcdsaSignature(message, signature, publicKeyOrAddress);
+    }
+
+    // Fall back to Casper Ed25519
+    return verifyCasperSignature(message, signature, publicKeyOrAddress);
+}
+
 /**
  * Create message for user to sign
- * @param {string} wallet - Wallet address
- * @param {string} platform - Platform domain
- * @param {string} nonce - Unique nonce
+ * @param {string} wallet    - Wallet address
+ * @param {string} platform  - Platform domain
+ * @param {string} nonce     - Unique nonce
  * @returns {string} Message to sign
  */
 function createSignatureMessage(wallet, platform, nonce) {
@@ -117,6 +165,8 @@ module.exports = {
     generateNonce,
     validateNonce,
     verifyWalletSignature,
+    verifyCasperSignature,
+    verifyEcdsaSignature,
     createSignatureMessage,
     cleanupExpiredNonces
 };

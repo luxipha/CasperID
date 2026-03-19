@@ -48,16 +48,13 @@ router.post('/login', async (req, res) => {
 
         // Verify signature
         const message = createSignatureMessage(wallet, platform || 'unknown', nonce);
-
-        // For now, we'll skip actual signature verification as it requires the exact signature format
-        // In production, uncomment this:
-        // const isValidSignature = verifyWalletSignature(message, signature, wallet);
-        // if (!isValidSignature) {
-        //     return res.status(401).json({
-        //         success: false,
-        //         error: 'Invalid signature'
-        //     });
-        // }
+        const isValidSignature = verifyWalletSignature(message, signature, wallet);
+        if (!isValidSignature) {
+            return res.status(401).json({
+                success: false,
+                error: 'Invalid signature'
+            });
+        }
 
 
         // Check if user is verified
@@ -170,6 +167,7 @@ router.post('/verify-token', async (req, res) => {
             user: {
                 wallet: decoded.wallet,
                 humanId: decoded.humanId,
+                name: decoded.name || null,
                 verified: decoded.verified,
                 tier: decoded.tier,
                 sharedData: decoded.sharedData
@@ -304,31 +302,94 @@ router.post('/refresh', async (req, res) => {
             });
         }
 
-        // Generate new token
-        const newToken = refreshToken(token);
-
-        if (!newToken) {
+        // Verify old token to get wallet/identity
+        const decoded = verifyToken(token);
+        if (!decoded) {
             return res.status(401).json({
                 success: false,
-                error: 'Invalid token'
+                error: 'Invalid or expired token'
             });
+        }
+
+        // Fetch latest data from database
+        let userData = {
+            wallet: decoded.wallet,
+            humanId: decoded.humanId,
+            verified: decoded.verified,
+            tier: decoded.tier,
+            sharedData: decoded.sharedData,
+            email: decoded.email
+        };
+
+        const { UserAccount, UserProfile } = require('../database/models');
+
+        // 1. BRIDGE PENDING SESSIONS: If wallet is pending but we have email, try to find the minted wallet
+        if (userData.wallet === 'pending_wallet' && userData.email) {
+            const account = await UserAccount.findOne({ recovery_email: userData.email.toLowerCase() });
+            if (account && account.wallet) {
+                userData.wallet = account.wallet;
+                userData.user_id = account.user_id;
+            }
+        }
+
+        // 2. FETCH FRESH DATA: If we have a real wallet, get latest credential AND profile
+        if (userData.wallet && userData.wallet !== 'pending_wallet') {
+            const credential = await Credential.findOne({ wallet: userData.wallet, revoked: false });
+            if (credential) {
+                userData.humanId = credential.human_id || userData.humanId;
+                userData.tier = credential.tier || userData.tier;
+                userData.verified = true;
+            }
+
+            // Fetch name from UserProfile to ensure it's not null in business token
+            const profile = await UserProfile.findOne({ wallet: userData.wallet });
+            if (profile) {
+                userData.name = profile.name || `${profile.first_name || ''} ${profile.last_name || ''}`.trim() || null;
+            }
+        }
+
+        // Generate new token with FRESHEST data
+        const newToken = generateToken(userData, decoded.platform || 'unknown');
+
+        // BUSINESS TOKEN: If an apiKey is provided, also issue a business token
+        let businessToken = null;
+        const { apiKey } = req.body;
+        if (apiKey) {
+            const { BusinessApp } = require('../database/models');
+            const { generateBusinessToken } = require('../utils/jwt-manager');
+            const businessApp = await BusinessApp.findOne({ api_key: apiKey });
+            
+            if (businessApp) {
+                businessToken = generateBusinessToken({
+                    userId: userData.user_id || userData.wallet,
+                    wallet: userData.wallet,
+                    humanId: userData.humanId,
+                    name: userData.name || null,
+                    verified: userData.verified,
+                    tier: userData.tier,
+                    email: userData.email,
+                    sharedData: userData.sharedData || []
+                }, businessApp.app_id);
+            }
         }
 
         // Update session in database
         const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
-
         await LoginSession.updateOne(
             { token },
             {
                 token: newToken,
-                expiresAt
+                expiresAt,
+                wallet: userData.wallet // Ensure wallet is updated if it was pending
             }
         );
 
         res.json({
             success: true,
             token: newToken,
-            expiresIn: 86400
+            business_token: businessToken,
+            expiresIn: 86400,
+            user: userData
         });
 
     } catch (error) {

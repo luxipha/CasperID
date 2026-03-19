@@ -1294,9 +1294,43 @@ class ApiService {
     }
   }
 
+  async patch(url: string, data?: any): Promise<any> {
+    try {
+      const response = await this.client.patch(url, data);
+      return response.data;
+    } catch (error) {
+      throw this.handleError(error);
+    }
+  }
+
+  async delete(url: string): Promise<any> {
+    try {
+      const response = await this.client.delete(url);
+      return response.data;
+    } catch (error) {
+      throw this.handleError(error);
+    }
+  }
+
   // ============================================
   // LAYER 3 VERIFICATION (FULL KYC)
   // ============================================
+
+  /**
+   * Start Layer 3 verification session
+   * This must be called BEFORE uploading documents or submitting verification
+   */
+  public async startLayer3Verification(verificationMethod: 'document_upload' | 'nimc' = 'document_upload'): Promise<ApiResponse> {
+    try {
+      const response = await this.client.post('/api/v2/verification/layer3/start', {
+        verificationMethod,
+        purpose: 'Layer 3 KYC Verification'
+      });
+      return response.data;
+    } catch (error: any) {
+      throw this.handleError(error);
+    }
+  }
 
   /**
    * Upload document and extract data with OCR
@@ -1346,6 +1380,8 @@ class ApiService {
       phone_number: string;
     };
     upload_id: string;
+    front_image_url?: string;
+    back_image_url?: string;
     liveness_verified: boolean;
   }): Promise<ApiResponse> {
     try {
@@ -1533,10 +1569,10 @@ class ApiService {
     }
   }
 
-  async issueCredential(token: string, requestId: string, approve: boolean): Promise<any> {
+  async issueCredential(token: string, requestId: string, approve: boolean, source?: 'v1' | 'v2', rejection_reason?: string): Promise<any> {
     try {
       const response = await this.client.post('/api/admin/issue-credential',
-        { request_id: requestId, approve },
+        { request_id: requestId, approve, source, rejection_reason },
         { headers: { Authorization: `Bearer ${token}` } }
       );
       return response.data;
@@ -1792,6 +1828,33 @@ class ApiService {
   async testBusinessWebhook(webhookId: string): Promise<ApiResponse> {
     try {
       const response = await this.client.post(`/api/business/webhooks/${webhookId}/test`);
+      return response.data;
+    } catch (error) {
+      throw this.handleError(error);
+    }
+  }
+
+  async getBusinessWebhookLogs(webhookId: string, limit: number = 50): Promise<ApiResponse> {
+    try {
+      const response = await this.client.get(`/api/business/webhooks/${webhookId}/logs`, {
+        params: { limit }
+      });
+      return response.data;
+    } catch (error) {
+      throw this.handleError(error);
+    }
+  }
+
+  async uploadAppLogo(appId: string, file: File): Promise<ApiResponse> {
+    try {
+      const formData = new FormData();
+      formData.append('logo', file);
+
+      const response = await this.client.post(`/api/business/apps/${appId}/logo`, formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
       return response.data;
     } catch (error) {
       throw this.handleError(error);

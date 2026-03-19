@@ -3,7 +3,7 @@
 import React from 'react';
 
 type LogoProps = {
-  href?: string;
+  href?: string | null;
   className?: string;
   showName?: boolean;
   variant?: 'png' | 'svg';

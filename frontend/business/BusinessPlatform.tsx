@@ -10,6 +10,7 @@ import Analytics from './pages/Analytics';
 import Billing from './pages/Billing';
 import Docs from './pages/Docs';
 import Settings from './pages/Settings';
+import SDKDesign from './pages/SDKDesign';
 
 export const BusinessPlatform: React.FC = () => {
     return (
@@ -24,6 +25,7 @@ export const BusinessPlatform: React.FC = () => {
                 <Route path="/billing" element={<Billing />} />
                 <Route path="/docs" element={<Docs />} />
                 <Route path="/settings" element={<Settings />} />
+                <Route path="/sdk-design" element={<SDKDesign />} />
                 <Route path="*" element={<Navigate to="/business" replace />} />
             </Routes>
         </Layout>

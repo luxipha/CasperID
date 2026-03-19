@@ -12,6 +12,7 @@ interface DocumentData {
     nationality: string;
     address: string;
     phone_number: string;
+    upload_id?: string;
 }
 
 interface KYCManualEntryProps {
@@ -49,6 +50,7 @@ export const KYCManualEntry: React.FC<KYCManualEntryProps> = ({
         if (!formData.date_of_birth.trim()) newErrors.date_of_birth = 'Date of birth is required';
         if (!formData.gender) newErrors.gender = 'Gender is required';
         if (!formData.phone_number.trim()) newErrors.phone_number = 'Phone number is required';
+        if (formData.document_type === 'national_id' && !formData.nin?.trim()) newErrors.nin = 'NIN is required for National ID';
 
         setErrors(newErrors);
         return Object.keys(newErrors).length === 0;
@@ -142,7 +144,7 @@ export const KYCManualEntry: React.FC<KYCManualEntryProps> = ({
 
                             <div className="md:col-span-2">
                                 <label className="block text-sm font-bold text-text-main mb-2">
-                                    National ID Number (NIN) {formData.document_type === 'passport' && <span className="text-red-500">*</span>}
+                                    National ID Number (NIN) {formData.document_type === 'national_id' && <span className="text-red-500">*</span>}
                                 </label>
                                 <input
                                     type="text"

@@ -16,7 +16,8 @@ const {
     UserAccount,
     PasskeyCredential,
     DeviceSession,
-    EmailVerification
+    EmailVerification,
+    UserProfile
 } = require('../database/models');
 const { normalizeEmail, buildEmailQuery } = require('../utils/email-normalizer');
 
@@ -115,20 +116,28 @@ class WebAuthnService {
 
     /**
      * Verify registration response and create user account
+     * @param {string} userId
+     * @param {object} registrationResponse
+     * @param {object} deviceInfo
+     * @param {string[]} overrideOrigins - Optional origins from BusinessApp.allowed_origins
      */
-    async verifyRegistration(userId, registrationResponse, deviceInfo = {}) {
+    async verifyRegistration(userId, registrationResponse, deviceInfo = {}, overrideOrigins = null) {
         try {
             const storedChallenge = this.challengeStorage.get(userId);
             if (!storedChallenge) {
                 throw new Error('Registration challenge not found or expired');
             }
 
+            // Use override origins if provided (from BusinessApp), otherwise use default
+            const expectedOrigins = overrideOrigins && overrideOrigins.length > 0
+                ? [...this.origins, ...overrideOrigins]
+                : this.origins;
 
             // Verify the registration
             const verification = await verifyRegistrationResponse({
                 response: registrationResponse,
                 expectedChallenge: storedChallenge.challenge,
-                expectedOrigin: this.origins,
+                expectedOrigin: expectedOrigins,
                 expectedRPID: this.rpID,
                 requireUserVerification: true,
             });
@@ -219,6 +228,17 @@ class WebAuthnService {
             // The OTP flow in auth.js handles email verification for registration
             const emailVerificationId = null;
 
+            // Fetch UserProfile for identity claims (human_id, name) if exists
+            let profileData = { human_id: null, name: null };
+            if (userAccount.wallet) {
+                const profile = await UserProfile.findOne({ wallet: userAccount.wallet });
+                if (profile) {
+                    profileData.human_id = profile.human_id || null;
+                    const fullName = [profile.first_name, profile.last_name].filter(Boolean).join(' ');
+                    profileData.name = fullName || null;
+                }
+            }
+
             return {
                 success: true,
                 userId,
@@ -232,6 +252,9 @@ class WebAuthnService {
                     recovery_email: userAccount.recovery_email,
                     tier: userAccount.tier,
                     email_verified: userAccount.email_verified,
+                    wallet: userAccount.wallet,
+                    human_id: profileData.human_id,
+                    name: profileData.name,
                 }
             };
 
@@ -310,8 +333,12 @@ class WebAuthnService {
 
     /**
      * Verify authentication response and create session
+     * @param {string} challengeId
+     * @param {object} authenticationResponse
+     * @param {object} deviceInfo
+     * @param {string[]} overrideOrigins - Optional origins from BusinessApp.allowed_origins
      */
-    async verifyAuthentication(challengeId, authenticationResponse, deviceInfo = {}) {
+    async verifyAuthentication(challengeId, authenticationResponse, deviceInfo = {}, overrideOrigins = null) {
         try {
             const storedChallenge = this.challengeStorage.get(challengeId);
             if (!storedChallenge) {
@@ -486,9 +513,14 @@ class WebAuthnService {
                 }
             });
 
+            // Use override origins if provided (from BusinessApp), otherwise use default
+            const expectedOrigins = overrideOrigins && overrideOrigins.length > 0
+                ? [...this.origins, ...overrideOrigins]
+                : this.origins;
+
             console.log('🔍 About to call verifyAuthenticationResponse with:');
             console.log('   expectedChallenge:', storedChallenge.challenge);
-            console.log('   expectedOrigins:', this.origins);
+            console.log('   expectedOrigins:', expectedOrigins);
             console.log('   expectedRPID:', this.rpID);
             console.log('   authenticator:', {
                 credentialID: authenticatorObj.credentialID,
@@ -503,7 +535,7 @@ class WebAuthnService {
                 const verificationOptions = {
                     response: convertedResponse,
                     expectedChallenge: storedChallenge.challenge,
-                    expectedOrigin: this.origins,
+                    expectedOrigin: expectedOrigins,
                     expectedRPID: this.rpID,
                     credential: {
                         id: authenticatorObj.credentialID,
@@ -556,6 +588,17 @@ class WebAuthnService {
             // Clean up challenge
             this.challengeStorage.delete(challengeId);
 
+            // Fetch UserProfile for identity claims (human_id, name)
+            let profileData = { human_id: null, name: null };
+            if (userAccount.wallet) {
+                const profile = await UserProfile.findOne({ wallet: userAccount.wallet });
+                if (profile) {
+                    profileData.human_id = profile.human_id || null;
+                    const fullName = [profile.first_name, profile.last_name].filter(Boolean).join(' ');
+                    profileData.name = fullName || null;
+                }
+            }
+
             return {
                 success: true,
                 sessionId,
@@ -568,6 +611,8 @@ class WebAuthnService {
                     email_verified: userAccount.email_verified,
                     wallet: userAccount.wallet,
                     metamask_connected: userAccount.metamask_connected,
+                    human_id: profileData.human_id,
+                    name: profileData.name,
                 }
             };
 

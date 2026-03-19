@@ -55,7 +55,7 @@ const TypewriterText: React.FC<{
                     {displayedText}
                 </span>
                 {started && (!isDone || showCursorOnFinish) && (
-                    <span className="inline-block w-[3px] h-[0.85em] bg-primary ml-1.5 -mb-0.5 animate-pulse"></span>
+                    <span className="inline-block w-0.75 h-[0.85em] bg-primary ml-1.5 -mb-0.5 animate-pulse"></span>
                 )}
             </span>
         );
@@ -217,7 +217,7 @@ const ChangelogPage: React.FC = () => {
                             </div>
                         </div>
 
-                        <div className="flex items-center gap-4 p-5 bg-primary/5 border border-primary/10 rounded-[1.5rem] text-primary">
+                        <div className="flex items-center gap-4 p-5 bg-primary/5 border border-primary/10 rounded-3xl text-primary">
                             <Info className="w-6 h-6 text-primary" />
                             <p className="text-base font-medium">We care about your privacy and security. Read our <a href="/privacy" className="text-primary hover:underline">privacy policy</a> and <a href="/terms" className="text-primary hover:underline">terms of service</a> for more information.</p>
                         </div>
@@ -268,7 +268,7 @@ const ChangelogPage: React.FC = () => {
 
                                         {item.highlight && (
                                             <div className="bg-[#0B0C15] rounded-[3rem] border border-gray-100 shadow-2xl overflow-hidden mb-12">
-                                                <div className="relative aspect-[21/9] flex items-center justify-center p-12">
+                                                <div className="relative aspect-21/9 flex items-center justify-center p-12">
                                                     <div className="absolute inset-0 opacity-40"></div>
                                                     <div className="relative z-10 w-full max-w-lg text-center">
                                                         <div className="mb-10 flex justify-center">
@@ -323,7 +323,7 @@ const ChangelogPage: React.FC = () => {
                 </div>
 
                 {/* Mobile Navigation Overlay */}
-                <div className={`fixed inset-0 bg-white z-[60] md:hidden transition-transform duration-300 ease-in-out ${isMenuOpen ? 'translate-x-0' : 'translate-x-full'}`}>
+                <div className={`fixed inset-0 bg-white z-60 md:hidden transition-transform duration-300 ease-in-out ${isMenuOpen ? 'translate-x-0' : 'translate-x-full'}`}>
                     <div className="flex flex-col items-center justify-center h-full gap-8 text-2xl font-bold text-slate-900 px-6">
                         <a href="/#product" className="hover:text-indigo-600 transition">Product</a>
                         <a href="/#download" className="hover:text-indigo-600 transition">Download</a>

@@ -50,6 +50,8 @@ export const KYCHome: React.FC = () => {
   const [layer3Status, setLayer3Status] = useState<'none' | 'pending' | 'approved'>('none');
   const [extractedData, setExtractedData] = useState<any>(null);
   const [uploadId, setUploadId] = useState<string>('');
+  const [frontImageUrl, setFrontImageUrl] = useState<string>('');
+  const [backImageUrl, setBackImageUrl] = useState<string>('');
   const [isLayer3Flow, setIsLayer3Flow] = useState<boolean>(false); // Track if we're in Layer 3 flow
   const { user } = useAuth();
 
@@ -60,18 +62,18 @@ export const KYCHome: React.FC = () => {
 
       if (user.tier === 'layer_3') {
         setLayer3Status('approved');
-      } else if (user.tier === 'layer_2') {
-        // Check API for pending Layer 3 upgrade
+      } else {
+        // Check API for pending Layer 3 upgrade (for any tier below layer_3)
         try {
           const data = await apiService.get(`/api/identity-status?wallet=${encodeURIComponent(user.wallet)}`);
 
-          // Check if user has pending Layer 3 upgrade
-          if (data.pending_upgrade_tier === 'layer_3' && data.status === 'pending') {
+          // Check if user has pending Layer 3 upgrade (V1 uses 'pending', V2 uses 'in_progress')
+          if (data.pending_upgrade_tier === 'layer_3' && ['pending', 'in_progress'].includes(data.status)) {
             setLayer3Status('pending');
             setKycSubmitted(true);
           }
-          // Check if user is ALREADY layer_3 or full_kyc but local state is stale
-          else if (data.tier === 'layer_3' || data.tier === 'layer_3') {
+          // Check if user is ALREADY layer_3 but local state is stale
+          else if (data.tier === 'layer_3') {
             setLayer3Status('approved');
           }
         } catch (error) {
@@ -185,11 +187,22 @@ export const KYCHome: React.FC = () => {
     return (
       <KYCLayer3Method
         onBack={goToDashboard}
-        onSelectMethod={(m) => {
-          if (m === 'nimc') {
-            setActiveStep('layer3_nimc_selection');
-          } else {
-            setActiveStep('layer3_doc_selection');
+        onSelectMethod={async (m) => {
+          try {
+            // Start Layer 3 verification session BEFORE proceeding
+            const response = await apiService.startLayer3Verification(
+              m === 'nimc' ? 'nimc' : 'document_upload'
+            );
+            console.log('[Layer3] Verification session started:', response);
+
+            if (m === 'nimc') {
+              setActiveStep('layer3_nimc_selection');
+            } else {
+              setActiveStep('layer3_doc_selection');
+            }
+          } catch (error) {
+            console.error('[Layer3] Failed to start verification session:', error);
+            alert(error instanceof Error ? error.message : 'Failed to start verification. Please try again.');
           }
         }}
       />
@@ -270,6 +283,8 @@ export const KYCHome: React.FC = () => {
       <KYCReviewSubmit
         documentData={extractedData}
         uploadId={uploadId}
+        frontImageUrl={frontImageUrl}
+        backImageUrl={backImageUrl}
         livenessVerified={true} // We know liveness is verified if we reached this step
         onBack={() => setActiveStep('liveness')}
         onCancel={goToDashboard}
@@ -336,9 +351,11 @@ export const KYCHome: React.FC = () => {
             );
 
 
-            // Set extracted data
+            // Set extracted data and image URLs
             setExtractedData(response.extracted_data);
             setUploadId(response.upload_id);
+            setFrontImageUrl(response.front_image_url || '');
+            setBackImageUrl(response.back_image_url || '');
 
             // Move to manual entry
             setActiveStep('layer3_manual_entry');
@@ -357,7 +374,11 @@ export const KYCHome: React.FC = () => {
               phone_number: ''
             });
             setUploadId('fallback_' + Date.now());
+            // Move to manual entry but PRESERVE any image URLs we might have
             setActiveStep('layer3_manual_entry');
+            setExtractionStatus('manual');
+            // DO NOT setFrontImageUrl('') or setBackImageUrl('') here
+            // If the OCR failed, we still want the admin to see the images!
           }
         }}
       />

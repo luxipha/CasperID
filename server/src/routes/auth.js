@@ -5,6 +5,8 @@ const { UserAccount, LoginSession, UserProfile, Credential, EmailVerification } 
 const { generateToken } = require('../utils/jwt-manager');
 const emailService = require('../services/emailService');
 const { normalizeEmail, buildEmailQuery } = require('../utils/email-normalizer');
+const { extractApp } = require('../middleware/app-auth');
+const { generateBusinessToken } = require('../utils/jwt-manager');
 
 // Note: OTP storage now uses MongoDB EmailVerification model with TTL index for auto-cleanup
 
@@ -119,7 +121,7 @@ router.post('/send-otp', async (req, res) => {
  * Verify OTP
  * POST /api/auth/verify-otp
  */
-router.post('/verify-otp', async (req, res) => {
+router.post('/verify-otp', extractApp, async (req, res) => {
     try {
         const { verificationId, otp } = req.body;
 
@@ -237,6 +239,17 @@ router.post('/verify-otp', async (req, res) => {
             expiresAt
         });
 
+        // Check if user has passkey credentials
+        let hasPasskey = false;
+        if (userAccount) {
+            const { PasskeyCredential } = require('../database/models');
+            const passkeyCount = await PasskeyCredential.countDocuments({
+                user_id: userAccount.user_id,
+                revoked: false
+            });
+            hasPasskey = passkeyCount > 0;
+        }
+
         res.json({
             success: true,
             message: 'OTP verified successfully',
@@ -244,7 +257,33 @@ router.post('/verify-otp', async (req, res) => {
             verified: true,
             sessionToken: token,
             expiresAt: expiresAt.toISOString(),
-            userExists: !!userAccount
+            userExists: !!userAccount,
+            hasPasskey,
+            userAccount: userAccount ? {
+                user_id: userAccount.user_id,
+                wallet: userAccount.wallet,
+                tier: userAccount.tier || 'layer_0',
+                did_address: userAccount.did_address
+            } : null,
+            business_token: await (async () => {
+                if (!req.businessApp || !wallet) return null;
+                
+                // Fetch fresh profile for name
+                const { UserProfile } = require('../database/models');
+                const profile = await UserProfile.findOne({ wallet });
+                const fullName = profile ? (profile.name || `${profile.first_name || ''} ${profile.last_name || ''}`.trim() || null) : (userAccount?.name || null);
+
+                return generateBusinessToken({
+                    userId: userAccount?.user_id || 'unknown',
+                    wallet: wallet,
+                    humanId: humanId || 'unknown',
+                    name: fullName,
+                    verified: true,
+                    tier: tier,
+                    email: storedData.email,
+                    sharedData: []
+                }, req.businessApp.app_id);
+            })()
         });
 
     } catch (error) {

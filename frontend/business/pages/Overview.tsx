@@ -2,12 +2,14 @@ import React, { useState, useEffect } from 'react';
 import { Activity, Users, Box, ArrowUpRight, ArrowRight, Zap, CheckCircle2 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { apiService } from '../../services/api';
+import ActivityHeatmap from '../components/ActivityHeatmap';
 
 const Overview: React.FC = () => {
   const [stats, setStats] = useState({
     total_requests: 0,
     active_apps: 0,
-    total_apps: 0
+    total_apps: 0,
+    activity: [] as { date: string, count: number }[]
   });
   const [loading, setLoading] = useState(true);
 
@@ -33,6 +35,12 @@ const Overview: React.FC = () => {
         <h2 className="text-text-main text-3xl font-black tracking-tight">Dashboard Overview</h2>
         <p className="text-text-muted">Welcome back. Here's what's happening with your applications.</p>
       </div>
+
+      <ActivityHeatmap
+        title="Global Verification Activity"
+        subtitle="Verification volume across all your applications over the last 6 months"
+        data={stats.activity}
+      />
 
       {/* Stats Grid */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">

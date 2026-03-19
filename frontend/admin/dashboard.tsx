@@ -9,7 +9,10 @@ import RequestDetailsModal from './components/request-detail-modal';
 
 interface VerificationRequest {
     id: string;
-    wallet: string;
+    request_id?: string; // V2 requests have this
+    source?: 'v1' | 'v2'; // To identify request type
+    wallet: string | null;
+    user_id?: string;
     tier: string;
     email?: string;
     status: string;
@@ -21,6 +24,13 @@ interface VerificationRequest {
     name?: string;
     metadata?: any;
     cns_name?: string;
+    // V2 specific fields (directly on request, not in metadata)
+    document_type?: string;
+    document_number?: string;
+    liveness_verified?: boolean;
+    upload_id?: string;
+    front_image_url?: string;
+    back_image_url?: string;
     [key: string]: any;
 }
 
@@ -34,6 +44,8 @@ export default function AdminDashboard() {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
     const [filter, setFilter] = useState<'all' | 'pending' | 'approved' | 'rejected'>('pending');
+    const [rejectingRequest, setRejectingRequest] = useState<VerificationRequest | null>(null);
+    const [rejectionReason, setRejectionReason] = useState('');
 
     const handleLogin = async () => {
         if (username && password) {
@@ -70,16 +82,35 @@ export default function AdminDashboard() {
         }
     };
 
-    const handleAction = async (requestId: string, approve: boolean) => {
+    const handleAction = async (request: VerificationRequest, approve: boolean, reason?: string) => {
         if (!token) return;
 
+        // If rejecting without reason, show the rejection modal
+        if (!approve && !reason) {
+            setRejectingRequest(request);
+            return;
+        }
+
         try {
-            await apiClient.issueCredential(token, requestId, approve);
+            // Use request_id for V2, id for V1
+            const requestId = request.source === 'v2' ? (request.request_id || request.id) : request.id;
+            await apiClient.issueCredential(token, requestId, approve, request.source, reason);
             alert(`Request ${approve ? 'approved' : 'rejected'} successfully!`);
+            setRejectingRequest(null);
+            setRejectionReason('');
+            setSelectedRequest(null);
             fetchRequests(token);
         } catch (err: any) {
             alert(err.message || 'Failed to process request');
         }
+    };
+
+    const handleRejectConfirm = () => {
+        if (!rejectingRequest || !rejectionReason.trim()) {
+            alert('Please provide a reason for rejection');
+            return;
+        }
+        handleAction(rejectingRequest, false, rejectionReason);
     };
 
     useEffect(() => {
@@ -220,10 +251,10 @@ export default function AdminDashboard() {
                                                 Details
                                             </Button>
 
-                                            {request.status === 'pending' ? (
+                                            {(request.status === 'pending' || request.status === 'in_progress') ? (
                                                 <>
                                                     <Button
-                                                        onClick={() => handleAction(request.id, true)}
+                                                        onClick={() => handleAction(request, true)}
                                                         size="sm"
                                                         className="bg-green-600 hover:bg-green-700"
                                                     >
@@ -231,7 +262,7 @@ export default function AdminDashboard() {
                                                         Approve
                                                     </Button>
                                                     <Button
-                                                        onClick={() => handleAction(request.id, false)}
+                                                        onClick={() => handleAction(request, false)}
                                                         size="sm"
                                                         variant="outline"
                                                         className="border-red-500/30 text-red-300 hover:bg-red-500/20"
@@ -263,12 +294,52 @@ export default function AdminDashboard() {
                     )}
                 </Card>
 
-                <RequestDetailsModal
-                    isOpen={!!selectedRequest}
-                    onClose={() => setSelectedRequest(null)}
-                    request={selectedRequest}
-                    onAction={(approve) => handleAction(selectedRequest!.id, approve)}
-                />
+                {selectedRequest && (
+                    <RequestDetailsModal
+                        isOpen={!!selectedRequest}
+                        onClose={() => setSelectedRequest(null)}
+                        request={selectedRequest}
+                        onAction={(approve) => handleAction(selectedRequest, approve)}
+                    />
+                )}
+
+                {/* Rejection Reason Modal */}
+                {rejectingRequest && (
+                    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+                        <Card className="p-6 max-w-md w-full bg-slate-800 border-slate-700">
+                            <h3 className="text-xl font-bold text-white mb-4">Reject Verification</h3>
+                            <p className="text-gray-300 mb-4">
+                                Please provide a reason for rejecting this verification request.
+                                This will be sent to the user.
+                            </p>
+                            <textarea
+                                value={rejectionReason}
+                                onChange={(e) => setRejectionReason(e.target.value)}
+                                placeholder="e.g., Document image is blurry and unreadable..."
+                                className="w-full p-3 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder:text-gray-500 min-h-[100px] mb-4"
+                            />
+                            <div className="flex gap-3 justify-end">
+                                <Button
+                                    onClick={() => {
+                                        setRejectingRequest(null);
+                                        setRejectionReason('');
+                                    }}
+                                    variant="outline"
+                                    className="bg-transparent border-white/20 text-white hover:bg-white/10"
+                                >
+                                    Cancel
+                                </Button>
+                                <Button
+                                    onClick={handleRejectConfirm}
+                                    disabled={!rejectionReason.trim()}
+                                    className="bg-red-600 hover:bg-red-700 disabled:opacity-50"
+                                >
+                                    Confirm Rejection
+                                </Button>
+                            </div>
+                        </Card>
+                    </div>
+                )}
             </div>
         </div>
     );
