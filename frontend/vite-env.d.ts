@@ -3,6 +3,7 @@
 
 interface ImportMetaEnv {
     readonly VITE_API_URL: string;
+    readonly VITE_CASPER_NETWORK: string;
     // Add other env variables here as needed
 }
 

@@ -1,11 +1,13 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { Monitor, Smartphone } from 'lucide-react';
 import { CasperIDModal } from '../../../sdk/packages/react/src/CasperIDModal';
 import '../../../sdk/packages/react/src/index.css';
 import type { Screen } from '../../../sdk/packages/react/src/types';
 
-const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:8080';
+// Safe way to access import.meta.env to avoid lint errors
+const API_BASE = (import.meta as any).env?.VITE_API_URL || 'http://localhost:3001';
 
 interface BusinessApp {
     app_id: string;
@@ -33,16 +35,19 @@ const SDKDesign: React.FC = () => {
     const [apps, setApps] = useState<BusinessApp[]>([]);
     const [selectedAppId, setSelectedAppId] = useState<string>('');
     const [isLoadingApps, setIsLoadingApps] = useState(true);
+    const [isLoadingConfig, setIsLoadingConfig] = useState(true);
     const [isSaving, setIsSaving] = useState(false);
     const [saveStatus, setSaveStatus] = useState<'idle' | 'saved' | 'error'>('idle');
 
     const [primaryColor, setPrimaryColor] = useState('#8651e1');
     const [borderRadius, setBorderRadius] = useState('12');
     const [fontFamily, setFontFamily] = useState('Inter');
-    const [logoUrl, setLogoUrl] = useState('https://ais-dev-itoidvoorhgkynwo4ookqm-21013427965.asia-southeast1.run.app/favicon.ico');
+    const [logoUrl, setLogoUrl] = useState('');
     const [activeStep, setActiveStep] = useState(0);
     const [isDark, setIsDark] = useState(false);
     const [language, setLanguage] = useState('EN');
+    const [layout, setLayout] = useState<'auto' | 'modal' | 'fullscreen'>('auto');
+    const [platform, setPlatform] = useState<'desktop' | 'mobile'>('desktop');
     const [showError, setShowError] = useState(false);
 
     // Load apps list on mount
@@ -66,7 +71,11 @@ const SDKDesign: React.FC = () => {
 
     // Load saved SDK config when the selected app changes
     useEffect(() => {
-        if (!selectedAppId) return;
+        if (!selectedAppId) {
+            setIsLoadingConfig(false);
+            return;
+        }
+        setIsLoadingConfig(true);
         fetchWithAuth(`/api/business/apps/${selectedAppId}/sdk-config`)
             .then(res => res.json())
             .then(data => {
@@ -77,10 +86,13 @@ const SDKDesign: React.FC = () => {
                     if (cfg.font_family) setFontFamily(cfg.font_family);
                     if (cfg.logo_url) setLogoUrl(cfg.logo_url);
                     if (cfg.mode) setIsDark(cfg.mode === 'dark');
+                    if (cfg.layout) setLayout(cfg.layout);
+                    if (cfg.platform) setPlatform(cfg.platform);
                     if (cfg.language) setLanguage(cfg.language);
                 }
             })
-            .catch(() => { }); // silently fail
+            .catch(() => { }) // silently fail
+            .finally(() => setIsLoadingConfig(false));
     }, [selectedAppId]);
 
     const handleSaveConfig = async () => {
@@ -95,6 +107,8 @@ const SDKDesign: React.FC = () => {
                     font_family: fontFamily,
                     logo_url: logoUrl,
                     mode: isDark ? 'dark' : 'light',
+                    layout,
+                    platform,
                     language
                 })
             });
@@ -131,9 +145,11 @@ const SDKDesign: React.FC = () => {
     "fontFamily": "${fontFamily}",
     "mode": "${isDark ? 'dark' : 'light'}"
   },
+  "layout": "${layout}",
+  "platform": "${platform}",
   "logo": "${logoUrl}",
   "language": "${language}"
-}`;
+} `;
 
     return (
         <div className="flex flex-col gap-8 max-w-7xl mx-auto">
@@ -227,6 +243,40 @@ const SDKDesign: React.FC = () => {
                                 </div>
                             </div>
 
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div className="space-y-2">
+                                    <label className="text-sm font-bold text-text-main">Layout Mode</label>
+                                    <select
+                                        value={layout}
+                                        onChange={(e) => setLayout(e.target.value as any)}
+                                        className="w-full rounded-lg border border-border-muted bg-background-light p-2.5 text-sm"
+                                    >
+                                        <option value="auto">Auto (Responsive)</option>
+                                        <option value="modal">Strict Modal (Pop-up)</option>
+                                        <option value="fullscreen">Strict Fullscreen</option>
+                                    </select>
+                                </div>
+                                <div className="space-y-2">
+                                    <label className="text-sm font-bold text-text-main">Target Platform</label>
+                                    <div className="flex bg-background-light rounded-xl p-1 border border-border-muted max-w-[200px]">
+                                        <button
+                                            onClick={() => setPlatform('desktop')}
+                                            className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-xs font-bold transition-all ${platform === 'desktop' ? 'bg-white shadow-sm text-primary' : 'text-text-muted hover:text-text-main'}`}
+                                        >
+                                            <Monitor className="w-4 h-4" />
+                                            Desktop
+                                        </button>
+                                        <button
+                                            onClick={() => setPlatform('mobile')}
+                                            className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-xs font-bold transition-all ${platform === 'mobile' ? 'bg-white shadow-sm text-primary' : 'text-text-muted hover:text-text-main'}`}
+                                        >
+                                            <Smartphone className="w-4 h-4" />
+                                            Mobile
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+
                             <div className="space-y-2">
                                 <label className="text-sm font-bold text-text-main">Font Family</label>
                                 <select
@@ -289,52 +339,66 @@ const SDKDesign: React.FC = () => {
                 <div className={`lg:col-span-7 flex flex-col items-center justify-center rounded-3xl border-2 border-dashed border-border-muted p-8 min-h-[680px] gap-6 transition-colors duration-500 ${isDark ? 'bg-slate-900' : 'bg-background-light/50'}`}>
                     {/* "Live Preview" badge */}
                     <div className="flex items-center gap-2 self-start">
-                        <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
-                        <span className="text-xs font-bold text-text-muted uppercase tracking-widest">Live SDK Preview</span>
+                        <div className={`w-2 h-2 rounded-full ${isLoadingConfig ? 'bg-amber-500' : 'bg-green-500'} animate-pulse`} />
+                        <span className="text-xs font-bold text-text-muted uppercase tracking-widest">
+                            {isLoadingConfig ? 'Loading Config...' : 'Live SDK Preview'}
+                        </span>
                     </div>
 
-                    {/* Real CasperIDModal in previewMode, scaled to phone proportions */}
-                    <div
-                        style={{
-                            width: 380,
-                            height: 1000,
-                            transform: 'scale(0.7)',
-                            transformOrigin: 'top center',
-                            marginBottom: -300,
-                        }}
-                    >
-                        <CasperIDModal
-                            isOpen={true}
-                            apiKey={selectedAppId || 'preview'}
-                            previewMode={true}
-                            initialScreen={SCREEN_ORDER[activeStep] ?? 'AuthSelection'}
-                            logoUrl={logoUrl}
-                            apiBaseUrl={API_BASE}
-                            theme={{
-                                primaryColor,
-                                borderRadius,
-                                fontFamily,
-                                mode: isDark ? 'dark' : 'light',
-                            }}
-                            onClose={() => { }}
-                        />
-                    </div>
+                    {isLoadingConfig ? (
+                        /* Loading skeleton while config is being fetched */
+                        <div className="flex flex-col items-center justify-center gap-4 py-20">
+                            <div className="w-16 h-16 border-4 border-primary/30 border-t-primary rounded-full animate-spin" />
+                            <p className="text-sm text-text-muted">Loading your saved configuration...</p>
+                        </div>
+                    ) : (
+                        <>
+                            {/* Real CasperIDModal in previewMode, scaled to phone proportions */}
+                            <div
+                                style={{
+                                    width: 380,
+                                    height: 1000,
+                                    transform: 'scale(0.7)',
+                                    transformOrigin: 'top center',
+                                    marginBottom: -300,
+                                }}
+                            >
+                                <CasperIDModal
+                                    isOpen={true}
+                                    apiKey={selectedAppId || 'preview'}
+                                    previewMode={true}
+                                    initialScreen={SCREEN_ORDER[activeStep] ?? 'AuthSelection'}
+                                    logoUrl={logoUrl}
+                                    apiBaseUrl={API_BASE}
+                                    platform={platform}
+                                    theme={{
+                                        primaryColor,
+                                        borderRadius,
+                                        fontFamily,
+                                        mode: isDark ? 'dark' : 'light',
+                                        layout,
+                                    }}
+                                    onClose={() => { }}
+                                />
+                            </div>
 
-                    {/* Screen navigation dots */}
-                    <div className="flex gap-2 flex-wrap justify-center max-w-sm">
-                        {SCREEN_ORDER.map((screenName, i) => (
-                            <button
-                                key={screenName}
-                                title={screenName}
-                                onClick={() => setActiveStep(i)}
-                                className={`h-2 rounded-full transition-all ${activeStep === i ? 'w-6 bg-primary' : 'w-2 bg-border-muted hover:bg-primary/30'
-                                    }`}
-                            />
-                        ))}
-                    </div>
-                    <p className="text-xs text-text-muted">
-                        {SCREEN_ORDER[activeStep]} screen &mdash; click dots to navigate
-                    </p>
+                            {/* Screen navigation dots */}
+                            <div className="flex gap-2 flex-wrap justify-center max-w-sm">
+                                {SCREEN_ORDER.map((screenName, i) => (
+                                    <button
+                                        key={screenName}
+                                        title={screenName}
+                                        onClick={() => setActiveStep(i)}
+                                        className={`h-2 rounded-full transition-all ${activeStep === i ? 'w-6 bg-primary' : 'w-2 bg-border-muted hover:bg-primary/30'
+                                            }`}
+                                    />
+                                ))}
+                            </div>
+                            <p className="text-xs text-text-muted">
+                                {SCREEN_ORDER[activeStep]} screen &mdash; click dots to navigate
+                            </p>
+                        </>
+                    )}
                 </div>
             </div>
         </div>

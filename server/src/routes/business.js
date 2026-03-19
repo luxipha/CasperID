@@ -35,7 +35,7 @@ function generateKey(prefix) {
  */
 router.post('/apps', requireAuth, rateLimitMiddleware('business_api_key_create'), async (req, res) => {
     try {
-        const { name, allowed_origins = [], environment = 'sandbox' } = req.body;
+        const { name, allowed_origins = [], environment = 'sandbox', website_url = '', description = '' } = req.body;
         const userId = req.user.userId || req.user.wallet;
 
         if (!name || name.trim().length < 2) {
@@ -58,7 +58,9 @@ router.post('/apps', requireAuth, rateLimitMiddleware('business_api_key_create')
             owner_user_id: userId,
             api_secret_hash,
             allowed_origins,
-            environment
+            environment,
+            website_url: (website_url || '').trim(),
+            description: (description || '').trim().slice(0, 300)
         });
 
         await newApp.save();
@@ -175,7 +177,7 @@ router.patch('/apps/:app_id', requireAuth, async (req, res) => {
     try {
         const userId = req.user.userId || req.user.wallet;
         const { app_id } = req.params;
-        const { name, allowed_origins, environment } = req.body;
+        const { name, allowed_origins, environment, website_url, description, listing_status } = req.body;
 
         const app = await BusinessApp.findOne({ app_id, owner_user_id: userId, active: true });
         if (!app) {
@@ -185,6 +187,9 @@ router.patch('/apps/:app_id', requireAuth, async (req, res) => {
         if (name) app.name = name.trim();
         if (allowed_origins) app.allowed_origins = allowed_origins;
         if (environment && ['sandbox', 'production'].includes(environment)) app.environment = environment;
+        if (website_url !== undefined) app.website_url = website_url.trim();
+        if (description !== undefined) app.description = description.trim().slice(0, 300);
+        if (listing_status && ['unlisted', 'listed'].includes(listing_status)) app.listing_status = listing_status;
 
         await app.save();
 
@@ -547,7 +552,7 @@ router.patch('/apps/:app_id/sdk-config', requireAuth, async (req, res) => {
     try {
         const userId = req.user.userId || req.user.wallet;
         const { app_id } = req.params;
-        const { primary_color, border_radius, font_family, logo_url, mode, language } = req.body;
+        const { primary_color, border_radius, font_family, logo_url, mode, layout, platform, language } = req.body;
 
         const app = await BusinessApp.findOne({ app_id, owner_user_id: userId, active: true });
         if (!app) {
@@ -560,6 +565,8 @@ router.patch('/apps/:app_id/sdk-config', requireAuth, async (req, res) => {
         if (font_family !== undefined) app.sdk_config.font_family = font_family;
         if (logo_url !== undefined) app.sdk_config.logo_url = logo_url;
         if (mode !== undefined) app.sdk_config.mode = mode;
+        if (layout !== undefined) app.sdk_config.layout = layout;
+        if (platform !== undefined) app.sdk_config.platform = platform;
         if (language !== undefined) app.sdk_config.language = language;
         app.sdk_config.updated_at = new Date();
 
@@ -586,27 +593,115 @@ router.get('/stats', requireAuth, async (req, res) => {
             if (app.active) activeApps++;
         });
 
-        // specific app stats for charts (top 5 by usage)
-        const topApps = apps
-            .sort((a, b) => (b.request_count || 0) - (a.request_count || 0))
-            .slice(0, 5)
-            .map(app => ({
-                name: app.name,
-                value: app.request_count || 0
-            }));
+        // Activity aggregation for heatmap (last 180 days)
+        const sixMonthsAgo = new Date();
+        sixMonthsAgo.setDate(sixMonthsAgo.getDate() - 180);
+        
+        const activityData = await WebhookLog.aggregate([
+            {
+                $match: {
+                    app_id: { $in: apps.map(app => app.app_id) },
+                    created_at: { $gte: sixMonthsAgo }
+                }
+            },
+            {
+                $group: {
+                    _id: { $dateToString: { format: "%Y-%m-%d", date: "$created_at" } },
+                    count: { $sum: 1 }
+                }
+            },
+            { $sort: { "_id": 1 } }
+        ]);
+
+        const activity = activityData.map(item => ({
+            date: item._id,
+            count: item.count
+        }));
 
         res.json({
             success: true,
             stats: {
                 total_requests: totalRequests,
                 active_apps: activeApps,
-                top_apps: topApps,
-                total_apps: apps.length
+                total_apps: apps.length,
+                activity
             }
         });
     } catch (error) {
         console.error('Stats error:', error);
         res.status(500).json({ success: false, error: 'Failed to load stats' });
+    }
+});
+
+// GET /api/business/app-metadata/:app_id - PUBLIC ENDPOINT for SDK branding
+router.get('/app-metadata/:app_id', async (req, res) => {
+    try {
+        const { app_id } = req.params;
+
+        // Publicly expose ONLY name and branding info
+        const app = await BusinessApp.findOne({ app_id, active: true })
+            .select('app_id name sdk_config.logo_url sdk_config.primary_color sdk_config.layout sdk_config.border_radius sdk_config.font_family sdk_config.platform');
+
+        if (!app) {
+            return res.status(404).json({ success: false, error: 'App not found' });
+        }
+
+        return res.json({ 
+            success: true, 
+            app: {
+                app_id: app.app_id,
+                name: app.name,
+                logo_url: app.sdk_config?.logo_url || '',
+                theme: {
+                    primaryColor: app.sdk_config?.primary_color || '#8651e1',
+                    borderRadius: app.sdk_config?.border_radius || '12',
+                    fontFamily: app.sdk_config?.font_family || 'Inter',
+                    layout: app.sdk_config?.layout || 'auto',
+                    platform: app.sdk_config?.platform || 'desktop'
+                }
+            }
+        });
+    } catch (error) {
+        console.error('[Business] Get app metadata failed:', error);
+        res.status(500).json({ success: false, error: 'Failed to get app metadata' });
+    }
+});
+
+// ============================================
+// PUBLIC INTEGRATIONS DIRECTORY
+// ============================================
+
+/**
+ * Public app directory — no auth required.
+ * Returns apps that have opted into the directory (listing_status: 'listed') in production.
+ * GET /api/business/public/apps
+ */
+router.get('/public/apps', async (req, res) => {
+    try {
+        const apps = await BusinessApp.find({
+            active: true,
+            listing_status: 'listed',
+            environment: 'production'
+        })
+            .select('app_id name description website_url sdk_config.logo_url created_at')
+            .sort({ request_count: -1 })
+            .limit(50)
+            .lean();
+
+        return res.json({
+            success: true,
+            apps: apps.map(app => ({
+                app_id: app.app_id,
+                name: app.name,
+                description: app.description || '',
+                website_url: app.website_url || '',
+                logo_url: app.sdk_config?.logo_url || '',
+                created_at: app.created_at
+            }))
+        });
+    } catch (error) {
+        console.error('[Business] Public apps listing failed:', error);
+        res.status(500).json({ success: false, error: 'Failed to load app directory' });
     }
 });
 

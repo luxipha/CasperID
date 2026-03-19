@@ -11,10 +11,11 @@ import type { PasskeyAuthInitResponse, PasskeyAuthCompleteResponse } from '../ty
 
 interface PasskeyAuthProps {
     email: string;
-    onSuccess: (sessionToken: string, user: PasskeyAuthCompleteResponse['user']) => void;
+    onSuccess: (sessionToken: string, user: PasskeyAuthCompleteResponse['user'], businessToken?: string) => void;
     onError?: (error: string) => void;
     onFallbackToOTP?: () => void;
     apiBaseUrl?: string;
+    apiKey?: string;
     previewMode?: boolean;
     language?: string;
 }
@@ -25,6 +26,7 @@ const PasskeyAuth: React.FC<PasskeyAuthProps> = ({
     onError,
     onFallbackToOTP,
     apiBaseUrl = 'https://apis.casperid.com',
+    apiKey = '',
     previewMode = false,
     language = 'EN'
 }) => {
@@ -82,7 +84,10 @@ const PasskeyAuth: React.FC<PasskeyAuthProps> = ({
             // Step 1: Get authentication options from server
             const initResponse = await fetch(`${apiBaseUrl}/api/passkey/auth/begin`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: {
+                    'Content-Type': 'application/json',
+                    ...(apiKey ? { 'X-App-Id': apiKey } : {})
+                },
                 credentials: 'include',
                 body: JSON.stringify({ email })
             });
@@ -104,10 +109,14 @@ const PasskeyAuth: React.FC<PasskeyAuthProps> = ({
             // Step 3: Complete authentication with server
             const completeResponse = await fetch(`${apiBaseUrl}/api/passkey/auth/finish`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: {
+                    'Content-Type': 'application/json',
+                    ...(apiKey ? { 'X-App-Id': apiKey } : {})
+                },
                 credentials: 'include',
                 body: JSON.stringify({
                     email,
+                    challengeId: initData.challengeId,
                     credential
                 })
             });
@@ -120,7 +129,7 @@ const PasskeyAuth: React.FC<PasskeyAuthProps> = ({
             const completeData: PasskeyAuthCompleteResponse = await completeResponse.json();
 
             if (completeData.success && completeData.session_token) {
-                onSuccess(completeData.session_token, completeData.user);
+                onSuccess(completeData.session_token, completeData.user, completeData.business_token);
             } else {
                 throw new Error(completeData.error || 'Authentication failed');
             }

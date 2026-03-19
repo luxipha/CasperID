@@ -1240,6 +1240,22 @@ class ApiService {
   // ============================================
 
   /**
+   * Start Layer 3 verification session
+   * This must be called BEFORE uploading documents or submitting verification
+   */
+  public async startLayer3Verification(verificationMethod: 'document_upload' | 'nimc' = 'document_upload'): Promise<ApiResponse> {
+    try {
+      const response = await this.client.post('/api/v2/verification/layer3/start', {
+        verificationMethod,
+        purpose: 'Layer 3 KYC Verification'
+      });
+      return response.data;
+    } catch (error: any) {
+      throw this.handleError(error);
+    }
+  }
+
+  /**
    * Upload document and extract data with OCR
    */
   public async uploadDocumentWithOCR(
@@ -1287,6 +1303,8 @@ class ApiService {
       phone_number: string;
     };
     upload_id: string;
+    front_image_url?: string;
+    back_image_url?: string;
     liveness_verified: boolean;
   }): Promise<ApiResponse> {
     try {
@@ -1398,10 +1416,10 @@ class ApiService {
     }
   }
 
-  async issueCredential(token: string, requestId: string, approve: boolean): Promise<any> {
+  async issueCredential(token: string, requestId: string, approve: boolean, source?: 'v1' | 'v2', rejection_reason?: string): Promise<any> {
     try {
       const response = await this.client.post('/api/admin/issue-credential',
-        { request_id: requestId, approve },
+        { request_id: requestId, approve, source, rejection_reason },
         { headers: { Authorization: `Bearer ${token}` } }
       );
       return response.data;

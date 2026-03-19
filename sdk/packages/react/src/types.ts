@@ -4,24 +4,27 @@ export type Screen =
     | 'PasskeyAuth'       // Returning user biometric authentication
     | 'PasskeyRegister'   // New user passkey creation
     | 'PinVerification'
-    | 'L1Setup'           // Wallet/DID generation progress
     | 'SecurityUpgrade'
     | 'FaceScan'
     | 'VerifyIdentityChoice'
     | 'DocumentScan'
     | 'ReviewData'
-    | 'MintingIdentity'
+    | 'MintingIdentity'   // Unified screen for L1/L2/L3 minting
     | 'IdentityVerified'
     | 'PermissionsRequest';
 
 export type SDKMode = 'light' | 'dark' | 'system';
 export type VerificationTier = 'L1' | 'L2' | 'L3';
+export type LayoutMode = 'auto' | 'modal' | 'fullscreen';
+export type Platform = 'desktop' | 'mobile';
 
 export interface CasperIDTheme {
     primaryColor?: string;
     borderRadius?: string;
     fontFamily?: string;
     mode?: SDKMode;
+    layout?: LayoutMode;
+    platform?: Platform;
 }
 
 export interface CasperIDModalProps {
@@ -34,7 +37,7 @@ export interface CasperIDModalProps {
     /** Minimum verification tier required. SDK will auto step-up if needed. */
     requiredTier?: VerificationTier;
     /** Called when authentication/verification succeeds */
-    onSuccess?: (token: string) => void;
+    onSuccess?: (sessionToken: string, data?: { businessToken?: string }) => void;
     /** Called when the user dismisses the modal */
     onClose?: () => void;
     /** Called when an unrecoverable error occurs */
@@ -50,6 +53,8 @@ export interface CasperIDModalProps {
     initialScreen?: Screen;
     /** Base URL for API requests. Defaults to https://apis.casperid.com */
     apiBaseUrl?: string;
+    /** Current layout mode — 'auto' (default), 'modal', or 'fullscreen' */
+    layout?: LayoutMode;
     /** Terms of Service URL */
     termsUrl?: string;
     /** Privacy Policy URL */
@@ -58,6 +63,8 @@ export interface CasperIDModalProps {
     logoUrl?: string;
     /** Default language for the SDK (e.g., 'EN', 'ES', 'FR') */
     language?: string;
+    /** Explicitly target a platform: 'desktop' or 'mobile' */
+    platform?: Platform;
 }
 
 export interface ScreenProps {
@@ -86,6 +93,7 @@ export interface SendOTPResponse {
 export interface VerifyOTPResponse {
     success: boolean;
     sessionToken?: string;
+    business_token?: string;
     expiresAt?: string;
     error?: string;
     attemptsLeft?: number;
@@ -200,7 +208,9 @@ export interface Layer3SubmitResponse {
 // Passkey / WebAuthn Types
 export interface PasskeyRegisterInitResponse {
     success: boolean;
+    userId?: string;
     options?: PublicKeyCredentialCreationOptionsJSON;
+    expiresIn?: number;
     error?: string;
 }
 
@@ -208,6 +218,7 @@ export interface PasskeyRegisterCompleteResponse {
     success: boolean;
     credential_id?: string;
     session_token?: string;
+    business_token?: string;
     expires_at?: string;
     user?: {
         user_id: string;
@@ -219,6 +230,7 @@ export interface PasskeyRegisterCompleteResponse {
 
 export interface PasskeyAuthInitResponse {
     success: boolean;
+    challengeId?: string;
     options?: PublicKeyCredentialRequestOptionsJSON;
     error?: string;
 }
@@ -226,6 +238,7 @@ export interface PasskeyAuthInitResponse {
 export interface PasskeyAuthCompleteResponse {
     success: boolean;
     session_token?: string;
+    business_token?: string;
     expires_at?: string;
     user?: {
         user_id: string;
@@ -283,7 +296,12 @@ export interface PublicKeyCredentialRequestOptionsJSON {
 // L1 Setup Types
 export interface WalletGenerateResponse {
     success: boolean;
-    wallet?: string;
+    walletInfo?: {
+        walletAddress: string;
+        humanId: string;
+        publicKey: string;
+    };
+    alreadyExists?: boolean;
     error?: string;
 }
 
@@ -294,10 +312,31 @@ export interface DIDMintResponse {
     error?: string;
 }
 
+// App Metadata for Branding
+export interface AppMetadata {
+    app_id: string;
+    name: string;
+    logo_url?: string;
+    theme?: {
+        primaryColor?: string;
+        borderRadius?: string;
+        fontFamily?: string;
+        layout?: LayoutMode;
+        platform?: Platform;
+    };
+}
+
+export interface AppMetadataResponse {
+    success: boolean;
+    app?: AppMetadata;
+    error?: string;
+}
+
 // Auth State for SDK internal use
 export interface AuthState {
     email: string;
     sessionToken?: string;
+    businessToken?: string;
     userExists: boolean;
     hasPasskey: boolean;
     userAccount?: {

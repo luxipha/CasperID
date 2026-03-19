@@ -127,6 +127,13 @@ router.post('/register/finish', passkeyRateLimit, validatePasskeyAuth, extractAp
     try {
         const { userId, credential, deviceInfo } = req.body;
 
+        // Debug logging for origin resolution
+        console.log('[Passkey Register] Origin:', req.headers.origin);
+        console.log('[Passkey Register] BusinessApp:', req.businessApp ? {
+            app_id: req.businessApp.app_id,
+            allowed_origins: req.businessApp.allowed_origins
+        } : 'Not found');
+
         if (!userId || !credential) {
             return res.status(400).json({
                 success: false,
@@ -142,10 +149,12 @@ router.post('/register/finish', passkeyRateLimit, validatePasskeyAuth, extractAp
         };
 
         // Complete passkey registration
+        // Pass allowed_origins from BusinessApp for dynamic origin validation
         const registrationResult = await webauthnService.verifyRegistration(
             userId,
             credential,
-            enhancedDeviceInfo
+            enhancedDeviceInfo,
+            req.businessApp?.allowed_origins
         );
 
         if (!registrationResult.success) {
@@ -172,10 +181,15 @@ router.post('/register/finish', passkeyRateLimit, validatePasskeyAuth, extractAp
         let businessToken = null;
         if (req.businessApp && registrationResult.userAccount) {
             const ua = registrationResult.userAccount;
+            const { UserProfile } = require('../database/models');
+            const profile = await UserProfile.findOne({ wallet: ua.wallet });
+            const name = profile ? (profile.name || `${profile.first_name || ''} ${profile.last_name || ''}`.trim() || null) : (ua.name || null);
+
             businessToken = generateBusinessToken({
                 userId: ua.user_id,
                 wallet: ua.wallet,
                 humanId: ua.human_id || null,
+                name: name,
                 verified: ua.email_verified || false,
                 tier: ua.tier || 'layer_0',
                 email: ua.recovery_email,
@@ -543,10 +557,12 @@ router.post('/auth/finish', extractApp, async (req, res) => {
             userAgent: req.get('User-Agent')
         };
 
+        // Pass allowed_origins from BusinessApp for dynamic origin validation
         const authResult = await webauthnService.verifyAuthentication(
             challengeId,
             credential,
-            enhancedDeviceInfo
+            enhancedDeviceInfo,
+            req.businessApp?.allowed_origins
         );
 
         if (!authResult.success) {
@@ -572,10 +588,15 @@ router.post('/auth/finish', extractApp, async (req, res) => {
         let businessToken = null;
         if (req.businessApp && authResult.userAccount) {
             const ua = authResult.userAccount;
+            const { UserProfile } = require('../database/models');
+            const profile = await UserProfile.findOne({ wallet: ua.wallet });
+            const name = profile ? (profile.name || `${profile.first_name || ''} ${profile.last_name || ''}`.trim() || null) : (ua.name || null);
+
             businessToken = generateBusinessToken({
                 userId: ua.user_id,
                 wallet: ua.wallet,
                 humanId: ua.human_id || null,
+                name: name,
                 verified: ua.email_verified || false,
                 tier: ua.tier || 'layer_0',
                 email: ua.recovery_email,

@@ -1,15 +1,38 @@
 {
     "name": "@casperid/react",
-    "version": "1.0.0",
+    "version": "1.0.2",
     "description": "CasperID Identity SDK — embeddable React modal for authentication and KYC verification",
     "main": "dist/index.cjs",
     "module": "dist/index.mjs",
     "types": "src/index.ts",
     "type": "module",
+    "keywords": [
+        "casper",
+        "identity",
+        "verification",
+        "blockchain",
+        "did",
+        "passkey",
+        "zkp",
+        "privacy",
+        "react",
+        "sdk",
+        "auth"
+    ],
     "files": [
         "dist",
         "src"
     ],
+    "author": "CasperID Team",
+    "license": "MIT",
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/luxipha/CasperID-sdk.git"
+    },
+    "bugs": {
+        "url": "https://github.com/luxipha/CasperID-sdk/issues"
+    },
+    "homepage": "https://casperid.com",
     "scripts": {
         "dev": "vite --port=3001",
         "build": "tsc --noEmit && vite build",

@@ -480,6 +480,64 @@ class EmailService {
             throw error;
         }
     }
+
+    async sendVerificationRejectionEmail(email, { reason, requestId }) {
+        try {
+            console.log(`📧 Sending verification rejection email to ${email}`);
+
+            const mailOptions = {
+                from: `"CasperID Verification" <${this.smtpConfig.auth.user}>`,
+                to: email,
+                subject: 'Your CasperID Verification Request Update',
+                html: `
+                    <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f8f9ff;">
+                        <div style="background: linear-gradient(135deg, #1e1b4b 0%, #312e81 100%); padding: 30px; border-radius: 12px 12px 0 0;">
+                            <h1 style="color: #ffffff; margin: 0; font-size: 24px;">Verification Update</h1>
+                        </div>
+
+                        <div style="background: #ffffff; padding: 30px; border-radius: 0 0 12px 12px; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);">
+                            <p style="color: #374151; font-size: 16px; line-height: 1.6;">
+                                We've reviewed your Layer 3 (Full KYC) verification request and unfortunately, we were unable to approve it at this time.
+                            </p>
+
+                            <div style="background: #fef2f2; border-left: 4px solid #ef4444; padding: 16px; margin: 20px 0; border-radius: 0 8px 8px 0;">
+                                <h3 style="color: #991b1b; margin: 0 0 8px 0; font-size: 14px;">Reason for Rejection:</h3>
+                                <p style="color: #7f1d1d; margin: 0; font-size: 14px;">${reason}</p>
+                            </div>
+
+                            <p style="color: #374151; font-size: 14px; line-height: 1.6;">
+                                <strong>What you can do:</strong>
+                            </p>
+                            <ul style="color: #374151; font-size: 14px; line-height: 1.8;">
+                                <li>Review the rejection reason above</li>
+                                <li>Ensure your document is clear and all information is visible</li>
+                                <li>Make sure the document is not expired</li>
+                                <li>Try submitting again with a valid document</li>
+                            </ul>
+
+                            <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #e5e7eb;">
+                                <p style="color: #6b7280; font-size: 12px; margin: 0;">
+                                    Request ID: ${requestId}<br>
+                                    If you believe this was an error, please contact support.
+                                </p>
+                            </div>
+                        </div>
+
+                        <p style="color: #9ca3af; font-size: 12px; text-align: center; margin-top: 20px;">
+                            © ${new Date().getFullYear()} CasperID. All rights reserved.
+                        </p>
+                    </div>
+                `
+            };
+
+            await this.transporter.sendMail(mailOptions);
+            console.log(`✅ Verification rejection email sent to ${email}`);
+            return true;
+        } catch (error) {
+            console.error('❌ Failed to send verification rejection email:', error);
+            throw error;
+        }
+    }
 }
 
 module.exports = new EmailService();

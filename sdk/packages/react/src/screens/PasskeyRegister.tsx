@@ -12,10 +12,11 @@ import type { PasskeyRegisterInitResponse, PasskeyRegisterCompleteResponse } fro
 interface PasskeyRegisterProps {
     email: string;
     sessionToken: string;
-    onSuccess: (user: PasskeyRegisterCompleteResponse['user']) => void;
+    onSuccess: (user: PasskeyRegisterCompleteResponse['user'], businessToken?: string) => void;
     onError?: (error: string) => void;
     onSkip?: () => void;
     apiBaseUrl?: string;
+    apiKey?: string;
     previewMode?: boolean;
     language?: string;
 }
@@ -27,6 +28,7 @@ const PasskeyRegister: React.FC<PasskeyRegisterProps> = ({
     onError,
     onSkip,
     apiBaseUrl = 'https://apis.casperid.com',
+    apiKey = '',
     previewMode = false,
     language = 'EN'
 }) => {
@@ -77,7 +79,8 @@ const PasskeyRegister: React.FC<PasskeyRegisterProps> = ({
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${sessionToken}`
+                    'Authorization': `Bearer ${sessionToken}`,
+                    ...(apiKey ? { 'X-App-Id': apiKey } : {})
                 },
                 credentials: 'include',
                 body: JSON.stringify({ email })
@@ -102,12 +105,16 @@ const PasskeyRegister: React.FC<PasskeyRegisterProps> = ({
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${sessionToken}`
+                    'Authorization': `Bearer ${sessionToken}`,
+                    ...(apiKey ? { 'X-App-Id': apiKey } : {})
                 },
                 credentials: 'include',
                 body: JSON.stringify({
-                    email,
-                    credential
+                    userId: initData.userId,
+                    credential,
+                    deviceInfo: {
+                        userAgent: navigator.userAgent
+                    }
                 })
             });
 
@@ -122,7 +129,7 @@ const PasskeyRegister: React.FC<PasskeyRegisterProps> = ({
                 setIsSuccess(true);
                 // Brief delay to show success state
                 setTimeout(() => {
-                    onSuccess(completeData.user);
+                    onSuccess(completeData.user, completeData.business_token);
                 }, 1000);
             } else {
                 throw new Error(completeData.error || 'Registration failed');

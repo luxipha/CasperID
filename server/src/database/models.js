@@ -26,7 +26,7 @@ const verificationRequestSchema = new mongoose.Schema({
     cns_name: { type: String },
     tier: {
         type: String,
-        enum: ['layer_1', 'layer_3', 'layer_1', 'layer_2', 'layer_3'],
+        enum: ['layer_1', 'layer_2', 'layer_3'],
         default: 'layer_1',
         required: true
     },
@@ -509,12 +509,16 @@ const viewEventSchema = new mongoose.Schema({
 });
 
 const notificationSchema = new mongoose.Schema({
-    recipientWallet: { type: String, required: true, index: true },
+    recipientWallet: { type: String, index: true },
+    user_id: { type: String, index: true }, // Alternative to recipientWallet
     type: { type: String, required: true },
+    title: { type: String },
     message: { type: String, required: true },
     metadata: { type: Object },
+    data: { type: Object }, // Additional structured data
     read: { type: Boolean, default: false },
-    createdAt: { type: Date, default: Date.now }
+    createdAt: { type: Date, default: Date.now },
+    created_at: { type: Date, default: Date.now } // Alias for consistency
 });
 
 const loginSessionSchema = new mongoose.Schema({
@@ -1204,14 +1208,40 @@ const verificationRequestV2Schema = new mongoose.Schema({
     consent_granted_at: Date,
     status: {
         type: String,
-        enum: ['pending', 'in_progress', 'completed', 'failed', 'cancelled'],
+        enum: ['pending', 'in_progress', 'completed', 'failed', 'cancelled', 'rejected'],
         default: 'pending'
     },
     verification_data: {
+        // Liveness
         liveness_score: Number,
+        liveness_verified: Boolean,
+        liveness_processed_at: Number,
+        liveness_completed_at: String,
+        liveness_frame_urls: [String], // ImageKit URLs of liveness check frames
+        liveness_confidence: Number,
+        // Document
         kyc_status: String,
         document_verified: Boolean,
-        identity_data_hash: String
+        document_type: String,
+        document_number: String,
+        nin: String,
+        identity_data_hash: String,
+        // Personal fields from OCR
+        first_name: String,
+        last_name: String,
+        date_of_birth: String,
+        gender: String,
+        nationality: String,
+        home_address: String,
+        // ImageKit document image references
+        front_image_url: String,
+        front_image_file_id: String,
+        back_image_url: String,
+        back_image_file_id: String,
+        // Tracking
+        upload_id: String,
+        submitted_at: String,
+        document_processed_at: Number
     },
     proof_generated: {
         type: Boolean,
@@ -1229,6 +1259,9 @@ const verificationRequestV2Schema = new mongoose.Schema({
         default: false
     },
     error_message: String,
+    rejection_reason: String,
+    rejected_at: Date,
+    rejected_by: String,
     created_at: {
         type: Date,
         default: Date.now
@@ -1422,8 +1455,25 @@ const businessAppSchema = new mongoose.Schema({
         font_family: { type: String, default: 'Inter' },
         logo_url: { type: String, default: '' },
         mode: { type: String, enum: ['light', 'dark', 'system'], default: 'light' },
+        layout: { type: String, enum: ['auto', 'modal', 'fullscreen'], default: 'auto' },
+        platform: { type: String, enum: ['desktop', 'mobile'], default: 'desktop' },
         language: { type: String, default: 'EN' },
         updated_at: { type: Date, default: Date.now }
+    },
+    website_url: {
+        type: String,
+        default: '',
+        maxlength: 500
+    },
+    description: {
+        type: String,
+        default: '',
+        maxlength: 300
+    },
+    listing_status: {
+        type: String,
+        enum: ['unlisted', 'listed'],
+        default: 'unlisted'
     },
     created_at: {
         type: Date,

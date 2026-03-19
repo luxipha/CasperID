@@ -1,5 +1,5 @@
 const router = require('express').Router();
-const { ViewEvent, VerificationRequest, Credential } = require('../database/models');
+const { ViewEvent, VerificationRequest, VerificationRequestV2, Credential, Notification, UserAccount } = require('../database/models');
 const { requireAuth } = require('../middleware/auth');
 const geoip = require('geoip-lite');
 const UAParser = require('ua-parser-js');
@@ -14,11 +14,17 @@ router.get('/activity-log', requireAuth, async (req, res) => {
         const { page = 1, limit = 10, type, search } = req.query;
         const skip = (page - 1) * limit;
 
+        // Get user_id from wallet for V2 queries
+        const userAccount = await UserAccount.findOne({ wallet }).lean();
+        const userId = userAccount?.user_id;
+
         // Fetch from all sources
-        const [views, verifications, credentials] = await Promise.all([
+        const [views, verifications, verificationsV2, credentials, notifications] = await Promise.all([
             ViewEvent.find({ ownerWallet: wallet }).sort({ timestamp: -1 }).limit(100).lean(),
             VerificationRequest.find({ wallet }).sort({ created_at: -1 }).limit(100).lean(),
-            Credential.find({ wallet }).sort({ created_at: -1 }).limit(100).lean()
+            userId ? VerificationRequestV2.find({ user_id: userId }).sort({ created_at: -1 }).limit(100).lean() : [],
+            Credential.find({ wallet }).sort({ created_at: -1 }).limit(100).lean(),
+            Notification.find({ $or: [{ user_id: userId }, { recipientWallet: wallet }] }).sort({ createdAt: -1 }).limit(100).lean()
         ]);
 
         let activities = [];
@@ -128,7 +134,78 @@ router.get('/activity-log', requireAuth, async (req, res) => {
             };
         }));
 
-        // 3. Process Credentials
+        // 3. Process V2 Verifications
+        activities.push(...verificationsV2.map(ver => {
+            const tierLabels = {
+                'layer_1': 'Basic Verification',
+                'layer_2': 'Liveness Check',
+                'layer_3': 'Full KYC'
+            };
+
+            const statusMap = {
+                'pending': { label: 'Pending', class: 'bg-yellow-100 text-yellow-800' },
+                'in_progress': { label: 'In Progress', class: 'bg-blue-100 text-blue-800' },
+                'completed': { label: 'Success', class: 'bg-green-100 text-green-800' },
+                'rejected': { label: 'Rejected', class: 'bg-red-100 text-red-800' },
+                'failed': { label: 'Failed', class: 'bg-red-100 text-red-800' },
+                'cancelled': { label: 'Cancelled', class: 'bg-gray-100 text-gray-800' }
+            };
+
+            const statusInfo = statusMap[ver.status] || statusMap.pending;
+
+            return {
+                id: ver._id.toString(),
+                type: 'verified_user',
+                typeColor: 'bg-primary/10 text-primary',
+                action: ver.status === 'rejected' ? 'Verification Rejected' : 'KYC Verification',
+                subText: tierLabels[ver.verification_tier] || ver.verification_tier,
+                entity: 'CasperID Core',
+                entitySub: ver.purpose || null,
+                date: new Date(ver.created_at).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }),
+                time: new Date(ver.created_at).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
+                status: statusInfo.label,
+                statusClass: statusInfo.class,
+                timestamp: ver.created_at,
+                tier: ver.verification_tier,
+                // Rejection info
+                rejectionReason: ver.rejection_reason,
+                rejectedAt: ver.rejected_at,
+                // V2 marker
+                source: 'v2'
+            };
+        }));
+
+        // 4. Process Notifications (system alerts, rejections, etc.)
+        activities.push(...notifications.map(notif => {
+            const typeMap = {
+                'verification_rejected': { icon: 'error', color: 'bg-red-50 text-red-600' },
+                'verification_approved': { icon: 'check_circle', color: 'bg-green-50 text-green-600' },
+                'credential_issued': { icon: 'card_membership', color: 'bg-indigo-50 text-indigo-600' },
+                'default': { icon: 'notifications', color: 'bg-gray-50 text-gray-600' }
+            };
+
+            const typeInfo = typeMap[notif.type] || typeMap.default;
+
+            const timestamp = notif.createdAt || notif.created_at || new Date();
+            return {
+                id: notif._id.toString(),
+                type: typeInfo.icon,
+                typeColor: typeInfo.color,
+                action: notif.title || 'Notification',
+                subText: notif.message,
+                entity: 'CasperID',
+                entitySub: null,
+                date: new Date(timestamp).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }),
+                time: new Date(timestamp).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
+                status: notif.read ? 'Read' : 'New',
+                statusClass: notif.read ? 'bg-gray-100 text-gray-600' : 'bg-blue-100 text-blue-800',
+                timestamp: timestamp,
+                notificationType: notif.type,
+                data: notif.data || notif.metadata
+            };
+        }));
+
+        // 5. Process Credentials
         activities.push(...credentials.map(cred => {
             // Resolve Location
             let location = cred.location;
@@ -180,10 +257,15 @@ router.get('/activity-log', requireAuth, async (req, res) => {
             const typeMap = {
                 'views': 'visibility',
                 'verifications': 'verified_user',
-                'credentials': 'card_membership'
+                'credentials': 'card_membership',
+                'notifications': ['error', 'check_circle', 'notifications']
             };
             const mappedType = typeMap[type] || type;
-            activities = activities.filter(a => a.type === mappedType);
+            if (Array.isArray(mappedType)) {
+                activities = activities.filter(a => mappedType.includes(a.type));
+            } else {
+                activities = activities.filter(a => a.type === mappedType);
+            }
         }
 
         if (search) {

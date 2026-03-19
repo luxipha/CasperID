@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { RefreshCw, Activity, Check, AlertTriangle, Play, ChevronDown, Trash2, History, X, Clock, CheckCircle, XCircle } from 'lucide-react';
 import { WEBHOOK_EVENTS, SUBSCRIBABLE_EVENTS } from '../constants/webhook-events';
 
-const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:8080';
+const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3001';
 
 interface BusinessApp {
   app_id: string;

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { Wallet, Fingerprint, CheckCircle2, Loader2, AlertCircle, RefreshCw } from 'lucide-react';
 import { t } from '../utils/i18n';
@@ -9,6 +9,7 @@ interface L1SetupProps {
     onSuccess: (wallet: string, didAddress: string) => void;
     onError?: (error: string) => void;
     apiBaseUrl?: string;
+    apiKey?: string;
     previewMode?: boolean;
     language?: string;
 }
@@ -20,6 +21,7 @@ const L1Setup: React.FC<L1SetupProps> = ({
     onSuccess,
     onError,
     apiBaseUrl = 'https://apis.casperid.com',
+    apiKey = '',
     previewMode = false,
     language = 'EN'
 }) => {
@@ -29,7 +31,12 @@ const L1Setup: React.FC<L1SetupProps> = ({
     const [wallet, setWallet] = useState<string | null>(null);
     const [didAddress, setDidAddress] = useState<string | null>(null);
 
+    // Prevent double execution in React StrictMode
+    const hasStartedRef = useRef(false);
+
     useEffect(() => {
+        if (hasStartedRef.current) return;
+        hasStartedRef.current = true;
         runSetup();
     }, []);
 
@@ -103,7 +110,8 @@ const L1Setup: React.FC<L1SetupProps> = ({
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'Authorization': `Bearer ${sessionToken}`
+                'Authorization': `Bearer ${sessionToken}`,
+                ...(apiKey ? { 'X-App-Id': apiKey } : {})
             },
             credentials: 'include'
         });
@@ -114,11 +122,11 @@ const L1Setup: React.FC<L1SetupProps> = ({
         }
 
         const data: WalletGenerateResponse = await response.json();
-        if (!data.success || !data.wallet) {
+        if (!data.success || !data.walletInfo?.walletAddress) {
             throw new Error(data.error || 'Wallet generation failed');
         }
 
-        return data.wallet;
+        return data.walletInfo.walletAddress;
     };
 
     const mintDID = async (): Promise<string> => {
@@ -126,7 +134,8 @@ const L1Setup: React.FC<L1SetupProps> = ({
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'Authorization': `Bearer ${sessionToken}`
+                'Authorization': `Bearer ${sessionToken}`,
+                ...(apiKey ? { 'X-App-Id': apiKey } : {})
             },
             credentials: 'include'
         });

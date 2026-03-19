@@ -4,6 +4,7 @@ const verificationServiceV2 = require('../services/verification-v2');
 const multer = require('multer');
 const path = require('path');
 const { extractApp } = require('../middleware/app-auth');
+const imagekit = require('../services/imagekit');
 
 /**
  * Verification V2 Routes
@@ -11,19 +12,9 @@ const { extractApp } = require('../middleware/app-auth');
  * Supports Layer 2 (liveness) and Layer 3 (full KYC) verification
  */
 
-// Configure multer for file uploads
-const storage = multer.diskStorage({
-    destination: (req, file, cb) => {
-        cb(null, path.join(__dirname, '../../uploads/'));
-    },
-    filename: (req, file, cb) => {
-        const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-        cb(null, file.fieldname + '-' + uniqueSuffix + path.extname(file.originalname));
-    }
-});
-
+// Use memory storage — files are uploaded directly to ImageKit, never written to disk
 const upload = multer({
-    storage: storage,
+    storage: multer.memoryStorage(),
     limits: { fileSize: 10 * 1024 * 1024 }, // 10MB limit
     fileFilter: (req, file, cb) => {
         const allowedTypes = /jpeg|jpg|png|gif|mp4|webm|mov/;
@@ -164,6 +155,7 @@ router.post('/layer3/start', extractApp, async (req, res) => {
 
 /**
  * Submit document upload for Layer 3 WITH OCR EXTRACTION
+ * Files go directly to ImageKit — no temporary files are written to disk.
  * POST /api/v2/verification/layer3/documents/upload
  */
 router.post('/layer3/documents/upload', upload.fields([
@@ -189,82 +181,132 @@ router.post('/layer3/documents/upload', upload.fields([
 
         const userAccount = sessionData.userAccount;
 
-        // Validate user is eligible for Layer 3
-        if (userAccount.tier !== 'layer_2') {
+        // Tiers are independent — layer_1 or layer_2 users can proceed to Layer 3
+        const ELIGIBLE_TIERS = ['layer_1', 'layer_2'];
+        if (!ELIGIBLE_TIERS.includes(userAccount.tier)) {
             return res.status(403).json({
-                error: 'Layer 2 verification required before Layer 3',
+                error: 'Layer 1 or Layer 2 verification required before Layer 3',
                 current_status: userAccount.tier
             });
         }
 
         const { document_type } = req.body;
 
-        if (!document_type || !['passport', 'drivers_license', 'national_id'].includes(document_type)) {
+        // Support both 'license' and 'drivers_license' to be safe
+        const normalizedDocType = document_type === 'license' ? 'drivers_license' : document_type;
+
+        if (!normalizedDocType || !['passport', 'drivers_license', 'national_id'].includes(normalizedDocType)) {
             return res.status(400).json({ error: 'Invalid document_type' });
         }
 
-        const frontImage = req.files?.front_image?.[0];
-        const backImage = req.files?.back_image?.[0];
+        const frontImageFile = req.files?.front_image?.[0];
+        const backImageFile = req.files?.back_image?.[0];
 
-        if (!frontImage) {
+        if (!frontImageFile) {
             return res.status(400).json({ error: 'front_image is required' });
         }
 
         // Passport only needs front, others need both
-        if (document_type !== 'passport' && !backImage) {
+        if (normalizedDocType !== 'passport' && !backImageFile) {
             return res.status(400).json({ error: 'back_image is required for ID/Driver\'s License' });
         }
 
-
-        // Initialize Tesseract OCR worker with better configuration
-        const { createWorker } = require('tesseract.js');
-        worker = await createWorker('eng', 1, {
-            logger: m => { }
+        // Upload front image to ImageKit (no temp file written to disk)
+        const frontUploadResponse = await imagekit.files.upload({
+            file: frontImageFile.buffer.toString('base64'),
+            fileName: `kyc-front-${userAccount.user_id}-${Date.now()}`,
+            folder: '/kyc-documents',
+            useUniqueFileName: true
         });
 
-        // Configure Tesseract for better accuracy
-        await worker.setParameters({
-            tessedit_pageseg_mode: '1', // Automatic page segmentation with OSD
-            tessedit_char_whitelist: 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789 /-.,',
-        });
-
-        // Perform OCR on front image with confidence data
-        const { data } = await worker.recognize(frontImage.path);
-
-
-        // If confidence is too low, try again with different settings
-        let finalText = data.text;
-        if (data.confidence < 60) {
-            await worker.setParameters({
-                tessedit_pageseg_mode: '6', // Assume a single uniform block of text
+        // Upload back image to ImageKit if provided
+        let backUploadResponse = null;
+        if (backImageFile) {
+            backUploadResponse = await imagekit.files.upload({
+                file: backImageFile.buffer.toString('base64'),
+                fileName: `kyc-back-${userAccount.user_id}-${Date.now()}`,
+                folder: '/kyc-documents',
+                useUniqueFileName: true
             });
-            const retry = await worker.recognize(frontImage.path);
-            if (retry.data.confidence > data.confidence) {
-                finalText = retry.data.text;
-            }
         }
 
-        // Parse extracted text into structured data
-        const extractedData = parseDocumentText(finalText, document_type, data.confidence);
-
-        // Generate upload ID for tracking
+        // Generate upload ID for tracking (moved up)
         const crypto = require('crypto');
         const uploadId = crypto.randomBytes(16).toString('hex');
 
-        await worker.terminate();
+        let extractedData = {
+            document_type: normalizedDocType,
+            document_number: '',
+            first_name: '',
+            last_name: '',
+            date_of_birth: '',
+            gender: '',
+            nationality: 'Nigerian',
+            confidence: 0
+        };
+
+        try {
+            // Initialize Tesseract OCR worker (tesseract.js v7)
+            const { createWorker } = require('tesseract.js');
+            worker = await createWorker('eng');
+
+            // Configure Tesseract for document scanning.
+            // PSM 6 = "Assume a single uniform block of text" — avoids OSD (osd.traineddata) entirely.
+            await worker.setParameters({
+                tessedit_pageseg_mode: '6',
+                tessedit_char_whitelist: 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789 /-.,',
+            });
+
+            // Perform OCR directly on in-memory buffer
+            const { data } = await worker.recognize(frontImageFile.buffer);
+
+            // If confidence is too low, retry with PSM 3 (fully automatic)
+            let finalText = data.text;
+            let finalConfidence = data.confidence;
+
+            if (data.confidence < 60) {
+                try {
+                    await worker.setParameters({ tessedit_pageseg_mode: '3' });
+                    const retry = await worker.recognize(frontImageFile.buffer);
+                    if (retry.data.confidence > data.confidence) {
+                        finalText = retry.data.text;
+                        finalConfidence = retry.data.confidence;
+                    }
+                } catch (retryError) {
+                    console.warn('[OCR] PSM 3 retry failed (possibly missing OSD data):', retryError.message);
+                }
+            }
+
+            await worker.terminate();
+            worker = null;
+
+            // Parse extracted text into structured data
+            extractedData = parseDocumentText(finalText, normalizedDocType, finalConfidence);
+
+        } catch (ocrError) {
+            console.error('[OCR] Extraction failed, falling back to manual entry:', ocrError.message);
+            if (worker) {
+                try { await worker.terminate(); } catch (_) {}
+                worker = null;
+            }
+        }
 
         res.json({
             success: true,
             upload_id: uploadId,
+            front_image_url: frontUploadResponse.url,
+            front_image_file_id: frontUploadResponse.fileId,
+            back_image_url: backUploadResponse?.url || null,
+            back_image_file_id: backUploadResponse?.fileId || null,
             extracted_data: extractedData,
-            confidence: extractedData.confidence || 0.7,
+            confidence: extractedData.confidence || 0,
             needs_review: true,
-            message: 'Document processed successfully. Please review the extracted data.'
+            message: 'Document processed. Please review the extracted data.'
         });
 
     } catch (error) {
         if (worker) {
-            await worker.terminate();
+            try { await worker.terminate(); } catch (_) {}
         }
 
         console.error('[Layer3] Document upload error:', error);
@@ -356,7 +398,9 @@ function parseDocumentText(text, documentType, ocrConfidence = 0) {
 }
 
 /**
- * Submit Layer 3 verification request for admin review  
+ * Submit Layer 3 verification request for admin review
+ * Finds the pending VerificationRequestV2 created by /layer3/start and
+ * enriches it with the OCR-extracted document data.
  * POST /api/v2/verification/layer3/submit
  */
 router.post('/layer3/submit', async (req, res) => {
@@ -377,102 +421,80 @@ router.post('/layer3/submit', async (req, res) => {
 
         const userAccount = sessionData.userAccount;
 
-        // Session may not include email, fetch from database
-        const { UserAccount } = require('../database/models');
-        const fullUserAccount = await UserAccount.findOne({ wallet: userAccount.wallet });
+        // Fetch the full user account from database (session may lack some fields)
+        const { UserAccount, VerificationRequestV2 } = require('../database/models');
+        const fullUserAccount = await UserAccount.findOne({ user_id: userAccount.user_id });
 
         if (!fullUserAccount) {
             return res.status(404).json({ error: 'User account not found' });
         }
 
-        // Validate Layer 2 complete
-        if (fullUserAccount.tier !== 'layer_2') {
+        // Tiers are independent — layer_1 or layer_2 can reach Layer 3
+        const ELIGIBLE_TIERS = ['layer_1', 'layer_2'];
+        if (!ELIGIBLE_TIERS.includes(fullUserAccount.tier)) {
             return res.status(403).json({
-                error: 'Layer 2 verification required'
+                error: 'Layer 1 or Layer 2 verification required for Full KYC',
+                current_tier: fullUserAccount.tier
             });
         }
 
-        const { document_data, upload_id, liveness_verified } = req.body;
+        const {
+            document_data,
+            upload_id,
+            front_image_url,
+            front_image_file_id,
+            back_image_url,
+            back_image_file_id,
+            liveness_verified
+        } = req.body;
 
         if (!document_data || !upload_id) {
-            return res.status(400).json({ error: 'Missing required fields' });
+            return res.status(400).json({ error: 'Missing required fields: document_data and upload_id' });
         }
 
-        const { VerificationRequest } = require('../database/models');
-
-        // Check for existing pending request
-        const existingRequest = await VerificationRequest.findOne({
-            wallet: fullUserAccount.wallet,
-            tier: 'layer_3',
-            status: 'pending'
+        // Find the pending VerificationRequestV2 opened by /layer3/start
+        const pendingRequest = await VerificationRequestV2.findOne({
+            user_id: fullUserAccount.user_id,
+            verification_tier: 'layer_3',
+            status: { $in: ['pending', 'in_progress'] }
         });
 
-        if (existingRequest) {
+        if (!pendingRequest) {
             return res.status(400).json({
-                error: 'You already have a pending Full KYC verification request',
-                request_id: existingRequest._id
+                error: 'No active Layer 3 verification session found. Please call /layer3/start first.'
             });
         }
 
-
-        // Try to load saved liveness frames from the liveness check
-        let livenessFrames = [];
-        let livenessCompletedAt = null;
-        try {
-            const fs = require('fs');
-            const path = require('path');
-            const livenessDataPath = path.join(__dirname, `../../uploads/liveness/${fullUserAccount.wallet.slice(-20)}-result.json`);
-
-            if (fs.existsSync(livenessDataPath)) {
-                const livenessData = JSON.parse(fs.readFileSync(livenessDataPath, 'utf8'));
-                livenessFrames = livenessData.frame_paths || [];
-                livenessCompletedAt = livenessData.completed_at;
-            }
-        } catch (err) {
-            console.warn('[FullKYC] Could not load liveness frames:', err.message);
-        }
-
-        // Create verification request
-        const verificationRequest = new VerificationRequest({
-            wallet: fullUserAccount.wallet,
-            email: fullUserAccount.recovery_email, // Using recovery_email field
-            tier: 'layer_3',
-            status: 'pending',
-
-            // Populate top-level fields for admin mapping
+        // Enrich the existing request with document data
+        pendingRequest.status = 'in_progress';
+        pendingRequest.verification_data = {
+            ...pendingRequest.verification_data,
+            document_verified: true, // Provisional — admin review will confirm
+            document_type: document_data.document_type,
+            document_number: document_data.document_number,
+            nin: document_data.nin,
             first_name: document_data.first_name,
             last_name: document_data.last_name,
             date_of_birth: document_data.date_of_birth,
-            phone_number: document_data.phone_number,
+            gender: document_data.gender,
+            nationality: document_data.nationality || 'Nigerian',
             home_address: document_data.address,
-            location: document_data.address,
+            liveness_verified: liveness_verified || false,
+            // ImageKit references (no local paths)
+            front_image_url: front_image_url || null,
+            front_image_file_id: front_image_file_id || null,
+            back_image_url: back_image_url || null,
+            back_image_file_id: back_image_file_id || null,
+            upload_id,
+            submitted_at: new Date().toISOString()
+        };
 
-            verification_method: 'document',
-
-            // Store everything in the existing 'metadata' field to prevent data loss
-            metadata: {
-                document_type: document_data.document_type,
-                document_number: document_data.document_number,
-                gender: document_data.gender,
-                nationality: document_data.nationality || 'Nigerian',
-                nin: document_data.nin,
-                liveness_verified: liveness_verified || false,
-                liveness_frames: livenessFrames,
-                liveness_completed_at: livenessCompletedAt,
-                upload_id: upload_id,
-                document_data_json: JSON.stringify(document_data) // Backup of full OCR
-            },
-
-            created_at: new Date()
-        });
-
-        await verificationRequest.save();
-
+        await pendingRequest.save();
 
         res.json({
             success: true,
-            verification_request_id: verificationRequest._id,
-            status: 'pending',
+            verification_request_id: pendingRequest.request_id,
+            status: 'in_progress',
             message: 'Verification request submitted successfully. Our team will review it shortly.'
         });
 

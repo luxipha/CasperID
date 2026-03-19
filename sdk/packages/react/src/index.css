@@ -7,13 +7,12 @@
 
 /* ============================================
    CSS Variable Bridge — driven by <CasperIDModal theme={...} />
+   Variables are set dynamically by the component via scoped styles.
+   No defaults here to prevent flash of default colors.
    ============================================ */
 :root {
-    --casperid-primary: #8651e1;
-    --casperid-radius: 12px;
-    --casperid-font: "Plus Jakarta Sans", Inter, sans-serif;
-
-    font-family: var(--casperid-font);
+    /* Brand variables are injected by CasperIDModal component */
+    font-family: var(--casperid-font, "Plus Jakarta Sans", Inter, sans-serif);
 }
 
 /* Light mode (default) */
@@ -170,7 +169,7 @@
 
     /* Border radius utility */
     .rounded-brand {
-        border-radius: var(--casperid-radius);
+        border-radius: var(--casperid-radius, 12px);
     }
 
     /* Focus ring utilities */

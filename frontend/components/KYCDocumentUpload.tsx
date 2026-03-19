@@ -16,7 +16,7 @@ export const KYCDocumentUpload: React.FC<KYCDocumentUploadProps> = ({ docType, o
 
   const getDocName = () => {
     if (docType === 'passport') return 'Passport';
-    if (docType === 'license') return "Driver's License";
+    if (docType === 'drivers_license') return "Driver's License";
     return 'National ID';
   };
 

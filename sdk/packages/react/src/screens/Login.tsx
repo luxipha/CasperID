@@ -9,6 +9,7 @@ interface LoginProps {
     onPasskeyUser?: (email: string) => void;
     onError?: (error: string) => void;
     apiBaseUrl?: string;
+    apiKey?: string;
     previewMode?: boolean;
     language?: string;
 }
@@ -18,6 +19,7 @@ const Login: React.FC<LoginProps> = ({
     onPasskeyUser,
     onError,
     apiBaseUrl = 'https://apis.casperid.com',
+    apiKey = '',
     previewMode = false,
     language = 'EN'
 }) => {
@@ -55,6 +57,7 @@ const Login: React.FC<LoginProps> = ({
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
+                    ...(apiKey ? { 'X-App-Id': apiKey } : {})
                 },
                 body: JSON.stringify({ email: email.trim().toLowerCase() }),
             });

@@ -10,6 +10,7 @@ interface FaceScanProps {
     onNext: (livenessVerified: boolean) => Promise<void>;
     onError?: (error: string) => void;
     apiBaseUrl?: string;
+    apiKey?: string;
     previewMode?: boolean;
     language?: string;
 }
@@ -27,6 +28,7 @@ const FaceScan: React.FC<FaceScanProps> = ({
     onNext,
     onError,
     apiBaseUrl = 'https://apis.casperid.com',
+    apiKey = '',
     previewMode = false,
     language = 'EN'
 }) => {
@@ -164,6 +166,9 @@ const FaceScan: React.FC<FaceScanProps> = ({
 
             const response = await fetch(`${apiBaseUrl}/api/v2/verification/liveness`, {
                 method: 'POST',
+                headers: {
+                    ...(apiKey ? { 'X-App-Id': apiKey } : {})
+                },
                 body: formData,
                 credentials: 'include'
             });

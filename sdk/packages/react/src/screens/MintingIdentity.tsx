@@ -1,257 +1,277 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { motion } from 'framer-motion';
-import { Shield, Network, AlertCircle, CheckCircle2 } from 'lucide-react';
+import { Shield, Network, AlertCircle, CheckCircle2, Wallet, Fingerprint } from 'lucide-react';
 import { t } from '../utils/i18n';
 
+type VerificationTier = 'layer_1' | 'layer_2' | 'layer_3';
+
 interface MintingIdentityProps {
-    requestId: string;
-    onNext: (credentialHash?: string) => void;
+    tier: VerificationTier;
+    sessionToken?: string;
+    requestId?: string; // Only needed for L2/L3 submission
+    onNext: (result?: { wallet?: string; didAddress?: string; credentialHash?: string }) => void;
     onError?: (error: string) => void;
     apiBaseUrl?: string;
+    apiKey?: string;
     previewMode?: boolean;
     language?: string;
 }
 
 type MintingStatus = 'processing' | 'minting' | 'completed' | 'failed';
 
-// Backend response format for verification status
-interface VerificationStatusData {
-    success: boolean;
-    verification?: {
-        requestId: string;
-        status: 'pending' | 'in_progress' | 'completed' | 'failed' | 'cancelled';
-        verificationType: string;
-        createdAt?: string;
-        completedAt?: string;
-        expiresAt?: string;
-        progress?: {
-            livenessCompleted?: boolean;
-            documentCompleted?: boolean;
-            livenessScore?: number;
+// Tier-specific status messages
+const getStatusMessages = (tier: VerificationTier, language: string) => {
+    if (tier === 'layer_1') {
+        return {
+            processing: {
+                title: t('generating_wallet', language),
+                subtitle: t('wallet_subtitle', language)
+            },
+            minting: {
+                title: t('minting_did', language),
+                subtitle: t('did_subtitle', language)
+            },
+            completed: {
+                title: t('identity_created', language),
+                subtitle: t('identity_created_subtitle', language)
+            },
+            failed: {
+                title: t('setup_failed', language),
+                subtitle: t('setup_failed_subtitle', language)
+            }
         };
-        results?: {
-            verified: boolean;
-            tier: string;
-            proofHash: string;
-            signature: string;
-        };
-        error?: string;
-    };
-    error?: string;
-}
-
-const getStatusMessages = (language: string) => ({
-    processing: {
-        title: t('processing_verification', language),
-        subtitle: t('processing_subtitle', language)
-    },
-    minting: {
-        title: t('minting_identity', language),
-        subtitle: t('minting_subtitle', language)
-    },
-    completed: {
-        title: t('identity_minted', language),
-        subtitle: t('minted_subtitle', language)
-    },
-    failed: {
-        title: t('verification_failed', language),
-        subtitle: t('verification_failed_subtitle', language)
     }
-});
+
+    // L2/L3 messages
+    return {
+        processing: {
+            title: tier === 'layer_2' ? t('processing_liveness', language) : t('processing_documents', language),
+            subtitle: t('processing_subtitle', language)
+        },
+        minting: {
+            title: t('minting_identity', language),
+            subtitle: t('minting_subtitle', language)
+        },
+        completed: {
+            title: t('verification_submitted', language),
+            subtitle: t('verification_submitted_subtitle', language)
+        },
+        failed: {
+            title: t('verification_failed', language),
+            subtitle: t('verification_failed_subtitle', language)
+        }
+    };
+};
 
 const MintingIdentity: React.FC<MintingIdentityProps> = ({
+    tier,
+    sessionToken,
     requestId,
     onNext,
     onError,
     apiBaseUrl = 'https://apis.casperid.com',
+    apiKey = '',
     previewMode = false,
     language = 'EN'
 }) => {
     const [status, setStatus] = useState<MintingStatus>('processing');
-    const statusMessages = getStatusMessages(language);
-    const currentMessage = statusMessages[status];
     const [progress, setProgress] = useState(0);
     const [error, setError] = useState('');
+    const [wallet, setWallet] = useState<string | null>(null);
+    const [didAddress, setDidAddress] = useState<string | null>(null);
     const [credentialHash, setCredentialHash] = useState<string | null>(null);
-    const pollIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
-    const pollCountRef = useRef(0);
+    const [humanId, setHumanId] = useState<string | null>(null);
 
-    // Remove old currentMessage logic if it existed at top level (it wasn't in the snippet but good to be sure)
+    // Prevent double execution in React StrictMode
+    const hasStartedRef = useRef(false);
 
-    // Poll verification status
+    const statusMessages = getStatusMessages(tier, language);
+    const currentMessage = statusMessages[status];
+
+    // Main setup effect
     useEffect(() => {
-        const pollStatus = async () => {
-            if (previewMode) {
-                // Simulate status transitions
-                setStatus('processing');
-                await new Promise(r => setTimeout(r, 2000));
-                setStatus('minting');
-                await new Promise(r => setTimeout(r, 2000));
-                setStatus('completed');
-                await new Promise(r => setTimeout(r, 1000));
-                onNext('mock-proof-hash-abc-123');
-                return;
-            }
+        if (hasStartedRef.current) return;
+        hasStartedRef.current = true;
 
-            try {
-                const response = await fetch(`${apiBaseUrl}/api/v2/verification/${requestId}/status`, {
-                    method: 'GET',
-                    credentials: 'include'
-                });
-
-                if (!response.ok) {
-                    throw new Error(`Status check failed with status ${response.status}`);
-                }
-
-                const data: VerificationStatusData = await response.json();
-
-                if (data.success && data.verification) {
-                    const verificationStatus = data.verification.status;
-                    const progressData = data.verification.progress;
-
-                    // Calculate progress percentage from progress object
-                    let progressPercent = 0;
-                    if (progressData) {
-                        if (progressData.livenessCompleted) progressPercent += 50;
-                        if (progressData.documentCompleted) progressPercent += 50;
-                    }
-
-                    setProgress(progressPercent || progress);
-
-                    switch (verificationStatus) {
-                        case 'pending':
-                        case 'in_progress':
-                            // Update status based on progress
-                            if (progressPercent > 70 || (progressData?.documentCompleted)) {
-                                setStatus('minting');
-                            } else {
-                                setStatus('processing');
-                            }
-                            break;
-                        case 'completed':
-                            setStatus('completed');
-                            setProgress(100);
-                            // Get credential hash from results.proofHash
-                            if (data.verification.results?.proofHash) {
-                                setCredentialHash(data.verification.results.proofHash);
-                            }
-                            // Stop polling and proceed
-                            if (pollIntervalRef.current) {
-                                clearInterval(pollIntervalRef.current);
-                            }
-                            // Auto-proceed after showing success
-                            setTimeout(() => {
-                                onNext(data.verification?.results?.proofHash);
-                            }, 2000);
-                            break;
-                        case 'failed':
-                        case 'cancelled':
-                            setStatus('failed');
-                            setError(data.verification.error || data.error || 'Verification failed. Please try again.');
-                            if (pollIntervalRef.current) {
-                                clearInterval(pollIntervalRef.current);
-                            }
-                            onError?.('Verification failed');
-                            break;
-                    }
-                } else {
-                    // Handle error response
-                    pollCountRef.current++;
-
-                    // After 60 polls (2 minutes), show error
-                    if (pollCountRef.current > 60) {
-                        setStatus('failed');
-                        setError('Verification timed out. Please try again.');
-                        if (pollIntervalRef.current) {
-                            clearInterval(pollIntervalRef.current);
-                        }
-                        onError?.('Verification timeout');
-                    }
-                }
-            } catch (err) {
-                pollCountRef.current++;
-
-                // After 60 polls (2 minutes), show error
-                if (pollCountRef.current > 60) {
-                    setStatus('failed');
-                    setError('Connection lost. Please check your network and try again.');
-                    if (pollIntervalRef.current) {
-                        clearInterval(pollIntervalRef.current);
-                    }
-                    onError?.('Connection error');
-                }
-            }
-        };
-
-        // Initial poll
-        pollStatus();
-
-        // Poll every 2 seconds
-        pollIntervalRef.current = setInterval(pollStatus, 2000);
-
-        return () => {
-            if (pollIntervalRef.current) {
-                clearInterval(pollIntervalRef.current);
-            }
-        };
-    }, [requestId, apiBaseUrl, onNext, onError, progress]);
-
-    // Simulate progress for better UX when waiting
-    useEffect(() => {
-        if (status === 'processing' || status === 'minting') {
-            const timer = setInterval(() => {
-                setProgress(prev => {
-                    // Slowly increase progress to give feedback
-                    const increment = status === 'minting' ? 2 : 1;
-                    const max = status === 'minting' ? 95 : 70;
-                    return Math.min(prev + increment, max);
-                });
-            }, 500);
-
-            return () => clearInterval(timer);
+        if (previewMode) {
+            runPreviewMode();
+        } else {
+            runSetup();
         }
-    }, [status]);
+    }, []);
+
+    // Preview mode simulation
+    const runPreviewMode = async () => {
+        setStatus('processing');
+        setProgress(20);
+        await sleep(1000);
+        setProgress(50);
+        await sleep(1000);
+        setStatus('minting');
+        setProgress(70);
+        await sleep(1000);
+        setProgress(100);
+        setStatus('completed');
+
+        if (tier === 'layer_1') {
+            setWallet('account-hash-abc123...');
+            setHumanId('casper-user-1234');
+            setDidAddress('did:casper:abc123...');
+        } else {
+            setCredentialHash('mock-credential-hash-xyz');
+        }
+
+        await sleep(1500);
+        onNext({
+            wallet: 'account-hash-abc123...',
+            didAddress: 'did:casper:abc123...',
+            credentialHash: 'mock-credential-hash-xyz'
+        });
+    };
+
+    // Real setup based on tier
+    const runSetup = async () => {
+        try {
+            if (tier === 'layer_1') {
+                await runL1Setup();
+            } else {
+                await runL2L3Setup();
+            }
+        } catch (err) {
+            const message = err instanceof Error ? err.message : 'Setup failed';
+            setError(message);
+            setStatus('failed');
+            onError?.(message);
+        }
+    };
+
+    // L1 Setup: Wallet + DID creation (synchronous)
+    const runL1Setup = async () => {
+        // Step 1: Generate wallet
+        setStatus('processing');
+        setProgress(10);
+
+        const walletResponse = await fetch(`${apiBaseUrl}/api/passkey/wallet/generate`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${sessionToken}`,
+                ...(apiKey ? { 'X-App-Id': apiKey } : {})
+            },
+            credentials: 'include'
+        });
+
+        if (!walletResponse.ok) {
+            const errorData = await walletResponse.json().catch(() => ({}));
+            throw new Error(errorData.error || 'Failed to generate wallet');
+        }
+
+        const walletData = await walletResponse.json();
+        if (!walletData.success || !walletData.walletInfo?.walletAddress) {
+            throw new Error(walletData.error || 'Wallet generation failed');
+        }
+
+        setWallet(walletData.walletInfo.walletAddress);
+        if (walletData.walletInfo.humanId) {
+            setHumanId(walletData.walletInfo.humanId);
+        }
+        setProgress(50);
+
+        // Step 2: Mint DID
+        setStatus('minting');
+        setProgress(60);
+
+        const didResponse = await fetch(`${apiBaseUrl}/api/passkey/did/mint`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${sessionToken}`,
+                ...(apiKey ? { 'X-App-Id': apiKey } : {})
+            },
+            credentials: 'include'
+        });
+
+        if (!didResponse.ok) {
+            const errorData = await didResponse.json().catch(() => ({}));
+            throw new Error(errorData.error || 'Failed to mint DID');
+        }
+
+        const didData = await didResponse.json();
+        if (!didData.success) {
+            throw new Error(didData.error || 'DID minting failed');
+        }
+
+        setDidAddress(didData.did_address);
+        setCredentialHash(didData.transaction_hash);
+        setProgress(100);
+        setStatus('completed');
+
+        // Auto-proceed after showing success
+        await sleep(1500);
+        onNext({
+            wallet: walletData.walletInfo.walletAddress,
+            didAddress: didData.did_address,
+            credentialHash: didData.transaction_hash
+        });
+    };
+
+    // L2/L3 Setup: Submit verification (no polling)
+    const runL2L3Setup = async () => {
+        setStatus('processing');
+        setProgress(30);
+
+        // For L2/L3, we just confirm the submission was successful
+        // The actual verification happens in background, user tier upgrades when ready
+        await sleep(500);
+        setProgress(60);
+
+        setStatus('minting');
+        setProgress(80);
+
+        await sleep(500);
+        setProgress(100);
+        setStatus('completed');
+
+        // Auto-proceed after showing success
+        await sleep(1500);
+        onNext({ credentialHash: requestId });
+    };
+
+    const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
     const handleRetry = () => {
-        // Reset and start polling again
         setStatus('processing');
         setProgress(0);
         setError('');
-        pollCountRef.current = 0;
+        hasStartedRef.current = false;
 
-        // Restart polling
-        if (pollIntervalRef.current) {
-            clearInterval(pollIntervalRef.current);
+        if (previewMode) {
+            runPreviewMode();
+        } else {
+            runSetup();
         }
+    };
 
-        pollIntervalRef.current = setInterval(async () => {
-            try {
-                const response = await fetch(`${apiBaseUrl}/api/v2/verification/${requestId}/status`, {
-                    method: 'GET',
-                    credentials: 'include'
-                });
-                if (!response.ok) {
-                    throw new Error(`Status check failed with status ${response.status}`);
-                }
-                const data: VerificationStatusData = await response.json();
-                // Handle response same as above
-                if (data.success && data.verification?.status === 'completed') {
-                    setStatus('completed');
-                    setProgress(100);
-                    if (data.verification.results?.proofHash) {
-                        setCredentialHash(data.verification.results.proofHash);
-                    }
-                    if (pollIntervalRef.current) {
-                        clearInterval(pollIntervalRef.current);
-                    }
-                    setTimeout(() => {
-                        onNext(data.verification?.results?.proofHash);
-                    }, 2000);
-                }
-            } catch (err) {
-                // Continue polling
-            }
-        }, 2000);
+    // Get tier-specific icon
+    const getTierIcon = () => {
+        if (tier === 'layer_1') {
+            return status === 'minting' ? <Fingerprint className="text-brand w-4 h-4" /> : <Wallet className="text-brand w-4 h-4" />;
+        }
+        return <Shield className="text-brand w-4 h-4" />;
+    };
+
+    // Get status label for transaction status
+    const getStatusLabel = () => {
+        if (tier === 'layer_1') {
+            if (status === 'processing') return t('creating_wallet', language);
+            if (status === 'minting') return t('minting_did_chain', language);
+            if (status === 'completed') return t('identity_live', language);
+        } else {
+            if (status === 'processing') return t('validating_docs', language);
+            if (status === 'minting') return t('submitting_verification', language);
+            if (status === 'completed') return t('verification_queued', language);
+        }
+        return '';
     };
 
     return (
@@ -288,7 +308,7 @@ const MintingIdentity: React.FC<MintingIdentityProps> = ({
                             ) : status === 'failed' ? (
                                 <AlertCircle className="text-red-500 w-4 h-4" />
                             ) : (
-                                <Shield className="text-brand w-4 h-4" />
+                                getTierIcon()
                             )}
                         </div>
                         <div className={`w-6 h-1 rounded-full ${status === 'completed'
@@ -319,8 +339,18 @@ const MintingIdentity: React.FC<MintingIdentityProps> = ({
                                 ? 'bg-gradient-to-tr from-red-500 to-orange-500'
                                 : 'bg-gradient-to-tr from-brand to-[#6DE8EC]'
                             }`} />
-                        <div className="flex flex-col items-start">
-                            <div className="h-1.5 w-12 bg-white/20 rounded-full mb-1" />
+                        <div className="flex flex-col items-start max-w-[80px]">
+                            {humanId ? (
+                                <motion.span 
+                                    initial={{ opacity: 0 }}
+                                    animate={{ opacity: 1 }}
+                                    className="text-[10px] font-bold text-white/90 truncate w-full text-left"
+                                >
+                                    {humanId}
+                                </motion.span>
+                            ) : (
+                                <div className="h-1.5 w-12 bg-white/20 rounded-full mb-1" />
+                            )}
                             <div className="h-1 w-8 bg-white/10 rounded-full" />
                         </div>
                     </div>
@@ -350,20 +380,33 @@ const MintingIdentity: React.FC<MintingIdentityProps> = ({
 
             {/* Error with retry button */}
             {status === 'failed' && (
-                <button
-                    onClick={handleRetry}
-                    className="mt-6 px-6 py-3 bg-brand text-white rounded-2xl font-bold"
-                >
-                    {t('try_again', language)}
-                </button>
+                <div className="mt-6 space-y-3">
+                    <p className="text-red-500 text-sm">{error}</p>
+                    <button
+                        onClick={handleRetry}
+                        className="px-6 py-3 bg-brand text-white rounded-2xl font-bold"
+                    >
+                        {t('try_again', language)}
+                    </button>
+                </div>
             )}
 
-            {/* Credential hash display */}
-            {credentialHash && status === 'completed' && (
+            {/* Wallet/DID display for L1 */}
+            {tier === 'layer_1' && wallet && status === 'completed' && (
                 <div className="mt-6 p-3 dark:bg-white/5 bg-black/5 rounded-xl border dark:border-white/10 border-black/5">
-                    <p className="text-[10px] text-muted mb-1">{t('credential_hash', language)}</p>
+                    <p className="text-[10px] text-muted mb-1">{t('your_wallet', language)}</p>
                     <p className="text-xs font-mono text-main break-all">
-                        {credentialHash.slice(0, 20)}...{credentialHash.slice(-20)}
+                        {wallet.slice(0, 20)}...{wallet.slice(-10)}
+                    </p>
+                </div>
+            )}
+
+            {/* Credential hash display for L2/L3 */}
+            {tier !== 'layer_1' && credentialHash && status === 'completed' && (
+                <div className="mt-6 p-3 dark:bg-white/5 bg-black/5 rounded-xl border dark:border-white/10 border-black/5">
+                    <p className="text-[10px] text-muted mb-1">{t('verification_id', language)}</p>
+                    <p className="text-xs font-mono text-main break-all">
+                        {credentialHash.slice(0, 20)}...
                     </p>
                 </div>
             )}
@@ -373,7 +416,7 @@ const MintingIdentity: React.FC<MintingIdentityProps> = ({
                 <div className="w-full mt-12 p-6 dark:bg-brand/5 bg-brand/5 border-t dark:border-white/5 border-black/5">
                     <div className="flex justify-between items-center mb-3">
                         <span className="text-xs font-medium text-brand uppercase tracking-widest">
-                            {t('transaction_status', language)}
+                            {tier === 'layer_1' ? t('setup_status', language) : t('transaction_status', language)}
                         </span>
                         <span className={`text-xs font-bold ${status === 'completed' ? 'text-green-500' : 'text-[#6DE8EC]'
                             }`}>
@@ -395,9 +438,7 @@ const MintingIdentity: React.FC<MintingIdentityProps> = ({
                         <Network className={`w-4 h-4 ${status === 'completed' ? 'text-green-500' : 'text-brand'
                             }`} />
                         <p className="text-[10px] dark:text-slate-300 text-slate-600 font-medium">
-                            {status === 'processing' && t('validating_docs', language)}
-                            {status === 'minting' && t('broadcasting_tx', language)}
-                            {status === 'completed' && t('tx_confirmed', language)}
+                            {getStatusLabel()}
                         </p>
                     </div>
                 </div>

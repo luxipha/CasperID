@@ -114,7 +114,7 @@ export const Header: React.FC = () => {
 
         {/* Network Badge */}
         <div className="hidden sm:flex items-center px-3 py-1.5 bg-purple-50 text-purple-700 rounded-lg text-xs font-bold border border-purple-100">
-          Testnet
+          {(import.meta as any).env?.VITE_CASPER_NETWORK || 'Testnet'}
         </div>
 
         {/* Notifications */}

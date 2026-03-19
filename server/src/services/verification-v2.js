@@ -102,9 +102,11 @@ class VerificationServiceV2 {
 
             const { userAccount } = sessionData;
 
-            // Check if user is eligible for Layer 3 (must have Layer 1 minimum)
-            if (userAccount.tier === 'layer_0') {
-                throw new Error('User must complete email verification before Layer 3');
+            // Tiers are independent — layer_1 or layer_2 can start Layer 3 directly.
+            // Only unverified (layer_0) users are blocked.
+            const ELIGIBLE_TIERS = ['layer_1', 'layer_2'];
+            if (!ELIGIBLE_TIERS.includes(userAccount.tier)) {
+                throw new Error('Email verification (Layer 1) must be completed before starting Layer 3');
             }
 
             // Create verification request

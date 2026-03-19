@@ -115,8 +115,12 @@ async function mintCredential(request) {
 
     let credential;
     if (existingCredential) {
-        // This is an upgrade - update existing credential
-        console.log(`[DEBUG] Upgrading existing credential for wallet: ${request.wallet}, from ${existingCredential.tier} to ${request.tier}`);
+        // This is an upgrade or re-verification - update existing credential
+        if (existingCredential.tier === request.tier) {
+            console.log(`[DEBUG] Re-verifying credential for wallet: ${request.wallet}, tier: ${request.tier} (already at this tier)`);
+        } else {
+            console.log(`[DEBUG] Upgrading credential for wallet: ${request.wallet}, from ${existingCredential.tier} to ${request.tier}`);
+        }
 
         credential = await Credential.findOneAndUpdate(
             { wallet: request.wallet, revoked: false },
@@ -137,7 +141,7 @@ async function mintCredential(request) {
             { new: true }
         );
 
-        console.log(`[DEBUG] Successfully upgraded credential for wallet: ${request.wallet}`);
+        console.log(`[DEBUG] Successfully updated credential for wallet: ${request.wallet}`);
     } else {
         // This is a new credential - create new record
         console.log(`[DEBUG] Creating new credential for wallet: ${request.wallet}, tier: ${request.tier}`);
@@ -163,9 +167,11 @@ async function mintCredential(request) {
         console.log(`[DEBUG] Successfully created new credential for wallet: ${request.wallet}`);
     }
 
-    // Update request status
-    request.status = 'approved';
-    await request.save();
+    // Update request status (only if request is a Mongoose document)
+    if (typeof request.save === 'function') {
+        request.status = 'approved';
+        await request.save();
+    }
 
     // ========================================
     // SYNC VERIFIED DATA TO USER PROFILE
@@ -174,26 +180,29 @@ async function mintCredential(request) {
         console.log(`Syncing verified data to user profile for wallet: ${request.wallet}`);
 
         // Prepare verified data from the verification request
+        // Only include fields that have actual values to avoid overwriting existing data with null/undefined
         const verifiedProfileData = {
-            first_name: request.first_name,
-            last_name: request.last_name,
-            email: request.email,
-            phone_number: request.phone_number,
-
-            // Format address properly - store as string (as submitted from KYC)
-            ...(request.home_address ? {
-                address: typeof request.home_address === 'string'
-                    ? request.home_address
-                    : (request.home_address.street || '') +
-                    (request.home_address.city ? ', ' + request.home_address.city : '') +
-                    (request.home_address.country ? ', ' + request.home_address.country : '')
-            } : {}),
-
-            // Set verification status
+            // Set verification status (always set these)
             verification_status: 'verified',
             verification_tier: request.tier,
             verified_at: new Date()
         };
+
+        // Only add fields that have actual values
+        if (request.first_name) verifiedProfileData.first_name = request.first_name;
+        if (request.last_name) verifiedProfileData.last_name = request.last_name;
+        if (request.email) verifiedProfileData.email = request.email;
+        if (request.phone_number) verifiedProfileData.phone_number = request.phone_number;
+        if (request.date_of_birth) verifiedProfileData.date_of_birth = request.date_of_birth;
+
+        // Format address properly - store as string (as submitted from KYC)
+        if (request.home_address) {
+            verifiedProfileData.address = typeof request.home_address === 'string'
+                ? request.home_address
+                : (request.home_address.street || '') +
+                (request.home_address.city ? ', ' + request.home_address.city : '') +
+                (request.home_address.country ? ', ' + request.home_address.country : '');
+        }
 
         // Update or create user profile with verified data
         const existingProfile = await UserProfile.findOne({ wallet: request.wallet });

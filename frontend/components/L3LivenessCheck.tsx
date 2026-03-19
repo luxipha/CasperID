@@ -11,7 +11,7 @@ interface L3LivenessCheckProps {
 }
 
 type VerificationState = "INITIALIZING" | "POSITIONING" | "CHALLENGE" | "VERIFYING" | "SUCCESS";
-type ChallengeType = "BLINK" | "TURN_LEFT";
+type ChallengeType = "BLINK" | "OPEN_MOUTH";
 
 /**
  * L3LivenessCheck - Liveness component for Layer 3 flow with sidebar
@@ -183,8 +183,8 @@ export const L3LivenessCheck: React.FC<L3LivenessCheckProps> = ({ onComplete }) 
 
                             setProgress((st.blinkCount / 3) * 100);
                             if (st.blinkCount >= 3) {
-                                setChallenge("TURN_LEFT");
-                                setGuidance("Slowly turn head to the LEFT");
+                                setChallenge("OPEN_MOUTH");
+                                setGuidance("Now open your mouth wide");
                                 setProgress(0);
                                 st.lastFrameTime = now;
                             }
@@ -192,26 +192,36 @@ export const L3LivenessCheck: React.FC<L3LivenessCheckProps> = ({ onComplete }) 
                     }
                 }
 
-                if (challenge === "TURN_LEFT") {
-                    const nose = landmarks[1];
-                    const leftCheek = landmarks[234];
-                    const rightCheek = landmarks[454];
-                    const faceWidth = rightCheek.x - leftCheek.x;
-                    const nosePos = (nose.x - leftCheek.x) / faceWidth;
+                if (challenge === "OPEN_MOUTH") {
+                    // Mouth landmarks: upper lip (13), lower lip (14)
+                    const upperLip = landmarks[13];
+                    const lowerLip = landmarks[14];
+                    const mouthOpen = euclideanDist(upperLip, lowerLip);
 
-                    // Capture frames periodically during head turn (async, non-blocking)
+                    // Normalize by face height for scale independence
+                    const topHead = landmarks[10];
+                    const chin = landmarks[152];
+                    const faceHeight = euclideanDist(topHead, chin);
+                    const mouthOpenRatio = mouthOpen / faceHeight;
+
+                    // Capture frames periodically during mouth opening (async, non-blocking)
                     if (now - st.lastFrameTime > 100 && st.frames.length < 25 && canvasRef.current && !st.isCapturing) {
                         st.lastFrameTime = now;
                         captureFrame(canvasRef.current, st).then((captured) => {
                             if (captured) {
-                                console.log(`[L3Liveness] Captured frame ${st.frames.length} during head turn (nosePos: ${nosePos.toFixed(3)})`);
+                                console.log(`[L3Liveness] Captured frame ${st.frames.length} during mouth open (ratio: ${mouthOpenRatio.toFixed(3)})`);
                             }
                         });
                     }
 
-                    if (nosePos < 0.3) {
+                    // Update progress based on mouth opening (threshold ~0.15 for wide open)
+                    const openProgress = Math.min((mouthOpenRatio / 0.15) * 100, 100);
+                    setProgress(openProgress);
+
+                    // Mouth is considered "wide open" when ratio > 0.12
+                    if (mouthOpenRatio > 0.12) {
                         if (st.frames.length < 15) {
-                            setGuidance("Continue turning slowly...");
+                            setGuidance("Hold it open...");
                             return;
                         }
 
@@ -351,7 +361,7 @@ export const L3LivenessCheck: React.FC<L3LivenessCheckProps> = ({ onComplete }) 
     const getMobileStep = (): MobileStep => {
         if (state === "SUCCESS") return "success";
         if (state === "VERIFYING") return "processing";
-        if (state === "CHALLENGE" && challenge === "TURN_LEFT") return "smile";
+        if (state === "CHALLENGE" && challenge === "OPEN_MOUTH") return "smile"; // "smile" step shows mouth icon
         if (state === "CHALLENGE" && challenge === "BLINK") return "blink";
         return "position";
     };
@@ -449,7 +459,7 @@ export const L3LivenessCheck: React.FC<L3LivenessCheckProps> = ({ onComplete }) 
                     <div className="flex flex-col md:flex-row md:items-center justify-between gap-10">
                         <div className="space-y-1">
                             <h3 className="text-xl font-black text-text-main">Ready to scan?</h3>
-                            <p className="text-text-sub text-base font-medium">Ensure good lighting. Turn your head slowly during the check.</p>
+                            <p className="text-text-sub text-base font-medium">Ensure good lighting. Blink 3 times, then open your mouth wide.</p>
                         </div>
                         <button
                             onClick={() => window.location.reload()}

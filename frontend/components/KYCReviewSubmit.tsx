@@ -17,6 +17,8 @@ interface DocumentData {
 interface KYCReviewSubmitProps {
   documentData: DocumentData;
   uploadId: string;
+  frontImageUrl?: string;
+  backImageUrl?: string;
   livenessVerified: boolean;
   onBack: () => void;
   onSubmit: () => void;
@@ -26,6 +28,8 @@ interface KYCReviewSubmitProps {
 export const KYCReviewSubmit: React.FC<KYCReviewSubmitProps> = ({
   documentData,
   uploadId,
+  frontImageUrl,
+  backImageUrl,
   livenessVerified,
   onBack,
   onSubmit,
@@ -43,10 +47,12 @@ export const KYCReviewSubmit: React.FC<KYCReviewSubmitProps> = ({
       // Import API service
       const { apiService } = await import('../services/api');
 
-      // Submit verification
+      // Submit verification with image URLs
       await apiService.submitLayer3Verification({
         document_data: documentData,
         upload_id: uploadId,
+        front_image_url: frontImageUrl,
+        back_image_url: backImageUrl,
         liveness_verified: livenessVerified
       });
 

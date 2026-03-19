@@ -5,7 +5,7 @@ import { t } from '../utils/i18n';
 
 interface PermissionsRequestProps {
     appName?: string;
-    appLogoFallback?: string;
+    appLogo?: string;
     onApprove: () => void;
     onDeny: () => void;
     language?: string;
@@ -19,7 +19,7 @@ const permissions = [
 
 const PermissionsRequest: React.FC<PermissionsRequestProps> = ({
     appName = 'This App',
-    appLogoFallback,
+    appLogo,
     onApprove,
     onDeny,
     language = 'EN',
@@ -34,9 +34,9 @@ const PermissionsRequest: React.FC<PermissionsRequestProps> = ({
             <div className="relative">
                 <div className="absolute inset-0 rounded-full shadow-[0_0_20px_rgba(134,81,225,0.3)] animate-pulse" />
                 <div className="relative w-24 h-24 rounded-full border-2 border-brand-40 p-1 dark:bg-black/50 bg-white">
-                    {appLogoFallback ? (
+                    {appLogo ? (
                         <div className="w-full h-full rounded-full overflow-hidden">
-                            <img src={appLogoFallback} alt={appName} className="w-full h-full object-cover" />
+                            <img src={appLogo} alt={appName} className="w-full h-full object-cover" />
                         </div>
                     ) : (
                         <div className="w-full h-full rounded-full bg-gradient-to-br from-emerald-500 to-teal-700 flex items-center justify-center text-white font-bold text-2xl">

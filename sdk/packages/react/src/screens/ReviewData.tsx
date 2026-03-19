@@ -14,6 +14,7 @@ interface ReviewDataProps {
     onRetake?: () => void;
     onError?: (error: string) => void;
     apiBaseUrl?: string;
+    apiKey?: string;
     previewMode?: boolean;
     language?: string;
 }
@@ -33,6 +34,7 @@ const ReviewData: React.FC<ReviewDataProps> = ({
     onRetake,
     onError,
     apiBaseUrl = 'https://apis.casperid.com',
+    apiKey = '',
     previewMode = false,
     language = 'EN'
 }) => {
@@ -83,7 +85,8 @@ const ReviewData: React.FC<ReviewDataProps> = ({
             const response = await fetch(`${apiBaseUrl}/api/v2/verification/layer3/submit`, {
                 method: 'POST',
                 headers: {
-                    'Content-Type': 'application/json'
+                    'Content-Type': 'application/json',
+                    ...(apiKey ? { 'X-App-Id': apiKey } : {})
                 },
                 credentials: 'include',
                 body: JSON.stringify({

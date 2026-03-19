@@ -16,13 +16,15 @@ interface AuthSelectionProps {
     onExtensionSuccess?: (userData: ExtensionUserData) => void;
     onError?: (error: string) => void;
     language?: string;
+    platform?: 'desktop' | 'mobile';
 }
 
 const AuthSelection: React.FC<AuthSelectionProps> = ({
     onNext,
     onExtensionSuccess,
     onError,
-    language = 'EN'
+    language = 'EN',
+    platform = 'desktop'
 }) => {
     const [isCheckingExtension, setIsCheckingExtension] = useState(false);
     const [extensionInstalled, setExtensionInstalled] = useState<boolean | null>(null);
@@ -165,28 +167,30 @@ const AuthSelection: React.FC<AuthSelectionProps> = ({
             )}
 
             <div className="space-y-4">
-                <button
-                    onClick={handleExtensionLogin}
-                    disabled={isCheckingExtension}
-                    className="w-full group relative overflow-hidden flex items-center gap-4 bg-brand hover:bg-brand-90 text-white py-5 px-6 rounded-2xl font-bold transition-all transform active:scale-[0.98] disabled:opacity-70 disabled:cursor-not-allowed shadow-brand"
-                >
-                    <div className="bg-white/20 p-2 rounded-lg">
-                        {isCheckingExtension ? (
-                            <Loader2 className="w-5 h-5 animate-spin" />
-                        ) : (
-                            <Puzzle className="w-5 h-5" />
-                        )}
-                    </div>
-                    <div className="flex flex-col items-start">
-                        <span className="text-base">
-                            {isCheckingExtension ? t('connecting', language) : t('sign_in_with_extension', language)}
-                        </span>
-                        <span className="text-[10px] uppercase tracking-widest text-white/70">
-                            {extensionInstalled === true ? t('extension_detected', language) : t('secure_wallet', language)}
-                        </span>
-                    </div>
-                    <ChevronRight className="ml-auto w-4 h-4 opacity-50 group-hover:opacity-100 transition-opacity" />
-                </button>
+                {platform === 'desktop' && (
+                    <button
+                        onClick={handleExtensionLogin}
+                        disabled={isCheckingExtension}
+                        className="w-full group relative overflow-hidden flex items-center gap-4 bg-brand hover:bg-brand-90 text-white py-5 px-6 rounded-2xl font-bold transition-all transform active:scale-[0.98] disabled:opacity-70 disabled:cursor-not-allowed shadow-brand"
+                    >
+                        <div className="bg-white/20 p-2 rounded-lg">
+                            {isCheckingExtension ? (
+                                <Loader2 className="w-5 h-5 animate-spin" />
+                            ) : (
+                                <Puzzle className="w-5 h-5" />
+                            )}
+                        </div>
+                        <div className="flex flex-col items-start">
+                            <span className="text-base">
+                                {isCheckingExtension ? t('connecting', language) : t('sign_in_with_extension', language)}
+                            </span>
+                            <span className="text-[10px] uppercase tracking-widest text-white/70">
+                                {extensionInstalled === true ? t('extension_detected', language) : t('secure_wallet', language)}
+                            </span>
+                        </div>
+                        <ChevronRight className="ml-auto w-4 h-4 opacity-50 group-hover:opacity-100 transition-opacity" />
+                    </button>
+                )}
 
                 <button
                     onClick={handleOTPLogin}

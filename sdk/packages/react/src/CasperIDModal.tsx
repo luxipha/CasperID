@@ -9,7 +9,6 @@ import AuthSelection from './screens/AuthSelection';
 import Login from './screens/Login';
 import PasskeyAuth from './screens/PasskeyAuth';
 import PasskeyRegister from './screens/PasskeyRegister';
-import L1Setup from './screens/L1Setup';
 import PinVerification from './screens/PinVerification';
 import SecurityUpgrade from './screens/SecurityUpgrade';
 import FaceScan from './screens/FaceScan';
@@ -31,7 +30,10 @@ import type {
     StartVerificationResponse,
     AuthState,
     PasskeyAuthCompleteResponse,
-    PasskeyRegisterCompleteResponse
+    PasskeyRegisterCompleteResponse,
+    AppMetadata,
+    AppMetadataResponse,
+    CasperIDTheme
 } from './types';
 
 // Resolve 'system' mode to actual light/dark
@@ -69,13 +71,28 @@ export const CasperIDModal: React.FC<CasperIDModalProps> = ({
     privacyUrl = '#',
     logoUrl,
     language = 'EN',
+    layout,
+    platform,
 }) => {
+    const [cloudTheme, setCloudTheme] = useState<CasperIDTheme>({});
+    // Track loading state for cloud theme - prevents flash of default colors
+    const [isLoadingCloudTheme, setIsLoadingCloudTheme] = useState(!previewMode && !!apiKey);
+
     const {
-        primaryColor = '#8651e1',
-        borderRadius = '12',
-        fontFamily = 'Inter',
+        primaryColor: propPrimaryColor,
+        borderRadius: propBorderRadius,
+        fontFamily: propFontFamily,
         mode: themeMode = 'light',
+        layout: propLayout,
+        platform: themePlatform,
     } = theme;
+
+    // Merge cloud theme with props (props take precedence)
+    const primaryColor = propPrimaryColor || cloudTheme.primaryColor || '#8651e1';
+    const borderRadius = propBorderRadius || cloudTheme.borderRadius || '12';
+    const fontFamily = propFontFamily || cloudTheme.fontFamily || 'Inter';
+    const finalLayout = layout || propLayout || cloudTheme.layout || 'auto';
+    const finalPlatform = platform || themePlatform || 'desktop';
 
     const [resolvedTheme, setResolvedTheme] = useState<'light' | 'dark'>(resolveMode(themeMode));
     const [screen, setScreen] = useState<Screen>(
@@ -98,6 +115,7 @@ export const CasperIDModal: React.FC<CasperIDModalProps> = ({
     const [kycState, setKycState] = useState<KYCState>(initialKYCState);
     const [uploadId, setUploadId] = useState<string>('');
     const [credentialHash, setCredentialHash] = useState<string>('');
+    const [appMetadata, setAppMetadata] = useState<AppMetadata | null>(null);
 
     // API base URL - use custom URL if provided, otherwise default
     const finalApiBaseUrl = apiBaseUrl || DEFAULT_API_BASE_URL;
@@ -122,13 +140,16 @@ export const CasperIDModal: React.FC<CasperIDModalProps> = ({
         '--casperid-font': normalizedFont,
     } as React.CSSProperties;
 
-    // Generate scoped CSS for proper variable inheritance
+    // Generate a unique key for the style element to force re-application when theme changes
+    const styleKey = `${modalId}-${primaryColor}-${normalizedRadius}-${normalizedFont}`;
+
+    // Generate scoped CSS for proper variable inheritance with !important to override :root defaults
     const scopedStyles = `
         #casperid-modal-${modalId},
         #casperid-modal-${modalId} * {
-            --casperid-primary: ${primaryColor};
-            --casperid-radius: ${normalizedRadius};
-            --casperid-font: ${normalizedFont};
+            --casperid-primary: ${primaryColor} !important;
+            --casperid-radius: ${normalizedRadius} !important;
+            --casperid-font: ${normalizedFont} !important;
         }
     `;
 
@@ -163,6 +184,42 @@ export const CasperIDModal: React.FC<CasperIDModalProps> = ({
             setCredentialHash('');
         }
     }, [isOpen, mode, previewMode, initialScreen]);
+
+    // Fetch App Metadata on mount
+    useEffect(() => {
+        if (!apiKey || previewMode) {
+            setIsLoadingCloudTheme(false);
+            return;
+        }
+
+        const fetchAppMetadata = async () => {
+            try {
+                const response = await fetch(`${finalApiBaseUrl}/api/business/app-metadata/${apiKey}`);
+                if (response.ok) {
+                    const data: AppMetadataResponse = await response.json();
+                    if (data.success && data.app) {
+                        setAppMetadata(data.app);
+                        // Apply brand theme from cloud
+                        if (data.app.theme) {
+                            setCloudTheme({
+                                primaryColor: data.app.theme.primaryColor,
+                                borderRadius: data.app.theme.borderRadius,
+                                fontFamily: data.app.theme.fontFamily,
+                                layout: data.app.theme.layout,
+                                platform: data.app.theme.platform
+                            });
+                        }
+                    }
+                }
+            } catch (err) {
+                console.warn('[CasperID] Failed to fetch app metadata:', err);
+            } finally {
+                setIsLoadingCloudTheme(false);
+            }
+        };
+
+        fetchAppMetadata();
+    }, [apiKey, finalApiBaseUrl, previewMode]);
 
     const toggleTheme = () =>
         setResolvedTheme((prev) => (prev === 'dark' ? 'light' : 'dark'));
@@ -214,11 +271,12 @@ export const CasperIDModal: React.FC<CasperIDModalProps> = ({
     }, [apiBaseUrl, apiKey, onError]);
 
     // Handle successful OTP verification - new user needs passkey registration
-    const handleOTPSuccess = useCallback((token: string, userAccount?: AuthState['userAccount']) => {
+    const handleOTPSuccess = useCallback((token: string, userAccount?: AuthState['userAccount'], businessToken?: string) => {
         setSessionToken(token);
         setAuthState(prev => ({
             ...prev,
             sessionToken: token,
+            businessToken: businessToken,
             userAccount: userAccount || null
         }));
 
@@ -244,11 +302,12 @@ export const CasperIDModal: React.FC<CasperIDModalProps> = ({
     }, [go]);
 
     // Handle successful passkey authentication (returning user)
-    const handlePasskeyAuthSuccess = useCallback((token: string, user?: PasskeyAuthCompleteResponse['user']) => {
+    const handlePasskeyAuthSuccess = useCallback((token: string, user?: PasskeyAuthCompleteResponse['user'], businessToken?: string) => {
         setSessionToken(token);
         setAuthState(prev => ({
             ...prev,
             sessionToken: token,
+            businessToken: businessToken,
             userAccount: user ? {
                 user_id: user.user_id,
                 wallet: user.wallet,
@@ -262,36 +321,20 @@ export const CasperIDModal: React.FC<CasperIDModalProps> = ({
     }, []);
 
     // Handle successful passkey registration (new user)
-    const handlePasskeyRegisterSuccess = useCallback((user?: PasskeyRegisterCompleteResponse['user']) => {
+    const handlePasskeyRegisterSuccess = useCallback((user?: PasskeyRegisterCompleteResponse['user'], businessToken?: string) => {
         setAuthState(prev => ({
             ...prev,
             hasPasskey: true,
+            businessToken: businessToken,
             userAccount: user ? {
                 user_id: user.user_id,
                 tier: user.tier
             } : prev.userAccount
         }));
 
-        // After passkey registration, proceed to L1 setup
-        go('L1Setup');
+        // After passkey registration, proceed to MintingIdentity for L1 setup
+        go('MintingIdentity');
     }, [go]);
-
-    // Handle L1 setup completion (wallet + DID created)
-    const handleL1SetupSuccess = useCallback((wallet: string, didAddress: string) => {
-        setAuthState(prev => ({
-            ...prev,
-            userAccount: {
-                ...prev.userAccount,
-                user_id: prev.userAccount?.user_id || '',
-                wallet,
-                did_address: didAddress,
-                tier: 'layer_1'
-            }
-        }));
-
-        // L1 complete - check tier requirements
-        proceedBasedOnTier('layer_1');
-    }, []);
 
     // Determine next step based on user's tier and required tier
     const proceedBasedOnTier = useCallback((currentTier?: string) => {
@@ -305,8 +348,8 @@ export const CasperIDModal: React.FC<CasperIDModalProps> = ({
 
         // Map requiredTier to layer format
         const requiredLayer = requiredTier === 'L1' ? 'layer_1' :
-                              requiredTier === 'L2' ? 'layer_2' :
-                              requiredTier === 'L3' ? 'layer_3' : 'layer_1';
+            requiredTier === 'L2' ? 'layer_2' :
+                requiredTier === 'L3' ? 'layer_3' : 'layer_1';
 
         // Check if user already meets the requirement
         const tierOrder = ['layer_0', 'layer_1', 'layer_2', 'layer_3'];
@@ -325,13 +368,70 @@ export const CasperIDModal: React.FC<CasperIDModalProps> = ({
         }
     }, [requiredTier, go]);
 
+    // Handle MintingIdentity completion (wallet + DID created for L1, or verification submitted for L2/L3)
+    const handleMintingSuccess = useCallback(async (result?: { wallet?: string; didAddress?: string; credentialHash?: string }) => {
+        if (result?.wallet) {
+            setAuthState(prev => ({
+                ...prev,
+                userAccount: {
+                    ...prev.userAccount,
+                    user_id: prev.userAccount?.user_id || '',
+                    wallet: result.wallet,
+                    did_address: result.didAddress,
+                    tier: 'layer_1'
+                }
+            }));
+        }
+
+        if (result?.credentialHash) {
+            setCredentialHash(result.credentialHash);
+        }
+
+        // REFRESH TOKEN: Get a fresh token that includes the new verified wallet and humanId
+        if (sessionToken && !previewMode) {
+            try {
+                const response = await fetch(`${finalApiBaseUrl}/api/casperid/refresh`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ token: sessionToken, apiKey })
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    if (data.success && data.token) {
+                        console.log('[CasperID SDK] Token refreshed after verification');
+                        setSessionToken(data.token);
+                        setAuthState(prev => ({
+                            ...prev,
+                            sessionToken: data.token,
+                            businessToken: data.business_token || prev.businessToken
+                        }));
+                    }
+                }
+            } catch (err) {
+                console.warn('[CasperID SDK] Failed to refresh token after verification:', err);
+            }
+        }
+
+        // Check tier requirements after minting
+        const currentTier = result?.wallet ? 'layer_1' : (authState.userAccount?.tier || 'layer_1');
+        proceedBasedOnTier(currentTier);
+    }, [authState.userAccount?.tier, proceedBasedOnTier, sessionToken, finalApiBaseUrl, previewMode]);
+
     // Handle extension login success
     const handleExtensionSuccess = useCallback((userData: any) => {
         // Extension auth is complete - use token from extension if provided
         const token = userData?.sessionToken || userData?.token;
+        const bToken = userData?.business_token || userData?.businessToken;
+
         if (token) {
             setSessionToken(token);
         }
+
+        if (bToken) {
+            setAuthState(prev => ({ ...prev, businessToken: bToken }));
+        }
+
         // Skip to appropriate screen based on user's tier
         go('SecurityUpgrade');
     }, [go]);
@@ -388,13 +488,6 @@ export const CasperIDModal: React.FC<CasperIDModalProps> = ({
         go('DocumentScan');
     }, [go]);
 
-    // Handle minting completion
-    const handleMintingNext = useCallback((hash?: string) => {
-        if (hash) {
-            setCredentialHash(hash);
-        }
-        go('IdentityVerified');
-    }, [go]);
 
     // Handle final success (after permissions approved)
     const handleSuccess = useCallback(() => {
@@ -402,9 +495,11 @@ export const CasperIDModal: React.FC<CasperIDModalProps> = ({
             onError?.(new Error('No valid session token available'));
             return;
         }
-        onSuccess?.(sessionToken);
+        onSuccess?.(sessionToken, {
+            businessToken: authState.businessToken
+        });
         onClose?.();
-    }, [sessionToken, onSuccess, onClose, onError]);
+    }, [sessionToken, authState.businessToken, onSuccess, onClose, onError]);
 
     // Handle errors
     const handleError = useCallback((error: string) => {
@@ -420,6 +515,18 @@ export const CasperIDModal: React.FC<CasperIDModalProps> = ({
 
     if (!isOpen && !previewMode) return null;
 
+    // Show loading state while fetching cloud theme (prevents flash of default colors)
+    if (isLoadingCloudTheme && !previewMode) {
+        return (
+            <div
+                className="fixed inset-0 z-[9999] flex items-center justify-center p-4"
+                style={{ backgroundColor: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(6px)' }}
+            >
+                <div className="w-12 h-12 border-3 border-white/20 border-t-white/80 rounded-full animate-spin" />
+            </div>
+        );
+    }
+
     // Render screen content
     const renderScreen = () => {
         switch (screen) {
@@ -430,6 +537,7 @@ export const CasperIDModal: React.FC<CasperIDModalProps> = ({
                         onExtensionSuccess={handleExtensionSuccess}
                         onError={handleError}
                         language={language}
+                        platform={finalPlatform}
                     />
                 );
             case 'Login':
@@ -439,6 +547,7 @@ export const CasperIDModal: React.FC<CasperIDModalProps> = ({
                         onPasskeyUser={handlePasskeyUser}
                         onError={handleError}
                         apiBaseUrl={finalApiBaseUrl}
+                        apiKey={apiKey}
                         previewMode={previewMode}
                         language={language}
                     />
@@ -451,6 +560,7 @@ export const CasperIDModal: React.FC<CasperIDModalProps> = ({
                         onError={handleError}
                         onFallbackToOTP={() => go('Login')}
                         apiBaseUrl={finalApiBaseUrl}
+                        apiKey={apiKey}
                         previewMode={previewMode}
                         language={language}
                     />
@@ -463,17 +573,7 @@ export const CasperIDModal: React.FC<CasperIDModalProps> = ({
                         onSuccess={handlePasskeyRegisterSuccess}
                         onError={handleError}
                         apiBaseUrl={finalApiBaseUrl}
-                        previewMode={previewMode}
-                        language={language}
-                    />
-                );
-            case 'L1Setup':
-                return (
-                    <L1Setup
-                        sessionToken={sessionToken || ''}
-                        onSuccess={handleL1SetupSuccess}
-                        onError={handleError}
-                        apiBaseUrl={finalApiBaseUrl}
+                        apiKey={apiKey}
                         previewMode={previewMode}
                         language={language}
                     />
@@ -486,6 +586,7 @@ export const CasperIDModal: React.FC<CasperIDModalProps> = ({
                         onNext={handleOTPSuccess}
                         onError={handleError}
                         apiBaseUrl={finalApiBaseUrl}
+                        apiKey={apiKey}
                         previewMode={previewMode}
                         language={language}
                     />
@@ -505,6 +606,7 @@ export const CasperIDModal: React.FC<CasperIDModalProps> = ({
                         onNext={handleFaceScanNext}
                         onError={handleError}
                         apiBaseUrl={finalApiBaseUrl}
+                        apiKey={apiKey}
                         previewMode={previewMode}
                         language={language}
                     />
@@ -520,10 +622,11 @@ export const CasperIDModal: React.FC<CasperIDModalProps> = ({
                 return (
                     <DocumentScan
                         requestId={kycState.requestId}
-                        documentType={kycState.documentType || 'passport'}
+                        documentType={kycState.documentType!}
                         onNext={handleDocumentScanNext}
                         onError={handleError}
                         apiBaseUrl={finalApiBaseUrl}
+                        apiKey={apiKey}
                         previewMode={previewMode}
                         language={language}
                     />
@@ -532,24 +635,30 @@ export const CasperIDModal: React.FC<CasperIDModalProps> = ({
                 return (
                     <ReviewData
                         requestId={kycState.requestId}
-                        documentType={kycState.documentType || 'passport'}
-                        extractedData={kycState.extractedData || {}}
+                        documentType={kycState.documentType!}
+                        extractedData={kycState.extractedData!}
                         uploadId={uploadId}
                         onNext={handleReviewDataNext}
-                        onRetake={handleDocumentRetake}
+                        onRetake={() => go('DocumentScan')}
                         onError={handleError}
                         apiBaseUrl={finalApiBaseUrl}
+                        apiKey={apiKey}
                         previewMode={previewMode}
                         language={language}
                     />
                 );
             case 'MintingIdentity':
+                // Determine the tier based on current state
+                const mintingTier = kycState.requestId ? kycState.verificationTier : 'layer_1';
                 return (
                     <MintingIdentity
+                        tier={mintingTier}
+                        sessionToken={sessionToken || ''}
                         requestId={kycState.requestId}
-                        onNext={handleMintingNext}
+                        onNext={handleMintingSuccess}
                         onError={handleError}
                         apiBaseUrl={finalApiBaseUrl}
+                        apiKey={apiKey}
                         previewMode={previewMode}
                         language={language}
                     />
@@ -557,7 +666,15 @@ export const CasperIDModal: React.FC<CasperIDModalProps> = ({
             case 'IdentityVerified':
                 return <IdentityVerified onNext={() => go('PermissionsRequest')} language={language} />;
             case 'PermissionsRequest':
-                return <PermissionsRequest onApprove={handleSuccess} onDeny={() => onClose?.()} language={language} />;
+                return (
+                    <PermissionsRequest
+                        onApprove={handleSuccess}
+                        onDeny={() => onClose?.()}
+                        language={language}
+                        appName={appMetadata?.name}
+                        appLogo={logoUrl || appMetadata?.logo_url}
+                    />
+                );
             default:
                 return null;
         }
@@ -567,7 +684,7 @@ export const CasperIDModal: React.FC<CasperIDModalProps> = ({
     if (previewMode) {
         return (
             <>
-                <style>{scopedStyles}</style>
+                <style key={styleKey}>{scopedStyles}</style>
                 <div id={`casperid-modal-${modalId}`} style={cssVars} className={`relative ${resolvedTheme}`}>
                     <GlassContainer className="backdrop-blur-3xl" theme={resolvedTheme}>
                         <Header
@@ -602,33 +719,35 @@ export const CasperIDModal: React.FC<CasperIDModalProps> = ({
 
     return (
         <>
-            <style>{scopedStyles}</style>
+            <style key={styleKey}>{scopedStyles}</style>
             {/* Overlay backdrop — sits on top of the host app */}
             <div
-                className="fixed inset-0 z-[9999] flex items-center justify-center p-4"
-                style={{ backgroundColor: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(6px)' }}
+                className={`fixed inset-0 z-[9999] flex items-center justify-center ${finalLayout === 'fullscreen' ? 'p-0' : 'p-4'}`}
+                style={{ backgroundColor: finalLayout === 'fullscreen' ? 'transparent' : 'rgba(0,0,0,0.6)', backdropFilter: finalLayout === 'fullscreen' ? 'none' : 'blur(6px)' }}
                 onClick={(e) => e.target === e.currentTarget && onClose?.()}
             >
                 {/* Ambient glows — inside the overlay, behind the card */}
-                <div className="absolute inset-0 pointer-events-none overflow-hidden">
-                    <div
-                        className="absolute top-[-10%] left-[-10%] w-[60%] h-[40%] rounded-full blur-[120px]"
-                        style={{ backgroundColor: `${primaryColor}1a` }}
-                    />
-                    <div className="absolute bottom-[-5%] right-[-5%] w-[50%] h-[30%] bg-[#6DE8EC]/5 blur-[100px] rounded-full" />
-                </div>
+                {finalLayout !== 'fullscreen' && (
+                    <div className="absolute inset-0 pointer-events-none overflow-hidden">
+                        <div
+                            className="absolute top-[-10%] left-[-10%] w-[60%] h-[40%] rounded-full blur-[120px]"
+                            style={{ backgroundColor: `${primaryColor}1a` }}
+                        />
+                        <div className="absolute bottom-[-5%] right-[-5%] w-[50%] h-[30%] bg-[#6DE8EC]/5 blur-[100px] rounded-full" />
+                    </div>
+                )}
 
                 {/* The glass modal card */}
                 <motion.div
                     id={`casperid-modal-${modalId}`}
-                    initial={{ opacity: 0, scale: 0.95, y: 20 }}
+                    initial={finalLayout === 'fullscreen' ? { opacity: 0 } : { opacity: 0, scale: 0.95, y: 20 }}
                     animate={{ opacity: 1, scale: 1, y: 0 }}
-                    exit={{ opacity: 0, scale: 0.95, y: 20 }}
+                    exit={finalLayout === 'fullscreen' ? { opacity: 0 } : { opacity: 0, scale: 0.95, y: 20 }}
                     transition={{ type: 'spring', damping: 28, stiffness: 300 }}
                     style={cssVars}
-                    className={`relative selection:bg-brand/30 ${resolvedTheme}`}
+                    className={`relative selection:bg-brand/30 ${resolvedTheme} ${finalLayout === 'fullscreen' ? 'w-full h-full' : ''}`}
                 >
-                    <GlassContainer className="backdrop-blur-3xl" theme={resolvedTheme}>
+                    <GlassContainer className={`backdrop-blur-3xl ${finalLayout === 'fullscreen' ? 'w-full h-full rounded-none' : ''}`} theme={resolvedTheme}>
                         <Header
                             onClose={onClose}
                             showClose={screen !== 'AuthSelection'}

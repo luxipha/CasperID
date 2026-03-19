@@ -11,6 +11,7 @@ interface DocumentScanProps {
     onNext: (extractedData: ExtractedDocumentData, docUploadId: string) => void;
     onError?: (error: string) => void;
     apiBaseUrl?: string;
+    apiKey?: string;
     previewMode?: boolean;
     language?: string;
 }
@@ -27,6 +28,7 @@ const DocumentScan: React.FC<DocumentScanProps> = ({
     onNext,
     onError,
     apiBaseUrl = 'https://apis.casperid.com',
+    apiKey = '',
     previewMode = false,
     language = 'EN'
 }) => {
@@ -176,7 +178,8 @@ const DocumentScan: React.FC<DocumentScanProps> = ({
                 body: formData,
                 credentials: 'include',
                 headers: {
-                    'X-Request-Id': requestId
+                    'X-Request-Id': requestId,
+                    ...(apiKey ? { 'X-App-Id': apiKey } : {})
                 }
             });
 

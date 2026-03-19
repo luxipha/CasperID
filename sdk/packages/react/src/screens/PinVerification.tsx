@@ -14,9 +14,10 @@ interface UserAccountInfo {
 interface PinVerificationProps {
     email: string;
     verificationId: string;
-    onNext: (sessionToken: string, userAccount?: UserAccountInfo | null) => void;
+    onNext: (sessionToken: string, userAccount?: UserAccountInfo | null, businessToken?: string) => void;
     onError?: (error: string) => void;
     apiBaseUrl?: string;
+    apiKey?: string;
     previewMode?: boolean;
     language?: string;
 }
@@ -27,6 +28,7 @@ const PinVerification: React.FC<PinVerificationProps> = ({
     onNext,
     onError,
     apiBaseUrl = 'https://apis.casperid.com',
+    apiKey,
     previewMode = false,
     language = 'EN'
 }) => {
@@ -79,6 +81,27 @@ const PinVerification: React.FC<PinVerificationProps> = ({
         });
     }, []);
 
+    // Keyboard input support
+    useEffect(() => {
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if (isVerifying) return;
+
+            // Handle number keys (both main keyboard and numpad)
+            if (/^[0-9]$/.test(e.key)) {
+                e.preventDefault();
+                handleDigitPress(e.key);
+            }
+            // Handle backspace/delete
+            else if (e.key === 'Backspace' || e.key === 'Delete') {
+                e.preventDefault();
+                handleDelete();
+            }
+        };
+
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, [isVerifying, handleDigitPress, handleDelete]);
+
     const handleVerify = async () => {
         const otp = pin.join('');
         if (otp.length !== 6) {
@@ -102,6 +125,7 @@ const PinVerification: React.FC<PinVerificationProps> = ({
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
+                    'X-App-ID': apiKey || ''
                 },
                 body: JSON.stringify({
                     verificationId: currentVerificationId,
@@ -117,7 +141,7 @@ const PinVerification: React.FC<PinVerificationProps> = ({
             const data: VerifyOTPResponse = await response.json();
 
             if (data.success && data.sessionToken) {
-                onNext(data.sessionToken, data.userAccount);
+                onNext(data.sessionToken, data.userAccount, data.business_token);
             } else {
                 setError(data.error || t('invalid_code', language));
                 if (data.attemptsLeft !== undefined) {

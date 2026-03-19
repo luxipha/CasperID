@@ -704,14 +704,7 @@ const WalletsTab = () => {
     }
   };
 
-  if (loading) {
-    return (
-      <div className="flex justify-center py-12">
-        <div className="size-8 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
-      </div>
-    );
-  }
-
+  // Move useMemo BEFORE early return to comply with Rules of Hooks
   const linkedWallets = profile?.linked_wallets || [];
 
   // Combine primary wallet with linked wallets
@@ -738,6 +731,14 @@ const WalletsTab = () => {
 
     return wallets;
   }, [profile?.wallet, linkedWallets]);
+
+  if (loading) {
+    return (
+      <div className="flex justify-center py-12">
+        <div className="size-8 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
