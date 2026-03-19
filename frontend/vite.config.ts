@@ -166,6 +166,8 @@ export default defineConfig(({ mode }) => {
         'react': path.resolve(__dirname, 'node_modules/react'),
         'react-dom': path.resolve(__dirname, 'node_modules/react-dom'),
         'framer-motion': path.resolve(__dirname, 'node_modules/framer-motion'),
+        // Resolve SDK dependencies from frontend's node_modules (for SDK source imports)
+        'lucide-react': path.resolve(__dirname, 'node_modules/lucide-react'),
       }
     }
   };
