@@ -70,8 +70,13 @@ router.post('/send-otp', async (req, res) => {
             }
         }
 
+        // Check for staging bypass (case-insensitive, trimmed)
+        const nodeEnv = (process.env.NODE_ENV || '').trim().toLowerCase();
+        const stagingOtp = (process.env.STAGING_DEFAULT_OTP || '').trim();
+        const isStagingMode = nodeEnv === 'staging' && stagingOtp;
+
         // Generate OTP and verification ID
-        const otp = emailService.generateOTP();
+        const otp = isStagingMode ? stagingOtp : emailService.generateOTP();
         const verificationId = uuidv4();
         const expiresAt = new Date(Date.now() + (10 * 60 * 1000)); // 10 minutes
 
@@ -86,8 +91,12 @@ router.post('/send-otp', async (req, res) => {
             expires_at: expiresAt
         });
 
-        // Send OTP email
-        await emailService.sendOTP(email, otp);
+        // Send OTP email (skip in staging mode)
+        if (isStagingMode) {
+            console.log(`[Staging] Skipping email send. Use OTP: ${stagingOtp}`);
+        } else {
+            await emailService.sendOTP(email, otp);
+        }
 
         res.json({
             success: true,
@@ -173,9 +182,12 @@ router.post('/verify-otp', extractApp, async (req, res) => {
             });
         }
 
-        // Verify OTP
-        const isStagingBypass = process.env.NODE_ENV === 'staging' &&
-            otp.toString() === process.env.STAGING_DEFAULT_OTP;
+        // Verify OTP (case-insensitive, trimmed check for staging)
+        const nodeEnv = (process.env.NODE_ENV || '').trim().toLowerCase();
+        const stagingOtp = (process.env.STAGING_DEFAULT_OTP || '').trim();
+        const isStagingBypass = nodeEnv === 'staging' &&
+            stagingOtp &&
+            otp.toString().trim() === stagingOtp;
 
         if (storedData.verification_code !== otp.toString() && !isStagingBypass) {
             return res.status(400).json({
@@ -328,8 +340,13 @@ router.post('/resend-otp', async (req, res) => {
             });
         }
 
-        // Generate new OTP
-        const newOtp = emailService.generateOTP();
+        // Check for staging bypass (case-insensitive, trimmed)
+        const nodeEnv = (process.env.NODE_ENV || '').trim().toLowerCase();
+        const stagingOtp = (process.env.STAGING_DEFAULT_OTP || '').trim();
+        const isStagingMode = nodeEnv === 'staging' && stagingOtp;
+
+        // Generate new OTP (use staging OTP if in staging mode)
+        const newOtp = isStagingMode ? stagingOtp : emailService.generateOTP();
         const newExpiresAt = new Date(Date.now() + (10 * 60 * 1000)); // 10 minutes
 
         // Update stored data
@@ -339,8 +356,12 @@ router.post('/resend-otp', async (req, res) => {
         storedData.verified = false;
         await storedData.save();
 
-        // Send new OTP email
-        await emailService.sendOTP(storedData.email, newOtp);
+        // Send new OTP email (skip in staging mode)
+        if (isStagingMode) {
+            console.log(`[Staging] Skipping resend email. Use OTP: ${stagingOtp}`);
+        } else {
+            await emailService.sendOTP(storedData.email, newOtp);
+        }
 
         res.json({
             success: true,
@@ -483,8 +504,13 @@ router.post('/send-verification-otp', require('../middleware/auth').requireAuth,
             });
         }
 
-        // Generate OTP and verification ID
-        const otp = emailService.generateOTP();
+        // Check for staging bypass (case-insensitive, trimmed)
+        const nodeEnv = (process.env.NODE_ENV || '').trim().toLowerCase();
+        const stagingOtp = (process.env.STAGING_DEFAULT_OTP || '').trim();
+        const isStagingMode = nodeEnv === 'staging' && stagingOtp;
+
+        // Generate OTP and verification ID (use staging OTP if in staging mode)
+        const otp = isStagingMode ? stagingOtp : emailService.generateOTP();
         const verificationId = `${userAccount.user_id}-${purpose}-${Date.now()}`;
         const expiresAt = new Date(Date.now() + (10 * 60 * 1000)); // 10 minutes
 
@@ -501,8 +527,12 @@ router.post('/send-verification-otp', require('../middleware/auth').requireAuth,
             expires_at: expiresAt
         });
 
-        // Send OTP email with purpose context
-        await emailService.sendOTP(userAccount.recovery_email, otp, `CasperID - ${purpose.replace('-', ' ').toUpperCase()} Verification`);
+        // Send OTP email with purpose context (skip in staging mode)
+        if (isStagingMode) {
+            console.log(`[Staging] Skipping verification email. Use OTP: ${stagingOtp}`);
+        } else {
+            await emailService.sendOTP(userAccount.recovery_email, otp, `CasperID - ${purpose.replace('-', ' ').toUpperCase()} Verification`);
+        }
 
         res.json({
             success: true,
@@ -585,8 +615,12 @@ router.post('/verify-verification-otp', require('../middleware/auth').requireAut
             });
         }
 
-        // Verify OTP
-        if (otpEntry.verification_code !== otp) {
+        // Verify OTP (with staging bypass for case-insensitive, trimmed check)
+        const nodeEnv = (process.env.NODE_ENV || '').trim().toLowerCase();
+        const stagingOtp = (process.env.STAGING_DEFAULT_OTP || '').trim();
+        const isStagingBypass = nodeEnv === 'staging' && stagingOtp && otp.trim() === stagingOtp;
+
+        if (otpEntry.verification_code !== otp && !isStagingBypass) {
             otpEntry.attempts++;
             await otpEntry.save();
             return res.status(400).json({
