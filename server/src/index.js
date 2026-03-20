@@ -240,6 +240,7 @@ app.use('/api/admin', adminAuthRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api', aiRoutes);
 app.use('/api', require('./routes/zk')); // ZK Proof Submission (Starknet)
+app.use('/api/zk-claims', require('./routes/zk-claims')); // ZK Claim Proofs (Privacy-Preserving Claims)
 app.use('/api/casperid', casperidAuthRoutes);
 app.use('/api/passkey', passkeyAuthRoutes); // Passkey authentication (Layer 0/1)
 app.use('/api/passkey/pairing/otp', require('./routes/otp-pairing')); // OTP Pairing (Extension-to-Web)

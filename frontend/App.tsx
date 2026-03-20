@@ -46,6 +46,7 @@ import { AppLoadingSplash } from './components/AppLoadingSplash';
 import { BusinessPlatform } from './business/BusinessPlatform';
 import { PublicProfileContainer } from './components/PublicProfileContainer';
 import { VerifyCredentialPage } from './components/VerifyCredentialPage';
+import { VerifyZKClaimsPage } from './components/VerifyZKClaimsPage';
 import { QRScannerModal } from './components/QRScannerModal';
 import OTPPairingNotification from './components/OTPPairingNotification';
 import { useAuth } from './contexts/AuthContext';
@@ -86,9 +87,9 @@ const App: React.FC = () => {
   */
   // Check if a path is a reserved system path and should NOT be treated as a public profile
   const isReservedPath = (path: string) => {
-    const sysPaths = ['/', '/admin', '/pair', '/dashboard', '/login', '/auth', '/settings', '/integrations', '/verify', '/mobile', '/null', '/business', '/anra', '/adevaros', '/casperos', '/careers', '/apply-success', '/affiliate', '/profile', '/p', '/did', '/cns-success'];
+    const sysPaths = ['/', '/admin', '/pair', '/dashboard', '/login', '/auth', '/settings', '/integrations', '/verify', '/verify-zk', '/mobile', '/null', '/business', '/anra', '/adevaros', '/casperos', '/careers', '/apply-success', '/affiliate', '/profile', '/p', '/did', '/cns-success'];
     const p = path.toLowerCase();
-    return sysPaths.includes(p) || p.startsWith('/verify/') || p.startsWith('/mobile/') || p.startsWith('/business/') || p.startsWith('/careers/') || p.startsWith('/profile/') || p.startsWith('/p/') || p.startsWith('/did/') || p === '/null' || p === '/cns-success';
+    return sysPaths.includes(p) || p.startsWith('/verify/') || p.startsWith('/verify-zk') || p.startsWith('/mobile/') || p.startsWith('/business/') || p.startsWith('/careers/') || p.startsWith('/profile/') || p.startsWith('/p/') || p.startsWith('/did/') || p === '/null' || p === '/cns-success';
   };
 
   const location = useLocation();
@@ -114,6 +115,9 @@ const App: React.FC = () => {
     // Check for Subdomain Profile (e.g. alice.casperid.com)
     const subdomain = getSubdomain();
     if (subdomain) return 'public-profile';
+
+    // Check for ZK claims verification route
+    if (path === '/verify-zk' || path.startsWith('/verify-zk?')) return 'verify-zk-claims';
 
     // Check for credential verification route
     if (path.startsWith('/verify/')) return 'verify-credential';
@@ -302,7 +306,7 @@ const App: React.FC = () => {
     if (isLoading) return;
 
     // If we are viewing a public profile, landing page, or credential verification, DO NOT redirect based on auth
-    if (['public-profile', 'landing', 'admin', 'verify-credential'].includes(currentView)) {
+    if (['public-profile', 'landing', 'admin', 'verify-credential', 'verify-zk-claims'].includes(currentView)) {
       return;
     }
 
@@ -326,7 +330,7 @@ const App: React.FC = () => {
         }
       } else {
         // New user - start with email entry
-        const isDashboardView = !['landing', 'public-profile', 'verify-credential', 'auth-entry', 'otp-verify', 'onboarding-start', 'onboarding-progress', 'pairing', 'loading', 'handoff'].includes(currentView);
+        const isDashboardView = !['landing', 'public-profile', 'verify-credential', 'verify-zk-claims', 'auth-entry', 'otp-verify', 'onboarding-start', 'onboarding-progress', 'pairing', 'loading', 'handoff'].includes(currentView);
         if (isDashboardView) {
           setCurrentView('auth-entry');
         }
@@ -579,6 +583,8 @@ const App: React.FC = () => {
         return publicProfileSlug ? <PublicProfileContainer walletOrUsername={publicProfileSlug} /> : <div>Invalid Profile</div>;
       case 'verify-credential':
         return credentialHash ? <VerifyCredentialPage credentialHash={credentialHash} /> : <div>Invalid Credential</div>;
+      case 'verify-zk-claims':
+        return <VerifyZKClaimsPage />;
       case 'admin':
         return <AdminPage />;
       case 'careers':
@@ -693,7 +699,7 @@ const App: React.FC = () => {
     : currentView;
 
   // Don't show layout chrome during onboarding, public profile view, landing, admin, or credential verification
-  const isOnboarding = currentView === 'public-profile' || currentView === 'landing' || currentView === 'admin' || currentView === 'verify-credential' || currentView === 'auth-entry' || currentView === 'otp-verify' || currentView === 'onboarding-start' || currentView === 'onboarding-progress' || currentView === 'pairing' || currentView === 'handoff' || currentView.startsWith('business');
+  const isOnboarding = currentView === 'public-profile' || currentView === 'landing' || currentView === 'admin' || currentView === 'verify-credential' || currentView === 'verify-zk-claims' || currentView === 'auth-entry' || currentView === 'otp-verify' || currentView === 'onboarding-start' || currentView === 'onboarding-progress' || currentView === 'pairing' || currentView === 'handoff' || currentView.startsWith('business');
 
   if (isLoading) {
     return <AppLoadingSplash />;

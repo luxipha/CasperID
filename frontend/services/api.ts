@@ -565,6 +565,37 @@ class ApiService {
     }
   }
 
+  // ============================================
+  // ZK CLAIMS (Zero-Knowledge Proofs)
+  // ============================================
+
+  async getAvailableZKClaims(): Promise<ApiResponse> {
+    try {
+      const response = await this.client.get('/api/zk-claims/available');
+      return response.data;
+    } catch (error) {
+      throw this.handleError(error);
+    }
+  }
+
+  async generateZKClaimProof(claims: string[]): Promise<ApiResponse> {
+    try {
+      const response = await this.client.post('/api/zk-claims/generate', { claims });
+      return response.data;
+    } catch (error) {
+      throw this.handleError(error);
+    }
+  }
+
+  async verifyZKClaimProof(proof: string): Promise<ApiResponse> {
+    try {
+      const response = await this.client.post('/api/zk-claims/verify', { proof });
+      return response.data;
+    } catch (error) {
+      throw this.handleError(error);
+    }
+  }
+
   async uploadDocument(file: File, documentType: string): Promise<ApiResponse> {
     try {
       const formData = new FormData();
