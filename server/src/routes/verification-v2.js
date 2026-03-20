@@ -5,6 +5,8 @@ const multer = require('multer');
 const path = require('path');
 const { extractApp } = require('../middleware/app-auth');
 const imagekit = require('../services/imagekit');
+const { v4: uuidv4 } = require('uuid');
+const { DataShare } = require('../database/temporary-shares');
 
 /**
  * Verification V2 Routes
@@ -693,13 +695,78 @@ router.post('/share', async (req, res) => {
 
         const result = await verificationServiceV2.generateSharePackage(sessionToken, fields);
 
+        // Generate a share ID and store in TTL collection (24 hour expiry)
+        const shareId = uuidv4();
+        const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
+
+        const dataShare = new DataShare({
+            share_id: shareId,
+            user_id: result.data?.verification?.wallet || 'unknown',
+            wallet: result.data?.verification?.wallet,
+            human_id: result.data?.verification?.human_id,
+            package_data: result,
+            shared_fields: fields || [],
+            signature: result.signature,
+            public_key: result.public_key,
+            expires_at: expiresAt
+        });
+        await dataShare.save();
+
         res.json({
             success: true,
-            sharePackage: result
+            sharePackage: result,
+            share_id: shareId,
+            verification_url: `/share-view/${shareId}`,
+            expires_at: expiresAt
         });
 
     } catch (error) {
         console.error('Selective Disclosure failed:', error);
+        res.status(400).json({
+            success: false,
+            error: error.message
+        });
+    }
+});
+
+/**
+ * Retrieve a stored share package by ID
+ * GET /api/v2/verification/share/:shareId
+ */
+router.get('/share/:shareId', async (req, res) => {
+    try {
+        const { shareId } = req.params;
+
+        // Find the stored share package
+        const dataShare = await DataShare.findOne({ share_id: shareId });
+
+        if (!dataShare) {
+            return res.status(404).json({
+                success: false,
+                error: 'Share package not found or has expired'
+            });
+        }
+
+        // Increment view count
+        dataShare.view_count += 1;
+        await dataShare.save();
+
+        // Verify the package is still valid
+        const verificationResult = await verificationServiceV2.verifySharePackage(dataShare.package_data);
+
+        res.json({
+            success: true,
+            share_id: dataShare.share_id,
+            package_data: dataShare.package_data,
+            shared_fields: dataShare.shared_fields,
+            created_at: dataShare.created_at,
+            expires_at: dataShare.expires_at,
+            view_count: dataShare.view_count,
+            verification: verificationResult
+        });
+
+    } catch (error) {
+        console.error('Failed to retrieve share package:', error);
         res.status(400).json({
             success: false,
             error: error.message

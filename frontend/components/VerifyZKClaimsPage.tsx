@@ -26,17 +26,54 @@ interface VerificationResult {
     expired?: boolean;
 }
 
-export const VerifyZKClaimsPage: React.FC = () => {
+interface VerifyZKClaimsPageProps {
+    proofId?: string; // Can be passed from router
+}
+
+export const VerifyZKClaimsPage: React.FC<VerifyZKClaimsPageProps> = ({ proofId: propProofId }) => {
     const [loading, setLoading] = useState(true);
     const [result, setResult] = useState<VerificationResult | null>(null);
 
     useEffect(() => {
         verifyProof();
-    }, []);
+    }, [propProofId]);
 
     const verifyProof = async () => {
         try {
-            // Get proof from URL query parameter
+            const isLocalhost = typeof window !== 'undefined' &&
+                (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+            const apiUrl = import.meta.env.VITE_API_URL || (isLocalhost ? 'http://localhost:3001' : '');
+
+            // Check for proof ID in URL path (e.g., /verify-zk/abc-123) or from props
+            const pathMatch = window.location.pathname.match(/\/verify-zk\/([^/?]+)/);
+            const proofId = propProofId || (pathMatch ? pathMatch[1] : null);
+
+            if (proofId) {
+                // New flow: fetch stored proof by ID
+                const response = await fetch(`${apiUrl}/api/zk-claims/proof/${proofId}`);
+                const data = await response.json();
+
+                if (data.success) {
+                    // Map the response to match VerificationResult interface
+                    setResult({
+                        valid: data.verification?.valid ?? true,
+                        proof_id: data.proof_id,
+                        claims: data.claims,
+                        issuer: data.issuer,
+                        timestamp: new Date(data.created_at).getTime(),
+                        expires_at: new Date(data.expires_at).getTime(),
+                        verified_at: Date.now(),
+                        error: data.verification?.error,
+                        expired: data.verification?.expired
+                    });
+                } else {
+                    setResult({ valid: false, error: data.error || 'Proof not found or has expired' });
+                }
+                setLoading(false);
+                return;
+            }
+
+            // Legacy flow: get proof from URL query parameter
             const params = new URLSearchParams(window.location.search);
             const proof = params.get('proof');
 
@@ -45,10 +82,6 @@ export const VerifyZKClaimsPage: React.FC = () => {
                 setLoading(false);
                 return;
             }
-
-            const isLocalhost = typeof window !== 'undefined' &&
-                (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
-            const apiUrl = import.meta.env.VITE_API_URL || (isLocalhost ? 'http://localhost:3001' : '');
 
             const response = await fetch(`${apiUrl}/api/zk-claims/verify`, {
                 method: 'POST',

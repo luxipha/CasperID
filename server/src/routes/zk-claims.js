@@ -8,6 +8,7 @@
 const express = require('express');
 const router = express.Router();
 const zkClaimsService = require('../services/zk-claims');
+const { ZKProofShare } = require('../database/temporary-shares');
 
 /**
  * GET /api/zk-claims/available
@@ -68,9 +69,28 @@ router.post('/generate', async (req, res) => {
 
         const proofPackage = await zkClaimsService.generateClaimProof(sessionToken, claims);
 
+        // Store in TTL collection for QR code sharing (1 hour expiry)
+        const zkShare = new ZKProofShare({
+            proof_id: proofPackage.proof_id,
+            user_id: proofPackage.issuer?.wallet || 'unknown',
+            wallet: proofPackage.issuer?.wallet,
+            human_id: proofPackage.issuer?.human_id,
+            proof: proofPackage.proof,
+            proof_hash: proofPackage.proof_hash,
+            claims: proofPackage.claims,
+            issuer: proofPackage.issuer,
+            expires_at: new Date(proofPackage.expires_at)
+        });
+        await zkShare.save();
+
+        // Return with simple verification URL
         res.json({
             success: true,
-            proofPackage
+            proofPackage: {
+                ...proofPackage,
+                // Simple URL for QR codes - no long proof in URL
+                verification_url: `/verify-zk/${proofPackage.proof_id}`
+            }
         });
 
     } catch (error) {
@@ -116,30 +136,44 @@ router.post('/verify', async (req, res) => {
 });
 
 /**
- * GET /api/zk-claims/verify/:proofId
- * Verify a ZK claim proof by ID (for QR code scanning)
- * This endpoint accepts the proof as a query parameter
+ * GET /api/zk-claims/proof/:proofId
+ * Retrieve a stored ZK proof by ID (for QR code verification pages)
+ * Returns the proof data for client-side display
  */
-router.get('/verify/:proofId', async (req, res) => {
+router.get('/proof/:proofId', async (req, res) => {
     try {
-        const { proof } = req.query;
+        const { proofId } = req.params;
 
-        if (!proof) {
-            return res.status(400).json({
+        // Find the stored proof
+        const zkShare = await ZKProofShare.findOne({ proof_id: proofId });
+
+        if (!zkShare) {
+            return res.status(404).json({
                 success: false,
-                error: 'Proof data is required as query parameter'
+                error: 'Proof not found or has expired'
             });
         }
 
-        const result = await zkClaimsService.verifyClaimProof(proof);
+        // Increment view count
+        zkShare.view_count += 1;
+        await zkShare.save();
+
+        // Verify the proof is still valid
+        const result = await zkClaimsService.verifyClaimProof(zkShare.proof);
 
         res.json({
-            success: result.valid,
-            ...result
+            success: true,
+            proof_id: zkShare.proof_id,
+            claims: zkShare.claims,
+            issuer: zkShare.issuer,
+            created_at: zkShare.created_at,
+            expires_at: zkShare.expires_at,
+            view_count: zkShare.view_count,
+            verification: result
         });
 
     } catch (error) {
-        console.error('Failed to verify ZK claim proof:', error);
+        console.error('Failed to retrieve ZK proof:', error);
         res.status(400).json({
             success: false,
             error: error.message

@@ -136,14 +136,14 @@ const App: React.FC = () => {
     const subdomain = getSubdomain();
     if (subdomain) return 'public-profile';
 
-    // Check for ZK claims verification route
-    if (path === '/verify-zk' || path.startsWith('/verify-zk?')) return 'verify-zk-claims';
+    // Check for ZK claims verification route (supports /verify-zk and /verify-zk/{proofId})
+    if (path === '/verify-zk' || path.startsWith('/verify-zk/') || path.startsWith('/verify-zk?')) return 'verify-zk-claims';
 
     // Check for credential verification route
     if (path.startsWith('/verify/')) return 'verify-credential';
 
-    // Check for share data view route
-    if (path.startsWith('/share-view')) return 'verify-share-data';
+    // Check for share data view route (supports /share-view and /share-view/{shareId})
+    if (path === '/share-view' || path.startsWith('/share-view/') || path.startsWith('/share-view?')) return 'verify-share-data';
 
     // Check for vanity verification route: e.g. /alice.cid/verify/hash
     if (path.match(/^\/([^\/]+)\/verify\/([^\/]+)$/)) return 'verify-credential';

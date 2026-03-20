@@ -75,7 +75,12 @@ export const SelectiveDisclosureModal: React.FC<SelectiveDisclosureModalProps> =
             setGenerating(true);
             const response = await apiService.shareKYCData(selectedFields);
             if (response.success) {
-                setSharePackage(response.sharePackage);
+                // Store full response including share_id and verification_url
+                setSharePackage({
+                    ...response.sharePackage,
+                    share_id: response.share_id,
+                    verification_url: response.verification_url
+                });
             }
         } catch (error) {
             console.error('Generation failed:', error);
@@ -85,9 +90,12 @@ export const SelectiveDisclosureModal: React.FC<SelectiveDisclosureModalProps> =
         }
     };
 
-    const handleCopy = () => {
+    const handleCopy = (copyUrl = false) => {
         if (sharePackage) {
-            navigator.clipboard.writeText(JSON.stringify(sharePackage, null, 2));
+            const textToCopy = copyUrl
+                ? `${window.location.origin}${sharePackage.verification_url || `/share-view/${sharePackage.share_id}`}`
+                : JSON.stringify(sharePackage, null, 2);
+            navigator.clipboard.writeText(textToCopy);
             setCopied(true);
             setTimeout(() => setCopied(false), 2000);
         }
@@ -100,8 +108,8 @@ export const SelectiveDisclosureModal: React.FC<SelectiveDisclosureModalProps> =
 
     // Render the success state with generated package
     if (sharePackage) {
-        // Generate QR Data - Use URL for better mobile compatibility
-        const shareUrl = `${window.location.origin}/share-view?data=${encodeURIComponent(JSON.stringify(sharePackage))}`;
+        // Use simple URL with share ID (stored server-side)
+        const shareUrl = `${window.location.origin}${sharePackage.verification_url || `/share-view/${sharePackage.share_id}`}`;
         const qrData = shareUrl;
 
         return (
@@ -153,11 +161,11 @@ export const SelectiveDisclosureModal: React.FC<SelectiveDisclosureModalProps> =
                                 View JSON
                             </button>
                             <button
-                                onClick={handleCopy}
+                                onClick={() => handleCopy(true)}
                                 className="flex-1 h-12 border-2 border-gray-100 rounded-[16px] font-bold text-text-sub hover:bg-gray-50 transition-all flex items-center justify-center gap-2 text-sm"
                             >
                                 <span className="material-symbols-outlined text-lg">{copied ? 'check' : 'content_copy'}</span>
-                                {copied ? 'Copied!' : 'Copy'}
+                                {copied ? 'Copied!' : 'Copy Link'}
                             </button>
                         </div>
                     </div>
@@ -180,7 +188,7 @@ export const SelectiveDisclosureModal: React.FC<SelectiveDisclosureModalProps> =
                                 Show QR
                             </button>
                             <button
-                                onClick={handleCopy}
+                                onClick={() => handleCopy(false)}
                                 className="flex-1 h-12 bg-primary text-white rounded-[16px] font-bold hover:bg-primary/90 transition-all flex items-center justify-center gap-2 text-sm"
                             >
                                 <span className="material-symbols-outlined text-lg">{copied ? 'check' : 'content_copy'}</span>

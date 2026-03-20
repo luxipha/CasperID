@@ -2,7 +2,11 @@ import React, { useState, useEffect } from 'react';
 import apiService from '../services/api';
 import { Loader2, ShieldCheck, ShieldAlert, User, MapPin, Mail, Phone, Calendar, Globe, Share2 } from 'lucide-react';
 
-export const SharedDataView: React.FC = () => {
+interface SharedDataViewProps {
+    shareId?: string; // Can be passed from router
+}
+
+export const SharedDataView: React.FC<SharedDataViewProps> = ({ shareId: propShareId }) => {
     const [loading, setLoading] = useState(true);
     const [shareData, setShareData] = useState<any>(null);
     const [error, setError] = useState<string | null>(null);
@@ -10,6 +14,30 @@ export const SharedDataView: React.FC = () => {
     useEffect(() => {
         const loadSharedData = async () => {
             try {
+                const isLocalhost = typeof window !== 'undefined' &&
+                    (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+                const apiUrl = import.meta.env.VITE_API_URL || (isLocalhost ? 'http://localhost:3001' : '');
+
+                // Check for share ID in URL path (e.g., /share-view/abc-123) or from props
+                const pathMatch = window.location.pathname.match(/\/share-view\/([^/?]+)/);
+                const shareId = propShareId || (pathMatch ? pathMatch[1] : null);
+
+                if (shareId) {
+                    // New flow: fetch stored share package by ID
+                    const response = await fetch(`${apiUrl}/api/v2/verification/share/${shareId}`);
+                    const data = await response.json();
+
+                    if (data.success) {
+                        // The package_data contains the actual shared data
+                        setShareData(data.package_data?.data || data.verification?.data);
+                    } else {
+                        setError(data.error || 'This shared link has expired or is no longer available');
+                    }
+                    setLoading(false);
+                    return;
+                }
+
+                // Legacy flow: get data from URL query parameter
                 const params = new URLSearchParams(window.location.search);
                 const rawData = params.get('data');
 
@@ -45,7 +73,7 @@ export const SharedDataView: React.FC = () => {
         };
 
         loadSharedData();
-    }, []);
+    }, [propShareId]);
 
     const getFieldIcon = (field: string) => {
         switch (field) {

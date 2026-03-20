@@ -100,7 +100,8 @@ export const ZKClaimsModal: React.FC<ZKClaimsModalProps> = ({
 
     const handleCopy = () => {
         if (proofPackage) {
-            navigator.clipboard.writeText(proofPackage.qr_data);
+            const url = getVerificationUrl();
+            navigator.clipboard.writeText(url);
             setCopied(true);
             setTimeout(() => setCopied(false), 2000);
         }
@@ -114,7 +115,8 @@ export const ZKClaimsModal: React.FC<ZKClaimsModalProps> = ({
 
     const getVerificationUrl = () => {
         const baseUrl = window.location.origin;
-        return `${baseUrl}/verify-zk?proof=${encodeURIComponent(proofPackage?.proof || '')}`;
+        // Use simple URL with proof ID (stored server-side)
+        return `${baseUrl}${proofPackage?.verification_url || `/verify-zk/${proofPackage?.proof_id}`}`;
     };
 
     // Render the success state with generated proof
