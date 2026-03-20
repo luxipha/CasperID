@@ -653,6 +653,59 @@ class VerificationServiceV2 {
     }
 
     /**
+     * Verify a Selective Disclosure share package
+     */
+    async verifySharePackage(sharePackage) {
+        try {
+            const { data, signature, public_key, timestamp } = sharePackage;
+
+            if (!data || !signature || !public_key) {
+                throw new Error('Invalid share package: missing required fields');
+            }
+
+            // 1. Verify timestamp (prevent old replay attacks - 24h window)
+            const now = Date.now();
+            const maxAge = 24 * 60 * 60 * 1000;
+            if (now - timestamp > maxAge) {
+                throw new Error('Share package has expired');
+            }
+
+            // 2. Verify signature
+            const payloadHash = crypto.createHash('sha256')
+                .update(JSON.stringify(data))
+                .digest();
+
+            const isVerified = walletGenerator.verifySignature(
+                payloadHash,
+                signature,
+                public_key
+            );
+
+            if (!isVerified) {
+                throw new Error('Invalid signature: share package has been tampered with or is not authentic');
+            }
+
+            // 3. Verify that the public_key corresponds to the wallet in the data
+            if (data.verification?.wallet) {
+                // In Casper, we'd checking if the public_key resolves to this wallet
+                // For now, we trust the signature proves possession of the key
+                // but we could add extra checks here if needed.
+            }
+
+            return {
+                valid: true,
+                data: data,
+                signer: sharePackage.signer,
+                verifiedAt: new Date().toISOString()
+            };
+
+        } catch (error) {
+            console.error('Share package verification failed:', error);
+            throw new Error(`Verification failed: ${error.message}`);
+        }
+    }
+
+    /**
      * Validate user session (integrate with existing session system)
      */
     async validateUserSession(sessionToken) {

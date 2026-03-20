@@ -1,5 +1,6 @@
 const { Keys } = require('casper-js-sdk');
 const crypto = require('crypto');
+const forge = require('node-forge');
 const { UserAccount } = require('../database/models');
 const { walletToHuman } = require('../utils/wallet-to-human');
 
@@ -271,6 +272,34 @@ class WalletGeneratorService {
         } catch (error) {
             console.error('Transaction signing failed:', error);
             throw new Error(`Transaction signing failed: ${error.message}`);
+        }
+    }
+
+    /**
+     * Verify an Ed25519 signature
+     * @param {Buffer|Uint8Array} message - The data that was signed
+     * @param {string} signatureHex - Hex-encoded 64-byte signature
+     * @param {string} publicKeyHex - Hex-encoded 32-byte public key (without 01 prefix)
+     * @returns {boolean}
+     */
+    verifySignature(message, signatureHex, publicKeyHex) {
+        try {
+            // Standard Ed25519 keys are 32 bytes, signatures are 64 bytes
+            // Casper SDK sometimes adds a '01' byte prefix to hex public keys
+            const cleanPublicKey = publicKeyHex.startsWith('01') ? publicKeyHex.slice(2) : publicKeyHex;
+
+            const publicKeyBytes = Uint8Array.from(Buffer.from(cleanPublicKey, 'hex'));
+            const signatureBytes = Uint8Array.from(Buffer.from(signatureHex, 'hex'));
+            const messageBytes = Buffer.isBuffer(message) ? message : Buffer.from(message);
+
+            return forge.ed25519.verify({
+                message: messageBytes,
+                signature: signatureBytes,
+                publicKey: publicKeyBytes
+            });
+        } catch (error) {
+            console.error('Signature verification failed:', error);
+            return false;
         }
     }
 

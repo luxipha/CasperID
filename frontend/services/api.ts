@@ -565,6 +565,15 @@ class ApiService {
     }
   }
 
+  async verifyShareData(sharePackage: any): Promise<ApiResponse> {
+    try {
+      const response = await this.client.post('/api/v2/verification/share/verify', { sharePackage });
+      return response.data;
+    } catch (error) {
+      throw this.handleError(error);
+    }
+  }
+
   // ============================================
   // ZK CLAIMS (Zero-Knowledge Proofs)
   // ============================================

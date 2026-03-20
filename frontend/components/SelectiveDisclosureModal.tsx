@@ -100,7 +100,9 @@ export const SelectiveDisclosureModal: React.FC<SelectiveDisclosureModalProps> =
 
     // Render the success state with generated package
     if (sharePackage) {
-        const qrData = JSON.stringify(sharePackage);
+        // Generate QR Data - Use URL for better mobile compatibility
+        const shareUrl = `${window.location.origin}/share-view?data=${encodeURIComponent(JSON.stringify(sharePackage))}`;
+        const qrData = shareUrl;
 
         return (
             <IdentityToolModal

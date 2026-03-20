@@ -707,6 +707,37 @@ router.post('/share', async (req, res) => {
     }
 });
 
+/**
+ * Verify a Selective Disclosure share package
+ * POST /api/v2/verification/share/verify
+ */
+router.post('/share/verify', async (req, res) => {
+    try {
+        const { sharePackage } = req.body;
+
+        if (!sharePackage) {
+            return res.status(400).json({
+                success: false,
+                error: 'Share package is required'
+            });
+        }
+
+        const result = await verificationServiceV2.verifySharePackage(sharePackage);
+
+        res.json({
+            success: true,
+            ...result
+        });
+
+    } catch (error) {
+        console.error('Share verification failed:', error);
+        res.status(400).json({
+            success: false,
+            error: error.message
+        });
+    }
+});
+
 // ============================================
 // VERIFICATION REQUIREMENTS
 // ============================================

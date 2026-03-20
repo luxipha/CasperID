@@ -47,6 +47,7 @@ import { BusinessPlatform } from './business/BusinessPlatform';
 import { PublicProfileContainer } from './components/PublicProfileContainer';
 import { VerifyCredentialPage } from './components/VerifyCredentialPage';
 import { VerifyZKClaimsPage } from './components/VerifyZKClaimsPage';
+import { SharedDataView } from './components/SharedDataView';
 import { QRScannerModal } from './components/QRScannerModal';
 import OTPPairingNotification from './components/OTPPairingNotification';
 import { useAuth } from './contexts/AuthContext';
@@ -86,11 +87,30 @@ const App: React.FC = () => {
      System paths (dashboard, internal pages) are ignored here and handled by Auth check below.
   */
   // Check if a path is a reserved system path and should NOT be treated as a public profile
-  const isReservedPath = (path: string) => {
-    const sysPaths = ['/', '/admin', '/pair', '/dashboard', '/login', '/auth', '/settings', '/integrations', '/verify', '/verify-zk', '/mobile', '/null', '/business', '/anra', '/adevaros', '/casperos', '/careers', '/apply-success', '/affiliate', '/profile', '/p', '/did', '/cns-success'];
-    const p = path.toLowerCase();
-    return sysPaths.includes(p) || p.startsWith('/verify/') || p.startsWith('/verify-zk') || p.startsWith('/mobile/') || p.startsWith('/business/') || p.startsWith('/careers/') || p.startsWith('/profile/') || p.startsWith('/p/') || p.startsWith('/did/') || p === '/null' || p === '/cns-success';
-  };
+    const isReservedPath = (path: string) => {
+        const p = path.toLowerCase();
+        const sysPaths = [
+            '/', '/login', '/signup', '/verify', '/dashboard', '/profile',
+            '/admin', '/settings', '/activity', '/market', '/verify-zk',
+            '/share-view', '/verification-center', '/explore', '/health',
+            '/pair', '/auth', '/integrations', '/mobile', '/null', '/business',
+            '/anra', '/adevaros', '/casperos', '/careers', '/apply-success',
+            '/affiliate', '/p', '/did', '/cns-success'
+        ];
+        return sysPaths.includes(p) ||
+            p.startsWith('/verify/') ||
+            p.startsWith('/verify-zk') ||
+            p.startsWith('/verify-zk') ||
+            p.startsWith('/share-view') ||
+            p.startsWith('/cns-profile/') ||
+            p.startsWith('/u/') ||
+            p.startsWith('/mobile/') ||
+            p.startsWith('/business/') ||
+            p.startsWith('/careers/') ||
+            p.startsWith('/profile/') ||
+            p.startsWith('/p/') ||
+            p.startsWith('/did/');
+    };
 
   const location = useLocation();
   const navigate = useNavigate();
@@ -121,6 +141,9 @@ const App: React.FC = () => {
 
     // Check for credential verification route
     if (path.startsWith('/verify/')) return 'verify-credential';
+
+    // Check for share data view route
+    if (path.startsWith('/share-view')) return 'verify-share-data';
 
     // Check for vanity verification route: e.g. /alice.cid/verify/hash
     if (path.match(/^\/([^\/]+)\/verify\/([^\/]+)$/)) return 'verify-credential';
@@ -190,7 +213,9 @@ const App: React.FC = () => {
     // Dynamic Route placeholders (Hooks in components will handle more specific titles)
     if (path.startsWith('/careers/')) return 'Position Details | Careers | CasperID';
     if (path.startsWith('/profile/')) return 'Public Profile | CasperID';
-    if (path.startsWith('/verify/')) return 'Verify Credential | CasperID';
+    if (path.startsWith('/verify-zk')) return 'Verify ZK Proof | CasperID';
+    if (path.startsWith('/share-view')) return 'View Shared Data | CasperID';
+
 
     // Dashboard Internal States
     if (path === '/dashboard') {
@@ -306,7 +331,7 @@ const App: React.FC = () => {
     if (isLoading) return;
 
     // If we are viewing a public profile, landing page, or credential verification, DO NOT redirect based on auth
-    if (['public-profile', 'landing', 'admin', 'verify-credential', 'verify-zk-claims'].includes(currentView)) {
+    if (['public-profile', 'landing', 'admin', 'verify-credential', 'verify-zk-claims', 'verify-share-data'].includes(currentView)) {
       return;
     }
 
@@ -330,7 +355,7 @@ const App: React.FC = () => {
         }
       } else {
         // New user - start with email entry
-        const isDashboardView = !['landing', 'public-profile', 'verify-credential', 'verify-zk-claims', 'auth-entry', 'otp-verify', 'onboarding-start', 'onboarding-progress', 'pairing', 'loading', 'handoff'].includes(currentView);
+        const isDashboardView = !['landing', 'public-profile', 'verify-credential', 'verify-zk-claims', 'verify-share-data', 'auth-entry', 'otp-verify', 'onboarding-start', 'onboarding-progress', 'pairing', 'loading', 'handoff'].includes(currentView);
         if (isDashboardView) {
           setCurrentView('auth-entry');
         }
@@ -381,7 +406,7 @@ const App: React.FC = () => {
     setCurrentView('auth-entry');
   }, []);
 
-  const handleToOverview = useCallback(() => {
+  const handleToOverview = useCallback((sessionData?: any) => {
     setCurrentView('overview');
   }, []);
 
@@ -410,7 +435,8 @@ const App: React.FC = () => {
     }
   }, []);
 
-  const handleVerificationUpgrade = useCallback((nextLevel: 'layer_1' | 'layer_2' | 'layer_3') => {
+  const handleVerificationUpgrade = useCallback((nextLevel?: 'layer_1' | 'layer_2' | 'layer_3') => {
+    if (!nextLevel) return;
     switch (nextLevel) {
       case 'layer_1':
         // Navigate to email verification flow
@@ -585,6 +611,8 @@ const App: React.FC = () => {
         return credentialHash ? <VerifyCredentialPage credentialHash={credentialHash} /> : <div>Invalid Credential</div>;
       case 'verify-zk-claims':
         return <VerifyZKClaimsPage />;
+      case 'verify-share-data':
+        return <SharedDataView />;
       case 'admin':
         return <AdminPage />;
       case 'careers':
@@ -699,7 +727,7 @@ const App: React.FC = () => {
     : currentView;
 
   // Don't show layout chrome during onboarding, public profile view, landing, admin, or credential verification
-  const isOnboarding = currentView === 'public-profile' || currentView === 'landing' || currentView === 'admin' || currentView === 'verify-credential' || currentView === 'verify-zk-claims' || currentView === 'auth-entry' || currentView === 'otp-verify' || currentView === 'onboarding-start' || currentView === 'onboarding-progress' || currentView === 'pairing' || currentView === 'handoff' || currentView.startsWith('business');
+  const isOnboarding = currentView === 'public-profile' || currentView === 'landing' || currentView === 'admin' || currentView === 'verify-credential' || currentView === 'verify-zk-claims' || currentView === 'verify-share-data' || currentView === 'auth-entry' || currentView === 'otp-verify' || currentView === 'onboarding-start' || currentView === 'onboarding-progress' || currentView === 'pairing' || currentView === 'handoff' || currentView.startsWith('business');
 
   if (isLoading) {
     return <AppLoadingSplash />;
