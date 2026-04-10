@@ -4,8 +4,9 @@ const crypto = require('crypto');
 const webauthnService = require('../services/webauthn');
 const walletGenerator = require('../services/wallet-generator');
 const qrPairingService = require('../services/qr-pairing');
-const { UserAccount, EmailVerification, RecoveryRequest } = require('../database/models');
+const { UserAccount, EmailVerification, RecoveryRequest, DeviceSession } = require('../database/models');
 const { v4: uuidv4 } = require('uuid');
+const { eventBus, EVENTS } = require('../services/eventBus');
 
 // Import validation middleware
 const {
@@ -585,6 +586,28 @@ router.post('/auth/finish', extractApp, async (req, res) => {
             maxAge: 24 * 60 * 60 * 1000 // 24 hours
         });
 
+        // Emit login event
+        if (authResult.userAccount) {
+            const ua = authResult.userAccount;
+
+            // Check if this is a new device
+            const deviceFingerprint = req.get('User-Agent') || 'unknown';
+            const existingSession = await DeviceSession.findOne({
+                user_id: ua.user_id,
+                device_fingerprint: { $regex: deviceFingerprint.substring(0, 50), $options: 'i' }
+            });
+
+            eventBus.emit(EVENTS.USER_LOGIN, {
+                userId: ua.user_id,
+                email: ua.recovery_email,
+                wallet: ua.wallet,
+                method: 'passkey',
+                ip: req.ip,
+                userAgent: req.get('User-Agent'),
+                isNewDevice: !existingSession
+            });
+        }
+
         // If a BusinessApp sent X-App-ID + X-Api-Secret, also issue an RS256 business token
         let businessToken = null;
         if (req.businessApp && authResult.userAccount) {
@@ -604,7 +627,19 @@ router.post('/auth/finish', extractApp, async (req, res) => {
                 sharedData: []
             }, req.businessApp.app_id);
 
-            // Dispatch webhook
+            // Emit app authorization event (subscribers handle email, webhook)
+            eventBus.emit(EVENTS.USER_APP_AUTH, {
+                userId: ua.user_id,
+                email: ua.recovery_email,
+                wallet: ua.wallet,
+                appId: req.businessApp.app_id,
+                appName: req.businessApp.name || req.businessApp.app_id,
+                scopes: ['profile', 'identity'],
+                ip: req.ip,
+                userAgent: req.get('User-Agent')
+            });
+
+            // Dispatch webhook (keep for backward compatibility, will be migrated to EventBus)
             dispatchEvent(req.businessApp.app_id, WEBHOOK_EVENTS.USER_VERIFIED, {
                 user_id: ua.user_id,
                 wallet: ua.wallet,

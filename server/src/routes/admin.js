@@ -4,6 +4,7 @@ const { adminAuthWithRateLimit } = require('../middleware/auth');
 const { VerificationRequest, VerificationRequestV2, Credential, UserProfile, UserAccount } = require('../database/models');
 const { walletToHuman } = require('../utils/wallet-to-human');
 const { mintCredential } = require('../utils/credential-minter');
+const { eventBus, EVENTS } = require('../services/eventBus');
 
 /**
  * GET /api/admin/verification-requests
@@ -223,18 +224,15 @@ router.post('/issue-credential', adminAuthWithRateLimit, async (req, res) => {
                     });
                 }
 
-                // Send email notification if email service is available
-                if (userEmail) {
-                    try {
-                        const emailService = require('../services/emailService');
-                        await emailService.sendVerificationRejectionEmail(userEmail, {
-                            reason: rejection_reason,
-                            requestId: isV2 ? request.request_id : request._id.toString()
-                        });
-                    } catch (emailError) {
-                        console.warn('[Admin] Failed to send rejection email:', emailError.message);
-                    }
-                }
+                // Emit verification rejected event (subscribers handle email, activity)
+                eventBus.emit(EVENTS.VERIFICATION_REJECTED, {
+                    userId: isV2 ? request.user_id : null,
+                    email: userEmail,
+                    wallet: isV2 ? null : request.wallet,
+                    tier: isV2 ? request.verification_tier : request.tier,
+                    reason: rejection_reason,
+                    requestId: isV2 ? request.request_id : request._id.toString()
+                });
             } catch (notifError) {
                 console.warn('[Admin] Failed to send rejection notification:', notifError.message);
             }
@@ -290,6 +288,17 @@ router.post('/issue-credential', adminAuthWithRateLimit, async (req, res) => {
             userAccount.updated_at = new Date();
             await userAccount.save();
 
+            // Emit L3 verification completed event (subscribers handle email, activity, webhook)
+            const userName = vData.first_name ? `${vData.first_name} ${vData.last_name || ''}`.trim() : null;
+            eventBus.emit(EVENTS.VERIFICATION_L3_COMPLETED, {
+                userId: userAccount.user_id,
+                email: userAccount.recovery_email || userAccount.email,
+                name: userName,
+                wallet: userAccount.wallet,
+                tier: request.verification_tier,
+                dappId: request.dapp_id
+            });
+
             return res.json({
                 message: 'Credential issued successfully',
                 credential: {
@@ -305,6 +314,17 @@ router.post('/issue-credential', adminAuthWithRateLimit, async (req, res) => {
 
         // V1 flow (legacy)
         const { credential } = await mintCredential(request);
+
+        // Emit L3 verification completed event for V1 (subscribers handle email, activity)
+        const userName = request.first_name ? `${request.first_name} ${request.last_name || ''}`.trim() : null;
+        eventBus.emit(EVENTS.VERIFICATION_L3_COMPLETED, {
+            userId: null,
+            email: request.email,
+            name: userName,
+            wallet: request.wallet,
+            tier: request.tier || 'layer_3',
+            dappId: null
+        });
 
         res.json({
             message: 'Credential issued successfully',
@@ -523,6 +543,121 @@ router.post('/issue-missing-credentials', adminAuthWithRateLimit, async (req, re
     } catch (error) {
         console.error('Credential audit error:', error);
         res.status(500).json({ success: false, error: 'Failed to run credential audit' });
+    }
+});
+
+/**
+ * POST /api/admin/test-email
+ * Send test emails to verify templates
+ * Body: { type: "otp" | "welcome" | "verification_success" | "profile_viewed" | "profile_completed" | "payment_confirmation" | "security_alert", email: "test@example.com" }
+ */
+router.post('/test-email', adminAuthWithRateLimit, async (req, res) => {
+    try {
+        const emailManager = require('../services/email/EmailManager');
+        const { type, email } = req.body;
+
+        if (!type || !email) {
+            return res.status(400).json({ error: 'type and email are required' });
+        }
+
+        const testData = {
+            recipientName: 'Test User',
+            frontendUrl: process.env.FRONTEND_URL || 'https://casperid.com'
+        };
+
+        let result;
+
+        switch (type) {
+            case 'otp':
+                result = await emailManager.sendOTP(email, '123456');
+                break;
+
+            case 'welcome':
+                result = await emailManager.sendWelcomeEmail(email, testData.recipientName);
+                break;
+
+            case 'verification_success':
+                result = await emailManager.sendVerificationSuccessEmail(email, 'layer_3', testData.recipientName);
+                break;
+
+            case 'profile_viewed':
+                result = await emailManager.sendProfileViewedEmail(
+                    email,
+                    'someone',
+                    `${testData.frontendUrl}/profile/test-user`
+                );
+                break;
+
+            case 'profile_completed':
+                result = await emailManager.sendProfileCompletedEmail(
+                    email,
+                    testData.recipientName,
+                    `${testData.frontendUrl}/profile/test-user`
+                );
+                break;
+
+            case 'payment_confirmation':
+                result = await emailManager.sendPaymentConfirmationEmail(email, {
+                    amount: '25.00',
+                    currency: 'USD',
+                    items: 'Layer 3 KYC Verification',
+                    transactionId: 'TXN-TEST-123456789'
+                });
+                break;
+
+            case 'security_alert':
+                result = await emailManager.sendSecurityAlertEmail(email, 'new_device', {
+                    description: 'New device login detected',
+                    ipAddress: '192.168.1.1',
+                    device: 'Chrome on macOS',
+                    location: 'Lagos, Nigeria'
+                });
+                break;
+
+            case 'all':
+                // Send all email types
+                const results = {};
+
+                results.otp = await emailManager.sendOTP(email, '123456');
+                results.welcome = await emailManager.sendWelcomeEmail(email, testData.recipientName);
+                results.verification_success = await emailManager.sendVerificationSuccessEmail(email, 'layer_3', testData.recipientName);
+                results.profile_viewed = await emailManager.sendProfileViewedEmail(email, 'someone', `${testData.frontendUrl}/profile/test-user`);
+                results.profile_completed = await emailManager.sendProfileCompletedEmail(email, testData.recipientName, `${testData.frontendUrl}/profile/test-user`);
+                results.payment_confirmation = await emailManager.sendPaymentConfirmationEmail(email, {
+                    amount: '25.00',
+                    currency: 'USD',
+                    items: 'Layer 3 KYC Verification',
+                    transactionId: 'TXN-TEST-123456789'
+                });
+                results.security_alert = await emailManager.sendSecurityAlertEmail(email, 'new_device', {
+                    description: 'New device login detected',
+                    ipAddress: '192.168.1.1',
+                    device: 'Chrome on macOS',
+                    location: 'Lagos, Nigeria'
+                });
+
+                return res.json({
+                    success: true,
+                    message: `All test emails sent to ${email}`,
+                    results
+                });
+
+            default:
+                return res.status(400).json({
+                    error: 'Invalid email type',
+                    validTypes: ['otp', 'welcome', 'verification_success', 'profile_viewed', 'profile_completed', 'payment_confirmation', 'security_alert', 'all']
+                });
+        }
+
+        res.json({
+            success: true,
+            message: `Test ${type} email sent to ${email}`,
+            result
+        });
+
+    } catch (error) {
+        console.error('Test email error:', error);
+        res.status(500).json({ error: 'Failed to send test email', details: error.message });
     }
 });
 

@@ -6,6 +6,7 @@
 const express = require('express');
 const router = express.Router();
 const cnsResolver = require('../services/cns-resolver');
+const { eventBus, EVENTS } = require('../services/eventBus');
 
 // Middleware to validate session
 const validateSession = async (req, res, next) => {
@@ -151,6 +152,16 @@ router.post('/cns/register', validateSession, async (req, res) => {
         // For now, proceed with registration
 
         const result = await cnsResolver.registerPremiumName(wallet, name);
+
+        // Emit CNS registered event (subscribers handle email, activity)
+        eventBus.emit(EVENTS.CNS_REGISTERED, {
+            userId: userAccount.user_id,
+            email: userAccount.recovery_email || userAccount.email,
+            wallet: wallet,
+            domainName: name,
+            years: 1,
+            transactionId: result.registrationId || 'direct-registration'
+        });
 
         res.json({
             success: true,

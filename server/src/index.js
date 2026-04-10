@@ -179,6 +179,11 @@ mongoose.connect(process.env.MONGODB_URI, {
             const { cleanupOldRecords } = require('./utils/rate-limiter');
             setInterval(cleanupOldRecords, 60 * 60 * 1000); // Cleanup every hour
 
+            // Initialize EventBus for centralized event handling
+            console.log(`[${new Date().toISOString()}] 🔧 Init: Setting up EventBus...`);
+            const { initializeEventBus } = require('./services/eventBus');
+            initializeEventBus();
+
             console.log(`[${new Date().toISOString()}] ✨ Init: All systems ready`);
         } catch (initErr) {
             console.error(`[${new Date().toISOString()}] ⚠️ Init: Non-fatal initialization error:`, initErr);

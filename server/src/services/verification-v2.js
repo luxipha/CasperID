@@ -4,10 +4,12 @@ const {
     UserAccount,
     VerificationRequestV2,
     PasskeyCredential,
-    Credential
+    Credential,
+    UserProfile
 } = require('../database/models');
 const walletGenerator = require('./wallet-generator');
 const geminiService = require('./gemini');
+const { eventBus, EVENTS } = require('./eventBus');
 
 /**
  * Verification Service V2
@@ -327,19 +329,18 @@ class VerificationServiceV2 {
             userAccount.updated_at = new Date();
             await userAccount.save();
 
-            // Dispatch webhook if this is an external app
-            if (verificationRequest.dapp_id && verificationRequest.dapp_id !== 'casperid-internal') {
-                const { dispatchEvent } = require('../utils/webhook-dispatcher');
-                const { WEBHOOK_EVENTS } = require('../constants/webhook-events');
-                
-                dispatchEvent(verificationRequest.dapp_id, WEBHOOK_EVENTS.KYC_COMPLETED, {
-                    user_id: userAccount.user_id,
-                    wallet: userAccount.wallet,
-                    tier: 'layer_2',
-                    completed_at: new Date().toISOString(),
-                    verification_type: 'liveness'
-                }).catch(err => console.error('KYC Webhook dispatch error (L2):', err));
-            }
+            // Emit L2 verification completed event (subscribers handle email, webhook, activity)
+            const profile = await UserProfile.findOne({ wallet: userAccount.wallet });
+            const userName = profile ? [profile.first_name, profile.last_name].filter(Boolean).join(' ') : null;
+
+            eventBus.emit(EVENTS.VERIFICATION_L2_COMPLETED, {
+                userId: userAccount.user_id,
+                email: userAccount.recovery_email,
+                name: userName,
+                wallet: userAccount.wallet,
+                tier: 'layer_2',
+                dappId: verificationRequest.dapp_id
+            });
 
             return {
                 success: true,

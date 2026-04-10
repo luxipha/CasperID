@@ -20,6 +20,7 @@ const {
     UserProfile
 } = require('../database/models');
 const { normalizeEmail, buildEmailQuery } = require('../utils/email-normalizer');
+const { eventBus, EVENTS } = require('./eventBus');
 
 /**
  * WebAuthn Service for Passkey Authentication
@@ -238,6 +239,15 @@ class WebAuthnService {
                     profileData.name = fullName || null;
                 }
             }
+
+            // Emit user registered event (subscribers handle email, activity, etc.)
+            eventBus.emit(EVENTS.USER_REGISTERED, {
+                userId: userAccount.user_id,
+                email: storedChallenge.userEmail,
+                name: profileData.name || storedChallenge.userEmail?.split('@')[0],
+                wallet: userAccount.wallet,
+                tier: userAccount.tier
+            });
 
             return {
                 success: true,

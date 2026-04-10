@@ -60,7 +60,7 @@ import CareersPage from './components/landing/CareerPage';
 import CareerDetailPage from './components/landing/CareerDetailPage';
 import ApplySuccessPage from './components/landing/ApplySuccess';
 import AffiliatePage from './components/landing/AffiliatePage';
-import ChangelogPage from './components/landing/casperos/changelog';
+// Removed CasperOS ChangelogPage import
 import AdminPage from './admin/page';
 import { CnsSuccess } from './components/CnsSuccess';
 
@@ -94,7 +94,7 @@ const App: React.FC = () => {
             '/admin', '/settings', '/activity', '/market', '/verify-zk',
             '/share-view', '/verification-center', '/explore', '/health',
             '/pair', '/auth', '/integrations', '/mobile', '/null', '/business',
-            '/anra', '/adevaros', '/casperos', '/careers', '/apply-success',
+            '/careers', '/apply-success',
             '/affiliate', '/p', '/did', '/cns-success'
         ];
         return sysPaths.includes(p) ||
@@ -122,7 +122,6 @@ const App: React.FC = () => {
 
     // Check for explicit system routes
     if (path === '/') return 'landing';
-    if (path === '/anra' || path === '/adevaros' || path === '/casperos') return 'landing';
     if (path === '/admin') return 'admin';
     if (path === '/pair' || (path === '/dashboard' && !viewParam)) return 'dashboard-home';
     if (path === '/dashboard' && viewParam) return viewParam;
@@ -194,9 +193,6 @@ const App: React.FC = () => {
     const path = location.pathname;
 
     // Specific Landing Pages
-    if (path === '/anra' || path === '/adevaros' || path === '/casperos') {
-      return 'anra by CasperID - anra | All-in-One Restaurant Operating System';
-    }
     if (path === '/careers') {
       return 'CasperID | Join the Team';
     }
@@ -206,9 +202,7 @@ const App: React.FC = () => {
     if (path === '/apply-success') {
       return 'Success! | Careers | CasperID';
     }
-    if (path === '/changelog') {
-      return 'Changelog | CasperID';
-    }
+    // Changelog title removed as it moved to anra.rest
 
     // Dynamic Route placeholders (Hooks in components will handle more specific titles)
     if (path.startsWith('/careers/')) return 'Position Details | Careers | CasperID';
@@ -736,11 +730,11 @@ const App: React.FC = () => {
   return (
     <>
       <Routes>
-        <Route path="/anra" element={<LandingPage initialView="anra" />} />
-        <Route path="/adevaros" element={<Navigate to="/anra" replace />} />
-        <Route path="/casperos" element={<Navigate to="/anra" replace />} />
         <Route path="/admin" element={<AdminPage />} />
-        <Route path="/changelog" element={<ChangelogPage />} />
+        <Route path="/changelog" element={<Navigate to="https://www.anra.rest/changelog" replace />} />
+        <Route path="/anra" element={<Navigate to="https://www.anra.rest" replace />} />
+        <Route path="/adevaros" element={<Navigate to="https://www.anra.rest" replace />} />
+        <Route path="/casperos" element={<Navigate to="https://www.anra.rest" replace />} />
         <Route path="/business/*" element={<BusinessPlatform />} />
         <Route path="/careers" element={<CareersPage onJobClick={(slug) => navigate(`/careers/${slug}`)} />} />
         <Route path="/careers/:id" element={<CareerDetailPage onBack={() => navigate('/careers')} onApplySuccess={(jobTitle) => navigate('/apply-success', { state: { jobTitle } })} />} />

@@ -1,12 +1,13 @@
 const express = require('express');
 const router = express.Router();
 const { v4: uuidv4 } = require('uuid');
-const { UserAccount, LoginSession, UserProfile, Credential, EmailVerification } = require('../database/models');
+const { UserAccount, LoginSession, UserProfile, Credential, EmailVerification, DeviceSession } = require('../database/models');
 const { generateToken } = require('../utils/jwt-manager');
 const emailService = require('../services/emailService');
 const { normalizeEmail, buildEmailQuery } = require('../utils/email-normalizer');
 const { extractApp } = require('../middleware/app-auth');
 const { generateBusinessToken } = require('../utils/jwt-manager');
+const { eventBus, EVENTS } = require('../services/eventBus');
 
 // Note: OTP storage now uses MongoDB EmailVerification model with TTL index for auto-cleanup
 
@@ -250,6 +251,26 @@ router.post('/verify-otp', extractApp, async (req, res) => {
             userAgent: req.get('user-agent'),
             expiresAt
         });
+
+        // Emit login event (subscribers handle email for new devices, activity logging)
+        if (userAccount) {
+            // Check if this is a new device
+            const deviceFingerprint = req.get('user-agent') || 'unknown';
+            const existingSession = await DeviceSession.findOne({
+                user_id: userAccount.user_id,
+                device_fingerprint: { $regex: deviceFingerprint.substring(0, 50), $options: 'i' }
+            });
+
+            eventBus.emit(EVENTS.USER_LOGIN, {
+                userId: userAccount.user_id,
+                email: storedData.email,
+                wallet: userAccount.wallet,
+                method: 'otp',
+                ip: req.ip,
+                userAgent: req.get('user-agent'),
+                isNewDevice: !existingSession
+            });
+        }
 
         // Check if user has passkey credentials
         let hasPasskey = false;

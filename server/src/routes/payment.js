@@ -4,6 +4,7 @@ const axios = require('axios');
 const crypto = require('crypto');
 const { Payment, UserAccount } = require('../database/models');
 const cnsResolver = require('../services/cns-resolver');
+const { eventBus, EVENTS } = require('../services/eventBus');
 
 // POST /api/payment/revenuecat/webhook
 // This handles the server-to-server webhook from RevenueCat for fiat purchases
@@ -103,6 +104,28 @@ router.post('/revenuecat/webhook', async (req, res) => {
             try {
                 await cnsResolver.registerPremiumName(wallet, domainName);
                 console.log(`[Payment] Successfully registered ${domainName}.cid for wallet ${wallet}`);
+
+                // Emit payment completed event (subscribers handle email, activity)
+                eventBus.emit(EVENTS.PAYMENT_COMPLETED, {
+                    userId: user.user_id,
+                    email: user.recovery_email || user.email,
+                    wallet: wallet,
+                    amount: price,
+                    currency: 'USD',
+                    items: `${domainName}.cid Domain Registration (${years} year${years > 1 ? 's' : ''})`,
+                    transactionId: transactionId,
+                    provider: 'revenuecat'
+                });
+
+                // Also emit CNS registered event
+                eventBus.emit(EVENTS.CNS_REGISTERED, {
+                    userId: user.user_id,
+                    email: user.recovery_email || user.email,
+                    wallet: wallet,
+                    domainName: domainName,
+                    years: years,
+                    transactionId: transactionId
+                });
             } catch (mintingErr) {
                 console.error(`[Payment] CRITICAL: Payment succeeded but minting failed!`, mintingErr);
                 // The payment is recorded, an admin can manually retry minting later
@@ -358,6 +381,31 @@ router.post('/boomfi/webhook', express.raw({ type: 'application/json' }), async 
                         if (walletAddress) {
                             await cnsResolver.registerPremiumName(walletAddress, metadata.domainName);
                             console.log(`[Payment] Boomfi payment success! Minted ${metadata.domainName}.cid for ${walletAddress}`);
+
+                            // Emit payment completed event (subscribers handle email, activity)
+                            const userEmail = user?.recovery_email || user?.email || metadata.userEmail;
+                            const years = metadata.years || 1;
+
+                            eventBus.emit(EVENTS.PAYMENT_COMPLETED, {
+                                userId: user?.user_id || metadata.userId,
+                                email: userEmail,
+                                wallet: walletAddress,
+                                amount: payment.amount,
+                                currency: payment.currency || 'USD',
+                                items: `${metadata.domainName}.cid Domain Registration (${years} year${years > 1 ? 's' : ''})`,
+                                transactionId: paymentId,
+                                provider: 'boomfi'
+                            });
+
+                            // Also emit CNS registered event
+                            eventBus.emit(EVENTS.CNS_REGISTERED, {
+                                userId: user?.user_id || metadata.userId,
+                                email: userEmail,
+                                wallet: walletAddress,
+                                domainName: metadata.domainName,
+                                years: years,
+                                transactionId: paymentId
+                            });
                         } else {
                             console.error('[Payment] No wallet found for Boomfi payment', externalRef);
                         }

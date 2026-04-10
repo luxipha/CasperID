@@ -11,7 +11,8 @@ const {
     Award,
     Language,
     Volunteer,
-    Credential
+    Credential,
+    UserAccount
 } = require('../database/models');
 
 const multer = require('multer');
@@ -20,6 +21,68 @@ const fs = require('fs');
 const { ensureHumanIdInProfile, getHumanIdForWallet } = require('../utils/wallet-to-human');
 const { logViewEvent } = require('../utils/view-logger');
 const { requireAuth } = require('../middleware/auth');
+const { eventBus, EVENTS } = require('../services/eventBus');
+
+// ============================================
+// PROFILE COMPLETENESS UTILITY
+// ============================================
+
+/**
+ * Calculate profile completeness percentage
+ * Returns a number between 0-100
+ */
+async function calculateProfileCompleteness(wallet) {
+    const weights = {
+        // Core profile fields (50% total)
+        first_name: 5,
+        last_name: 5,
+        email: 5,
+        headline: 5,
+        about: 10,
+        profile_image_url: 10,
+        city: 5,
+        country: 5,
+        // Related data (50% total)
+        has_experience: 15,
+        has_education: 10,
+        has_skills: 15,
+        has_certifications: 5,
+        has_projects: 5
+    };
+
+    const profile = await UserProfile.findOne({ wallet });
+    if (!profile) return 0;
+
+    let score = 0;
+    const maxScore = Object.values(weights).reduce((a, b) => a + b, 0);
+
+    // Check core fields
+    if (profile.first_name) score += weights.first_name;
+    if (profile.last_name) score += weights.last_name;
+    if (profile.email) score += weights.email;
+    if (profile.headline) score += weights.headline;
+    if (profile.about && profile.about.length > 50) score += weights.about;
+    if (profile.profile_image_url) score += weights.profile_image_url;
+    if (profile.city) score += weights.city;
+    if (profile.country) score += weights.country;
+
+    // Check related data
+    const [expCount, eduCount, skillCount, certCount, projCount] = await Promise.all([
+        Experience.countDocuments({ wallet }),
+        Education.countDocuments({ wallet }),
+        Skill.countDocuments({ wallet }),
+        Certification.countDocuments({ wallet }),
+        Project.countDocuments({ wallet })
+    ]);
+
+    if (expCount > 0) score += weights.has_experience;
+    if (eduCount > 0) score += weights.has_education;
+    if (skillCount > 0) score += weights.has_skills;
+    if (certCount > 0) score += weights.has_certifications;
+    if (projCount > 0) score += weights.has_projects;
+
+    return Math.round((score / maxScore) * 100);
+}
 
 // Configure File Upload
 // Configure File Upload - Use memory storage for ImageKit
@@ -204,6 +267,9 @@ router.put('/user/profile', requireAuth, async (req, res) => {
         delete updates._id;
         delete updates.human_id; // Prevent manual human_id updates
 
+        // Get previous completeness to detect 100% milestone
+        const previousCompleteness = await calculateProfileCompleteness(wallet);
+
         // First ensure the profile has a human_id
         let profile;
         try {
@@ -226,6 +292,30 @@ router.put('/user/profile', requireAuth, async (req, res) => {
                 },
                 { new: true, upsert: true, runValidators: true }
             );
+        }
+
+        // Check if profile just reached 100% completion
+        const newCompleteness = await calculateProfileCompleteness(wallet);
+        if (previousCompleteness < 100 && newCompleteness === 100) {
+            const userAccount = await UserAccount.findOne({ wallet });
+            if (userAccount) {
+                const name = profile.first_name ? `${profile.first_name} ${profile.last_name || ''}`.trim() : null;
+                const profileUrl = `${process.env.FRONTEND_URL || 'https://casperid.com'}/profile/${profile.human_id || wallet}`;
+
+                eventBus.emit(EVENTS.PROFILE_COMPLETED, {
+                    userId: userAccount.user_id,
+                    email: userAccount.recovery_email,
+                    name,
+                    wallet,
+                    profileUrl
+                });
+            }
+        }
+
+        // Update completeness on profile
+        if (profile) {
+            profile.profile_completeness = newCompleteness;
+            await profile.save();
         }
 
         res.json(profile);
@@ -541,6 +631,22 @@ router.get('/public-profile/:identifier', async (req, res) => {
             req
         ).catch(console.error);
 
+        // Emit profile viewed event (subscribers handle email with rate limiting)
+        const ownerAccount = await UserAccount.findOne({ wallet: profile.wallet });
+        if (ownerAccount) {
+            const viewerName = req.headers['x-viewer-name'] || 'Someone';
+            const profileUrl = `${process.env.FRONTEND_URL || 'https://casperid.com'}/profile/${profile.human_id || profile.wallet}`;
+
+            eventBus.emit(EVENTS.PROFILE_VIEWED, {
+                ownerWallet: profile.wallet,
+                ownerEmail: ownerAccount.recovery_email,
+                ownerTier: ownerAccount.tier,
+                viewerName,
+                viewerIp: req.ip,
+                profileUrl
+            });
+        }
+
         res.json(publicProfile);
     } catch (error) {
         console.error('Get public profile error:', error);
@@ -609,6 +715,9 @@ router.put('/profile/:wallet', async (req, res) => {
         delete updates._id;
         delete updates.human_id; // Prevent manual human_id updates
 
+        // Get previous completeness to detect 100% milestone
+        const previousCompleteness = await calculateProfileCompleteness(wallet);
+
         // First ensure the profile has a human_id
         let profile;
         try {
@@ -632,6 +741,30 @@ router.put('/profile/:wallet', async (req, res) => {
                 },
                 { new: true, upsert: true, runValidators: true }
             );
+        }
+
+        // Check if profile just reached 100% completion
+        const newCompleteness = await calculateProfileCompleteness(wallet);
+        if (previousCompleteness < 100 && newCompleteness === 100) {
+            const userAccount = await UserAccount.findOne({ wallet });
+            if (userAccount) {
+                const name = profile.first_name ? `${profile.first_name} ${profile.last_name || ''}`.trim() : null;
+                const profileUrl = `${process.env.FRONTEND_URL || 'https://casperid.com'}/profile/${profile.human_id || wallet}`;
+
+                eventBus.emit(EVENTS.PROFILE_COMPLETED, {
+                    userId: userAccount.user_id,
+                    email: userAccount.recovery_email,
+                    name,
+                    wallet,
+                    profileUrl
+                });
+            }
+        }
+
+        // Update completeness on profile
+        if (profile) {
+            profile.profile_completeness = newCompleteness;
+            await profile.save();
         }
 
         console.log('Profile updated/created:', profile ? profile._id : 'null');
