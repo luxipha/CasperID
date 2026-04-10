@@ -87,6 +87,14 @@ jobs:
             IMAGEKIT_PUBLIC_KEY=${{ secrets.IMAGEKIT_PUBLIC_KEY }}
             IMAGEKIT_PRIVATE_KEY=${{ secrets.IMAGEKIT_PRIVATE_KEY }}
             IMAGEKIT_URL_ENDPOINT=${{ secrets.IMAGEKIT_URL_ENDPOINT }}
+            EMAIL_PROVIDER=${{ secrets.EMAIL_PROVIDER }}
+            LOOPS_API_KEY=${{ secrets.LOOPS_API_KEY }}
+            LOOPS_WELCOME_ID=${{ secrets.LOOPS_WELCOME_ID }}
+            LOOPS_VERIFICATION_SUCCESS_ID=${{ secrets.LOOPS_VERIFICATION_SUCCESS_ID }}
+            LOOPS_PROFILE_VIEWED_ID=${{ secrets.LOOPS_PROFILE_VIEWED_ID }}
+            LOOPS_PROFILE_COMPLETED_ID=${{ secrets.LOOPS_PROFILE_COMPLETED_ID }}
+            LOOPS_PAYMENT_CONFIRMATION_ID=${{ secrets.LOOPS_PAYMENT_CONFIRMATION_ID }}
+            LOOPS_SECURITY_ALERT_ID=${{ secrets.LOOPS_SECURITY_ALERT_ID }}
 
       - name: Show Output
         run: echo ${{ steps.deploy.outputs.url }}

@@ -10,14 +10,14 @@ class SmtpProvider extends BaseEmailProvider {
         super(config);
         this.name = 'smtp';
 
-        // SMTP Configuration
+        // SMTP Configuration (supports both SMTP_* and SUPPORT_EMAIL_* for backwards compatibility)
         this.smtpConfig = {
-            host: config.host || process.env.SMTP_HOST || 'mail.ile.africa',
-            port: parseInt(config.port || process.env.SMTP_PORT) || 587,
-            secure: (parseInt(config.port || process.env.SMTP_PORT) === 465),
+            host: config.host || process.env.SMTP_HOST || process.env.SUPPORT_EMAIL_HOST || 'mail.ile.africa',
+            port: parseInt(config.port || process.env.SMTP_PORT || process.env.SUPPORT_EMAIL_PORT) || 587,
+            secure: (parseInt(config.port || process.env.SMTP_PORT || process.env.SUPPORT_EMAIL_PORT) === 465),
             auth: {
-                user: config.user || process.env.SMTP_USER || 'support@ile.africa',
-                pass: config.pass || process.env.SMTP_PASS
+                user: config.user || process.env.SMTP_USER || process.env.SUPPORT_EMAIL || 'support@ile.africa',
+                pass: config.pass || process.env.SMTP_PASS || process.env.SUPPORT_EMAIL_PASSWORD
             },
             tls: {
                 rejectUnauthorized: process.env.NODE_ENV === 'production' || process.env.TLS_REJECT_UNAUTHORIZED !== 'false'
