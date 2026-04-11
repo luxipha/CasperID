@@ -137,8 +137,13 @@ app.get('/api/csrf-token', getCsrfToken);
 // Apply CSRF protection to all state-changing requests (POST, PUT, DELETE, PATCH)
 // Skips GET, HEAD, OPTIONS automatically
 app.use((req, res, next) => {
-    // Exempt external webhooks from CSRF protection
-    if (req.path.startsWith('/api/payment/revenuecat/webhook') || req.path.startsWith('/api/payment/boomfi/webhook')) {
+    // Exempt external webhooks and business API from CSRF protection
+    // Business API uses Bearer token auth, not browser sessions
+    if (
+        req.path.startsWith('/api/payment/revenuecat/webhook') ||
+        req.path.startsWith('/api/payment/boomfi/webhook') ||
+        req.path.startsWith('/api/business')
+    ) {
         return next();
     }
     doubleCsrfProtection(req, res, next);
