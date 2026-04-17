@@ -106,7 +106,7 @@ app.use(cors({
         callback(error);
     },
     credentials: true,
-    allowedHeaders: ['Content-Type', 'Authorization', 'X-CSRF-Token', 'ngrok-skip-browser-warning'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-CSRF-Token', 'ngrok-skip-browser-warning', 'x-app-id', 'X-App-Id'],
     exposedHeaders: ['X-CSRF-Token']
 }));
 app.use(express.json({
