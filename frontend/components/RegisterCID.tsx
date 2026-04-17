@@ -283,6 +283,8 @@ export const RegisterCID: React.FC<RegisterCIDProps> = ({ onBack }) => {
           <div className="flex gap-4 w-full mb-6">
             <button
               onClick={() => {
+                // Track X share for quest
+                apiService.post('/api/quest/track-action', { action: 'x_shared' }).catch(() => {});
                 const text = encodeURIComponent(`Just grabbed ${registeredName} on @CasperID! 🚀 My Web3 identity is officially live. Claim yours: casperid.com`);
                 window.open(`https://twitter.com/intent/tweet?text=${text}`, '_blank');
               }}

@@ -1,8 +1,30 @@
 import path from 'path';
-import { defineConfig, loadEnv } from 'vite';
+import { defineConfig, loadEnv, PluginOption } from 'vite';
 import react from '@vitejs/plugin-react';
 import tailwindcss from '@tailwindcss/vite';
 import { VitePWA } from 'vite-plugin-pwa';
+
+// Plugin to suppress HMR console logs in browser
+function suppressHmrLogs(): PluginOption {
+  return {
+    name: 'suppress-hmr-logs',
+    transformIndexHtml(html) {
+      return html.replace(
+        '</head>',
+        `<script>
+          (function() {
+            const originalLog = console.log;
+            console.log = function(...args) {
+              if (args[0] && typeof args[0] === 'string' && args[0].includes('[vite] hot updated')) return;
+              originalLog.apply(console, args);
+            };
+          })();
+        </script>
+        </head>`
+      );
+    }
+  };
+}
 
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, '.', '');
@@ -16,13 +38,16 @@ export default defineConfig(({ mode }) => {
         'Cross-Origin-Opener-Policy': 'same-origin',
         'Cross-Origin-Embedder-Policy': 'credentialless',
       },
-      // hmr: {
-      //   clientPort: 443, // Ngrok uses 443 for HTTPS
-      // },
       proxy: {
         // Proxy API calls to local backend during development
         '/api': {
           target: env.VITE_LOCAL_BACKEND_URL || 'http://127.0.0.1:3001',
+          changeOrigin: true,
+          secure: false,
+        },
+        // Proxy well-known endpoints (JWKS, OpenID Connect discovery)
+        '/.well-known': {
+          target: env.VITE_API_URL || 'http://localhost:3001',
           changeOrigin: true,
           secure: false,
         },
@@ -31,6 +56,7 @@ export default defineConfig(({ mode }) => {
     plugins: [
       react(),
       tailwindcss(),
+      suppressHmrLogs(),
       VitePWA({
         registerType: 'autoUpdate',
         includeAssets: [
@@ -83,8 +109,8 @@ export default defineConfig(({ mode }) => {
           clientsClaim: true,
           skipWaiting: true,
           maximumFileSizeToCacheInBytes: 100 * 1024 * 1024, // 100MB
-          // Cache JS files at runtime instead of precaching
-          runtimeCaching: [
+          // Only enable runtime caching for JS in production to avoid dev-server ENOENT errors
+          runtimeCaching: mode === 'production' ? [
             {
               urlPattern: /\.js$/,
               handler: 'StaleWhileRevalidate',
@@ -96,7 +122,7 @@ export default defineConfig(({ mode }) => {
                 },
               },
             },
-          ],
+          ] : [],
         },
         devOptions: {
           enabled: true,
@@ -137,6 +163,11 @@ export default defineConfig(({ mode }) => {
     resolve: {
       alias: {
         '@': path.resolve(__dirname, '.'),
+        'react': path.resolve(__dirname, 'node_modules/react'),
+        'react-dom': path.resolve(__dirname, 'node_modules/react-dom'),
+        'framer-motion': path.resolve(__dirname, 'node_modules/framer-motion'),
+        // Resolve SDK dependencies from frontend's node_modules (for SDK source imports)
+        'lucide-react': path.resolve(__dirname, 'node_modules/lucide-react'),
       }
     }
   };

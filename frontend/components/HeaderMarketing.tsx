@@ -41,7 +41,7 @@ export default function HeaderMarketing({ className = "", hideMenu = false }: He
                             <a href="/#download" className="hover:text-slate-900 transition">Download</a>
                             <a href="/#resources" className="hover:text-slate-900 transition">Resources</a>
                             <a href="/#developers" className="hover:text-slate-900 transition">Developers</a>
-                            <a href="/anra" className="hover:text-slate-900 transition flex items-center gap-0.5">
+                            <a href="https://www.anra.rest" target="_blank" rel="noopener noreferrer" className="hover:text-slate-900 transition flex items-center gap-0.5">
                                 anra
                                 <span className="animate-pulse" title="Trending">🔥</span>
                             </a>
@@ -79,7 +79,7 @@ export default function HeaderMarketing({ className = "", hideMenu = false }: He
                             <a onClick={() => setIsMenuOpen(false)} href="/#download" className="hover:text-indigo-600 transition">Download</a>
                             <a onClick={() => setIsMenuOpen(false)} href="/#resources" className="hover:text-indigo-600 transition">Resources</a>
                             <a onClick={() => setIsMenuOpen(false)} href="/#developers" className="hover:text-indigo-600 transition">Developers</a>
-                            <a onClick={() => setIsMenuOpen(false)} href="/anra" className="hover:text-indigo-600 transition flex items-center gap-2">
+                            <a onClick={() => setIsMenuOpen(false)} href="https://www.anra.rest" target="_blank" rel="noopener noreferrer" className="hover:text-indigo-600 transition flex items-center gap-2">
                                 anra
                                 <span className="animate-pulse">🔥</span>
                             </a>

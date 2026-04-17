@@ -124,7 +124,7 @@ export const Header: React.FC = () => {
 
         {/* Network Badge */}
         <div className="hidden sm:flex items-center px-3 py-1.5 bg-purple-50 text-purple-700 rounded-lg text-xs font-bold border border-purple-100">
-          Testnet
+          {(import.meta as any).env?.VITE_CASPER_NETWORK || 'Testnet'}
         </div>
 
         {/* Notifications */}
@@ -182,15 +182,19 @@ export const Header: React.FC = () => {
         </div>
 
         {/* Add to Chrome Link - Hidden on Mobile */}
-        <a
-          href="https://chromewebstore.google.com/detail/oecccgmhmojgniechnclmffchodmdjmd?utm_source=item-share-cb"
-          target="_blank"
-          rel="noopener noreferrer"
+        <button
+          onClick={() => {
+            // Track extension download for quest
+            if (isAuthenticated) {
+              apiService.post('/api/quest/track-action', { action: 'extension_installed' }).catch(() => {});
+            }
+            window.open('https://chromewebstore.google.com/detail/oecccgmhmojgniechnclmffchodmdjmd?utm_source=item-share-cb', '_blank');
+          }}
           className="hidden md:flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-xl font-semibold hover:opacity-90 active:scale-95 transition-all shadow-md shadow-primary/20"
         >
           <span className="material-symbols-outlined text-[20px]">extension</span>
           <span className="text-sm">Add to Chrome</span>
-        </a>
+        </button>
       </div>
     </header>
   );

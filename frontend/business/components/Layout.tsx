@@ -57,6 +57,7 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const navItems = [
     { to: '/business', icon: 'dashboard', label: 'Overview' },
     { to: '/business/integrations', icon: 'account_tree', label: 'Integrations' },
+    { to: '/business/sdk-design', icon: 'palette', label: 'SDK Design' },
     { to: '/business/api-management', icon: 'api', label: 'API Management' },
     { to: '/business/webhooks', icon: 'webhook', label: 'Webhooks' },
     { to: '/business/analytics', icon: 'bar_chart', label: 'Analytics' },
@@ -84,7 +85,7 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
           <div className="flex flex-col gap-8">
             <div className="flex items-center justify-between">
               <Link to="/business" className="flex items-center gap-3" onClick={closeSidebar}>
-                <Logo className="h-8 w-auto text-primary" showName={false} />
+                <Logo className="h-8 w-auto text-primary" showName={false} href={null} />
                 <h1 className="text-xl font-black tracking-tight text-text-main">
                   CasperID
                 </h1>
@@ -167,7 +168,7 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
                 }`}
             >
               <span className={`size-2 rounded-full animate-pulse ${isSandbox ? 'bg-secondary' : 'bg-green-500'}`}></span>
-              <span className="text-sm font-black tracking-tight">{isSandbox ? 'Sandbox' : 'Mainnet'}</span>
+              <span className="text-sm font-black tracking-tight">{isSandbox ? 'Sandbox' : (import.meta.env.VITE_CASPER_NETWORK || 'Testnet')}</span>
             </button>
 
             <div className="relative" ref={notificationRef}>

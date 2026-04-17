@@ -48,10 +48,11 @@ app.use(helmet({
 // MongoDB injection prevention
 app.use(mongoSanitize());
 
-// Core Middleware
+// Core Middleware - Dynamic CORS with BusinessApp origin lookup
 app.use(cors({
-    origin: function (origin, callback) {
-        const allowedOrigins = [
+    origin: async function (origin, callback) {
+        // Static whitelist for core CasperID domains
+        const coreOrigins = [
             'http://localhost:3000',
             'http://localhost:3002',
             'http://localhost:5173',
@@ -70,7 +71,8 @@ app.use(cors({
             return callback(null, true);
         }
 
-        if (allowedOrigins.includes(origin)) {
+        // Check core origins first (fast path)
+        if (coreOrigins.includes(origin)) {
             return callback(null, true);
         }
 
@@ -79,7 +81,29 @@ app.use(cors({
             return callback(null, true);
         }
 
-        callback(new Error('Not allowed by CORS'));
+        // Dynamic check: Look up BusinessApp allowed_origins from database
+        try {
+            const { BusinessApp } = require('./database/models');
+            const businessApp = await BusinessApp.findOne({
+                allowed_origins: origin,
+                active: true
+            });
+            if (businessApp) {
+                return callback(null, true);
+            }
+        } catch (err) {
+            // Database not ready yet or query failed - don't block core functionality
+            console.warn('CORS DB lookup failed:', err.message);
+        }
+
+        // In development, allow localhost on any port
+        if (process.env.NODE_ENV !== 'production' && origin.startsWith('http://localhost:')) {
+            return callback(null, true);
+        }
+
+        const error = new Error('Not allowed by CORS');
+        error.status = 403;
+        callback(error);
     },
     credentials: true,
     allowedHeaders: ['Content-Type', 'Authorization', 'X-CSRF-Token', 'ngrok-skip-browser-warning'],
@@ -88,11 +112,16 @@ app.use(cors({
 app.use(express.json({
     limit: '50mb',
     verify: (req, res, buf) => {
-        try {
-            JSON.parse(buf);
-        } catch (e) {
-            res.status(400).json({ success: false, error: 'Invalid JSON' });
-            return;
+        // Only validate non-empty bodies
+        if (buf && buf.length > 0) {
+            try {
+                JSON.parse(buf);
+            } catch (e) {
+                // Throw error to let Express handle it properly
+                const error = new Error('Invalid JSON');
+                error.status = 400;
+                throw error;
+            }
         }
     }
 }));
@@ -108,8 +137,14 @@ app.get('/api/csrf-token', getCsrfToken);
 // Apply CSRF protection to all state-changing requests (POST, PUT, DELETE, PATCH)
 // Skips GET, HEAD, OPTIONS automatically
 app.use((req, res, next) => {
-    // Exempt external webhooks from CSRF protection
-    if (req.path.startsWith('/api/payment/revenuecat/webhook') || req.path.startsWith('/api/payment/boomfi/webhook')) {
+    // Exempt external webhooks, auth, and business API from CSRF protection
+    // API/Auth uses Bearer tokens or App ID verification, not browser sessions
+    if (
+        req.path.startsWith('/api/payment/revenuecat/webhook') ||
+        req.path.startsWith('/api/payment/boomfi/webhook') ||
+        req.path.startsWith('/api/business') ||
+        req.path.startsWith('/api/auth')
+    ) {
         return next();
     }
     doubleCsrfProtection(req, res, next);
@@ -149,6 +184,11 @@ mongoose.connect(process.env.MONGODB_URI, {
             // Schedule rate limit cleanup
             const { cleanupOldRecords } = require('./utils/rate-limiter');
             setInterval(cleanupOldRecords, 60 * 60 * 1000); // Cleanup every hour
+
+            // Initialize EventBus for centralized event handling
+            console.log(`[${new Date().toISOString()}] 🔧 Init: Setting up EventBus...`);
+            const { initializeEventBus } = require('./services/eventBus');
+            initializeEventBus();
 
             console.log(`[${new Date().toISOString()}] ✨ Init: All systems ready`);
         } catch (initErr) {
@@ -211,6 +251,7 @@ app.use('/api/admin', adminAuthRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api', aiRoutes);
 app.use('/api', require('./routes/zk')); // ZK Proof Submission (Starknet)
+app.use('/api/zk-claims', require('./routes/zk-claims')); // ZK Claim Proofs (Privacy-Preserving Claims)
 app.use('/api/casperid', casperidAuthRoutes);
 app.use('/api/passkey', passkeyAuthRoutes); // Passkey authentication (Layer 0/1)
 app.use('/api/passkey/pairing/otp', require('./routes/otp-pairing')); // OTP Pairing (Extension-to-Web)
@@ -236,10 +277,17 @@ app.use(csrfErrorHandler);
 
 // Error handling middleware
 app.use((err, req, res, next) => {
-    console.error(err.stack);
-    res.status(500).json({
-        error: 'Internal server error',
-        message: process.env.NODE_ENV === 'development' ? err.message : 'Something went wrong'
+    // Don't log stack for expected errors like invalid JSON
+    if (err.status && err.status < 500) {
+        console.warn(`[${new Date().toISOString()}] Client error:`, err.message);
+    } else {
+        console.error(err.stack);
+    }
+
+    const statusCode = err.status || err.statusCode || 500;
+    res.status(statusCode).json({
+        error: statusCode < 500 ? err.message : 'Internal server error',
+        message: process.env.NODE_ENV === 'development' ? err.message : undefined
     });
 });
 

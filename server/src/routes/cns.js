@@ -6,6 +6,7 @@
 const express = require('express');
 const router = express.Router();
 const cnsResolver = require('../services/cns-resolver');
+const { eventBus, EVENTS } = require('../services/eventBus');
 
 // Middleware to validate session
 const validateSession = async (req, res, next) => {
@@ -152,6 +153,16 @@ router.post('/cns/register', validateSession, async (req, res) => {
 
         const result = await cnsResolver.registerPremiumName(wallet, name);
 
+        // Emit CNS registered event (subscribers handle email, activity)
+        eventBus.emit(EVENTS.CNS_REGISTERED, {
+            userId: userAccount.user_id,
+            email: userAccount.recovery_email || userAccount.email,
+            wallet: wallet,
+            domainName: name,
+            years: 1,
+            transactionId: result.registrationId || 'direct-registration'
+        });
+
         res.json({
             success: true,
             message: 'Name registered successfully',
@@ -201,10 +212,13 @@ router.get('/cns/my-names', validateSession, async (req, res) => {
             did: userAccount.did_address
         });
 
+        // Helper to ensure name ends with .cid (handles both formats)
+        const ensureCidSuffix = (name) => name.endsWith('.cid') ? name : `${name}.cid`;
+
         // Add premium name if exists
         if (userAccount.cns_name) {
             names.push({
-                name: `${userAccount.cns_name}.cid`,
+                name: ensureCidSuffix(userAccount.cns_name),
                 type: 'premium',
                 isPremium: true,
                 contextType: 'master',
@@ -214,7 +228,8 @@ router.get('/cns/my-names', validateSession, async (req, res) => {
 
         // Add context DIDs as subdomains
         if (userAccount.context_dids && userAccount.context_dids.length > 0) {
-            const rootName = userAccount.cns_name || humanId;
+            // Strip .cid from rootName for subdomain construction
+            const rootName = (userAccount.cns_name || humanId).replace(/\.cid$/i, '');
 
             for (const contextDid of userAccount.context_dids) {
                 names.push({

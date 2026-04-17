@@ -27,18 +27,30 @@ const formatTimeAgo = (dateString: string) => {
   return `${Math.floor(diffInSeconds / 86400)} days ago`;
 };
 
-const discoveryApps = [
-  { name: 'Discord', category: 'Social & Community', icon: 'forum', color: 'bg-[#5865F2]' },
-  { name: 'GitHub', category: 'Developer Tools', icon: 'code', color: 'bg-black' },
-  { name: 'Aave', category: 'DeFi Lending', icon: 'currency_bitcoin', color: 'bg-gradient-to-tr from-[#B6509E] to-[#2EBAC6]' },
-  { name: 'Lens Protocol', category: 'Social Graph', icon: 'camera', color: 'bg-[#8b5cf6]' },
-];
+const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+
+interface PublicApp {
+  app_id: string;
+  name: string;
+  description: string;
+  website_url: string;
+  logo_url: string;
+}
 
 export const Integrations: React.FC = () => {
   const { user, isAuthenticated } = useAuth();
   const [activeConnections, setActiveConnections] = useState<any[]>([]);
+  const [discoveryApps, setDiscoveryApps] = useState<PublicApp[]>([]);
   const [loading, setLoading] = useState(true);
   const [revokingApp, setRevokingApp] = useState<any | null>(null);
+
+  // Fetch public directory (no auth)
+  useEffect(() => {
+    fetch(`${API_BASE}/api/business/public/apps`)
+      .then(r => r.ok ? r.json() : { apps: [] })
+      .then(data => setDiscoveryApps(data.apps || []))
+      .catch(() => {});
+  }, []);
 
   useEffect(() => {
     if (isAuthenticated && user) {
@@ -236,19 +248,34 @@ export const Integrations: React.FC = () => {
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-          {discoveryApps.map((app, i) => (
-            <div key={i} className="flex items-center gap-4 p-5 rounded-[20px] bg-white border border-gray-100 hover:border-secondary transition-all hover:shadow-lg hover:shadow-secondary/10 group cursor-pointer relative overflow-hidden">
+          {discoveryApps.length === 0 ? (
+            <div className="col-span-4 text-center text-text-sub py-10">
+              <span className="material-symbols-outlined text-3xl mb-2">explore_off</span>
+              <p className="text-sm">No apps listed yet.</p>
+            </div>
+          ) : discoveryApps.map((app) => (
+            <div
+              key={app.app_id}
+              onClick={() => app.website_url && window.open(app.website_url, '_blank', 'noopener,noreferrer')}
+              className={`flex items-center gap-4 p-5 rounded-[20px] bg-white border border-gray-100 hover:border-secondary transition-all hover:shadow-lg hover:shadow-secondary/10 group relative overflow-hidden ${app.website_url ? 'cursor-pointer' : 'cursor-default'}`}
+            >
               <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/40 to-transparent translate-x-[-150%] group-hover:translate-x-[150%] transition-transform duration-1000 pointer-events-none"></div>
-              <div className={`size-12 rounded-xl ${app.color} flex items-center justify-center text-white shadow-md shadow-indigo-500/20`}>
-                <span className="material-symbols-outlined">{app.icon}</span>
+              <div className="size-12 rounded-xl bg-primary/10 flex items-center justify-center text-primary font-black text-xl shadow-md overflow-hidden shrink-0">
+                {app.logo_url
+                  ? <img src={app.logo_url} alt={app.name} className="w-full h-full object-cover" />
+                  : app.name.charAt(0).toUpperCase()
+                }
               </div>
               <div className="flex-1 min-w-0">
                 <h4 className="text-base font-bold text-text-main truncate group-hover:text-primary transition-colors">{app.name}</h4>
-                <p className="text-[10px] font-bold text-text-sub truncate uppercase tracking-tight">{app.category}</p>
+                {app.description
+                  ? <p className="text-[10px] font-medium text-text-sub truncate mt-0.5">{app.description}</p>
+                  : <p className="text-[10px] font-bold text-text-sub truncate uppercase tracking-tight">CasperID Integration</p>
+                }
               </div>
-              <button className="size-9 rounded-full bg-gray-50 hover:bg-primary hover:text-white text-text-sub flex items-center justify-center transition-all shadow-sm">
-                <span className="material-symbols-outlined text-[20px]">add</span>
-              </button>
+              {app.website_url && (
+                <span className="material-symbols-outlined text-[18px] text-text-sub group-hover:text-primary transition-colors shrink-0">open_in_new</span>
+              )}
             </div>
           ))}
         </div>

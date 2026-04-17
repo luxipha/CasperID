@@ -1,5 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
+import { QRCodeSVG } from 'qrcode.react';
 import { apiService } from '../services/api';
 import { IdentityToolModal } from './ui/IdentityToolModal';
 
@@ -31,6 +32,7 @@ export const SelectiveDisclosureModal: React.FC<SelectiveDisclosureModalProps> =
     const [sharePackage, setSharePackage] = useState<any>(null);
     const [selectedFields, setSelectedFields] = useState<string[]>(initialSelectedFields || ['first_name', 'last_name']);
     const [copied, setCopied] = useState(false);
+    const [showJson, setShowJson] = useState(false);
 
     useEffect(() => {
         if (isOpen && initialSelectedFields) {
@@ -73,7 +75,12 @@ export const SelectiveDisclosureModal: React.FC<SelectiveDisclosureModalProps> =
             setGenerating(true);
             const response = await apiService.shareKYCData(selectedFields);
             if (response.success) {
-                setSharePackage(response.sharePackage);
+                // Store full response including share_id and verification_url
+                setSharePackage({
+                    ...response.sharePackage,
+                    share_id: response.share_id,
+                    verification_url: response.verification_url
+                });
             }
         } catch (error) {
             console.error('Generation failed:', error);
@@ -83,9 +90,12 @@ export const SelectiveDisclosureModal: React.FC<SelectiveDisclosureModalProps> =
         }
     };
 
-    const handleCopy = () => {
+    const handleCopy = (copyUrl = false) => {
         if (sharePackage) {
-            navigator.clipboard.writeText(JSON.stringify(sharePackage, null, 2));
+            const textToCopy = copyUrl
+                ? `${window.location.origin}${sharePackage.verification_url || `/share-view/${sharePackage.share_id}`}`
+                : JSON.stringify(sharePackage, null, 2);
+            navigator.clipboard.writeText(textToCopy);
             setCopied(true);
             setTimeout(() => setCopied(false), 2000);
         }
@@ -98,6 +108,10 @@ export const SelectiveDisclosureModal: React.FC<SelectiveDisclosureModalProps> =
 
     // Render the success state with generated package
     if (sharePackage) {
+        // Use simple URL with share ID (stored server-side)
+        const shareUrl = `${window.location.origin}${sharePackage.verification_url || `/share-view/${sharePackage.share_id}`}`;
+        const qrData = shareUrl;
+
         return (
             <IdentityToolModal
                 isOpen={isOpen}
@@ -106,7 +120,7 @@ export const SelectiveDisclosureModal: React.FC<SelectiveDisclosureModalProps> =
                 subtitle="Selective Disclosure"
                 icon="verified"
                 iconBg="bg-green-50 text-green-500"
-                description="This package is cryptographically signed by your CasperID. Anyone with this code can verify your data."
+                description="Have others scan this QR code to verify your identity data."
                 actionLabel="Done"
                 actionIcon="check"
                 onAction={handleClose}
@@ -114,29 +128,79 @@ export const SelectiveDisclosureModal: React.FC<SelectiveDisclosureModalProps> =
                     <>
                         <span className="material-symbols-outlined text-text-sub text-[18px]">lock</span>
                         <p className="text-[11px] font-bold text-text-sub/70 leading-none">
-                            Signed with your CasperID self-custody keys.
+                            Cryptographically signed with your CasperID keys.
                         </p>
                     </>
                 }
             >
-                <div className="bg-gray-50 rounded-[32px] p-6 border border-gray-100 relative group">
-                    <pre className="text-[11px] font-mono font-medium text-text-main overflow-x-auto h-[200px] no-scrollbar">
-                        {JSON.stringify(sharePackage, null, 2)}
-                    </pre>
-                    <div className="absolute inset-0 bg-gradient-to-t from-gray-50 via-transparent to-transparent pointer-events-none rounded-[32px]" />
+                {!showJson ? (
+                    // QR Code View (default)
+                    <div className="flex flex-col items-center">
+                        <div className="bg-white rounded-[32px] p-6 border border-gray-100 shadow-lg">
+                            <QRCodeSVG
+                                value={qrData}
+                                size={220}
+                                level="M"
+                                includeMargin={true}
+                                bgColor="#ffffff"
+                                fgColor="#1A1A2E"
+                            />
+                        </div>
 
-                    <button
-                        onClick={handleCopy}
-                        className="absolute bottom-6 right-6 p-4 rounded-2xl bg-white border border-gray-100 text-text-sub hover:text-primary transition-all shadow-sm flex items-center gap-2"
-                    >
-                        <span className="material-symbols-outlined text-[20px]">{copied ? 'check' : 'content_copy'}</span>
-                        <span className="text-xs font-bold">{copied ? 'Copied!' : 'Copy JSON'}</span>
-                    </button>
-                </div>
+                        <div className="mt-6 flex items-center gap-3 text-sm text-text-sub">
+                            <span className="material-symbols-outlined text-lg">qr_code_scanner</span>
+                            <span className="font-medium">Scan to verify identity</span>
+                        </div>
+
+                        <div className="mt-6 w-full flex gap-3">
+                            <button
+                                onClick={() => setShowJson(true)}
+                                className="flex-1 h-12 border-2 border-gray-100 rounded-[16px] font-bold text-text-sub hover:bg-gray-50 transition-all flex items-center justify-center gap-2 text-sm"
+                            >
+                                <span className="material-symbols-outlined text-lg">code</span>
+                                View JSON
+                            </button>
+                            <button
+                                onClick={() => handleCopy(true)}
+                                className="flex-1 h-12 border-2 border-gray-100 rounded-[16px] font-bold text-text-sub hover:bg-gray-50 transition-all flex items-center justify-center gap-2 text-sm"
+                            >
+                                <span className="material-symbols-outlined text-lg">{copied ? 'check' : 'content_copy'}</span>
+                                {copied ? 'Copied!' : 'Copy Link'}
+                            </button>
+                        </div>
+                    </div>
+                ) : (
+                    // JSON View
+                    <div className="space-y-4">
+                        <div className="bg-gray-50 rounded-[24px] p-5 border border-gray-100 relative">
+                            <pre className="text-[11px] font-mono font-medium text-text-main overflow-x-auto h-[180px] no-scrollbar">
+                                {JSON.stringify(sharePackage, null, 2)}
+                            </pre>
+                            <div className="absolute inset-0 bg-gradient-to-t from-gray-50 via-transparent to-transparent pointer-events-none rounded-[24px]" />
+                        </div>
+
+                        <div className="flex gap-3">
+                            <button
+                                onClick={() => setShowJson(false)}
+                                className="flex-1 h-12 border-2 border-gray-100 rounded-[16px] font-bold text-text-sub hover:bg-gray-50 transition-all flex items-center justify-center gap-2 text-sm"
+                            >
+                                <span className="material-symbols-outlined text-lg">qr_code</span>
+                                Show QR
+                            </button>
+                            <button
+                                onClick={() => handleCopy(false)}
+                                className="flex-1 h-12 bg-primary text-white rounded-[16px] font-bold hover:bg-primary/90 transition-all flex items-center justify-center gap-2 text-sm"
+                            >
+                                <span className="material-symbols-outlined text-lg">{copied ? 'check' : 'content_copy'}</span>
+                                {copied ? 'Copied!' : 'Copy JSON'}
+                            </button>
+                        </div>
+                    </div>
+                )}
 
                 <button
-                    onClick={() => setSharePackage(null)}
-                    className="w-full h-14 mt-6 border-2 border-gray-100 rounded-[20px] font-bold text-text-main hover:bg-gray-50 transition-all"
+                    onClick={() => { setSharePackage(null); setShowJson(false); }}
+                    className="w-full h-14 mt-4 border-2 border-gray-100 rounded-[20px] font-bold text-text-main hover:bg-gray-50 transition-all"
                 >
                     Modify Selection
                 </button>

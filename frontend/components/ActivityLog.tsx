@@ -33,6 +33,27 @@ export const ActivityLog: React.FC<ActivityLogProps> = ({ onViewDetail }) => {
     return url.split('/').pop();
   };
 
+  // Status color mapping (ensures correct colors regardless of backend)
+  const getStatusClass = (status: string) => {
+    const statusLower = status?.toLowerCase() || '';
+    if (statusLower === 'rejected' || statusLower === 'failed') {
+      return 'bg-red-100 text-red-800';
+    }
+    if (statusLower === 'pending' || statusLower === 'in progress') {
+      return 'bg-yellow-100 text-yellow-800';
+    }
+    if (statusLower === 'success' || statusLower === 'approved' || statusLower === 'completed') {
+      return 'bg-green-100 text-green-800';
+    }
+    if (statusLower === 'cancelled') {
+      return 'bg-gray-100 text-gray-800';
+    }
+    if (statusLower === 'new') {
+      return 'bg-blue-100 text-blue-800';
+    }
+    return 'bg-gray-100 text-gray-600';
+  };
+
   // Filter states
   const [searchQuery, setSearchQuery] = useState('');
   const [eventType, setEventType] = useState('');
@@ -241,7 +262,16 @@ export const ActivityLog: React.FC<ActivityLogProps> = ({ onViewDetail }) => {
                       <p className="text-[11px] text-text-sub font-medium truncate">{item.date} {item.time}</p>
                     </td>
                     <td className="px-6 py-5">
-                      <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-[9px] font-extrabold uppercase tracking-wider ${item.statusClass}`}>
+                      <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-[9px] font-extrabold uppercase tracking-wider ${getStatusClass(item.status)}`}>
+                        <span className={`w-1.5 h-1.5 rounded-full mr-1.5 ${
+                          item.status?.toLowerCase() === 'rejected' || item.status?.toLowerCase() === 'failed'
+                            ? 'bg-red-500'
+                            : item.status?.toLowerCase() === 'success' || item.status?.toLowerCase() === 'approved'
+                              ? 'bg-green-500'
+                              : item.status?.toLowerCase() === 'pending' || item.status?.toLowerCase() === 'in progress'
+                                ? 'bg-yellow-500'
+                                : 'bg-gray-500'
+                        }`}></span>
                         {item.status}
                       </span>
                     </td>

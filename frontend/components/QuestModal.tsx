@@ -56,6 +56,28 @@ export const QuestModal: React.FC<QuestModalProps> = ({ isOpen, onClose, onStart
         }
     };
 
+    // External action quests - clicking opens link and tracks
+    const EXTERNAL_QUESTS: Record<string, { url: string; action: string }> = {
+        'community_join': { url: 'https://t.me/ileplatformchat', action: 'community_joined' },
+        'extension_install': { url: 'https://chromewebstore.google.com/detail/oecccgmhmojgniechnclmffchodmdjmd', action: 'extension_installed' },
+    };
+
+    const handleQuestAction = async (questId: string) => {
+        const external = EXTERNAL_QUESTS[questId];
+        if (external) {
+            // Track and open external link
+            try {
+                await apiService.post('/api/quest/track-action', { action: external.action });
+                window.open(external.url, '_blank');
+                await fetchQuestStatus();
+            } catch (err) {
+                console.error('Failed to track action:', err);
+                window.open(external.url, '_blank');
+            }
+            return;
+        }
+    };
+
     const handleClaim = async (questId: string) => {
         const quest = quests.find(q => q.id === questId);
 
@@ -164,6 +186,14 @@ export const QuestModal: React.FC<QuestModalProps> = ({ isOpen, onClose, onStart
                                     className="text-[11px] font-black text-primary bg-primary/5 px-3 py-1.5 rounded-lg hover:bg-primary/10 transition-colors uppercase tracking-widest disabled:opacity-50"
                                 >
                                     {claimingId === quest.id ? 'Claiming...' : 'Claim'}
+                                </button>
+                            ) : EXTERNAL_QUESTS[quest.id] ? (
+                                <button
+                                    onClick={() => handleQuestAction(quest.id)}
+                                    className="text-[11px] font-black text-white bg-primary px-3 py-1.5 rounded-lg hover:bg-primary/90 transition-colors uppercase tracking-widest flex items-center gap-1"
+                                >
+                                    <span className="material-symbols-outlined text-[14px]">open_in_new</span>
+                                    Go
                                 </button>
                             ) : (
                                 <span className="text-[11px] font-bold text-gray-400 bg-gray-100 px-3 py-1.5 rounded-lg uppercase tracking-widest">

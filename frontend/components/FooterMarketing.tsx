@@ -3,9 +3,9 @@ import Logo from "./Logo";
 
 export function FooterMarketing({ className, onNavigate }: { className?: string; onNavigate?: (view: string) => void }) {
   const productLinks = [
-    { label: "anra 🔥", href: "/anra" },
+    { label: "anra 🔥", href: "https://www.anra.rest" },
     { label: "White Paper", href: "https://docs.google.com/document/d/1XxpYRW5Dz4vV5G_3rIublF-lwqxPHnQ7quAhiDFaKgo/edit?usp=drive_link" },
-    { label: "Changelog", href: "/changelog" },
+    { label: "Changelog", href: "https://www.anra.rest/changelog" },
   ];
 
   const resourceLinks = [
@@ -27,7 +27,12 @@ export function FooterMarketing({ className, onNavigate }: { className?: string;
             <div className="font-semibold text-slate-800">Product</div>
             <div className="space-y-2">
               {productLinks.map((link) => (
-                <a key={link.label} href={link.href} className="block hover:text-slate-500">
+                <a 
+                  key={link.label} 
+                  href={link.href} 
+                  className="block hover:text-slate-500"
+                  {...(link.href.startsWith('http') ? { target: "_blank", rel: "noopener noreferrer" } : {})}
+                >
                   {link.label}
                 </a>
               ))}

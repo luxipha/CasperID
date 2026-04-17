@@ -1,5 +1,113 @@
 [
   {
+    "version": "2.8.0",
+    "title": "Gamified Onboarding & Platform Tour",
+    "date": "April 17, 2026",
+    "status": "Active Feature Release",
+    "highlight": {
+      "title": "Onboarding Reimagined",
+      "description": "Launched an interactive platform tour and a gamified quest system to streamline the user journey.",
+      "type": "sparkles"
+    },
+    "summary": "This update introduces a comprehensive onboarding experience designed to guide users through the CasperID ecosystem. From an interactive dashboard tour to a gamified quest system that rewards identity milestones, we've made it easier than ever to get verified and started.",
+    "categories": [
+      {
+        "id": "v280-onboarding",
+        "title": "Onboarding & Gamification",
+        "items": [
+          "Interactive Platform Tour: Step-by-step walkthrough of core identity management features.",
+          "Quest System: Integrated gamified milestones (QuestModal, QuestCard) to track and reward onboarding progress.",
+          "Welcome UI: New interactive cards to simplify the transition from guest to verified user."
+        ]
+      },
+      {
+        "id": "v280-sdk",
+        "title": "SDK & Developer Experience",
+        "items": [
+          "CSRF Security Fix: Exempted /api/auth routes from CSRF checks to support cross-origin SDK requests.",
+          "Origin Parsing Guard: Hardened Business Dashboard to automatically parse comma-separated origin lists.",
+          "Device-Aware UI: Fixed SDK extension button visibility logic to prioritize mobile vs desktop detection."
+        ]
+      },
+      {
+        "id": "v280-landing",
+        "title": "Ecosystem Expansion",
+        "items": [
+          "Events Landing Page: A massive new section dedicated to ecosystem events and community updates.",
+          "Quick Actions Rail: Enhanced dashboard navigation for faster access to identity tools."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "2.7.0",
+    "title": "SDK Global Launch & Business Ecosystem",
+    "date": "March 19, 2026",
+    "status": "Production Milestone",
+    "highlight": {
+      "title": "SDK & Ecosystem Reach",
+      "description": "Launched multi-language SDK support and the Live Business Integrations Directory.",
+      "type": "sparkles"
+    },
+    "summary": "This milestone marks the official global launch of our SDK and the expansion of the CasperID Business Ecosystem. Users can now verify across 4 languages, while businesses gain deep visibility through the new Integrations Directory and Activity Heatmap.",
+    "categories": [
+      {
+        "id": "v270-sdk",
+        "title": "SDK & User Experience",
+        "items": [
+          "Global Localization: Full multi-language support for English, Spanish, French, and German.",
+          "Flexible Layout Modes: Added Auto, Modal, and Fullscreen integration modes for dApps.",
+          "Passkey-First Onboarding: Streamlined verification-to-auth flow for a seamless user journey.",
+          "Selective Disclosure Audit: Verified functional integrity of Context DIDs and privacy shares."
+        ]
+      },
+      {
+        "id": "v270-biz",
+        "title": "Business Platform",
+        "items": [
+          "Live Integrations Directory: A centralized hub for discovering and navigating verified CasperID dApps.",
+          "Activity Heatmap: Real-time visualization of verification trends aggregated from webhook logs.",
+          "App Branding: Support for website URLs and public discovery settings in the business portal.",
+          "Business API: New public directory endpoint (GET /api/business/public/apps)."
+        ]
+      },
+      {
+        "id": "v270-core",
+        "title": "Security & Protocol",
+        "items": [
+          "MetaMask Support: Integrated ECDSA (EIP-191) signature verification for multi-chain account linking.",
+          "Cryptographic Hardening: Transitioned to production-grade Ed25519 digital signatures for ZK proofs.",
+          "Protocol Roadmap: Added Phase 5 research for Self-Sovereign Recovery (SSR) mechanisms."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "2.6.1",
+    "title": "National ID Verification & OCR Robustness",
+    "date": "March 15, 2026",
+    "status": "Maintenance Update",
+    "highlight": {
+      "title": "Robust National ID Flow",
+      "description": "Hardened OCR processing for ID cards and implemented a fallback flow.",
+      "type": "sparkles"
+    },
+    "summary": "This update fixes critical issues with National ID image submission. We've optimized the OCR pipeline to upload images first, ensuring admins can view documents even if automatic parsing fails. We've also normalized document types across the stack.",
+    "categories": [
+      {
+        "id": "v261-fix",
+        "title": "Fixes & Improvements",
+        "items": [
+          "National ID OCR: Optimized flow to upload images to ImageKit before OCR, ensuring visibility for admins.",
+          "Document Type Normalization: Supported both 'license' and 'drivers_license' IDs to prevent schema mismatches.",
+          "Image Submission: Fixed bug where National ID images weren't correctly linked to verification requests.",
+          "OCR Fallback: Added 'Review & Edit' step if OCR confidence is low or parsing fails.",
+          "Backend Validation: Enhanced document upload routes with stricter field requirements and success structures."
+        ]
+      }
+    ]
+  },
+  {
     "version": "2.6.0",
     "title": "Premium CNS & Wildcard Identity Routing",
     "date": "March 10, 2026",
@@ -36,8 +144,8 @@
   },
   {
     "version": "2.5.1",
-    "title": "Analytics Integration & UX Refinement",
     "date": "March 6, 2026",
+    "title": "Analytics Integration & UX Refinement",
     "status": "Production Update",
     "highlight": {
       "title": "Integrated Behavioral Analytics",
@@ -134,7 +242,7 @@
     ]
   },
   {
-    "version": "2.3.0",
+    "version": "2.3.1",
     "title": "OTP Pairing & Browser Extension Co-pilot",
     "date": "February 27, 2026",
     "status": "Production Release",
@@ -146,7 +254,7 @@
     "summary": "This milestone release introduces a seamless OTP-based pairing flow for the browser extension, hardens security with cross-origin policies for extensions, and refines the Job Assistant UI by removing mock data and improving verified identity mapping.",
     "categories": [
       {
-        "id": "v230-imp",
+        "id": "v231-imp",
         "title": "Improvements",
         "items": [
           "Implemented secure 6-digit OTP pairing flow for browser extension authentication.",
@@ -157,7 +265,7 @@
         ]
       },
       {
-        "id": "v230-fix",
+        "id": "v231-fix",
         "title": "Fixes",
         "items": [
           "Fixed CORS errors for `chrome-extension://` origins in the backend API.",
@@ -169,10 +277,53 @@
     ]
   },
   {
+    "version": "2.3.0",
+    "title": "Business Platform & Webhook Infrastructure",
+    "date": "February 26, 2026",
+    "status": "Production Update",
+    "highlight": {
+      "title": "Enterprise-Ready Webhooks",
+      "description": "Full webhook delivery logging, automatic retries with exponential backoff, and rate limiting for Business Platform APIs.",
+      "type": "sparkles"
+    },
+    "summary": "This release hardens the Business Platform with production-grade webhook infrastructure, real-time delivery logs, rate limiting, and centralized event constants.",
+    "categories": [
+      {
+        "id": "v230-feat",
+        "title": "Features",
+        "items": [
+          "Webhook delivery logs with 30-day retention and auto-expiry (TTL index).",
+          "Webhook logs UI modal with delivery stats, status filtering, and pagination.",
+          "Exponential backoff retry system for failed webhooks (5 retries: 1s → 5s → 30s → 2min → 5min).",
+          "Rate limiting on Business API routes: 60 req/min general, 5 req/min webhook tests, 10 req/hr key creation."
+        ]
+      },
+      {
+        "id": "v230-imp",
+        "title": "Improvements",
+        "items": [
+          "Connected Analytics, Billing, Settings, and IntegrationDetail pages to real API data.",
+          "Centralized webhook event types in constants files (backend and frontend).",
+          "Refactored test webhook endpoint to use shared signature logic.",
+          "Salt rounds now configurable via BCRYPT_SALT_ROUNDS environment variable.",
+          "Standardized error response format across all Business API endpoints."
+        ]
+      },
+      {
+        "id": "v230-fix",
+        "title": "Fixes",
+        "items": [
+          "Fixed Tailwind CSS class warnings (bg-gradient-to-r, z-index, positioning).",
+          "Confirmed DappIntegration and BusinessApp schemas serve different purposes (not redundant)."
+        ]
+      }
+    ]
+  },
+  {
     "version": "2.2.1",
     "title": "ImageKit Integration & Activity Log UX",
     "date": "February 25, 2026",
-    "status": "Active Development",
+    "status": "Previous Release",
     "highlight": {
       "title": "Branded Loading UX & Cloud Media",
       "description": "Integrated ImageKit CDN with an animated branded loading ring for profile pictures.",
@@ -261,28 +412,12 @@
         "id": "v210-fix",
         "title": "Fixes",
         "items": [
-          "sitemap issues",
-          "media pipe issues",
-          "base directory issue",
-          "image path",
-          "avatar file",
-          "issue with optimization",
-          "force Docker rebuild without cache to resolve dependency issues",
-          "force Docker rebuild without cache to resolve dependency issuesl",
-          "force Docker rebuild without cache to resolve dependency issues2",
-          "remove PORT env var - Cloud Run sets this automatically",
-          "remove PORT env var - Cloud Run sets this automatically frontend",
-          "Add casperid.com to CORS allowed origins",
-          "Add Web Crypto API polyfill for Alpine Linux",
-          "Use apiService for identity-status endpoint calls",
-          "Add /api prefix to identity-status endpoint calls",
-          "Import apiService in KYCHome component",
-          "Replace fetch with apiService in liveness components",
-          "FormData upload for liveness verification",
-          "add vercel.json for SPA routing",
-          "QR code now embeds URL for mobile scanning",
           "Resolved WebAuthn origin mismatch issue affecting registration across subdomains.",
-          "Corrected text contrast and background gradients for improved accessibility."
+          "Corrected text contrast and background gradients for improved accessibility.",
+          "Integrated ImageKit CDN for high-performance profile picture hosting.",
+          "Implemented an animated SVG loading ring in branded purple (#8652E2) for avatar uploads.",
+          "Standardized Activity Log with relative \"Time-Ago\" dates across the dashboard and log pages.",
+          "Refined Activity Log layout to show profile slugs (e.g. \"lovi\") and move visitor locations for better clarity."
         ]
       },
       {

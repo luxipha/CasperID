@@ -1,61 +1,128 @@
 const express = require('express');
 const router = express.Router();
 const { adminAuthWithRateLimit } = require('../middleware/auth');
-const { VerificationRequest, Credential, UserProfile } = require('../database/models');
+const { VerificationRequest, VerificationRequestV2, Credential, UserProfile, UserAccount } = require('../database/models');
 const { walletToHuman } = require('../utils/wallet-to-human');
 const { mintCredential } = require('../utils/credential-minter');
+const { eventBus, EVENTS } = require('../services/eventBus');
 
 /**
  * GET /api/admin/verification-requests
  * Get all verification requests (admin only)
+ * Includes both legacy VerificationRequest and new VerificationRequestV2
  */
 router.get('/verification-requests', adminAuthWithRateLimit, async (req, res) => {
     try {
         const { status } = req.query;
 
-        // Default to showing only pending requests (exclude auto-minted basic tier)
-        const filter = status ? { status } : { status: 'pending' };
+        // Default to showing pending/in_progress requests
+        // For "pending" filter, V2 uses "in_progress" so include both
+        const filterV1 = status ? { status } : { status: 'pending' };
+        const filterV2 = status === 'pending'
+            ? { status: { $in: ['pending', 'in_progress'] } }  // "pending" includes V2's "in_progress"
+            : status
+                ? { status }
+                : { status: { $in: ['pending', 'in_progress'] } };
 
-        const requests = await VerificationRequest.find(filter).sort({ created_at: -1 });
+        // Fetch from both collections
+        const [requestsV1, requestsV2] = await Promise.all([
+            VerificationRequest.find(filterV1).sort({ created_at: -1 }),
+            VerificationRequestV2.find(filterV2).sort({ created_at: -1 })
+        ]);
 
+        // Map V1 requests (legacy format)
+        const mappedV1 = requestsV1.map(r => ({
+            id: r._id,
+            request_id: r._id.toString(),
+            source: 'v1',
+            wallet: r.wallet,
+            tier: r.tier,
+            email: r.email,
+            status: r.status,
+            created_at: r.created_at,
+            updated_at: r.updated_at,
+            verification_method: r.verification_method,
+            document_type: r.document_type,
+            document_data: r.document_data,
+            liveness_verified: r.liveness_verified,
+            upload_id: r.upload_id,
+            first_name: r.first_name || r.document_data?.first_name,
+            last_name: r.last_name || r.document_data?.last_name,
+            name: r.name,
+            date_of_birth: r.date_of_birth || r.document_data?.date_of_birth,
+            phone_number: r.phone_number || r.document_data?.phone_number,
+            home_address: r.home_address || r.document_data?.address,
+            location: r.location,
+            age: r.age,
+            education: r.education,
+            work_history: r.work_history,
+            job_title: r.job_title,
+            skills: r.skills,
+            info: r.info,
+            image_url: r.image_url,
+            socials: r.socials,
+            cns_name: r.cns_name,
+            metadata: r.metadata
+        }));
 
-        res.json({
-            count: requests.length,
-            requests: requests.map(r => ({
+        // Map V2 requests (new format with verification_data)
+        const mappedV2 = await Promise.all(requestsV2.map(async r => {
+            // Fetch user account to get wallet
+            const userAccount = await UserAccount.findOne({ user_id: r.user_id });
+            const vData = r.verification_data || {};
+
+            return {
                 id: r._id,
-                wallet: r.wallet,
-                tier: r.tier,
-                email: r.email,
+                request_id: r.request_id,
+                source: 'v2',
+                wallet: userAccount?.wallet || null,
+                user_id: r.user_id,
+                tier: r.verification_tier,
                 status: r.status,
+                purpose: r.purpose,
                 created_at: r.created_at,
                 updated_at: r.updated_at,
+                expires_at: r.expires_at,
 
-                // Layer 3 specific fields
-                verification_method: r.verification_method,
-                document_type: r.document_type,
-                document_data: r.document_data,
-                liveness_verified: r.liveness_verified,
-                upload_id: r.upload_id,
+                // Layer 3 document data from verification_data
+                verification_method: 'document_upload',
+                document_type: vData.document_type,
+                document_number: vData.document_number,
+                liveness_verified: vData.liveness_verified,
+                upload_id: vData.upload_id,
 
-                // Full Profile Data (for Layer 2/other tiers)
-                first_name: r.first_name || r.document_data?.first_name,
-                last_name: r.last_name || r.document_data?.last_name,
-                name: r.name,
-                date_of_birth: r.date_of_birth || r.document_data?.date_of_birth,
-                phone_number: r.phone_number || r.document_data?.phone_number,
-                home_address: r.home_address || r.document_data?.address,
-                location: r.location,
-                age: r.age,
-                education: r.education,
-                work_history: r.work_history,
-                job_title: r.job_title,
-                skills: r.skills,
-                info: r.info,
-                image_url: r.image_url,
-                socials: r.socials,
-                cns_name: r.cns_name,
-                metadata: r.metadata // Contains liveness snapshots
-            }))
+                // Personal info from verification_data
+                first_name: vData.first_name,
+                last_name: vData.last_name,
+                date_of_birth: vData.date_of_birth,
+                gender: vData.gender,
+                nationality: vData.nationality,
+                nin: vData.nin,
+                home_address: vData.home_address,
+                phone_number: vData.phone_number,
+
+                // Document images
+                front_image_url: vData.front_image_url,
+                back_image_url: vData.back_image_url,
+
+                // Liveness frames
+                liveness_frame_urls: vData.liveness_frame_urls || [],
+                liveness_completed_at: vData.liveness_completed_at,
+                liveness_confidence: vData.liveness_confidence,
+
+                // Submission timestamp
+                submitted_at: vData.submitted_at
+            };
+        }));
+
+        // Combine and sort by created_at descending
+        const allRequests = [...mappedV1, ...mappedV2].sort(
+            (a, b) => new Date(b.created_at) - new Date(a.created_at)
+        );
+
+        res.json({
+            count: allRequests.length,
+            requests: allRequests
         });
     } catch (error) {
         console.error('Get requests error:', error);
@@ -66,43 +133,198 @@ router.get('/verification-requests', adminAuthWithRateLimit, async (req, res) =>
 /**
  * POST /api/admin/issue-credential
  * Issue credentials (approve verification)
+ * Supports both V1 (VerificationRequest) and V2 (VerificationRequestV2)
  */
 router.post('/issue-credential', adminAuthWithRateLimit, async (req, res) => {
     try {
-        const { request_id, approve } = req.body;
+        const { request_id, approve, source, rejection_reason } = req.body;
 
         if (!request_id || approve === undefined) {
             return res.status(400).json({ success: false, error: 'request_id and approve are required' });
         }
 
-        // Find verification request
-        const request = await VerificationRequest.findById(request_id);
+        // Rejection reason is required when rejecting
+        if (!approve && !rejection_reason) {
+            return res.status(400).json({ error: 'rejection_reason is required when rejecting a request' });
+        }
+
+        let request = null;
+        let isV2 = source === 'v2';
+
+        // Try to find in V1 first (by MongoDB _id), then V2 (by request_id string)
+        if (!isV2) {
+            try {
+                request = await VerificationRequest.findById(request_id);
+            } catch (e) {
+                // Not a valid MongoDB ObjectId, might be a V2 request_id
+            }
+        }
+
+        // If not found in V1, try V2
+        if (!request) {
+            request = await VerificationRequestV2.findOne({ request_id: request_id });
+            if (request) isV2 = true;
+        }
+
+        // Also try V2 by _id if still not found
+        if (!request) {
+            try {
+                request = await VerificationRequestV2.findById(request_id);
+                if (request) isV2 = true;
+            } catch (e) {
+                // Ignore
+            }
+        }
 
         if (!request) {
             return res.status(404).json({ success: false, error: 'Verification request not found' });
         }
 
-        if (request.status !== 'pending') {
+        const validStatuses = isV2 ? ['pending', 'in_progress'] : ['pending'];
+        if (!validStatuses.includes(request.status)) {
             return res.status(400).json({ success: false, error: 'Request already processed' });
         }
 
         // Handle rejection
         if (!approve) {
             request.status = 'rejected';
+            request.rejection_reason = rejection_reason;
+            request.rejected_at = new Date();
+            request.rejected_by = req.admin?.username || 'admin';
             await request.save();
+
+            // Send rejection notification to user
+            try {
+                const { Notification } = require('../database/models');
+
+                // Get user info for notification
+                let userId, userEmail;
+                if (isV2) {
+                    const userAccount = await UserAccount.findOne({ user_id: request.user_id });
+                    userId = request.user_id;
+                    userEmail = userAccount?.email;
+                } else {
+                    userId = request.wallet;
+                    userEmail = request.email;
+                }
+
+                // Create in-app notification
+                if (userId) {
+                    await Notification.create({
+                        user_id: userId,
+                        type: 'verification_rejected',
+                        title: 'Verification Request Rejected',
+                        message: `Your Layer 3 verification request was rejected. Reason: ${rejection_reason}`,
+                        data: {
+                            request_id: isV2 ? request.request_id : request._id.toString(),
+                            rejection_reason,
+                            rejected_at: new Date().toISOString()
+                        },
+                        read: false
+                    });
+                }
+
+                // Emit verification rejected event (subscribers handle email, activity)
+                eventBus.emit(EVENTS.VERIFICATION_REJECTED, {
+                    userId: isV2 ? request.user_id : null,
+                    email: userEmail,
+                    wallet: isV2 ? null : request.wallet,
+                    tier: isV2 ? request.verification_tier : request.tier,
+                    reason: rejection_reason,
+                    requestId: isV2 ? request.request_id : request._id.toString()
+                });
+            } catch (notifError) {
+                console.warn('[Admin] Failed to send rejection notification:', notifError.message);
+            }
 
             return res.json({
                 message: 'Verification request rejected',
                 request: {
                     id: request._id,
-                    wallet: request.wallet,
-                    status: request.status
+                    request_id: isV2 ? request.request_id : request._id.toString(),
+                    status: request.status,
+                    rejection_reason
                 }
             });
         }
 
-        // Use the shared credential minting utility
+        // For V2 requests, we need to construct the request object for mintCredential
+        if (isV2) {
+            // Get the user account to find wallet
+            const userAccount = await UserAccount.findOne({ user_id: request.user_id });
+            if (!userAccount || !userAccount.wallet) {
+                return res.status(400).json({ error: 'User wallet not found' });
+            }
+
+            const vData = request.verification_data || {};
+
+            // Construct V1-compatible request object for mintCredential
+            const v1CompatibleRequest = {
+                wallet: userAccount.wallet,
+                tier: request.verification_tier, // 'layer_3'
+                email: userAccount.email,
+                first_name: vData.first_name,
+                last_name: vData.last_name,
+                date_of_birth: vData.date_of_birth,
+                phone_number: vData.phone_number,
+                home_address: vData.home_address,
+                document_type: vData.document_type,
+                document_number: vData.document_number,
+                liveness_verified: vData.liveness_verified,
+                status: 'pending'
+            };
+
+            // Mint credential
+            const { credential } = await mintCredential(v1CompatibleRequest);
+
+            // Update V2 request status
+            request.status = 'completed';
+            request.completed_at = new Date();
+            request.proof_generated = true;
+            await request.save();
+
+            // Update user account tier
+            userAccount.tier = request.verification_tier;
+            userAccount.updated_at = new Date();
+            await userAccount.save();
+
+            // Emit L3 verification completed event (subscribers handle email, activity, webhook)
+            const userName = vData.first_name ? `${vData.first_name} ${vData.last_name || ''}`.trim() : null;
+            eventBus.emit(EVENTS.VERIFICATION_L3_COMPLETED, {
+                userId: userAccount.user_id,
+                email: userAccount.recovery_email || userAccount.email,
+                name: userName,
+                wallet: userAccount.wallet,
+                tier: request.verification_tier,
+                dappId: request.dapp_id
+            });
+
+            return res.json({
+                message: 'Credential issued successfully',
+                credential: {
+                    wallet: credential.wallet,
+                    tier: credential.tier,
+                    last_kyc_at: credential.last_kyc_at,
+                    last_liveness_at: credential.last_liveness_at,
+                    credential_hash: credential.credential_hash,
+                    tx_hash: credential.onchain_tx_hash
+                }
+            });
+        }
+
+        // V1 flow (legacy)
         const { credential } = await mintCredential(request);
+
+        // Emit L3 verification completed event for V1 (subscribers handle email, activity)
+        const userName = request.first_name ? `${request.first_name} ${request.last_name || ''}`.trim() : null;
+        eventBus.emit(EVENTS.VERIFICATION_L3_COMPLETED, {
+            userId: null,
+            email: request.email,
+            name: userName,
+            wallet: request.wallet,
+            tier: request.tier || 'layer_3',
+            dappId: null
+        });
 
         res.json({
             message: 'Credential issued successfully',
@@ -321,6 +543,121 @@ router.post('/issue-missing-credentials', adminAuthWithRateLimit, async (req, re
     } catch (error) {
         console.error('Credential audit error:', error);
         res.status(500).json({ success: false, error: 'Failed to run credential audit' });
+    }
+});
+
+/**
+ * POST /api/admin/test-email
+ * Send test emails to verify templates
+ * Body: { type: "otp" | "welcome" | "verification_success" | "profile_viewed" | "profile_completed" | "payment_confirmation" | "security_alert", email: "test@example.com" }
+ */
+router.post('/test-email', adminAuthWithRateLimit, async (req, res) => {
+    try {
+        const emailManager = require('../services/email/EmailManager');
+        const { type, email } = req.body;
+
+        if (!type || !email) {
+            return res.status(400).json({ error: 'type and email are required' });
+        }
+
+        const testData = {
+            recipientName: 'Test User',
+            frontendUrl: process.env.FRONTEND_URL || 'https://casperid.com'
+        };
+
+        let result;
+
+        switch (type) {
+            case 'otp':
+                result = await emailManager.sendOTP(email, '123456');
+                break;
+
+            case 'welcome':
+                result = await emailManager.sendWelcomeEmail(email, testData.recipientName);
+                break;
+
+            case 'verification_success':
+                result = await emailManager.sendVerificationSuccessEmail(email, 'layer_3', testData.recipientName);
+                break;
+
+            case 'profile_viewed':
+                result = await emailManager.sendProfileViewedEmail(
+                    email,
+                    'someone',
+                    `${testData.frontendUrl}/profile/test-user`
+                );
+                break;
+
+            case 'profile_completed':
+                result = await emailManager.sendProfileCompletedEmail(
+                    email,
+                    testData.recipientName,
+                    `${testData.frontendUrl}/profile/test-user`
+                );
+                break;
+
+            case 'payment_confirmation':
+                result = await emailManager.sendPaymentConfirmationEmail(email, {
+                    amount: '25.00',
+                    currency: 'USD',
+                    items: 'Layer 3 KYC Verification',
+                    transactionId: 'TXN-TEST-123456789'
+                });
+                break;
+
+            case 'security_alert':
+                result = await emailManager.sendSecurityAlertEmail(email, 'new_device', {
+                    description: 'New device login detected',
+                    ipAddress: '192.168.1.1',
+                    device: 'Chrome on macOS',
+                    location: 'Lagos, Nigeria'
+                });
+                break;
+
+            case 'all':
+                // Send all email types
+                const results = {};
+
+                results.otp = await emailManager.sendOTP(email, '123456');
+                results.welcome = await emailManager.sendWelcomeEmail(email, testData.recipientName);
+                results.verification_success = await emailManager.sendVerificationSuccessEmail(email, 'layer_3', testData.recipientName);
+                results.profile_viewed = await emailManager.sendProfileViewedEmail(email, 'someone', `${testData.frontendUrl}/profile/test-user`);
+                results.profile_completed = await emailManager.sendProfileCompletedEmail(email, testData.recipientName, `${testData.frontendUrl}/profile/test-user`);
+                results.payment_confirmation = await emailManager.sendPaymentConfirmationEmail(email, {
+                    amount: '25.00',
+                    currency: 'USD',
+                    items: 'Layer 3 KYC Verification',
+                    transactionId: 'TXN-TEST-123456789'
+                });
+                results.security_alert = await emailManager.sendSecurityAlertEmail(email, 'new_device', {
+                    description: 'New device login detected',
+                    ipAddress: '192.168.1.1',
+                    device: 'Chrome on macOS',
+                    location: 'Lagos, Nigeria'
+                });
+
+                return res.json({
+                    success: true,
+                    message: `All test emails sent to ${email}`,
+                    results
+                });
+
+            default:
+                return res.status(400).json({
+                    error: 'Invalid email type',
+                    validTypes: ['otp', 'welcome', 'verification_success', 'profile_viewed', 'profile_completed', 'payment_confirmation', 'security_alert', 'all']
+                });
+        }
+
+        res.json({
+            success: true,
+            message: `Test ${type} email sent to ${email}`,
+            result
+        });
+
+    } catch (error) {
+        console.error('Test email error:', error);
+        res.status(500).json({ error: 'Failed to send test email', details: error.message });
     }
 });
 

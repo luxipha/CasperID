@@ -11,6 +11,8 @@ import { ConnectedPlatforms } from './components/ConnectedPlatforms';
 import { ReusableTools } from './components/ReusableTools';
 import { HumanFirstIdentity } from './components/HumanFirstIdentity';
 import { QuestTourCard } from './components/QuestTourCard';
+import { Tour } from './components/Tour';
+import { QuestModal } from './components/QuestModal';
 import { RecentActivity } from './components/RecentActivity';
 import { Integrations } from './components/Integrations';
 import { DataControls } from './components/DataControls';
@@ -47,6 +49,8 @@ import { AppLoadingSplash } from './components/AppLoadingSplash';
 import { BusinessPlatform } from './business/BusinessPlatform';
 import { PublicProfileContainer } from './components/PublicProfileContainer';
 import { VerifyCredentialPage } from './components/VerifyCredentialPage';
+import { VerifyZKClaimsPage } from './components/VerifyZKClaimsPage';
+import { SharedDataView } from './components/SharedDataView';
 import { QRScannerModal } from './components/QRScannerModal';
 import OTPPairingNotification from './components/OTPPairingNotification';
 import { useAuth } from './contexts/AuthContext';
@@ -59,12 +63,8 @@ import CareersPage from './components/landing/CareerPage';
 import CareerDetailPage from './components/landing/CareerDetailPage';
 import ApplySuccessPage from './components/landing/ApplySuccess';
 import AffiliatePage from './components/landing/AffiliatePage';
-import EventsPage from './components/landing/EventsPage';
-import ChangelogPage from './components/landing/casperos/changelog';
+// Removed CasperOS ChangelogPage import
 import AdminPage from './admin/page';
-import { Tour } from './components/Tour';
-import { QuestModal } from './components/QuestModal';
-import { apiService } from './services/api';
 import { CnsSuccess } from './components/CnsSuccess';
 
 const PublicProfileContainerWrapper: React.FC = () => {
@@ -90,11 +90,30 @@ const App: React.FC = () => {
      System paths (dashboard, internal pages) are ignored here and handled by Auth check below.
   */
   // Check if a path is a reserved system path and should NOT be treated as a public profile
-  const isReservedPath = (path: string) => {
-    const sysPaths = ['/', '/admin', '/pair', '/dashboard', '/login', '/auth', '/settings', '/integrations', '/verify', '/mobile', '/null', '/business', '/anra', '/adevaros', '/casperos', '/careers', '/apply-success', '/affiliate', '/events', '/profile', '/p', '/did', '/cns-success'];
-    const p = path.toLowerCase();
-    return sysPaths.includes(p) || p.startsWith('/verify/') || p.startsWith('/mobile/') || p.startsWith('/business/') || p.startsWith('/careers/') || p.startsWith('/profile/') || p.startsWith('/p/') || p.startsWith('/did/') || p === '/null' || p === '/cns-success';
-  };
+    const isReservedPath = (path: string) => {
+        const p = path.toLowerCase();
+        const sysPaths = [
+            '/', '/login', '/signup', '/verify', '/dashboard', '/profile',
+            '/admin', '/settings', '/activity', '/market', '/verify-zk',
+            '/share-view', '/verification-center', '/explore', '/health',
+            '/pair', '/auth', '/integrations', '/mobile', '/null', '/business',
+            '/careers', '/apply-success',
+            '/affiliate', '/p', '/did', '/cns-success'
+        ];
+        return sysPaths.includes(p) ||
+            p.startsWith('/verify/') ||
+            p.startsWith('/verify-zk') ||
+            p.startsWith('/verify-zk') ||
+            p.startsWith('/share-view') ||
+            p.startsWith('/cns-profile/') ||
+            p.startsWith('/u/') ||
+            p.startsWith('/mobile/') ||
+            p.startsWith('/business/') ||
+            p.startsWith('/careers/') ||
+            p.startsWith('/profile/') ||
+            p.startsWith('/p/') ||
+            p.startsWith('/did/');
+    };
 
   const location = useLocation();
   const navigate = useNavigate();
@@ -106,14 +125,12 @@ const App: React.FC = () => {
 
     // Check for explicit system routes
     if (path === '/') return 'landing';
-    if (path === '/anra' || path === '/adevaros' || path === '/casperos') return 'landing';
     if (path === '/admin') return 'admin';
     if (path === '/pair' || (path === '/dashboard' && !viewParam)) return 'dashboard-home';
     if (path === '/dashboard' && viewParam) return viewParam;
     if (path === '/careers' || path.startsWith('/careers/')) return 'careers';
     if (path === '/apply-success') return 'apply-success';
     if (path === '/affiliate') return 'affiliate';
-    if (path === '/events') return 'events';
     if (path === '/profile' || path.startsWith('/profile/')) return 'public-profile';
     if (path === '/cns-success') return 'cns-success';
 
@@ -121,8 +138,14 @@ const App: React.FC = () => {
     const subdomain = getSubdomain();
     if (subdomain) return 'public-profile';
 
+    // Check for ZK claims verification route (supports /verify-zk and /verify-zk/{proofId})
+    if (path === '/verify-zk' || path.startsWith('/verify-zk/') || path.startsWith('/verify-zk?')) return 'verify-zk-claims';
+
     // Check for credential verification route
     if (path.startsWith('/verify/')) return 'verify-credential';
+
+    // Check for share data view route (supports /share-view and /share-view/{shareId})
+    if (path === '/share-view' || path.startsWith('/share-view/') || path.startsWith('/share-view?')) return 'verify-share-data';
 
     // Check for vanity verification route: e.g. /alice.cid/verify/hash
     if (path.match(/^\/([^\/]+)\/verify\/([^\/]+)$/)) return 'verify-credential';
@@ -165,20 +188,18 @@ const App: React.FC = () => {
   const [isConnectWalletOpen, setIsConnectWalletOpen] = useState(false);
   const [isMobileDrawerOpen, setIsMobileDrawerOpen] = useState(false);
   const [isScannerOpen, setIsScannerOpen] = useState(false);
-  const { user, isLoading, isAuthenticated, refreshUser } = useAuth();
+  const [appMetadata, setAppMetadata] = useState<{ name: string; logo_url: string; theme?: any } | null>(null);
   const [runTour, setRunTour] = useState(false);
   const [isQuestModalOpen, setIsQuestModalOpen] = useState(false);
   const [showHumanFirstCard, setShowHumanFirstCard] = useState(true);
   const [showQuestTourCard, setShowQuestTourCard] = useState(true);
+  const { user, isLoading, isAuthenticated, refreshUser } = useAuth();
 
   // --- Page Title Logic ---
   const getPageTitle = () => {
     const path = location.pathname;
 
     // Specific Landing Pages
-    if (path === '/anra' || path === '/adevaros' || path === '/casperos') {
-      return 'anra by CasperID - anra | All-in-One Restaurant Operating System';
-    }
     if (path === '/careers') {
       return 'CasperID | Join the Team';
     }
@@ -188,17 +209,14 @@ const App: React.FC = () => {
     if (path === '/apply-success') {
       return 'Success! | Careers | CasperID';
     }
-    if (path === '/changelog') {
-      return 'Changelog | CasperID';
-    }
-    if (path === '/events') {
-      return 'Events | CasperID';
-    }
+    // Changelog title removed as it moved to anra.rest
 
     // Dynamic Route placeholders (Hooks in components will handle more specific titles)
     if (path.startsWith('/careers/')) return 'Position Details | Careers | CasperID';
     if (path.startsWith('/profile/')) return 'Public Profile | CasperID';
-    if (path.startsWith('/verify/')) return 'Verify Credential | CasperID';
+    if (path.startsWith('/verify-zk')) return 'Verify ZK Proof | CasperID';
+    if (path.startsWith('/share-view')) return 'View Shared Data | CasperID';
+
 
     // Dashboard Internal States
     if (path === '/dashboard') {
@@ -286,12 +304,35 @@ const App: React.FC = () => {
     }
   }, [user]);
 
+  // Fetch App Metadata if app_id is present in URL
+  useEffect(() => {
+    const searchParams = new URLSearchParams(location.search);
+    const appId = searchParams.get('app_id');
+    
+    if (appId) {
+      const fetchMetadata = async () => {
+        try {
+          const { apiService } = await import('./services/api');
+          const response = await apiService.getAppMetadata(appId);
+          if (response.success && response.app) {
+            setAppMetadata(response.app);
+          }
+        } catch (error) {
+          console.error('Failed to fetch app metadata:', error);
+        }
+      };
+      fetchMetadata();
+    } else {
+      setAppMetadata(null);
+    }
+  }, [location.search]);
+
   // Set initial view based on authentication and completion state
   React.useEffect(() => {
     if (isLoading) return;
 
     // If we are viewing a public profile, landing page, or credential verification, DO NOT redirect based on auth
-    if (['public-profile', 'landing', 'admin', 'verify-credential'].includes(currentView)) {
+    if (['public-profile', 'landing', 'admin', 'verify-credential', 'verify-zk-claims', 'verify-share-data'].includes(currentView)) {
       return;
     }
 
@@ -315,7 +356,7 @@ const App: React.FC = () => {
         }
       } else {
         // New user - start with email entry
-        const isDashboardView = !['landing', 'public-profile', 'verify-credential', 'auth-entry', 'otp-verify', 'onboarding-start', 'onboarding-progress', 'pairing', 'loading', 'handoff'].includes(currentView);
+        const isDashboardView = !['landing', 'public-profile', 'verify-credential', 'verify-zk-claims', 'verify-share-data', 'auth-entry', 'otp-verify', 'onboarding-start', 'onboarding-progress', 'pairing', 'loading', 'handoff'].includes(currentView);
         if (isDashboardView) {
           setCurrentView('auth-entry');
         }
@@ -366,7 +407,7 @@ const App: React.FC = () => {
     setCurrentView('auth-entry');
   }, []);
 
-  const handleToOverview = useCallback(() => {
+  const handleToOverview = useCallback((sessionData?: any) => {
     setCurrentView('overview');
   }, []);
 
@@ -395,17 +436,8 @@ const App: React.FC = () => {
     }
   }, []);
 
-  const handleTourFinish = async () => {
-    setRunTour(false);
-    if (user) {
-      // Refresh user to get updated tour_completed status
-      await refreshUser();
-      // Open quest modal so user can manually claim the tour quest
-      setIsQuestModalOpen(true);
-    }
-  };
-
-  const handleVerificationUpgrade = useCallback((nextLevel: 'layer_1' | 'layer_2' | 'layer_3') => {
+  const handleVerificationUpgrade = useCallback((nextLevel?: 'layer_1' | 'layer_2' | 'layer_3') => {
+    if (!nextLevel) return;
     switch (nextLevel) {
       case 'layer_1':
         // Navigate to email verification flow
@@ -452,6 +484,8 @@ const App: React.FC = () => {
             onEmailSubmit={handleEmailSubmit}
             onReturningUser={handleToOverview}
             onBiometricLogin={handleBiometricLogin}
+            appLogo={appMetadata?.logo_url}
+            appName={appMetadata?.name}
           />
         );
       case 'otp-verify':
@@ -576,6 +610,10 @@ const App: React.FC = () => {
         return publicProfileSlug ? <PublicProfileContainer walletOrUsername={publicProfileSlug} /> : <div>Invalid Profile</div>;
       case 'verify-credential':
         return credentialHash ? <VerifyCredentialPage credentialHash={credentialHash} /> : <div>Invalid Credential</div>;
+      case 'verify-zk-claims':
+        return <VerifyZKClaimsPage />;
+      case 'verify-share-data':
+        return <SharedDataView />;
       case 'admin':
         return <AdminPage />;
       case 'careers':
@@ -595,8 +633,6 @@ const App: React.FC = () => {
         return <ApplySuccessPage onReturnToCareers={() => navigate('/careers')} />;
       case 'affiliate':
         return <AffiliatePage />;
-      case 'events':
-        return <EventsPage />;
       case 'cns-success':
         return <CnsSuccess />;
       case 'landing':
@@ -674,31 +710,14 @@ const App: React.FC = () => {
               </div>
               <div className="flex flex-col gap-8">
                 <ReusableTools />
+                <HumanFirstIdentity onNavigate={setCurrentView} />
               </div>
-            </div>
-
-            {/* Floating Stacked Cards - Layered Priority */}
-            <div className="hidden md:flex fixed bottom-8 right-8 z-50 flex-col gap-4 w-[360px]">
-              {showQuestTourCard ? (
-                <QuestTourCard
-                  onAction={() => setIsQuestModalOpen(true)}
-                  onClose={() => setShowQuestTourCard(false)}
-                />
-              ) : showHumanFirstCard ? (
-                <HumanFirstIdentity
-                  onNavigate={setCurrentView}
-                  onClose={() => setShowHumanFirstCard(false)}
-                />
-              ) : null}
             </div>
 
             {/* Desktop Activity Log Summary */}
             <div className="hidden md:block">
               <RecentActivity />
             </div>
-
-            {/* Tour Component */}
-            <Tour run={runTour} onFinish={handleTourFinish} />
           </div>
         );
     }
@@ -709,7 +728,7 @@ const App: React.FC = () => {
     : currentView;
 
   // Don't show layout chrome during onboarding, public profile view, landing, admin, or credential verification
-  const isOnboarding = currentView === 'public-profile' || currentView === 'landing' || currentView === 'admin' || currentView === 'verify-credential' || currentView === 'auth-entry' || currentView === 'otp-verify' || currentView === 'onboarding-start' || currentView === 'onboarding-progress' || currentView === 'pairing' || currentView === 'handoff' || currentView.startsWith('business');
+  const isOnboarding = currentView === 'public-profile' || currentView === 'landing' || currentView === 'admin' || currentView === 'verify-credential' || currentView === 'verify-zk-claims' || currentView === 'verify-share-data' || currentView === 'auth-entry' || currentView === 'otp-verify' || currentView === 'onboarding-start' || currentView === 'onboarding-progress' || currentView === 'pairing' || currentView === 'handoff' || currentView.startsWith('business');
 
   if (isLoading) {
     return <AppLoadingSplash />;
@@ -718,17 +737,16 @@ const App: React.FC = () => {
   return (
     <>
       <Routes>
-        <Route path="/anra" element={<LandingPage initialView="anra" />} />
-        <Route path="/adevaros" element={<Navigate to="/anra" replace />} />
-        <Route path="/casperos" element={<Navigate to="/anra" replace />} />
         <Route path="/admin" element={<AdminPage />} />
-        <Route path="/changelog" element={<ChangelogPage />} />
+        <Route path="/changelog" element={<Navigate to="https://www.anra.rest/changelog" replace />} />
+        <Route path="/anra" element={<Navigate to="https://www.anra.rest" replace />} />
+        <Route path="/adevaros" element={<Navigate to="https://www.anra.rest" replace />} />
+        <Route path="/casperos" element={<Navigate to="https://www.anra.rest" replace />} />
         <Route path="/business/*" element={<BusinessPlatform />} />
         <Route path="/careers" element={<CareersPage onJobClick={(slug) => navigate(`/careers/${slug}`)} />} />
         <Route path="/careers/:id" element={<CareerDetailPage onBack={() => navigate('/careers')} onApplySuccess={(jobTitle) => navigate('/apply-success', { state: { jobTitle } })} />} />
         <Route path="/apply-success" element={<ApplySuccessPage onReturnToCareers={() => navigate('/careers')} />} />
         <Route path="/affiliate" element={<AffiliatePage />} />
-        <Route path="/events" element={<EventsPage />} />
         <Route path="/profile/:slug" element={<PublicProfileContainerWrapper />} />
         <Route path="/did/*" element={<DIDProfileWrapper />} />
         <Route path="/p/:slug" element={<PRouteRedirect />} />
@@ -764,6 +782,21 @@ const App: React.FC = () => {
                   </main>
                 </div>
                 <BottomNav currentView={currentView} onNavigate={setCurrentView} />
+
+                {/* Floating Quest Card - Desktop */}
+                <div className="hidden md:flex fixed bottom-8 right-8 z-50 flex-col gap-4 w-[360px]">
+                  {showQuestTourCard ? (
+                    <QuestTourCard
+                      onAction={() => setIsQuestModalOpen(true)}
+                      onClose={() => setShowQuestTourCard(false)}
+                    />
+                  ) : showHumanFirstCard ? (
+                    <HumanFirstIdentity
+                      onNavigate={setCurrentView}
+                      onClose={() => setShowHumanFirstCard(false)}
+                    />
+                  ) : null}
+                </div>
               </>
             ) : (
               <main className="bg-bg-light min-h-screen w-full">{renderContent()}</main>
@@ -818,6 +851,21 @@ const App: React.FC = () => {
                 </div>
 
                 <BottomNav currentView={currentView} onNavigate={setCurrentView} />
+
+                {/* Floating Quest Card - Desktop */}
+                <div className="hidden md:flex fixed bottom-8 right-8 z-50 flex-col gap-4 w-[360px]">
+                  {showQuestTourCard ? (
+                    <QuestTourCard
+                      onAction={() => setIsQuestModalOpen(true)}
+                      onClose={() => setShowQuestTourCard(false)}
+                    />
+                  ) : showHumanFirstCard ? (
+                    <HumanFirstIdentity
+                      onNavigate={setCurrentView}
+                      onClose={() => setShowHumanFirstCard(false)}
+                    />
+                  ) : null}
+                </div>
               </>
             ) : (
               <main className="bg-bg-light min-h-screen w-full">{renderContent()}</main>
@@ -826,12 +874,21 @@ const App: React.FC = () => {
         } />
       </Routes>
 
+      {/* Tour Component */}
+      <Tour run={runTour} onFinish={async () => {
+        setRunTour(false);
+        if (user) {
+          await refreshUser();
+          setIsQuestModalOpen(true);
+        }
+      }} />
+
       {/* Modal Components */}
       <ConsentRequestModal
         isOpen={isConsentModalOpen}
         onClose={() => setIsConsentModalOpen(false)}
-        appName="CasperSwap"
-        appLogo="https://casperswap.xyz/logo.png"
+        appName={appMetadata?.name || "CasperSwap"}
+        appLogo={appMetadata?.logo_url || "https://casperswap.xyz/logo.png"}
         onApprove={() => {
           setIsConsentModalOpen(false);
         }}
@@ -873,12 +930,6 @@ const App: React.FC = () => {
         }}
       />
 
-      <QuestModal
-        isOpen={isQuestModalOpen}
-        onClose={() => setIsQuestModalOpen(false)}
-        onStartTour={() => setRunTour(true)}
-      />
-
       <MobileNavigationDrawer
         isOpen={isMobileDrawerOpen}
         onClose={() => setIsMobileDrawerOpen(false)}
@@ -889,6 +940,12 @@ const App: React.FC = () => {
       <QRScannerModal
         isOpen={isScannerOpen}
         onClose={() => setIsScannerOpen(false)}
+      />
+
+      <QuestModal
+        isOpen={isQuestModalOpen}
+        onClose={() => setIsQuestModalOpen(false)}
+        onStartTour={() => setRunTour(true)}
       />
 
       {/* OTP Pairing Notification for Extension */}

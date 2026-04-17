@@ -4,13 +4,15 @@ import { Button } from '../components/ui/button';
 import { Card } from '../components/ui/card';
 import { Input } from '../components/ui/input';
 import { Badge } from '../components/ui/badge';
-import { Loader2, CheckCircle, XCircle, Clock, Shield, Bolt } from 'lucide-react';
+import { Loader2, CheckCircle, XCircle, Clock } from 'lucide-react';
 import RequestDetailsModal from './components/request-detail-modal';
-import { QuestManager } from './components/quest-manager';
 
 interface VerificationRequest {
     id: string;
-    wallet: string;
+    request_id?: string; // V2 requests have this
+    source?: 'v1' | 'v2'; // To identify request type
+    wallet: string | null;
+    user_id?: string;
     tier: string;
     email?: string;
     status: string;
@@ -22,6 +24,13 @@ interface VerificationRequest {
     name?: string;
     metadata?: any;
     cns_name?: string;
+    // V2 specific fields (directly on request, not in metadata)
+    document_type?: string;
+    document_number?: string;
+    liveness_verified?: boolean;
+    upload_id?: string;
+    front_image_url?: string;
+    back_image_url?: string;
     [key: string]: any;
 }
 
@@ -35,7 +44,8 @@ export default function AdminDashboard() {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
     const [filter, setFilter] = useState<'all' | 'pending' | 'approved' | 'rejected'>('pending');
-    const [activeTab, setActiveTab] = useState<'verifications' | 'quests'>('verifications');
+    const [rejectingRequest, setRejectingRequest] = useState<VerificationRequest | null>(null);
+    const [rejectionReason, setRejectionReason] = useState('');
 
     const handleLogin = async () => {
         if (username && password) {
@@ -72,16 +82,35 @@ export default function AdminDashboard() {
         }
     };
 
-    const handleAction = async (requestId: string, approve: boolean) => {
+    const handleAction = async (request: VerificationRequest, approve: boolean, reason?: string) => {
         if (!token) return;
 
+        // If rejecting without reason, show the rejection modal
+        if (!approve && !reason) {
+            setRejectingRequest(request);
+            return;
+        }
+
         try {
-            await apiClient.issueCredential(token, requestId, approve);
+            // Use request_id for V2, id for V1
+            const requestId = request.source === 'v2' ? (request.request_id || request.id) : request.id;
+            await apiClient.issueCredential(token, requestId, approve, request.source, reason);
             alert(`Request ${approve ? 'approved' : 'rejected'} successfully!`);
+            setRejectingRequest(null);
+            setRejectionReason('');
+            setSelectedRequest(null);
             fetchRequests(token);
         } catch (err: any) {
             alert(err.message || 'Failed to process request');
         }
+    };
+
+    const handleRejectConfirm = () => {
+        if (!rejectingRequest || !rejectionReason.trim()) {
+            alert('Please provide a reason for rejection');
+            return;
+        }
+        handleAction(rejectingRequest, false, rejectionReason);
     };
 
     useEffect(() => {
@@ -144,156 +173,172 @@ export default function AdminDashboard() {
                     </Button>
                 </div>
 
-                {/* Navigation Tabs */}
-                <div className="flex gap-4 border-b border-white/10 mb-2">
-                    <button
-                        onClick={() => setActiveTab('verifications')}
-                        className={`pb-4 px-2 text-sm font-bold transition-all flex items-center gap-2 ${activeTab === 'verifications' ? 'text-purple-400 border-b-2 border-purple-400' : 'text-gray-400 hover:text-white'}`}
-                    >
-                        <Shield className="w-4 h-4" />
-                        Verification Requests
-                    </button>
-                    <button
-                        onClick={() => setActiveTab('quests')}
-                        className={`pb-4 px-2 text-sm font-bold transition-all flex items-center gap-2 ${activeTab === 'quests' ? 'text-purple-400 border-b-2 border-purple-400' : 'text-gray-400 hover:text-white'}`}
-                    >
-                        <Bolt className="w-4 h-4" />
-                        Manage Quests
-                    </button>
-                </div>
+                {/* Filters */}
+                <Card className="p-4 bg-white/10 backdrop-blur-lg border-white/20">
+                    <div className="flex gap-2">
+                        {['all', 'pending', 'approved', 'rejected'].map((f) => (
+                            <Button
+                                key={f}
+                                onClick={() => setFilter(f as any)}
+                                variant={filter === f ? 'default' : 'outline'}
+                                className={
+                                    filter === f
+                                        ? 'bg-purple-600 hover:bg-purple-700 border-transparent text-white'
+                                        : 'bg-transparent border-white/20 text-white hover:bg-white/10'
+                                }
+                            >
+                                {f.charAt(0).toUpperCase() + f.slice(1)}
+                            </Button>
+                        ))}
+                        <Button
+                            onClick={() => fetchRequests(token)}
+                            variant="outline"
+                            className="ml-auto bg-transparent border-white/20 text-white hover:bg-white/10"
+                        >
+                            {loading ? <Loader2 className="w-4 h-4 animate-spin text-white" /> : 'Refresh'}
+                        </Button>
+                    </div>
+                </Card>
 
-                {activeTab === 'verifications' ? (
-                    <>
-                        {/* Filters */}
-                        <Card className="p-4 bg-white/10 backdrop-blur-lg border-white/20">
-                            <div className="flex gap-2">
-                                {['all', 'pending', 'approved', 'rejected'].map((f) => (
-                                    <Button
-                                        key={f}
-                                        onClick={() => setFilter(f as any)}
-                                        variant={filter === f ? 'default' : 'outline'}
-                                        className={
-                                            filter === f
-                                                ? 'bg-purple-600 hover:bg-purple-700 border-transparent text-white'
-                                                : 'bg-transparent border-white/20 text-white hover:bg-white/10'
-                                        }
-                                    >
-                                        {f.charAt(0).toUpperCase() + f.slice(1)}
-                                    </Button>
-                                ))}
-                                <Button
-                                    onClick={() => fetchRequests(token)}
-                                    variant="outline"
-                                    className="ml-auto bg-transparent border-white/20 text-white hover:bg-white/10"
+                {/* Error Message */}
+                {error && (
+                    <div className="p-4 bg-red-500/20 border border-red-500/30 rounded text-red-300">
+                        {error}
+                    </div>
+                )}
+
+                {/* Requests Table */}
+                <Card className="p-6 bg-white/10 backdrop-blur-lg border-white/20">
+                    <h2 className="text-xl font-bold text-white mb-4">Verification Requests</h2>
+
+                    {loading ? (
+                        <div className="flex items-center justify-center py-8">
+                            <Loader2 className="w-8 h-8 text-purple-400 animate-spin" />
+                        </div>
+                    ) : requests.length === 0 ? (
+                        <p className="text-gray-400 text-center py-8">No requests found</p>
+                    ) : (
+                        <div className="space-y-3">
+                            {requests.map((request) => (
+                                <div
+                                    key={request.id}
+                                    className="p-4 bg-slate-800/50 rounded-lg border border-slate-700"
                                 >
-                                    {loading ? <Loader2 className="w-4 h-4 animate-spin text-white" /> : 'Refresh'}
+                                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-center">
+                                        <div className="md:col-span-2">
+                                            <p className="text-xs text-gray-400">Wallet</p>
+                                            <p className="text-white font-mono text-sm break-all">
+                                                {request.wallet}
+                                            </p>
+                                            {request.email && (
+                                                <p className="text-xs text-gray-400 mt-1">{request.email}</p>
+                                            )}
+                                        </div>
+
+                                        <div>
+                                            <p className="text-xs text-gray-400">Tier</p>
+                                            <Badge className="bg-blue-500/20 text-blue-300 border-blue-500/30 mt-1">
+                                                {request.tier}
+                                            </Badge>
+                                        </div>
+
+                                        <div className="flex items-center gap-2 justify-end">
+                                            <Button
+                                                onClick={() => setSelectedRequest(request)}
+                                                size="sm"
+                                                className="bg-purple-600/20 text-purple-300 hover:bg-purple-600/40 border border-purple-500/30"
+                                            >
+                                                Details
+                                            </Button>
+
+                                            {(request.status === 'pending' || request.status === 'in_progress') ? (
+                                                <>
+                                                    <Button
+                                                        onClick={() => handleAction(request, true)}
+                                                        size="sm"
+                                                        className="bg-green-600 hover:bg-green-700"
+                                                    >
+                                                        <CheckCircle className="w-4 h-4 mr-1" />
+                                                        Approve
+                                                    </Button>
+                                                    <Button
+                                                        onClick={() => handleAction(request, false)}
+                                                        size="sm"
+                                                        variant="outline"
+                                                        className="border-red-500/30 text-red-300 hover:bg-red-500/20"
+                                                    >
+                                                        <XCircle className="w-4 h-4 mr-1" />
+                                                        Reject
+                                                    </Button>
+                                                </>
+                                            ) : (
+                                                <Badge
+                                                    className={
+                                                        request.status === 'approved'
+                                                            ? 'bg-green-500/20 text-green-300 border-green-500/30'
+                                                            : 'bg-red-500/20 text-red-300 border-red-500/30'
+                                                    }
+                                                >
+                                                    {request.status}
+                                                </Badge>
+                                            )}
+                                        </div>
+                                    </div>
+
+                                    <p className="text-xs text-gray-500 mt-2">
+                                        Created: {new Date(request.created_at).toLocaleString()}
+                                    </p>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                </Card>
+
+                {selectedRequest && (
+                    <RequestDetailsModal
+                        isOpen={!!selectedRequest}
+                        onClose={() => setSelectedRequest(null)}
+                        request={selectedRequest}
+                        onAction={(approve) => handleAction(selectedRequest, approve)}
+                    />
+                )}
+
+                {/* Rejection Reason Modal */}
+                {rejectingRequest && (
+                    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+                        <Card className="p-6 max-w-md w-full bg-slate-800 border-slate-700">
+                            <h3 className="text-xl font-bold text-white mb-4">Reject Verification</h3>
+                            <p className="text-gray-300 mb-4">
+                                Please provide a reason for rejecting this verification request.
+                                This will be sent to the user.
+                            </p>
+                            <textarea
+                                value={rejectionReason}
+                                onChange={(e) => setRejectionReason(e.target.value)}
+                                placeholder="e.g., Document image is blurry and unreadable..."
+                                className="w-full p-3 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder:text-gray-500 min-h-[100px] mb-4"
+                            />
+                            <div className="flex gap-3 justify-end">
+                                <Button
+                                    onClick={() => {
+                                        setRejectingRequest(null);
+                                        setRejectionReason('');
+                                    }}
+                                    variant="outline"
+                                    className="bg-transparent border-white/20 text-white hover:bg-white/10"
+                                >
+                                    Cancel
+                                </Button>
+                                <Button
+                                    onClick={handleRejectConfirm}
+                                    disabled={!rejectionReason.trim()}
+                                    className="bg-red-600 hover:bg-red-700 disabled:opacity-50"
+                                >
+                                    Confirm Rejection
                                 </Button>
                             </div>
                         </Card>
-
-                        {/* Error Message */}
-                        {error && (
-                            <div className="p-4 bg-red-500/20 border border-red-500/30 rounded text-red-300">
-                                {error}
-                            </div>
-                        )}
-
-                        {/* Requests Table */}
-                        <Card className="p-6 bg-white/10 backdrop-blur-lg border-white/20">
-                            <h2 className="text-xl font-bold text-white mb-4">Verification Requests</h2>
-
-                            {loading ? (
-                                <div className="flex items-center justify-center py-8">
-                                    <Loader2 className="w-8 h-8 text-purple-400 animate-spin" />
-                                </div>
-                            ) : requests.length === 0 ? (
-                                <p className="text-gray-400 text-center py-8">No requests found</p>
-                            ) : (
-                                <div className="space-y-3">
-                                    {requests.map((request) => (
-                                        <div
-                                            key={request.id}
-                                            className="p-4 bg-slate-800/50 rounded-lg border border-slate-700"
-                                        >
-                                            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-center">
-                                                <div className="md:col-span-2">
-                                                    <p className="text-xs text-gray-400">Wallet</p>
-                                                    <p className="text-white font-mono text-sm break-all">
-                                                        {request.wallet}
-                                                    </p>
-                                                    {request.email && (
-                                                        <p className="text-xs text-gray-400 mt-1">{request.email}</p>
-                                                    )}
-                                                </div>
-
-                                                <div>
-                                                    <p className="text-xs text-gray-400">Tier</p>
-                                                    <Badge className="bg-blue-500/20 text-blue-300 border-blue-500/30 mt-1">
-                                                        {request.tier}
-                                                    </Badge>
-                                                </div>
-
-                                                <div className="flex items-center gap-2 justify-end">
-                                                    <Button
-                                                        onClick={() => setSelectedRequest(request)}
-                                                        size="sm"
-                                                        className="bg-purple-600/20 text-purple-300 hover:bg-purple-600/40 border border-purple-500/30"
-                                                    >
-                                                        Details
-                                                    </Button>
-
-                                                    {request.status === 'pending' ? (
-                                                        <>
-                                                            <Button
-                                                                onClick={() => handleAction(request.id, true)}
-                                                                size="sm"
-                                                                className="bg-green-600 hover:bg-green-700"
-                                                            >
-                                                                <CheckCircle className="w-4 h-4 mr-1" />
-                                                                Approve
-                                                            </Button>
-                                                            <Button
-                                                                onClick={() => handleAction(request.id, false)}
-                                                                size="sm"
-                                                                variant="outline"
-                                                                className="border-red-500/30 text-red-300 hover:bg-red-500/20"
-                                                            >
-                                                                <XCircle className="w-4 h-4 mr-1" />
-                                                                Reject
-                                                            </Button>
-                                                        </>
-                                                    ) : (
-                                                        <Badge
-                                                            className={
-                                                                request.status === 'approved'
-                                                                    ? 'bg-green-500/20 text-green-300 border-green-500/30'
-                                                                    : 'bg-red-500/20 text-red-300 border-red-500/30'
-                                                            }
-                                                        >
-                                                            {request.status}
-                                                        </Badge>
-                                                    )}
-                                                </div>
-                                            </div>
-
-                                            <p className="text-xs text-gray-500 mt-2">
-                                                Created: {new Date(request.created_at).toLocaleString()}
-                                            </p>
-                                        </div>
-                                    ))}
-                                </div>
-                            )}
-                        </Card>
-
-                        <RequestDetailsModal
-                            isOpen={!!selectedRequest}
-                            onClose={() => setSelectedRequest(null)}
-                            request={selectedRequest}
-                            onAction={(approve) => handleAction(selectedRequest!.id, approve)}
-                        />
-                    </>
-                ) : (
-                    <QuestManager />
+                    </div>
                 )}
             </div>
         </div>

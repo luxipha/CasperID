@@ -1,0 +1,79 @@
+<mjml>
+  <mj-head>
+    <mj-title>Someone checked you out - CasperID</mj-title>
+    <mj-font name="Plus Jakarta Sans" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;700;800&display=swap" />
+    <mj-attributes>
+      <mj-all font-family="Plus Jakarta Sans, Inter, Arial, sans-serif" />
+      <mj-text font-size="16px" color="#626D85" line-height="1.6" />
+      <mj-button background-color="#8652E2" color="white" border-radius="12px" font-weight="800" font-size="16px" inner-padding="16px 32px" />
+    </mj-attributes>
+    <mj-style>
+      .logo-text { font-weight: 800; font-size: 24px; color: #1A1A2E; }
+      .hero-title { font-size: 28px; font-weight: 800; color: #1A1A2E; }
+    </mj-style>
+  </mj-head>
+  <mj-body background-color="#F8F9FF">
+    
+    <!-- Header -->
+    <mj-section padding="40px 20px 30px">
+      <mj-column>
+        <mj-image src="https://www.casperid.com/logos/logo.png" width="48px" align="center" padding-bottom="12px" />
+        <mj-text align="center" padding-top="0">
+          <span style="font-weight: 800; font-size: 24px; color: #1A1A2E;">Casper<span style="color: #9333EA;">ID</span></span><br />
+          <span style="font-size: 12px; color: #626D85; font-weight: 600; text-transform: uppercase; letter-spacing: 1px;">Verify once. Reuse everywhere.</span>
+        </mj-text>      </mj-column>
+    </mj-section>
+    
+    <!-- Main Card -->
+    <mj-section padding="0 20px 40px">
+      <mj-column background-color="#ffffff" border-radius="24px" padding="50px 40px" border="1px solid #E5E7EB">
+        
+        <mj-text align="center" padding-bottom="10px">
+          <span style="font-size: 48px;">👀</span>
+        </mj-text>
+        
+        <mj-text align="center" padding-bottom="20px">
+          <span class="hero-title">Someone checked you out</span>
+        </mj-text>
+
+        <mj-text align="center" padding-bottom="20px">
+          {DATA_VARIABLE:recipientName}, heads up — {DATA_VARIABLE:viewerName} just viewed your CasperID profile.
+        </mj-text>
+
+        <mj-text align="center" padding-bottom="30px">
+          That's your verified identity doing its job. The more complete and verified your profile, the more trust you build with everyone who lands on it.
+        </mj-text>
+        
+        <mj-button href="{DATA_VARIABLE:profileUrl}">
+          See Your Profile
+        </mj-button>
+        
+        <mj-spacer height="40px" />
+        
+        <mj-divider border-width="1px" border-color="#F3F4F6" />
+        
+        <mj-text font-size="14px" font-weight="700" color="#1A1A2E" text-transform="uppercase" letter-spacing="1px" padding-top="30px">
+          Make it count
+        </mj-text>
+
+        <mj-text padding-top="10px">
+          • A complete profile stands out. Fill in the gaps if you haven't.<br/>
+          • Higher verification tiers signal trust. Consider leveling up.<br/>
+          • Share your profile link — let your reputation travel with you.
+        </mj-text>
+        
+      </mj-column>
+    </mj-section>
+    
+    <!-- Footer -->
+    <mj-section padding="0 20px 40px">
+      <mj-column>
+        <mj-text align="center" font-size="12px" color="#9CA3AF">
+          You are receiving this because profile notifications are enabled in your CasperID settings.<br/>
+          © 2026 CasperID Protocol. Secure. Private. Yours.
+        </mj-text>
+      </mj-column>
+    </mj-section>
+    
+  </mj-body>
+</mjml>

@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const {
-    VerificationRequest, Credential, UserProfile,
+    VerificationRequest, VerificationRequestV2, Credential, UserProfile, UserAccount,
     Experience, Education, Certification, Skill, Project, Award, Language, Volunteer
 } = require('../database/models');
 const { walletToHuman, findWalletByHumanId, isFullWallet, isAccountHash, isHumanId, getHumanIdForWallet } = require('../utils/wallet-to-human');
@@ -271,10 +271,29 @@ router.get('/identity-status', async (req, res) => {
         }
 
         // Check for pending verification requests (for both new users and upgrades)
-        const pendingRequest = await VerificationRequest.findOne({
+        // Check V1 (legacy) requests
+        const pendingRequestV1 = await VerificationRequest.findOne({
             wallet: searchWallet,
             status: 'pending'
-        }).sort({ created_at: -1 }); // Get the most recent pending request
+        }).sort({ created_at: -1 });
+
+        // Check V2 requests - need to find user_id from UserAccount first
+        let pendingRequestV2 = null;
+        const userAccount = await UserAccount.findOne({ wallet: searchWallet });
+        if (userAccount) {
+            pendingRequestV2 = await VerificationRequestV2.findOne({
+                user_id: userAccount.user_id,
+                status: { $in: ['pending', 'in_progress'] }
+            }).sort({ created_at: -1 });
+        }
+
+        // Use whichever pending request exists (V2 takes priority as it's newer)
+        const pendingRequest = pendingRequestV2 || pendingRequestV1;
+
+        // Normalize tier field (V2 uses verification_tier, V1 uses tier)
+        const pendingTier = pendingRequestV2
+            ? pendingRequestV2.verification_tier
+            : (pendingRequestV1 ? pendingRequestV1.tier : null);
 
         if (!credential) {
             // Even unverified users should get human_id
@@ -291,11 +310,11 @@ router.get('/identity-status', async (req, res) => {
                 wallet,
                 human_id: humanId,
                 verified: false,
-                tier: pendingRequest ? pendingRequest.tier : null,
+                tier: pendingTier,
                 status: pendingRequest ? pendingRequest.status : null,
                 last_kyc_at: null,
                 last_liveness_at: null,
-                liveness_completed_at: pendingRequest && pendingRequest.metadata?.liveness_completed_at ? pendingRequest.metadata.liveness_completed_at : null,
+                liveness_completed_at: pendingRequest && (pendingRequest.metadata?.liveness_completed_at || pendingRequest.verification_data?.liveness_completed_at) ? (pendingRequest.metadata?.liveness_completed_at || pendingRequest.verification_data?.liveness_completed_at) : null,
                 issuer: null,
                 pending_request: !!pendingRequest,
                 request_status: pendingRequest ? pendingRequest.status : null
@@ -360,10 +379,10 @@ router.get('/identity-status', async (req, res) => {
             verified: !!credential,
             tier: credential ? credential.tier : null,
             status: pendingRequest ? pendingRequest.status : (credential ? 'approved' : null),
-            pending_upgrade_tier: pendingRequest ? pendingRequest.tier : null,
+            pending_upgrade_tier: pendingTier,
             last_kyc_at: credential ? credential.last_kyc_at : null,
             last_liveness_at: credential ? credential.last_liveness_at : null,
-            liveness_completed_at: pendingRequest && pendingRequest.metadata?.liveness_completed_at ? pendingRequest.metadata.liveness_completed_at : null,
+            liveness_completed_at: pendingRequest && (pendingRequest.metadata?.liveness_completed_at || pendingRequest.verification_data?.liveness_completed_at) ? (pendingRequest.metadata?.liveness_completed_at || pendingRequest.verification_data?.liveness_completed_at) : null,
             issuer: credential ? credential.issuer_id : null,
             pending_request: !!pendingRequest,
             request_status: pendingRequest ? pendingRequest.status : null,

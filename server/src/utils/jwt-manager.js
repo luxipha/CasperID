@@ -32,7 +32,10 @@ function generateToken(userData, platform) {
         tier: userData.tier,
         sharedData: userData.sharedData || [],
         platform: platform,
-        iss: ISSUER
+        iss: ISSUER,
+        // Internal identifiers for refresh logic
+        email: userData.email,
+        userId: userData.userId || userData.user_id
     };
     return jwt.sign(payload, getCurrentSecret(), { expiresIn: TOKEN_EXPIRATION });
 }

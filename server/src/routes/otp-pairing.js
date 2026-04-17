@@ -65,6 +65,15 @@ router.post('/verify', async (req, res) => {
             userAgent: req.headers['user-agent']
         });
 
+        // Track CasperID Connect login for quest
+        if (result.user?.user_id) {
+            const { UserAccount } = require('../database/models');
+            UserAccount.findOneAndUpdate(
+                { user_id: result.user.user_id },
+                { $set: { casperid_connect_used: true } }
+            ).catch(err => console.error('[OTP-Pairing] Quest tracking failed:', err));
+        }
+
         res.json({
             success: true,
             sessionToken: result.sessionToken,

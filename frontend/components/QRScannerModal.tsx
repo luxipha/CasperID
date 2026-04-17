@@ -56,38 +56,61 @@ export const QRScannerModal: React.FC<QRScannerModalProps> = ({ isOpen, onClose 
             // Check if it's a URL
             let url: URL;
             try {
-                url = new URL(text);
+                const url = new URL(text);
+
+                // Handle both absolute URLs for this origin and specific CasperID domains
+                const isLocalOrigin = url.origin === window.location.origin;
+                const isCasperDomain = url.hostname.includes('casperid.com') ||
+                    url.hostname.includes('ngrok-free.dev') ||
+                    url.hostname.includes('netlify.app') ||
+                    url.hostname.includes('onrender.com');
+
+                if (isLocalOrigin || isCasperDomain) {
+                    const path = url.pathname + url.search;
+                    navigate(path);
+                    onClose();
+                    return;
+                } else {
+                    setError("External sites not supported: " + url.hostname);
+                    setTimeout(() => setError(null), 5000);
+                    return;
+                }
             } catch {
-                // Not a URL, check if it's a relative path or identifier
-                if (text.startsWith('/')) {
-                    navigate(text);
-                    onClose();
-                    return;
-                }
-                // If it's just an identifier (no spaces), try to navigate to it
-                if (!text.includes(' ') && text.length > 0) {
-                    navigate(`/${text}`);
-                    onClose();
-                    return;
-                }
-                throw new Error("Invalid format");
+                // Not a valid absolute URL, let's try other formats
             }
 
-            const hostname = window.location.hostname;
+            // Check if it's a CasperID JSON package
+            try {
+                if (text.startsWith('{')) {
+                    const data = JSON.parse(text);
+                    if (data.type === 'casperid_zk_claims') {
+                        const proofEncoded = encodeURIComponent(text);
+                        navigate(`/verify-zk?proof=${proofEncoded}`);
+                        onClose();
+                        return;
+                    }
+                    if (data.type === 'casperid_share_data' || data.share_id) {
+                        const dataEncoded = encodeURIComponent(text);
+                        navigate(`/share-view?data=${dataEncoded}`);
+                        onClose();
+                        return;
+                    }
+                }
+            } catch (e) {
+                console.warn('Failed to parse scanned JSON:', e);
+            }
 
-            // Match CasperID domains
-            if (url.hostname === hostname ||
-                url.hostname === 'localhost' ||
-                url.hostname.includes('casperid.com') ||
-                url.hostname.includes('ngrok-free.dev')) {
-
-                const path = url.pathname + url.search;
-                navigate(path);
+            // Handle relative paths or simple identifiers (legacy / fallback)
+            // BUT: Don't treat JSON as an identifier/slug
+            if (!text.includes(' ') && text.length > 0 && !text.startsWith('{')) {
+                navigate(`/${text}`);
                 onClose();
-            } else {
-                setError("External sites not supported: " + url.hostname);
-                setTimeout(() => setError(null), 5000);
+                return;
             }
+
+            // If none of the above matched, it's an invalid format
+            throw new Error("Invalid format");
+
         } catch (e) {
             setError("Invalid CasperID code");
             setTimeout(() => setError(null), 3000);

@@ -2,11 +2,6 @@
 
 > **Verify once, reuse everywhere** - A portable, consent-based identity layer for Web2 and Web3 platforms.
 
-[![Next.js](https://img.shields.io/badge/-Next_JS-black?style=for-the-badge&logoColor=white&logo=nextdotjs&color=000000)](https://nextjs.org/)
-[![TypeScript](https://img.shields.io/badge/-TypeScript-black?style=for-the-badge&logoColor=white&logo=typescript&color=3178C6)](https://www.typescriptlang.org/)
-[![Casper](https://img.shields.io/badge/-Casper-black?style=for-the-badge&logoColor=white&logo=casper&color=FF473A)](https://casper.network/)
-[![Gemini](https://img.shields.io/badge/-Gemini_AI-black?style=for-the-badge&logoColor=white&logo=google&color=4285F4)](https://ai.google.dev/)
-
 ## 🎯 Problem
 
 Identity verification is broken — especially in Web3:
@@ -71,12 +66,6 @@ CasperID is a **reusable digital identity layer** that allows users to verify th
 - **Adversarial attack detection** in verification flows
 - **PII encryption** for sensitive data storage
 
-### Observability
-- **Datadog Integration** for comprehensive monitoring:
-  - LLM token usage and cost tracking
-  - Fraud detection and geographic performance
-  - Business KPIs and ML model quality metrics
-  - 7 detection rules for automated incident management
 
 ## 🚀 Quick Start
 

@@ -1,127 +1,184 @@
 const express = require('express');
 const router = express.Router();
-const { UserAccount, Notification, Quest, Credential } = require('../database/models');
-const { requireAuth, adminAuth } = require('../middleware/auth');
+const { UserAccount, Notification, Credential } = require('../database/models');
+const { requireAuth } = require('../middleware/auth');
 const { rateLimitMiddleware } = require('../utils/rate-limiter');
-
-/**
- * Seed initial quests if none exist
- */
-const seedQuests = async () => {
-    try {
-        const count = await Quest.countDocuments();
-        if (count === 0) {
-            const initialQuests = [
-                { quest_id: 'tour_complete', title: 'Complete Onboarding Tour', points: 100, icon: 'map' },
-                { quest_id: 'layer_2_verify', title: 'Complete Liveness Check', points: 500, icon: 'face' },
-                { quest_id: 'cid_register', title: 'Register .cid Name', points: 300, icon: 'badge' },
-                { quest_id: 'persona_create', title: 'Create your first Persona', points: 200, icon: 'person_add' }
-            ];
-            await Quest.insertMany(initialQuests);
-            console.log('✅ [QuestRoute] Initial quests seeded');
-        }
-    } catch (err) {
-        console.error('❌ [QuestRoute] Seeding failed:', err);
-    }
-};
-seedQuests();
+const { QUESTS } = require('../constants/quests');
 
 /**
  * Verify if user has actually completed the quest task
- * @param {string} questId - The quest identifier
- * @param {object} user - The user account document
- * @returns {Promise<{eligible: boolean, reason?: string}>}
  */
 const verifyQuestCompletion = async (questId, user) => {
     switch (questId) {
         case 'tour_complete':
-            // Check if user has completed onboarding tour (tracked in user account)
             if (user.onboarding_completed || user.tour_completed) {
                 return { eligible: true };
             }
             return { eligible: false, reason: 'Complete the onboarding tour first' };
 
         case 'layer_2_verify':
-            // Check if user has a verified credential with liveness check
-            const credential = await Credential.findOne({
-                wallet: user.wallet,
-                'verification_data.liveness_verified': true
-            });
-            if (credential) {
+            if (user.tier === 'layer_2' || user.tier === 'layer_3') {
                 return { eligible: true };
             }
+            const l2Cred = await Credential.findOne({ wallet: user.wallet, tier: { $in: ['layer_2', 'layer_3'] } });
+            if (l2Cred) return { eligible: true };
             return { eligible: false, reason: 'Complete liveness verification first' };
 
-        case 'cid_register':
-            // Check if user has registered a .cid name
-            if (user.cns_name || user.cid_name) {
+        case 'layer_3_verify':
+            if (user.tier === 'layer_3') {
                 return { eligible: true };
             }
-            return { eligible: false, reason: 'Register a .cid name first' };
+            const l3Cred = await Credential.findOne({ wallet: user.wallet, tier: 'layer_3' });
+            if (l3Cred) return { eligible: true };
+            return { eligible: false, reason: 'Complete Layer 3 KYC verification' };
 
-        case 'persona_create':
-            // Check if user has created at least one persona
-            if (user.personas && user.personas.length > 0) {
+        case 'profile_complete':
+            const { UserProfile } = require('../database/models');
+            const profile = await UserProfile.findOne({ wallet: user.wallet });
+            if (profile && profile.first_name && profile.headline) {
                 return { eligible: true };
             }
-            return { eligible: false, reason: 'Create a persona first' };
+            return { eligible: false, reason: 'Complete your profile (name & headline)' };
+
+        case 'cid_register':
+            if (user.cns_name && user.wallet) {
+                const { walletToHuman } = require('../utils/wallet-to-human');
+                const { humanId } = walletToHuman(user.wallet);
+                const cnsRoot = user.cns_name.replace(/\.cid$/i, '');
+                if (cnsRoot !== humanId) {
+                    return { eligible: true };
+                }
+            }
+            return { eligible: false, reason: 'Register a premium .cid name' };
+
+        case 'persona_create_3':
+            if (user.context_dids && user.context_dids.length >= 3) {
+                return { eligible: true };
+            }
+            const count = user.context_dids?.length || 0;
+            return { eligible: false, reason: `Create ${3 - count} more Contextual IDs` };
+
+        case 'wallet_connect':
+            if (user.linked_wallets && user.linked_wallets.length > 0) {
+                return { eligible: true };
+            }
+            return { eligible: false, reason: 'Connect an external wallet' };
+
+        case 'view_data_controls':
+            if (user.viewed_data_controls) return { eligible: true };
+            return { eligible: false, reason: 'Visit the Data Controls page' };
+
+        case 'view_activity_logs':
+            if (user.viewed_activity_logs) return { eligible: true };
+            return { eligible: false, reason: 'Visit the Activity Logs page' };
+
+        case 'app_login':
+            if (user.app_logins_count > 0) return { eligible: true };
+            return { eligible: false, reason: 'Login to an app using CasperID' };
+
+        case 'earn_10k_xp':
+            if ((user.points || 0) >= 10000) return { eligible: true };
+            return { eligible: false, reason: `Earn ${10000 - (user.points || 0)} more XP` };
+
+        case 'zk_proof_generate':
+            if (user.zk_verified) return { eligible: true };
+            return { eligible: false, reason: 'Generate a ZK proof' };
+
+        case 'extension_install':
+            if (user.extension_installed) return { eligible: true };
+            return { eligible: false, reason: 'Install the Chrome extension' };
+
+        case 'casperid_connect_login':
+            if (user.casperid_connect_used) return { eligible: true };
+            return { eligible: false, reason: 'Login via CasperID Connect extension' };
+
+        case 'profile_share':
+            if (user.profile_shares_count >= 1) return { eligible: true };
+            return { eligible: false, reason: 'Share your profile and get a view' };
+
+        case 'x_brag':
+            if (user.x_shared) return { eligible: true };
+            return { eligible: false, reason: 'Share your CID on X (Twitter)' };
+
+        case 'community_join':
+            if (user.community_joined) return { eligible: true };
+            return { eligible: false, reason: 'Join the CasperID community on X' };
+
+        case 'oauth_login':
+            if (user.app_logins_count > 0) return { eligible: true };
+            return { eligible: false, reason: 'Use CasperID to login to another platform' };
 
         default:
-            // For unknown quests, check if there's a generic completion flag
             console.warn(`[Quest] Unknown quest type: ${questId}`);
             return { eligible: false, reason: 'Quest verification not configured' };
     }
 };
 
 /**
- * @route GET /api/quest/eligibility
- * @desc Check which quests the user is eligible to claim
+ * @route GET /api/quest/status
+ * @desc Get quest status for authenticated user
  */
-router.get('/eligibility', requireAuth, async (req, res) => {
+router.get('/status', requireAuth, async (req, res) => {
     try {
         const userId = req.user.userId || req.user.user_id;
         const user = await UserAccount.findOne({ user_id: userId });
 
-        if (!user) {
-            return res.status(404).json({ success: false, error: 'User not found' });
-        }
+        if (!user) return res.status(404).json({ success: false, error: 'User not found' });
 
-        const allQuests = await Quest.find({ active: true });
-        const eligibility = {};
+        // Build status for each hardcoded quest
+        const questsWithStatus = await Promise.all(
+            QUESTS.map(async (q) => {
+                const isCompleted = user.completed_quests?.includes(q.id);
+                let eligible = false;
+                let reason = null;
 
-        for (const quest of allQuests) {
-            if (user.completed_quests?.includes(quest.quest_id)) {
-                eligibility[quest.quest_id] = { eligible: false, reason: 'Already claimed', claimed: true };
-            } else {
-                const result = await verifyQuestCompletion(quest.quest_id, user);
-                eligibility[quest.quest_id] = { ...result, claimed: false };
-            }
-        }
+                if (!isCompleted) {
+                    const verification = await verifyQuestCompletion(q.id, user);
+                    eligible = verification.eligible;
+                    reason = verification.reason;
+                }
 
-        res.json({ success: true, eligibility });
+                return {
+                    id: q.id,
+                    title: q.title,
+                    xp: q.xp,
+                    icon: q.icon,
+                    category: q.category,
+                    completed: isCompleted,
+                    eligible,
+                    reason
+                };
+            })
+        );
+
+        res.json({
+            success: true,
+            points: user.points || 0,
+            completedQuests: user.completed_quests || [],
+            availableQuests: questsWithStatus
+        });
     } catch (error) {
-        console.error('[Quest] Eligibility check failed:', error);
+        console.error('[Quest] Status fetch failed:', error);
         res.status(500).json({ success: false, error: error.message });
     }
 });
 
 /**
  * @route POST /api/quest/claim
- * @desc Claim points for a completed quest (requires authentication & task verification)
+ * @desc Claim points for a completed quest
  */
 router.post('/claim', requireAuth, rateLimitMiddleware('quest_claim'), async (req, res) => {
     try {
         const { questId } = req.body;
-        // Use authenticated user ID - prevents spoofing
         const userId = req.user.userId || req.user.user_id;
 
         if (!questId) {
             return res.status(400).json({ success: false, error: 'Quest ID required' });
         }
 
-        const quest = await Quest.findOne({ quest_id: questId, active: true });
+        const quest = QUESTS.find(q => q.id === questId);
         if (!quest) {
-            return res.status(404).json({ success: false, error: 'Quest not found or inactive' });
+            return res.status(404).json({ success: false, error: 'Quest not found' });
         }
 
         const user = await UserAccount.findOne({ user_id: userId });
@@ -133,7 +190,7 @@ router.post('/claim', requireAuth, rateLimitMiddleware('quest_claim'), async (re
             return res.status(400).json({ success: false, error: 'Quest already claimed' });
         }
 
-        // CRITICAL: Verify the user actually completed the task
+        // Verify the user actually completed the task
         const verification = await verifyQuestCompletion(questId, user);
         if (!verification.eligible) {
             return res.status(403).json({
@@ -142,40 +199,38 @@ router.post('/claim', requireAuth, rateLimitMiddleware('quest_claim'), async (re
             });
         }
 
-        // Use atomic operation to prevent race conditions
-        // $nin is more explicit for array membership check than $ne
+        // Atomic update
         const updatedUser = await UserAccount.findOneAndUpdate(
             {
                 user_id: userId,
-                // Ensure quest not already in completed list (double-check)
                 $or: [
                     { completed_quests: { $exists: false } },
                     { completed_quests: { $nin: [questId] } }
                 ]
             },
             {
-                $inc: { points: quest.points },
-                $addToSet: { completed_quests: questId } // $addToSet prevents duplicates
+                $inc: { points: quest.xp },
+                $addToSet: { completed_quests: questId }
             },
             { new: true }
         );
 
         if (!updatedUser) {
-            return res.status(400).json({ success: false, error: 'Quest already claimed or user not found' });
+            return res.status(400).json({ success: false, error: 'Quest already claimed' });
         }
 
-        // Create notification (non-blocking)
+        // Create notification
         Notification.create({
-            recipientWallet: user.wallet || 'internal',
+            user_id: userId,
             type: 'quest_complete',
-            message: `🎉 You earned ${quest.points} XP for completing '${quest.title}'!`,
-            metadata: { questId, points: quest.points }
+            message: `🎉 You earned ${quest.xp} XP for completing '${quest.title}'!`,
+            metadata: { questId, points: quest.xp }
         }).catch(err => console.error('Notification failed:', err));
 
         res.json({
             success: true,
             totalPoints: updatedUser.points,
-            pointsEarned: quest.points
+            pointsEarned: quest.xp
         });
     } catch (error) {
         console.error('[Quest] Claim failed:', error);
@@ -185,7 +240,7 @@ router.post('/claim', requireAuth, rateLimitMiddleware('quest_claim'), async (re
 
 /**
  * @route POST /api/quest/complete-tour
- * @desc Mark the onboarding tour as completed (called when tour finishes)
+ * @desc Mark the onboarding tour as completed
  */
 router.post('/complete-tour', requireAuth, async (req, res) => {
     try {
@@ -212,125 +267,40 @@ router.post('/complete-tour', requireAuth, async (req, res) => {
 });
 
 /**
- * @route GET /api/quest/status
- * @desc Get quest status for authenticated user
+ * @route POST /api/quest/track-action
+ * @desc Track user actions for quest eligibility
  */
-router.get('/status', requireAuth, async (req, res) => {
+router.post('/track-action', requireAuth, async (req, res) => {
     try {
         const userId = req.user.userId || req.user.user_id;
+        const { action } = req.body;
 
-        const [user, allQuests] = await Promise.all([
-            UserAccount.findOne({ user_id: userId }),
-            Quest.find({ active: true })
-        ]);
+        const validActions = {
+            'view_data_controls': { viewed_data_controls: true },
+            'view_activity_logs': { viewed_activity_logs: true },
+            'extension_installed': { extension_installed: true, extension_installed_at: new Date() },
+            'profile_shared': { $inc: { profile_shares_count: 1 } },
+            'app_login': { $inc: { app_logins_count: 1 } },
+            'x_shared': { x_shared: true },
+            'community_joined': { community_joined: true }
+        };
 
-        if (!user) return res.status(404).json({ success: false, error: 'User not found' });
+        if (!action || !validActions[action]) {
+            return res.status(400).json({ success: false, error: 'Invalid action' });
+        }
 
-        // Build eligibility info for each quest
-        const questsWithEligibility = await Promise.all(
-            allQuests.map(async (q) => {
-                const isCompleted = user.completed_quests?.includes(q.quest_id);
-                let eligible = false;
-                let reason = null;
+        const update = validActions[action];
+        const isIncrement = update.$inc;
 
-                if (!isCompleted) {
-                    const verification = await verifyQuestCompletion(q.quest_id, user);
-                    eligible = verification.eligible;
-                    reason = verification.reason;
-                }
-
-                return {
-                    id: q.quest_id,
-                    title: q.title,
-                    xp: q.points,
-                    icon: q.icon,
-                    completed: isCompleted,
-                    eligible,
-                    reason
-                };
-            })
+        await UserAccount.findOneAndUpdate(
+            { user_id: userId },
+            isIncrement ? update : { $set: update }
         );
 
-        res.json({
-            success: true,
-            points: user.points || 0,
-            completedQuests: user.completed_quests || [],
-            availableQuests: questsWithEligibility
-        });
+        res.json({ success: true, action });
     } catch (error) {
-        console.error('[Quest] Status fetch failed:', error);
+        console.error('[Quest] Track action failed:', error);
         res.status(500).json({ success: false, error: error.message });
-    }
-});
-
-// ============================================
-// Admin CRUD Routes (Protected)
-// ============================================
-
-router.get('/admin/list', adminAuth, async (req, res) => {
-    try {
-        const quests = await Quest.find().sort({ created_at: -1 });
-        res.json({ success: true, quests });
-    } catch (err) {
-        res.status(500).json({ success: false, error: err.message });
-    }
-});
-
-router.post('/admin/add', adminAuth, async (req, res) => {
-    try {
-        const { quest_id, title, description, points, icon } = req.body;
-
-        // Validate required fields
-        if (!quest_id || !title || points === undefined) {
-            return res.status(400).json({ success: false, error: 'quest_id, title, and points are required' });
-        }
-
-        // Sanitize points to prevent abuse
-        const sanitizedPoints = Math.min(Math.max(0, parseInt(points, 10)), 10000);
-
-        const quest = new Quest({
-            quest_id,
-            title,
-            description,
-            points: sanitizedPoints,
-            icon
-        });
-        await quest.save();
-        res.json({ success: true, quest });
-    } catch (err) {
-        res.status(500).json({ success: false, error: err.message });
-    }
-});
-
-router.put('/admin/update/:id', adminAuth, async (req, res) => {
-    try {
-        const { points, ...otherFields } = req.body;
-
-        // Sanitize points if being updated
-        const updateData = { ...otherFields };
-        if (points !== undefined) {
-            updateData.points = Math.min(Math.max(0, parseInt(points, 10)), 10000);
-        }
-
-        const quest = await Quest.findByIdAndUpdate(req.params.id, updateData, { new: true });
-        if (!quest) {
-            return res.status(404).json({ success: false, error: 'Quest not found' });
-        }
-        res.json({ success: true, quest });
-    } catch (err) {
-        res.status(500).json({ success: false, error: err.message });
-    }
-});
-
-router.delete('/admin/delete/:id', adminAuth, async (req, res) => {
-    try {
-        const quest = await Quest.findByIdAndDelete(req.params.id);
-        if (!quest) {
-            return res.status(404).json({ success: false, error: 'Quest not found' });
-        }
-        res.json({ success: true });
-    } catch (err) {
-        res.status(500).json({ success: false, error: err.message });
     }
 });
 

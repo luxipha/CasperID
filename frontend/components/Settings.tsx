@@ -704,7 +704,7 @@ const WalletsTab = () => {
     }
   };
 
-  // Move hooks above conditional returns
+  // Move hooks above conditional returns to comply with Rules of Hooks
   const linkedWallets = profile?.linked_wallets || [];
 
   // Combine primary wallet with linked wallets

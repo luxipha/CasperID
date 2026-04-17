@@ -1,10 +1,12 @@
 
 import React, { useState } from 'react';
 import { SelectiveDisclosureModal } from './SelectiveDisclosureModal';
+import { ZKClaimsModal } from './ZKClaimsModal';
 import { useAuth } from '../contexts/AuthContext';
 
 export const ReusableTools: React.FC = () => {
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
+  const [isZKClaimsModalOpen, setIsZKClaimsModalOpen] = useState(false);
   const [initialFields, setInitialFields] = useState<string[] | undefined>(undefined);
   const { user } = useAuth();
 
@@ -29,11 +31,11 @@ export const ReusableTools: React.FC = () => {
       verified: false
     },
     {
-      id: 'proof',
-      title: 'Generate Proof',
-      description: 'ZK-proof for age/location',
-      icon: 'vpn_key',
-      color: 'bg-[#FFF4EB] text-[#FF8A00]',
+      id: 'zk-claims',
+      title: 'ZK Proof Claims',
+      description: 'Prove claims without revealing data',
+      icon: 'shield_lock',
+      color: 'bg-[#F0E6FF] text-[#8652E2]',
       verified: false
     },
   ];
@@ -42,9 +44,8 @@ export const ReusableTools: React.FC = () => {
     if (toolId === 'share') {
       setInitialFields(['first_name', 'last_name']);
       setIsShareModalOpen(true);
-    } else if (toolId === 'proof') {
-      setInitialFields(['age', 'city', 'country']);
-      setIsShareModalOpen(true);
+    } else if (toolId === 'zk-claims') {
+      setIsZKClaimsModalOpen(true);
     }
   };
 
@@ -92,6 +93,11 @@ export const ReusableTools: React.FC = () => {
         isOpen={isShareModalOpen}
         onClose={() => setIsShareModalOpen(false)}
         initialSelectedFields={initialFields}
+      />
+
+      <ZKClaimsModal
+        isOpen={isZKClaimsModalOpen}
+        onClose={() => setIsZKClaimsModalOpen(false)}
       />
     </section>
   );

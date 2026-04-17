@@ -12,7 +12,7 @@ export const KYCDocumentSelection: React.FC<KYCDocumentSelectionProps> = ({ onBa
 
   const docTypes = [
     { id: 'passport', title: 'Passport', desc: 'International travel document', icon: 'book' },
-    { id: 'license', title: "Driver's License", desc: 'State or national driving permit', icon: 'directions_car' },
+    { id: 'drivers_license', title: "Driver's License", desc: 'State or national driving permit', icon: 'directions_car' },
     { id: 'national_id', title: 'National ID Card', desc: 'Government issued identity card', icon: 'badge' },
   ];
 

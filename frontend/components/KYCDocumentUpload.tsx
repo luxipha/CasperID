@@ -4,7 +4,7 @@ import React, { useState } from 'react';
 interface KYCDocumentUploadProps {
   docType: string;
   onBack: () => void;
-  onNext: (frontFile: File, backFile: File | null) => void;
+  onNext: (frontFile: File, backFile: File | null) => void | Promise<void>;
   onCancel: () => void;
 }
 
@@ -13,10 +13,11 @@ export const KYCDocumentUpload: React.FC<KYCDocumentUploadProps> = ({ docType, o
   const [backFile, setBackFile] = useState<File | null>(null);
   const [frontPreview, setFrontPreview] = useState<string>('');
   const [backPreview, setBackPreview] = useState<string>('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const getDocName = () => {
     if (docType === 'passport') return 'Passport';
-    if (docType === 'license') return "Driver's License";
+    if (docType === 'drivers_license') return "Driver's License";
     return 'National ID';
   };
 
@@ -187,15 +188,32 @@ export const KYCDocumentUpload: React.FC<KYCDocumentUploadProps> = ({ docType, o
 
           {/* Continue Button */}
           <button
-            disabled={!isReady}
-            onClick={() => onNext(frontFile!, backFile)}
-            className={`w-full h-16 rounded-[22px] font-black text-lg flex items-center justify-center gap-3 shadow-xl transition-all active:scale-[0.98] ${isReady
+            disabled={!isReady || isSubmitting}
+            onClick={async () => {
+              setIsSubmitting(true);
+              try {
+                await onNext(frontFile!, backFile);
+              } catch (error) {
+                // Reset on error so user can retry
+                setIsSubmitting(false);
+              }
+            }}
+            className={`w-full h-16 rounded-[22px] font-black text-lg flex items-center justify-center gap-3 shadow-xl transition-all active:scale-[0.98] ${isReady && !isSubmitting
               ? 'bg-primary text-white shadow-primary/30 hover:shadow-primary/40'
               : 'bg-gray-100 text-text-sub shadow-none cursor-not-allowed'
               }`}
           >
-            Continue Verification
-            <span className="material-symbols-outlined text-2xl">arrow_forward</span>
+            {isSubmitting ? (
+              <>
+                <div className="size-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                Processing Document...
+              </>
+            ) : (
+              <>
+                Continue Verification
+                <span className="material-symbols-outlined text-2xl">arrow_forward</span>
+              </>
+            )}
           </button>
         </div>
 

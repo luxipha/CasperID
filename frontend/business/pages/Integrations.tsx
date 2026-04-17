@@ -12,6 +12,7 @@ interface BusinessApp {
   created_at: string;
 }
 
+
 const Integrations: React.FC = () => {
   const navigate = useNavigate();
   const [apps, setApps] = useState<BusinessApp[]>([]);
@@ -71,7 +72,7 @@ const Integrations: React.FC = () => {
           {apps.map((app) => (
             <div
               key={app.app_id}
-              onClick={() => navigate('/business/api-management')} // Redirect to management for now
+              onClick={() => navigate(`/business/integrations/${app.app_id}`)}
               className="bg-white p-6 rounded-2xl border border-border-muted shadow-sm hover:border-primary cursor-pointer transition-all group"
             >
               <div className="flex items-start justify-between mb-6">
@@ -84,7 +85,11 @@ const Integrations: React.FC = () => {
               </div>
               <div className="flex flex-col gap-1 mb-4">
                 <h3 className="text-xl font-bold text-text-main group-hover:text-primary transition-colors">{app.name}</h3>
-                <p className="text-sm text-text-muted font-mono truncate">{app.app_id}</p>
+                <p className="text-sm text-text-muted font-mono truncate">
+                  {app.allowed_origins && app.allowed_origins.length > 0
+                    ? app.allowed_origins.join(', ')
+                    : 'No Restricted Origins'}
+                </p>
               </div>
               <div className="flex items-center gap-6 pt-4 border-t border-border-muted">
                 <div className="flex flex-col">

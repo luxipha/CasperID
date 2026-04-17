@@ -5,7 +5,15 @@ import { WalletConnectProvider } from './contexts/WalletConnectProvider';
 import { CasperProvider } from './contexts/casper-context';
 import App from './App';
 import LandingPage from './components/landing/LandingPage';
-import ChangelogPage from './components/landing/casperos/changelog';
+
+/**
+ * External redirect component - Navigate doesn't work for external URLs
+ */
+const ExternalRedirect: React.FC<{ to: string }> = ({ to }) => {
+  window.location.href = to;
+  return null;
+};
+
 
 /**
  * Component that wraps the app with authenticated providers
@@ -34,10 +42,10 @@ const AppRoot: React.FC = () => {
       <Routes>
         {/* Public Routes - No Providers Needed */}
         <Route path="/" element={<LandingPage />} />
-        <Route path="/anra" element={<LandingPage initialView="anra" />} />
-        <Route path="/adevaros" element={<LandingPage initialView="anra" />} />
-        <Route path="/casperos" element={<LandingPage initialView="anra" />} />
-        <Route path="/changelog" element={<ChangelogPage />} />
+        <Route path="/anra" element={<ExternalRedirect to="https://www.anra.rest" />} />
+        <Route path="/adevaros" element={<ExternalRedirect to="https://www.anra.rest" />} />
+        <Route path="/casperos" element={<ExternalRedirect to="https://www.anra.rest" />} />
+        <Route path="/changelog" element={<ExternalRedirect to="https://www.anra.rest/changelog" />} />
 
         {/* Authenticated/App Routes - Wrapped in Providers */}
         <Route path="*" element={

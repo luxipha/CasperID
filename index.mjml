@@ -1,0 +1,50 @@
+<mjml>
+  <mj-head>
+    <mj-attributes>
+      <mj-text line-height="1.6" />
+    </mj-attributes>
+    <mj-style inline="inline">
+      .bold { font-weight: 600; } .link-nostyle { color: #b8b8b8 !important;
+      text-decoration: none !important; }
+    </mj-style>
+  </mj-head>
+  <mj-body background-color="#fff" width="600px">
+    <mj-section>
+      <mj-column
+        width="100%"
+        padding="1px"
+        background-color="#e5e7eb"
+        inner-background-color="#fff"
+        border-radius="6px"
+        inner-border-radius="6px"
+      >
+        <mj-image
+          src="https://app.loops.so/loops.png"
+          width="50px"
+          align="left"
+          padding-top="34px"
+        ></mj-image>
+        <mj-text
+          >Hi there,<br /><br />A password reset was requested for your Loops
+          account.</mj-text
+        >
+        <mj-button
+          align="left"
+          background-color="black"
+          padding-bottom="24px"
+          href="{DATA_VARIABLE:reset_link}"
+          >Reset it now</mj-button
+        >
+        <mj-text>
+          Or, if your prefer to copy and paste, here's the link:
+          {DATA_VARIABLE:reset_link}
+        </mj-text>
+        <mj-text
+          >If you didn't request this, please reply and let us know.</mj-text
+        >
+        <mj-text>That's all for now ✨ </mj-text>
+        <mj-text padding-bottom="34px">Best,<br />LoopBot</mj-text>
+      </mj-column>
+    </mj-section>
+  </mj-body>
+</mjml>

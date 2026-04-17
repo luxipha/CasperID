@@ -4,10 +4,12 @@ const {
     UserAccount,
     VerificationRequestV2,
     PasskeyCredential,
-    Credential
+    Credential,
+    UserProfile
 } = require('../database/models');
 const walletGenerator = require('./wallet-generator');
 const geminiService = require('./gemini');
+const { eventBus, EVENTS } = require('./eventBus');
 
 /**
  * Verification Service V2
@@ -25,7 +27,7 @@ class VerificationServiceV2 {
      */
     async startLayer2Verification(sessionToken, options = {}) {
         try {
-            const { linkWallet = false, purpose = 'Layer 2 Verification' } = options;
+            const { linkWallet = false, purpose = 'Layer 2 Verification', appId = 'casperid-internal' } = options;
 
             // Validate user session
             const sessionData = await this.validateUserSession(sessionToken);
@@ -56,7 +58,7 @@ class VerificationServiceV2 {
             const verificationRequest = new VerificationRequestV2({
                 request_id: requestId,
                 user_id: userAccount.user_id,
-                dapp_id: 'casperid-internal', // Internal verification
+                dapp_id: appId, // Use provided appId
                 verification_tier: 'layer_2',
                 requested_fields: ['liveness_verified'],
                 purpose,
@@ -90,7 +92,8 @@ class VerificationServiceV2 {
         try {
             const {
                 verificationMethod = 'document_upload', // 'document_upload' or 'nimc'
-                purpose = 'Layer 3 KYC Verification'
+                purpose = 'Layer 3 KYC Verification',
+                appId = 'casperid-internal'
             } = options;
 
             // Validate user session
@@ -101,9 +104,11 @@ class VerificationServiceV2 {
 
             const { userAccount } = sessionData;
 
-            // Check if user is eligible for Layer 3 (must have Layer 1 minimum)
-            if (userAccount.tier === 'layer_0') {
-                throw new Error('User must complete email verification before Layer 3');
+            // Tiers are independent — layer_1 or layer_2 can start Layer 3 directly.
+            // Only unverified (layer_0) users are blocked.
+            const ELIGIBLE_TIERS = ['layer_1', 'layer_2'];
+            if (!ELIGIBLE_TIERS.includes(userAccount.tier)) {
+                throw new Error('Email verification (Layer 1) must be completed before starting Layer 3');
             }
 
             // Create verification request
@@ -111,7 +116,7 @@ class VerificationServiceV2 {
             const verificationRequest = new VerificationRequestV2({
                 request_id: requestId,
                 user_id: userAccount.user_id,
-                dapp_id: 'casperid-internal',
+                dapp_id: appId,
                 verification_tier: 'layer_3',
                 requested_fields: ['identity_verified', 'liveness_verified'],
                 purpose,
@@ -321,10 +326,21 @@ class VerificationServiceV2 {
             verificationRequest.proof_data = proofData;
             await verificationRequest.save();
 
-            // Update user account status
-            userAccount.tier = 'layer_2';
             userAccount.updated_at = new Date();
             await userAccount.save();
+
+            // Emit L2 verification completed event (subscribers handle email, webhook, activity)
+            const profile = await UserProfile.findOne({ wallet: userAccount.wallet });
+            const userName = profile ? [profile.first_name, profile.last_name].filter(Boolean).join(' ') : null;
+
+            eventBus.emit(EVENTS.VERIFICATION_L2_COMPLETED, {
+                userId: userAccount.user_id,
+                email: userAccount.recovery_email,
+                name: userName,
+                wallet: userAccount.wallet,
+                tier: 'layer_2',
+                dappId: verificationRequest.dapp_id
+            });
 
             return {
                 success: true,
@@ -387,6 +403,20 @@ class VerificationServiceV2 {
             userAccount.tier = 'layer_3';
             userAccount.updated_at = new Date();
             await userAccount.save();
+
+            // Dispatch webhook if this is an external app
+            if (verificationRequest.dapp_id && verificationRequest.dapp_id !== 'casperid-internal') {
+                const { dispatchEvent } = require('../utils/webhook-dispatcher');
+                const { WEBHOOK_EVENTS } = require('../constants/webhook-events');
+
+                dispatchEvent(verificationRequest.dapp_id, WEBHOOK_EVENTS.KYC_COMPLETED, {
+                    user_id: userAccount.user_id,
+                    wallet: userAccount.wallet,
+                    tier: 'layer_3',
+                    completed_at: new Date().toISOString(),
+                    verification_type: 'document'
+                }).catch(err => console.error('KYC Webhook dispatch error (L3):', err));
+            }
 
             return {
                 success: true,
@@ -620,6 +650,59 @@ class VerificationServiceV2 {
         } catch (error) {
             console.error('Selective Disclosure generation failed:', error);
             throw new Error(`Failed to generate share package: ${error.message}`);
+        }
+    }
+
+    /**
+     * Verify a Selective Disclosure share package
+     */
+    async verifySharePackage(sharePackage) {
+        try {
+            const { data, signature, public_key, timestamp } = sharePackage;
+
+            if (!data || !signature || !public_key) {
+                throw new Error('Invalid share package: missing required fields');
+            }
+
+            // 1. Verify timestamp (prevent old replay attacks - 24h window)
+            const now = Date.now();
+            const maxAge = 24 * 60 * 60 * 1000;
+            if (now - timestamp > maxAge) {
+                throw new Error('Share package has expired');
+            }
+
+            // 2. Verify signature
+            const payloadHash = crypto.createHash('sha256')
+                .update(JSON.stringify(data))
+                .digest();
+
+            const isVerified = walletGenerator.verifySignature(
+                payloadHash,
+                signature,
+                public_key
+            );
+
+            if (!isVerified) {
+                throw new Error('Invalid signature: share package has been tampered with or is not authentic');
+            }
+
+            // 3. Verify that the public_key corresponds to the wallet in the data
+            if (data.verification?.wallet) {
+                // In Casper, we'd checking if the public_key resolves to this wallet
+                // For now, we trust the signature proves possession of the key
+                // but we could add extra checks here if needed.
+            }
+
+            return {
+                valid: true,
+                data: data,
+                signer: sharePackage.signer,
+                verifiedAt: new Date().toISOString()
+            };
+
+        } catch (error) {
+            console.error('Share package verification failed:', error);
+            throw new Error(`Verification failed: ${error.message}`);
         }
     }
 
