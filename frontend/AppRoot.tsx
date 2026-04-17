@@ -5,6 +5,7 @@ import { WalletConnectProvider } from './contexts/WalletConnectProvider';
 import { CasperProvider } from './contexts/casper-context';
 import App from './App';
 import LandingPage from './components/landing/LandingPage';
+import ChangelogPage from './components/landing/casperos/changelog';
 
 /**
  * External redirect component - Navigate doesn't work for external URLs
@@ -45,7 +46,7 @@ const AppRoot: React.FC = () => {
         <Route path="/anra" element={<ExternalRedirect to="https://www.anra.rest" />} />
         <Route path="/adevaros" element={<ExternalRedirect to="https://www.anra.rest" />} />
         <Route path="/casperos" element={<ExternalRedirect to="https://www.anra.rest" />} />
-        <Route path="/changelog" element={<ExternalRedirect to="https://www.anra.rest/changelog" />} />
+        <Route path="/changelog" element={<ChangelogPage />} />
 
         {/* Authenticated/App Routes - Wrapped in Providers */}
         <Route path="*" element={

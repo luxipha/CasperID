@@ -5,7 +5,7 @@ export function FooterMarketing({ className, onNavigate }: { className?: string;
   const productLinks = [
     { label: "anra 🔥", href: "https://www.anra.rest" },
     { label: "White Paper", href: "https://docs.google.com/document/d/1XxpYRW5Dz4vV5G_3rIublF-lwqxPHnQ7quAhiDFaKgo/edit?usp=drive_link" },
-    { label: "Changelog", href: "https://www.anra.rest/changelog" },
+    { label: "Changelog", href: "/changelog" },
   ];
 
   const resourceLinks = [

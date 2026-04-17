@@ -209,7 +209,9 @@ const App: React.FC = () => {
     if (path === '/apply-success') {
       return 'Success! | Careers | CasperID';
     }
-    // Changelog title removed as it moved to anra.rest
+    if (path === '/changelog') {
+      return 'Changelog | CasperID';
+    }
 
     // Dynamic Route placeholders (Hooks in components will handle more specific titles)
     if (path.startsWith('/careers/')) return 'Position Details | Careers | CasperID';
@@ -738,7 +740,6 @@ const App: React.FC = () => {
     <>
       <Routes>
         <Route path="/admin" element={<AdminPage />} />
-        <Route path="/changelog" element={<Navigate to="https://www.anra.rest/changelog" replace />} />
         <Route path="/anra" element={<Navigate to="https://www.anra.rest" replace />} />
         <Route path="/adevaros" element={<Navigate to="https://www.anra.rest" replace />} />
         <Route path="/casperos" element={<Navigate to="https://www.anra.rest" replace />} />
