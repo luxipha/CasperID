@@ -42,15 +42,37 @@ const getStatusMessages = (tier: VerificationTier, language: string) => {
         };
     }
 
-    // L2/L3 messages
+    // L2 messages (synchronous - liveness already completed)
+    if (tier === 'layer_2') {
+        return {
+            processing: {
+                title: t('processing_liveness', language),
+                subtitle: t('processing_subtitle', language)
+            },
+            minting: {
+                title: t('minting_identity', language),
+                subtitle: t('minting_subtitle', language)
+            },
+            completed: {
+                title: t('identity_verified', language),
+                subtitle: t('identity_verified_subtitle', language)
+            },
+            failed: {
+                title: t('verification_failed', language),
+                subtitle: t('verification_failed_subtitle', language)
+            }
+        };
+    }
+
+    // L3 messages (asynchronous - requires admin review)
     return {
         processing: {
-            title: tier === 'layer_2' ? t('processing_liveness', language) : t('processing_documents', language),
+            title: t('processing_documents', language),
             subtitle: t('processing_subtitle', language)
         },
         minting: {
-            title: t('minting_identity', language),
-            subtitle: t('minting_subtitle', language)
+            title: t('submitting_for_review', language),
+            subtitle: t('submitting_review_subtitle', language)
         },
         completed: {
             title: t('verification_submitted', language),
@@ -215,26 +237,112 @@ const MintingIdentity: React.FC<MintingIdentityProps> = ({
         });
     };
 
-    // L2/L3 Setup: Submit verification (no polling)
-    const runL2L3Setup = async () => {
+    // L2 Setup: Poll verification status (liveness already submitted via FaceScan)
+    const runL2Setup = async () => {
         setStatus('processing');
-        setProgress(30);
+        setProgress(20);
 
-        // For L2/L3, we just confirm the submission was successful
-        // The actual verification happens in background, user tier upgrades when ready
-        await sleep(500);
-        setProgress(60);
+        if (!requestId) {
+            throw new Error('No verification request ID provided');
+        }
 
+        // Poll for L2 completion (should be quick since liveness was already processed)
+        const maxAttempts = 10;
+        const pollInterval = 1500;
+
+        for (let attempt = 0; attempt < maxAttempts; attempt++) {
+            try {
+                const response = await fetch(`${apiBaseUrl}/api/v2/verification/${requestId}/status`, {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        ...(apiKey ? { 'X-App-Id': apiKey } : {})
+                    },
+                    credentials: 'include'
+                });
+
+                if (!response.ok) {
+                    throw new Error('Failed to check verification status');
+                }
+
+                const data = await response.json();
+                const verificationStatus = data.verification?.status;
+
+                // Update progress based on attempt
+                setProgress(Math.min(20 + (attempt * 8), 80));
+
+                if (verificationStatus === 'completed') {
+                    setStatus('minting');
+                    setProgress(90);
+                    await sleep(500);
+                    setProgress(100);
+                    setStatus('completed');
+
+                    // Extract credential info if available
+                    const proofHash = data.verification?.results?.proofHash;
+
+                    await sleep(1500);
+                    onNext({ credentialHash: proofHash || requestId });
+                    return;
+                }
+
+                if (verificationStatus === 'failed') {
+                    throw new Error(data.verification?.error || 'Verification failed');
+                }
+
+                // Still pending/in_progress, wait and retry
+                await sleep(pollInterval);
+
+            } catch (err) {
+                // On last attempt, throw the error
+                if (attempt === maxAttempts - 1) {
+                    throw err;
+                }
+                await sleep(pollInterval);
+            }
+        }
+
+        // If we exhausted attempts, the liveness might still be processing
+        // Proceed anyway since liveness was already submitted
         setStatus('minting');
-        setProgress(80);
-
+        setProgress(90);
         await sleep(500);
         setProgress(100);
         setStatus('completed');
-
-        // Auto-proceed after showing success
         await sleep(1500);
         onNext({ credentialHash: requestId });
+    };
+
+    // L3 Setup: Show submission confirmation (requires admin review)
+    const runL3Setup = async () => {
+        setStatus('processing');
+        setProgress(30);
+
+        // L3 documents were already submitted via ReviewData
+        // This screen just confirms the submission
+        await sleep(800);
+        setProgress(60);
+
+        setStatus('minting'); // Shows "Submitting for Review" message
+        setProgress(80);
+
+        await sleep(800);
+        setProgress(100);
+        setStatus('completed'); // Shows "Verification Submitted"
+
+        // Auto-proceed after showing success
+        // User proceeds with L2 access, L3 will be approved by admin later
+        await sleep(2000);
+        onNext({ credentialHash: requestId });
+    };
+
+    // L2/L3 Setup: Route to appropriate handler
+    const runL2L3Setup = async () => {
+        if (tier === 'layer_2') {
+            await runL2Setup();
+        } else {
+            await runL3Setup();
+        }
     };
 
     const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));

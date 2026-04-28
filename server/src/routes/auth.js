@@ -256,9 +256,11 @@ router.post('/verify-otp', extractApp, async (req, res) => {
         if (userAccount) {
             // Check if this is a new device
             const deviceFingerprint = req.get('user-agent') || 'unknown';
+            const { escapeRegex } = require('../utils/email-normalizer');
+            const escapedFingerprint = escapeRegex(deviceFingerprint.substring(0, 50));
             const existingSession = await DeviceSession.findOne({
                 user_id: userAccount.user_id,
-                device_fingerprint: { $regex: deviceFingerprint.substring(0, 50), $options: 'i' }
+                device_fingerprint: { $regex: escapedFingerprint, $options: 'i' }
             });
 
             eventBus.emit(EVENTS.USER_LOGIN, {

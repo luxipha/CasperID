@@ -20,10 +20,13 @@ const upload = multer({
     limits: { fileSize: 10 * 1024 * 1024 }, // 10MB limit
     fileFilter: (req, file, cb) => {
         const allowedTypes = /jpeg|jpg|png|gif|mp4|webm|mov/;
-        const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
-        const mimetype = allowedTypes.test(file.mimetype);
+        const extname = path.extname(file.originalname).toLowerCase();
+        const hasValidExtension = allowedTypes.test(extname);
+        const hasValidMimetype = allowedTypes.test(file.mimetype);
 
-        if (mimetype && extname) {
+        // Allow if EITHER mimetype is valid OR extension is valid (for blob uploads without filenames)
+        // Or if originalname is 'blob' (common for FormData blob uploads)
+        if (hasValidMimetype || hasValidExtension || file.originalname === 'blob') {
             return cb(null, true);
         } else {
             cb(new Error('Invalid file type. Only images and videos are allowed.'));
@@ -79,7 +82,7 @@ router.post('/layer2/start', extractApp, async (req, res) => {
  */
 router.post('/liveness', upload.fields([
     { name: 'videoFile', maxCount: 1 },
-    { name: 'imageFrames', maxCount: 10 }
+    { name: 'imageFrames', maxCount: 30 } // Increased to handle more frames from liveness check
 ]), async (req, res) => {
     try {
         const { requestId, metadata } = req.body;
@@ -97,6 +100,21 @@ router.post('/liveness', upload.fields([
             metadata: metadata ? JSON.parse(metadata) : {}
         };
 
+        // Validate that we have frames
+        if (!livenessData.imageFrames || livenessData.imageFrames.length === 0) {
+            return res.status(400).json({
+                success: false,
+                error: 'No image frames provided for liveness verification'
+            });
+        }
+
+        if (livenessData.imageFrames.length < 10) {
+            return res.status(400).json({
+                success: false,
+                error: `Insufficient frames for liveness verification. Got ${livenessData.imageFrames.length}, need at least 10`
+            });
+        }
+
         const result = await verificationServiceV2.processLivenessCheck(requestId, livenessData);
 
         res.json({
@@ -106,7 +124,7 @@ router.post('/liveness', upload.fields([
 
     } catch (error) {
         console.error('Liveness check failed:', error);
-        res.status(400).json({
+        res.status(500).json({
             success: false,
             error: error.message
         });

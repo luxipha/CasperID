@@ -592,9 +592,11 @@ router.post('/auth/finish', extractApp, async (req, res) => {
 
             // Check if this is a new device
             const deviceFingerprint = req.get('User-Agent') || 'unknown';
+            const { escapeRegex } = require('../utils/email-normalizer');
+            const escapedFingerprint = escapeRegex(deviceFingerprint.substring(0, 50));
             const existingSession = await DeviceSession.findOne({
                 user_id: ua.user_id,
-                device_fingerprint: { $regex: deviceFingerprint.substring(0, 50), $options: 'i' }
+                device_fingerprint: { $regex: escapedFingerprint, $options: 'i' }
             });
 
             eventBus.emit(EVENTS.USER_LOGIN, {
@@ -652,8 +654,10 @@ router.post('/auth/finish', extractApp, async (req, res) => {
             message: 'Authentication successful',
             sessionId: authResult.sessionId,
             sessionToken: authResult.sessionToken,
+            session_token: authResult.sessionToken, // SDK expects snake_case
             expiresAt: authResult.expiresAt,
             userAccount: authResult.userAccount,
+            user: authResult.userAccount, // SDK expects 'user' instead of 'userAccount'
             // Only present when X-App-ID was provided
             ...(businessToken && { business_token: businessToken, app_id: req.businessApp.app_id })
         });

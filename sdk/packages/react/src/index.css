@@ -1,5 +1,5 @@
+@import "tailwindcss";
 @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap');
-/* Note: tailwindcss is provided by the consuming app, not imported here */
 
 @theme {
     --font-sans: "Plus Jakarta Sans", "Inter", ui-sans-serif, system-ui, sans-serif;
@@ -21,8 +21,8 @@
     --bg-app: #f8fafc;
     --text-primary: #0f172a;
     --text-secondary: #64748b;
-    --glass-bg: rgba(255, 255, 255, 0.94);
-    --glass-border: rgba(0, 0, 0, 0.16);
+    --glass-bg: rgba(255, 255, 255, 0.75);
+    --glass-border: rgba(0, 0, 0, 0.08);
 }
 
 /* Dark mode */
@@ -30,8 +30,8 @@
     --bg-app: #0B0813;
     --text-primary: #ffffff;
     --text-secondary: #94a3b8;
-    --glass-bg: #0e0b16;
-    --glass-border: rgba(255, 255, 255, 0.18);
+    --glass-bg: rgba(14, 11, 22, 0.85);
+    --glass-border: rgba(255, 255, 255, 0.12);
 }
 
 @layer base {

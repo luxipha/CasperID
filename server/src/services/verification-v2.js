@@ -45,12 +45,12 @@ class VerificationServiceV2 {
             // Check if already verified at Layer 2 or higher
             const existingCredential = await Credential.findOne({
                 wallet: userAccount.wallet,
-                tier: { $in: ['layer_1', 'layer_3'] },
+                tier: { $in: ['layer_2', 'layer_3'] },
                 revoked: false
             });
 
             if (existingCredential) {
-                throw new Error('User already has verification credentials');
+                throw new Error('User already has Layer 2 or higher credentials');
             }
 
             // Create verification request
@@ -166,27 +166,52 @@ class VerificationServiceV2 {
                 throw new Error('Verification request not found or expired');
             }
 
+            // Validate imageFrames
+            if (!imageFrames || imageFrames.length === 0) {
+                throw new Error('No image frames provided for liveness verification');
+            }
+
             // Update status to in_progress
             verificationRequest.status = 'in_progress';
             await verificationRequest.save();
 
+            // Convert imageFrames (multer file objects) to buffers
+            const frameBuffers = imageFrames.map(frame => frame.buffer);
+
+            // Extract step sequence from metadata, or use default
+            const stepSequence = metadata.stepSequence || ['blink', 'open_mouth'];
+
             // Process liveness using Gemini AI
             let livenessScore;
+            let livenessAnalysis;
             try {
-                livenessScore = await geminiService.analyzeLiveness(imageFrames, metadata);
+                livenessAnalysis = await geminiService.verifyLivenessSequence(frameBuffers, stepSequence);
+                // Convert confidence (0-100) to score (0-1)
+                livenessScore = livenessAnalysis.confidence / 100;
+                console.log('[Liveness] AI analysis result:', {
+                    passed: livenessAnalysis.passed,
+                    confidence: livenessAnalysis.confidence,
+                    score: livenessScore
+                });
             } catch (aiError) {
                 console.error('Liveness AI analysis failed:', aiError);
                 // Fallback to basic checks if AI fails
                 livenessScore = 0.7; // Conservative score
+                livenessAnalysis = {
+                    passed: false,
+                    confidence: 70,
+                    reasoning: 'AI analysis unavailable, using fallback score'
+                };
             }
 
-            const livenessVerified = livenessScore >= this.LIVENESS_THRESHOLD;
+            const livenessVerified = livenessScore >= this.LIVENESS_THRESHOLD && livenessAnalysis.passed;
 
             // Update verification data
             verificationRequest.verification_data = {
                 ...verificationRequest.verification_data,
                 liveness_score: livenessScore,
                 liveness_verified: livenessVerified,
+                liveness_analysis: livenessAnalysis,
                 liveness_processed_at: Date.now()
             };
 
@@ -213,6 +238,7 @@ class VerificationServiceV2 {
 
             return {
                 success: true,
+                status: 'completed',
                 livenessVerified: true,
                 score: livenessScore,
                 nextStep: 'identity_verification',

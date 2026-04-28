@@ -156,9 +156,18 @@ export interface StartVerificationResponse {
 export interface LivenessResponse {
     success: boolean;
     liveness?: {
-        passed: boolean;
-        confidence: number;
-        antiSpoofingScore?: number;
+        // For L2 completion
+        success?: boolean;
+        verificationType?: string;
+        status?: 'completed' | 'failed' | 'pending' | 'in_progress';
+        // For L3 liveness step
+        livenessVerified?: boolean;
+        score?: number;
+        nextStep?: string;
+        requestId?: string;
+        // Error info
+        error?: string;
+        threshold?: number;
     };
     error?: string;
 }

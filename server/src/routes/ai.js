@@ -257,6 +257,7 @@ router.post('/ai/verify-liveness-sequence', upload.fields([
 
             // Return success with session token - credential minting happens after ZK
             return res.json({
+                success: true,
                 ...result,
                 layer: 2,
                 next_step: 'zk_submit',
@@ -265,7 +266,7 @@ router.post('/ai/verify-liveness-sequence', upload.fields([
             });
         }
 
-        res.json(result);
+        res.json({ success: true, ...result });
     } catch (error) {
         console.error('[AI] Liveness sequence verification error:', error);
         res.status(500).json({

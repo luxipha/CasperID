@@ -419,9 +419,19 @@ export const CasperIDModal: React.FC<CasperIDModalProps> = ({
         }
 
         // Check tier requirements after minting
-        const currentTier = result?.wallet ? 'layer_1' : (authState.userAccount?.tier || 'layer_1');
+        // Determine what our tier SHOULD be now based on what we just did
+        let currentTier = result?.wallet ? 'layer_1' : (authState.userAccount?.tier || 'layer_1');
+        
+        // If we just finished a Layer 2 verification, we know the tier is now layer_2
+        // regardless of whether the token refresh succeeded yet.
+        if (kycState.livenessVerified && kycState.verificationTier === 'layer_2') {
+            currentTier = 'layer_2';
+        } else if (kycState.documentType && kycState.verificationTier === 'layer_3') {
+            currentTier = 'layer_3';
+        }
+
         proceedBasedOnTier(currentTier);
-    }, [authState.userAccount?.tier, proceedBasedOnTier, sessionToken, finalApiBaseUrl, previewMode]);
+    }, [authState.userAccount?.tier, proceedBasedOnTier, sessionToken, finalApiBaseUrl, previewMode, kycState]);
 
     // Handle extension login success
     const handleExtensionSuccess = useCallback((userData: any) => {
@@ -692,13 +702,15 @@ export const CasperIDModal: React.FC<CasperIDModalProps> = ({
                 <style key={styleKey}>{scopedStyles}</style>
                 <div id={`casperid-modal-${modalId}`} style={cssVars} className={`relative ${resolvedTheme}`}>
                     <GlassContainer className="backdrop-blur-3xl" theme={resolvedTheme}>
-                        <Header
-                            onClose={onClose}
-                            showClose={screen !== 'AuthSelection'}
-                            subtitle={screen === 'PermissionsRequest' ? 'PERMISSION REQUEST' : 'SECURE SDK'}
-                            theme={resolvedTheme}
-                            toggleTheme={toggleTheme}
-                        />
+                        {screen !== 'FaceScan' && (
+                            <Header
+                                onClose={onClose}
+                                showClose={screen !== 'AuthSelection'}
+                                subtitle={screen === 'PermissionsRequest' ? 'PERMISSION REQUEST' : 'SECURE SDK'}
+                                theme={resolvedTheme}
+                                toggleTheme={toggleTheme}
+                            />
+                        )}
                         <div className="flex-1 flex flex-col relative overflow-hidden">
                             <AnimatePresence mode="wait">
                                 <motion.div key={screen} className="flex-1 flex flex-col">
@@ -750,16 +762,24 @@ export const CasperIDModal: React.FC<CasperIDModalProps> = ({
                     exit={finalLayout === 'fullscreen' ? { opacity: 0 } : { opacity: 0, scale: 0.95, y: 20 }}
                     transition={{ type: 'spring', damping: 28, stiffness: 300 }}
                     style={cssVars}
-                    className={`relative selection:bg-brand/30 ${resolvedTheme} ${finalLayout === 'fullscreen' ? 'w-full h-full' : ''}`}
+                    className={`relative selection:bg-brand/30 ${resolvedTheme} ${
+                        finalLayout === 'fullscreen'
+                            ? 'w-full h-full'
+                            : finalPlatform === 'mobile'
+                                ? 'w-full max-w-md h-[90vh] max-h-[800px]'
+                                : 'w-full max-w-xl h-[85vh] max-h-[900px]'
+                    }`}
                 >
                     <GlassContainer className={`backdrop-blur-3xl ${finalLayout === 'fullscreen' ? 'w-full h-full rounded-none' : ''}`} theme={resolvedTheme}>
-                        <Header
-                            onClose={onClose}
-                            showClose={screen !== 'AuthSelection'}
-                            subtitle={screen === 'PermissionsRequest' ? 'PERMISSION REQUEST' : 'SECURE SDK'}
-                            theme={resolvedTheme}
-                            toggleTheme={toggleTheme}
-                        />
+                        {screen !== 'FaceScan' && (
+                            <Header
+                                onClose={onClose}
+                                showClose={screen !== 'AuthSelection'}
+                                subtitle={screen === 'PermissionsRequest' ? 'PERMISSION REQUEST' : 'SECURE SDK'}
+                                theme={resolvedTheme}
+                                toggleTheme={toggleTheme}
+                            />
+                        )}
 
                         <div className="flex-1 flex flex-col relative overflow-hidden">
                             <AnimatePresence mode="wait">

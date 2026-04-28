@@ -106,7 +106,7 @@ app.use(cors({
         callback(error);
     },
     credentials: true,
-    allowedHeaders: ['Content-Type', 'Authorization', 'X-CSRF-Token', 'ngrok-skip-browser-warning', 'x-app-id', 'X-App-Id'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-CSRF-Token', 'ngrok-skip-browser-warning', 'x-app-id', 'X-App-Id', 'X-API-Key'],
     exposedHeaders: ['X-CSRF-Token']
 }));
 app.use(express.json({
@@ -137,13 +137,17 @@ app.get('/api/csrf-token', getCsrfToken);
 // Apply CSRF protection to all state-changing requests (POST, PUT, DELETE, PATCH)
 // Skips GET, HEAD, OPTIONS automatically
 app.use((req, res, next) => {
-    // Exempt external webhooks, auth, and business API from CSRF protection
-    // API/Auth uses Bearer tokens or App ID verification, not browser sessions
+    // Exempt external webhooks, auth, passkey, verification, and business API from CSRF protection
+    // These endpoints use Bearer tokens, App ID verification, or session tokens - not browser CSRF
     if (
         req.path.startsWith('/api/payment/revenuecat/webhook') ||
         req.path.startsWith('/api/payment/boomfi/webhook') ||
         req.path.startsWith('/api/business') ||
-        req.path.startsWith('/api/auth')
+        req.path.startsWith('/api/auth') ||
+        req.path.startsWith('/api/passkey') ||
+        req.path.startsWith('/api/v2/verification') ||
+        req.path.startsWith('/api/casperid') ||
+        req.path.startsWith('/api/ai')
     ) {
         return next();
     }

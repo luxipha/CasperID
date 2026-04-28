@@ -4,7 +4,7 @@
     "description": "CasperID Identity SDK — embeddable React modal for authentication and KYC verification",
     "main": "dist/index.cjs",
     "module": "dist/index.mjs",
-    "types": "src/index.ts",
+    "types": "dist/index.d.ts",
     "type": "module",
     "keywords": [
         "casper",
@@ -20,8 +20,7 @@
         "auth"
     ],
     "files": [
-        "dist",
-        "src"
+        "dist"
     ],
     "author": "CasperID Team",
     "license": "MIT",
@@ -45,7 +44,9 @@
         "framer-motion": ">=10"
     },
     "dependencies": {
-        "lucide-react": "^0.400.0"
+        "lucide-react": "^0.400.0",
+        "@mediapipe/face_mesh": "^0.4.1633559619",
+        "@mediapipe/camera_utils": "^0.3.1620248257"
     },
     "devDependencies": {
         "@types/react": "^18",
@@ -59,11 +60,11 @@
     "exports": {
         ".": {
             "import": {
-                "types": "./src/index.ts",
+                "types": "./dist/index.d.ts",
                 "default": "./dist/index.mjs"
             },
             "require": {
-                "types": "./src/index.ts",
+                "types": "./dist/index.d.ts",
                 "default": "./dist/index.cjs"
             }
         },
