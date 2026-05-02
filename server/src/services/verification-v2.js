@@ -157,14 +157,23 @@ class VerificationServiceV2 {
             } = livenessData;
 
             // Find verification request
+            console.log(`[Liveness] Looking for verification request: ${requestId}`);
+
             const verificationRequest = await VerificationRequestV2.findOne({
                 request_id: requestId,
                 status: { $in: ['pending', 'in_progress'] }
             });
 
             if (!verificationRequest) {
+                // Log all requests for debugging
+                const allRequests = await VerificationRequestV2.find({ request_id: requestId }).limit(5);
+                console.error(`[Liveness] Request not found. RequestId: ${requestId}`);
+                console.error(`[Liveness] Found ${allRequests.length} requests with this ID:`,
+                    allRequests.map(r => ({ id: r.request_id, status: r.status, tier: r.verification_tier })));
                 throw new Error('Verification request not found or expired');
             }
+
+            console.log(`[Liveness] Found request: ${verificationRequest.request_id}, status: ${verificationRequest.status}, tier: ${verificationRequest.verification_tier}`);
 
             // Validate imageFrames
             if (!imageFrames || imageFrames.length === 0) {
@@ -177,6 +186,28 @@ class VerificationServiceV2 {
 
             // Convert imageFrames (multer file objects) to buffers
             const frameBuffers = imageFrames.map(frame => frame.buffer);
+
+            // Upload liveness frames to ImageKit for admin review
+            let livenessFrameUrls = [];
+            try {
+                const imagekit = require('./imagekit');
+                console.log(`[Liveness] Uploading ${imageFrames.length} frames to ImageKit...`);
+
+                const uploadPromises = imageFrames.map((frame, i) => {
+                    return imagekit.files.upload({
+                        file: frame.buffer.toString('base64'),
+                        fileName: `liveness-${requestId}-frame-${i}-${Date.now()}`,
+                        folder: '/liveness-frames',
+                        useUniqueFileName: true
+                    }).then(response => response.url);
+                });
+
+                livenessFrameUrls = await Promise.all(uploadPromises);
+                console.log(`[Liveness] Successfully uploaded ${livenessFrameUrls.length} frames`);
+            } catch (uploadError) {
+                console.error('[Liveness] ImageKit upload failed:', uploadError.message);
+                // Continue without frames - admin won't see them but verification can proceed
+            }
 
             // Extract step sequence from metadata, or use default
             const stepSequence = metadata.stepSequence || ['blink', 'open_mouth'];
@@ -204,18 +235,36 @@ class VerificationServiceV2 {
                 };
             }
 
-            const livenessVerified = livenessScore >= this.LIVENESS_THRESHOLD && livenessAnalysis.passed;
+            // For Layer 2: AI makes the decision (auto-approve/reject)
+            // For Layer 3: AI provides analysis for admin review (never auto-reject)
+            const isLayer3 = verificationRequest.verification_tier === 'layer_3';
 
-            // Update verification data
+            let livenessVerified;
+            if (isLayer3) {
+                // Layer 3: Always accept for admin review, store AI analysis
+                livenessVerified = true;
+                console.log('[Liveness] Layer 3 - Accepting for admin review regardless of AI result');
+            } else {
+                // Layer 2: AI decision is final
+                livenessVerified = livenessScore >= this.LIVENESS_THRESHOLD && livenessAnalysis.passed;
+                console.log(`[Liveness] Layer 2 - AI decision: ${livenessVerified ? 'PASS' : 'FAIL'}`);
+            }
+
+            // Update verification data with liveness frames
             verificationRequest.verification_data = {
                 ...verificationRequest.verification_data,
                 liveness_score: livenessScore,
                 liveness_verified: livenessVerified,
                 liveness_analysis: livenessAnalysis,
-                liveness_processed_at: Date.now()
+                liveness_processed_at: Date.now(),
+                liveness_frame_urls: livenessFrameUrls,
+                liveness_confidence: Math.round(livenessScore * 100),
+                liveness_ai_passed: livenessAnalysis.passed, // Store AI result separately for admin
+                liveness_ai_reasoning: livenessAnalysis.reasoning
             };
 
-            if (!livenessVerified) {
+            // Only fail if Layer 2 and AI rejected
+            if (!isLayer3 && !livenessVerified) {
                 verificationRequest.status = 'failed';
                 verificationRequest.error_message = `Liveness verification failed. Score: ${livenessScore}`;
                 await verificationRequest.save();
@@ -233,7 +282,7 @@ class VerificationServiceV2 {
                 return await this.completeLayer2Verification(requestId);
             }
 
-            // For Layer 3, liveness is one step - proceed to next step
+            // For Layer 3, liveness is one step - proceed to next step (admin will review)
             await verificationRequest.save();
 
             return {
@@ -241,6 +290,7 @@ class VerificationServiceV2 {
                 status: 'completed',
                 livenessVerified: true,
                 score: livenessScore,
+                aiPassed: livenessAnalysis.passed, // Include AI result in response
                 nextStep: 'identity_verification',
                 requestId
             };

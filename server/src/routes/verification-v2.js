@@ -87,7 +87,15 @@ router.post('/liveness', upload.fields([
     try {
         const { requestId, metadata } = req.body;
 
+        console.log('[Liveness Endpoint] Received request:', {
+            requestId,
+            hasImageFrames: !!req.files?.imageFrames,
+            frameCount: req.files?.imageFrames?.length || 0,
+            metadata: metadata ? 'present' : 'missing'
+        });
+
         if (!requestId) {
+            console.error('[Liveness Endpoint] Missing requestId');
             return res.status(400).json({
                 success: false,
                 error: 'Request ID is required'
@@ -144,7 +152,10 @@ router.post('/layer3/start', extractApp, async (req, res) => {
         const sessionToken = req.cookies.casperid_session ||
             req.headers.authorization?.replace('Bearer ', '');
 
+        console.log('[Layer3 Start] Request received');
+
         if (!sessionToken) {
+            console.error('[Layer3 Start] Missing session token');
             return res.status(401).json({
                 success: false,
                 error: 'Authentication required'
@@ -152,6 +163,7 @@ router.post('/layer3/start', extractApp, async (req, res) => {
         }
 
         const { verificationMethod, purpose } = req.body;
+        console.log('[Layer3 Start] Parameters:', { verificationMethod, purpose });
 
         const result = await verificationServiceV2.startLayer3Verification(sessionToken, {
             verificationMethod,
@@ -159,13 +171,15 @@ router.post('/layer3/start', extractApp, async (req, res) => {
             appId: req.businessApp?.app_id // Pass appId from context
         });
 
+        console.log('[Layer3 Start] Success! RequestId:', result.requestId);
+
         res.json({
             success: true,
             verification: result
         });
 
     } catch (error) {
-        console.error('Layer 3 verification start failed:', error);
+        console.error('[Layer3 Start] Error:', error.message);
         res.status(400).json({
             success: false,
             error: error.message
@@ -268,7 +282,7 @@ router.post('/layer3/documents/upload', upload.fields([
         try {
             // Initialize Tesseract OCR worker (tesseract.js)
             const { createWorker } = require('tesseract.js');
-            
+
             // Re-wrap in a localized try-catch to ensure worker.terminate() always runs
             worker = await createWorker('eng');
 
@@ -290,12 +304,12 @@ router.post('/layer3/documents/upload', upload.fields([
         } catch (ocrError) {
             console.error('[OCR] Extraction failed, falling back to manual entry:', ocrError.message);
             if (worker) {
-                try { await worker.terminate(); } catch (_) {}
+                try { await worker.terminate(); } catch (_) { }
                 worker = null;
             }
             // extractedData remains at its default values, which is fine
         }
-      
+
 
         res.json({
             success: true,
@@ -312,7 +326,7 @@ router.post('/layer3/documents/upload', upload.fields([
 
     } catch (error) {
         if (worker) {
-            try { await worker.terminate(); } catch (_) {}
+            try { await worker.terminate(); } catch (_) { }
         }
 
         console.error('[Layer3] Document upload error:', error);
@@ -473,8 +487,21 @@ router.post('/layer3/submit', async (req, res) => {
 
         // Enrich the existing request with document data
         pendingRequest.status = 'in_progress';
+
+        // Log what we're receiving
+        console.log('[Layer3 Submit] Received data:', {
+            upload_id,
+            front_image_url,
+            back_image_url,
+            document_data,
+            liveness_verified
+        });
+
+        // Preserve existing verification_data (e.g., liveness data if already done)
+        const existingData = pendingRequest.verification_data || {};
+
         pendingRequest.verification_data = {
-            ...pendingRequest.verification_data,
+            ...existingData, // Preserve any existing data (liveness, etc.)
             document_verified: true, // Provisional — admin review will confirm
             document_type: document_data.document_type,
             document_number: document_data.document_number,
@@ -484,8 +511,8 @@ router.post('/layer3/submit', async (req, res) => {
             date_of_birth: document_data.date_of_birth,
             gender: document_data.gender,
             nationality: document_data.nationality || 'Nigerian',
-            home_address: document_data.address,
-            liveness_verified: liveness_verified || false,
+            home_address: document_data.address || document_data.home_address,
+            liveness_verified: existingData.liveness_verified || liveness_verified || false,
             // ImageKit references (no local paths)
             front_image_url: front_image_url || null,
             front_image_file_id: front_image_file_id || null,
@@ -495,7 +522,11 @@ router.post('/layer3/submit', async (req, res) => {
             submitted_at: new Date().toISOString()
         };
 
+        console.log('[Layer3 Submit] Saving verification_data:', pendingRequest.verification_data);
+
         await pendingRequest.save();
+
+        console.log('[Layer3 Submit] Successfully saved request:', pendingRequest.request_id);
 
         res.json({
             success: true,

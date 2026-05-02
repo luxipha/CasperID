@@ -28,7 +28,7 @@ const IdentityVerified: React.FC<IdentityVerifiedProps & { language?: string }> 
         </p>
 
         {/* Data consent toggle */}
-        <div className="w-full dark:bg-white/5 bg-black/5 rounded-2xl p-5 mb-8 flex items-center justify-between text-left">
+        <div className="w-full bg-white dark:bg-white/5 shadow-sm border border-slate-200 dark:border-white/10 rounded-2xl p-5 mb-8 flex items-center justify-between text-left">
             <div className="flex flex-col gap-0.5">
                 <span className="text-main font-bold text-sm">{t('share_data_consent', language)}</span>
                 <p className="text-muted text-xs leading-normal">{t('authorize_dapps', language)}</p>

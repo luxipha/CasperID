@@ -8,7 +8,7 @@ import { t } from '../utils/i18n';
 interface DocumentScanProps {
     requestId: string;
     documentType: DocumentType;
-    onNext: (extractedData: ExtractedDocumentData, docUploadId: string) => void;
+    onNext: (extractedData: ExtractedDocumentData, docUploadId: string, imageUrls: { frontImageUrl?: string; frontImageFileId?: string; backImageUrl?: string; backImageFileId?: string }) => void;
     onError?: (error: string) => void;
     apiBaseUrl?: string;
     apiKey?: string;
@@ -137,8 +137,13 @@ const DocumentScan: React.FC<DocumentScanProps> = ({
                     first_name: 'JOHN',
                     last_name: 'DOE',
                     date_of_birth: '01 JAN 1990',
-                    nationality: 'Nigerian'
-                }, 'mock-upload-id-789');
+                    nationality: ''
+                }, 'mock-upload-id-789', {
+                    frontImageUrl: 'mock-front-url',
+                    frontImageFileId: 'mock-front-id',
+                    backImageUrl: 'mock-back-url',
+                    backImageFileId: 'mock-back-id'
+                });
             }, 2000);
             return;
         }
@@ -195,7 +200,12 @@ const DocumentScan: React.FC<DocumentScanProps> = ({
                 if (streamRef.current) {
                     streamRef.current.getTracks().forEach(track => track.stop());
                 }
-                onNext(data.extracted_data, data.upload_id || '');
+                onNext(data.extracted_data, data.upload_id || '', {
+                    frontImageUrl: data.front_image_url,
+                    frontImageFileId: data.front_image_file_id,
+                    backImageUrl: data.back_image_url,
+                    backImageFileId: data.back_image_file_id
+                });
             } else {
                 setError(data.error || 'Failed to process document. Please try again.');
                 setIsUploading(false);

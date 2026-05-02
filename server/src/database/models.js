@@ -1543,6 +1543,11 @@ const businessAppSchema = new mongoose.Schema({
         enum: ['unlisted', 'listed'],
         default: 'unlisted'
     },
+    requested_scopes: [{
+        type: String,
+        enum: ['verify:identity', 'read:profile', 'read:kyc_level', 'read:email', 'read:wallet'],
+        default: []
+    }],
     created_at: {
         type: Date,
         default: Date.now

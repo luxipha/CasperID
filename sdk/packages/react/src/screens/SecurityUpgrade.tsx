@@ -23,7 +23,7 @@ const SecurityUpgrade: React.FC<SecurityUpgradeProps> = ({ onNext, onSkip, langu
                 </span>
                 <span className="text-xs font-bold text-muted">{t('kyc_required', language)}</span>
             </div>
-            <div className="w-full bg-brand/10 h-1.5 rounded-full overflow-hidden">
+            <div className="w-full bg-slate-200 dark:bg-brand/10 h-1.5 rounded-full overflow-hidden">
                 <div
                     className="bg-brand h-full rounded-full"
                     style={{ width: '40%' }}

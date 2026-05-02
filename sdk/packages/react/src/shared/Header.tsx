@@ -41,7 +41,7 @@ const Header: React.FC<HeaderProps> = ({
         <div className="flex items-center gap-2">
             <button
                 onClick={toggleTheme}
-                className="p-2 dark:hover:bg-white/10 hover:bg-slate-200/50 rounded-xl transition-colors text-muted"
+                className="p-2 dark:hover:bg-slate-200 dark:bg-white/10 hover:bg-slate-200/50 rounded-xl transition-colors text-muted"
                 aria-label="Toggle theme"
             >
                 {theme === 'dark' ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
@@ -49,7 +49,7 @@ const Header: React.FC<HeaderProps> = ({
             {showClose && (
                 <button
                     onClick={onClose}
-                    className="p-2 dark:hover:bg-white/10 hover:bg-slate-200/50 rounded-full transition-colors text-muted"
+                    className="p-2 dark:hover:bg-slate-200 dark:bg-white/10 hover:bg-slate-200/50 rounded-full transition-colors text-muted"
                     aria-label="Close"
                 >
                     <X className="w-5 h-5" />

@@ -121,6 +121,10 @@ export interface KYCState {
     documentType?: DocumentType;
     extractedData?: ExtractedDocumentData;
     livenessVerified?: boolean;
+    frontImageUrl?: string;
+    frontImageFileId?: string;
+    backImageUrl?: string;
+    backImageFileId?: string;
 }
 
 export interface ExtractedDocumentData {
@@ -175,6 +179,10 @@ export interface LivenessResponse {
 export interface DocumentUploadResponse {
     success: boolean;
     upload_id?: string;
+    front_image_url?: string;
+    front_image_file_id?: string;
+    back_image_url?: string;
+    back_image_file_id?: string;
     extracted_data?: ExtractedDocumentData;
     confidence?: number;
     needs_review?: boolean;
@@ -326,6 +334,9 @@ export interface AppMetadata {
     app_id: string;
     name: string;
     logo_url?: string;
+    website_url?: string;
+    description?: string;
+    requested_scopes?: string[];
     theme?: {
         primaryColor?: string;
         borderRadius?: string;

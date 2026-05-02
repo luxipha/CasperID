@@ -318,7 +318,7 @@ export default function DashboardPortal() {
         isOpen={isModalOpen}
         apiKey={API_KEY}
         apiBaseUrl={API_BASE_URL}
-        requiredTier="L2"
+        requiredTier="L3"
         onSuccess={handleAuthSuccess}
         onClose={() => setIsModalOpen(false)}
         onError={handleAuthError}

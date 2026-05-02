@@ -10,6 +10,10 @@ interface ReviewDataProps {
     documentType: DocumentType;
     extractedData: ExtractedDocumentData;
     uploadId: string;
+    frontImageUrl?: string;
+    frontImageFileId?: string;
+    backImageUrl?: string;
+    backImageFileId?: string;
     onNext: (confirmedData: ExtractedDocumentData) => void;
     onRetake?: () => void;
     onError?: (error: string) => void;
@@ -30,6 +34,10 @@ const ReviewData: React.FC<ReviewDataProps> = ({
     documentType,
     extractedData,
     uploadId,
+    frontImageUrl,
+    frontImageFileId,
+    backImageUrl,
+    backImageFileId,
     onNext,
     onRetake,
     onError,
@@ -91,7 +99,11 @@ const ReviewData: React.FC<ReviewDataProps> = ({
                 credentials: 'include',
                 body: JSON.stringify({
                     upload_id: uploadId,
-                    liveness_verified: true,
+                    front_image_url: frontImageUrl,
+                    front_image_file_id: frontImageFileId,
+                    back_image_url: backImageUrl,
+                    back_image_file_id: backImageFileId,
+                    liveness_verified: false, // Will be updated after FaceScan
                     document_data: {
                         first_name: formData.firstName,
                         last_name: formData.lastName,
@@ -134,7 +146,8 @@ const ReviewData: React.FC<ReviewDataProps> = ({
     };
 
     const confidence = extractedData.confidence || 0;
-    const confidencePercent = Math.round(confidence * 100);
+    // Assuming backend returns percentage directly (e.g., 21 for 21%)
+    const confidencePercent = Math.round(confidence);
 
     return (
         <motion.div
@@ -192,25 +205,41 @@ const ReviewData: React.FC<ReviewDataProps> = ({
             )}
 
             <div className="space-y-5">
-                {/* First Name */}
-                <div className="space-y-3">
-                    <label className="text-xs font-bold uppercase tracking-[0.15em] text-brand ml-1">
-                        {t('full_name', language)}
-                    </label>
-                    <div className="flex items-center px-1 transition-all">
-                        <User className="text-brand mr-4 w-6 h-6 shrink-0" />
-                        <div className="flex flex-col w-full">
-                            <input
-                                className="bg-transparent border-none p-0 w-full focus:ring-0 text-main font-bold text-lg focus:outline-none placeholder:text-slate-300"
-                                type="text"
-                                value={`${formData.firstName} ${formData.lastName}`}
-                                onChange={(e) => {
-                                    const parts = e.target.value.split(' ');
-                                    handleInputChange('firstName', parts[0] || '');
-                                    handleInputChange('lastName', parts.slice(1).join(' ') || '');
-                                }}
-                                placeholder={t('enter_first_name', language)}
-                            />
+                <div className="grid grid-cols-2 gap-4">
+                    {/* First Name */}
+                    <div className="space-y-3">
+                        <label className="text-xs font-bold uppercase tracking-[0.15em] text-brand ml-1">
+                            {t('first_name', language) || 'First Name'}
+                        </label>
+                        <div className="flex items-center px-1 transition-all">
+                            <User className="text-brand mr-3 w-5 h-5 shrink-0" />
+                            <div className="flex flex-col w-full">
+                                <input
+                                    className="bg-transparent border-none p-0 w-full focus:ring-0 text-main font-bold text-lg focus:outline-none placeholder:text-slate-400 dark:placeholder:text-slate-500"
+                                    type="text"
+                                    value={formData.firstName}
+                                    onChange={(e) => handleInputChange('firstName', e.target.value)}
+                                    placeholder={t('enter_first_name', language) || 'First name'}
+                                />
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Last Name */}
+                    <div className="space-y-3">
+                        <label className="text-xs font-bold uppercase tracking-[0.15em] text-brand ml-1">
+                            {t('last_name', language) || 'Last Name'}
+                        </label>
+                        <div className="flex items-center px-1 transition-all">
+                            <div className="flex flex-col w-full">
+                                <input
+                                    className="bg-transparent border-none p-0 w-full focus:ring-0 text-main font-bold text-lg focus:outline-none placeholder:text-slate-400 dark:placeholder:text-slate-500"
+                                    type="text"
+                                    value={formData.lastName}
+                                    onChange={(e) => handleInputChange('lastName', e.target.value)}
+                                    placeholder={t('enter_last_name', language) || 'Last name'}
+                                />
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -223,7 +252,7 @@ const ReviewData: React.FC<ReviewDataProps> = ({
                     <div className="flex items-center px-1 transition-all">
                         <CreditCard className="text-brand mr-4 w-6 h-6 shrink-0" />
                         <input
-                            className="bg-transparent border-none p-0 w-full focus:ring-0 text-main font-bold text-lg focus:outline-none placeholder:text-slate-300"
+                            className="bg-transparent border-none p-0 w-full focus:ring-0 text-main font-bold text-lg focus:outline-none placeholder:text-slate-400 dark:placeholder:text-slate-500"
                             type="text"
                             value={formData.documentNumber}
                             onChange={(e) => handleInputChange('documentNumber', e.target.value)}
@@ -240,7 +269,7 @@ const ReviewData: React.FC<ReviewDataProps> = ({
                     <div className="flex items-center px-1 transition-all">
                         <Calendar className="text-brand mr-4 w-6 h-6 shrink-0" />
                         <input
-                            className="bg-transparent border-none p-0 w-full focus:ring-0 text-main font-bold text-lg focus:outline-none placeholder:text-slate-300"
+                            className="bg-transparent border-none p-0 w-full focus:ring-0 text-main font-bold text-lg focus:outline-none placeholder:text-slate-400 dark:placeholder:text-slate-500"
                             type="text"
                             value={formData.dateOfBirth}
                             onChange={(e) => handleInputChange('dateOfBirth', e.target.value)}
@@ -257,7 +286,7 @@ const ReviewData: React.FC<ReviewDataProps> = ({
                     <div className="flex items-center px-1 transition-all">
                         <Globe className="text-brand mr-4 w-6 h-6 shrink-0" />
                         <input
-                            className="bg-transparent border-none p-0 w-full focus:ring-0 text-main font-bold text-lg focus:outline-none placeholder:text-slate-300"
+                            className="bg-transparent border-none p-0 w-full focus:ring-0 text-main font-bold text-lg focus:outline-none placeholder:text-slate-400 dark:placeholder:text-slate-500"
                             type="text"
                             value={formData.nationality}
                             onChange={(e) => handleInputChange('nationality', e.target.value)}

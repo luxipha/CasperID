@@ -453,29 +453,29 @@ export const CasperIDModal: React.FC<CasperIDModalProps> = ({
 
     // Handle SecurityUpgrade start
     const handleSecurityUpgradeNext = useCallback(async () => {
-        // Start Layer 2 verification (face scan)
-        const requestId = await startVerification('layer_2');
-        if (requestId) {
-            go('FaceScan');
-        }
-    }, [startVerification, go]);
-
-    // Handle FaceScan completion
-    const handleFaceScanNext = useCallback(async (livenessVerified: boolean) => {
-        setKycState(prev => ({ ...prev, livenessVerified }));
-
-        // Check if we need Layer 3 (document verification)
+        // For L3, start with document verification first
         if (requiredTier === 'L3') {
-            // Start Layer 3 verification
             const requestId = await startVerification('layer_3');
             if (requestId) {
                 go('VerifyIdentityChoice');
             }
         } else {
-            // Layer 2 complete, go to minting
-            go('MintingIdentity');
+            // For L2, start with face scan
+            const requestId = await startVerification('layer_2');
+            if (requestId) {
+                go('FaceScan');
+            }
         }
     }, [requiredTier, startVerification, go]);
+
+    // Handle FaceScan completion
+    const handleFaceScanNext = useCallback(async (livenessVerified: boolean) => {
+        setKycState(prev => ({ ...prev, livenessVerified }));
+
+        // For both L2 and L3, after face scan, go to minting
+        // (For L3, document scan already happened before face scan)
+        go('MintingIdentity');
+    }, [go]);
 
     // Handle document type selection
     const handleDocumentTypeSelected = useCallback((documentType: DocumentType) => {
@@ -484,8 +484,15 @@ export const CasperIDModal: React.FC<CasperIDModalProps> = ({
     }, [go]);
 
     // Handle document scan completion
-    const handleDocumentScanNext = useCallback((extractedData: ExtractedDocumentData, docUploadId: string) => {
-        setKycState(prev => ({ ...prev, extractedData }));
+    const handleDocumentScanNext = useCallback((extractedData: ExtractedDocumentData, docUploadId: string, imageUrls: { frontImageUrl?: string; frontImageFileId?: string; backImageUrl?: string; backImageFileId?: string }) => {
+        setKycState(prev => ({
+            ...prev,
+            extractedData,
+            frontImageUrl: imageUrls.frontImageUrl,
+            frontImageFileId: imageUrls.frontImageFileId,
+            backImageUrl: imageUrls.backImageUrl,
+            backImageFileId: imageUrls.backImageFileId
+        }));
         setUploadId(docUploadId);
         go('ReviewData');
     }, [go]);
@@ -493,7 +500,8 @@ export const CasperIDModal: React.FC<CasperIDModalProps> = ({
     // Handle review data confirmation
     const handleReviewDataNext = useCallback((confirmedData: ExtractedDocumentData) => {
         setKycState(prev => ({ ...prev, extractedData: confirmedData }));
-        go('MintingIdentity');
+        // For L3, after document review, proceed to liveness check (FaceScan)
+        go('FaceScan');
     }, [go]);
 
     // Handle document retake
@@ -653,6 +661,10 @@ export const CasperIDModal: React.FC<CasperIDModalProps> = ({
                         documentType={kycState.documentType!}
                         extractedData={kycState.extractedData!}
                         uploadId={uploadId}
+                        frontImageUrl={kycState.frontImageUrl}
+                        frontImageFileId={kycState.frontImageFileId}
+                        backImageUrl={kycState.backImageUrl}
+                        backImageFileId={kycState.backImageFileId}
                         onNext={handleReviewDataNext}
                         onRetake={() => go('DocumentScan')}
                         onError={handleError}
@@ -688,6 +700,7 @@ export const CasperIDModal: React.FC<CasperIDModalProps> = ({
                         language={language}
                         appName={appMetadata?.name}
                         appLogo={logoUrl || appMetadata?.logo_url}
+                        requestedScopes={appMetadata?.requested_scopes}
                     />
                 );
             default:

@@ -146,10 +146,33 @@ export default function RequestDetailsModal({ isOpen, onClose, request, onAction
                                     ⚠️ No liveness snapshots found. This might be a legacy request or bypassed check.
                                 </div>
                             )}
-                            {request.metadata?.liveness_verified && (
-                                <p className="text-xs text-green-400 mt-2 flex items-center">
-                                    <CheckCircle className="w-3 h-3 mr-1" /> AI verified liveness on {new Date(request.metadata.liveness_completed_at).toLocaleString()}
-                                </p>
+                            {request.metadata?.liveness_verified !== undefined && (
+                                <div className="mt-3 p-3 bg-slate-800/50 rounded-lg border border-slate-700">
+                                    <p className="text-xs font-semibold text-slate-300 mb-2">AI Analysis</p>
+                                    <div className="grid grid-cols-2 gap-2 text-xs">
+                                        <div>
+                                            <span className="text-slate-500">AI Decision:</span>
+                                            <p className={`font-semibold ${request.liveness_ai_passed ? 'text-green-400' : 'text-yellow-400'}`}>
+                                                {request.liveness_ai_passed ? 'PASS' : 'NEEDS REVIEW'}
+                                            </p>
+                                        </div>
+                                        <div>
+                                            <span className="text-slate-500">Confidence:</span>
+                                            <p className="font-semibold text-white">{request.liveness_confidence || request.metadata?.liveness_confidence || 'N/A'}%</p>
+                                        </div>
+                                    </div>
+                                    {(request.liveness_ai_reasoning || request.metadata?.liveness_ai_reasoning) && (
+                                        <div className="mt-2 pt-2 border-t border-slate-700">
+                                            <span className="text-slate-500 text-xs">Reasoning:</span>
+                                            <p className="text-xs text-slate-300 mt-1">{request.liveness_ai_reasoning || request.metadata?.liveness_ai_reasoning}</p>
+                                        </div>
+                                    )}
+                                    {request.metadata?.liveness_completed_at && (
+                                        <p className="text-xs text-slate-500 mt-2">
+                                            Processed: {new Date(request.metadata.liveness_completed_at).toLocaleString()}
+                                        </p>
+                                    )}
+                                </div>
                             )}
                         </div>
 

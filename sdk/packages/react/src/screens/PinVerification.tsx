@@ -253,7 +253,7 @@ const PinVerification: React.FC<PinVerificationProps> = ({
                         key={num}
                         onClick={() => handleDigitPress(num.toString())}
                         disabled={isVerifying}
-                        className="h-14 rounded-2xl dark:hover:bg-white/5 hover:bg-slate-100 flex items-center justify-center text-xl font-bold transition-colors text-main disabled:opacity-50"
+                        className="h-14 rounded-2xl dark:hover:bg-slate-100 dark:bg-white/5 hover:bg-slate-100 flex items-center justify-center text-xl font-bold transition-colors text-main disabled:opacity-50"
                     >
                         {num}
                     </button>
@@ -262,14 +262,14 @@ const PinVerification: React.FC<PinVerificationProps> = ({
                 <button
                     onClick={() => handleDigitPress('0')}
                     disabled={isVerifying}
-                    className="h-14 rounded-2xl dark:hover:bg-white/5 hover:bg-slate-100 flex items-center justify-center text-xl font-bold transition-colors text-main disabled:opacity-50"
+                    className="h-14 rounded-2xl dark:hover:bg-slate-100 dark:bg-white/5 hover:bg-slate-100 flex items-center justify-center text-xl font-bold transition-colors text-main disabled:opacity-50"
                 >
                     0
                 </button>
                 <button
                     onClick={handleDelete}
                     disabled={isVerifying}
-                    className="h-14 rounded-2xl dark:hover:bg-white/5 hover:bg-slate-100 flex items-center justify-center transition-colors text-main disabled:opacity-50"
+                    className="h-14 rounded-2xl dark:hover:bg-slate-100 dark:bg-white/5 hover:bg-slate-100 flex items-center justify-center transition-colors text-main disabled:opacity-50"
                 >
                     <Delete className="w-6 h-6" />
                 </button>

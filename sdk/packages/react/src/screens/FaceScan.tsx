@@ -433,7 +433,7 @@ const FaceScan: React.FC<FaceScanProps> = ({
             <div className="relative z-20 flex-1 flex flex-col items-center justify-center pt-8">
                 <div className="relative w-72 h-96 flex items-center justify-center">
                     {/* Portrait Mask with Live Video */}
-                    <div className="absolute inset-0 rounded-[3rem] overflow-hidden border-2 border-white/10 shadow-2xl">
+                    <div className="absolute inset-0 rounded-[3rem] overflow-hidden border-2 border-slate-200 dark:border-white/10 shadow-2xl">
                         <canvas
                             ref={canvasRef}
                             width={640}
@@ -541,7 +541,7 @@ const FaceScan: React.FC<FaceScanProps> = ({
                     </AnimatePresence>
                 )}
 
-                <div className="w-full max-w-[240px] h-1.5 bg-white/10 rounded-full overflow-hidden">
+                <div className="w-full max-w-[240px] h-1.5 bg-slate-200 dark:bg-white/10 rounded-full overflow-hidden">
                     <motion.div
                         className="h-full bg-gradient-to-r from-[#8651e1] to-[#6DE8EC]"
                         animate={{ width: `${progress}%` }}

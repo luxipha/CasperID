@@ -6,24 +6,31 @@ import { t } from '../utils/i18n';
 interface PermissionsRequestProps {
     appName?: string;
     appLogo?: string;
+    requestedScopes?: string[];
     onApprove: () => void;
     onDeny: () => void;
     language?: string;
 }
 
-const permissions = [
-    'perm_identity',
-    'perm_profile',
-    'perm_kyc',
+// Default permissions if app doesn't specify
+const defaultPermissions = [
+    'verify:identity',
+    'read:profile',
+    'read:kyc_level',
 ];
 
 const PermissionsRequest: React.FC<PermissionsRequestProps> = ({
     appName = 'This App',
     appLogo,
+    requestedScopes,
     onApprove,
     onDeny,
     language = 'EN',
-}) => (
+}) => {
+    // Use provided scopes or default
+    const permissions = requestedScopes || defaultPermissions;
+
+    return (
     <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -85,12 +92,13 @@ const PermissionsRequest: React.FC<PermissionsRequestProps> = ({
             </button>
             <button
                 onClick={onDeny}
-                className="w-full py-3 rounded-2xl bg-transparent dark:hover:bg-white/5 hover:bg-black/5 dark:text-slate-400 text-slate-500 font-semibold text-sm transition-all"
+                className="w-full py-3 rounded-2xl bg-transparent dark:hover:bg-slate-100 dark:bg-white/5 hover:bg-black/5 dark:text-slate-400 text-slate-500 font-semibold text-sm transition-all"
             >
                 {t('deny', language)}
             </button>
         </footer>
     </motion.div>
-);
+    );
+};
 
 export default PermissionsRequest;

@@ -184,7 +184,7 @@ const AuthSelection: React.FC<AuthSelectionProps> = ({
                             <span className="text-base">
                                 {isCheckingExtension ? t('connecting', language) : t('sign_in_with_extension', language)}
                             </span>
-                            <span className="text-[10px] uppercase tracking-widest text-white/70">
+                            <span className="text-[10px] uppercase tracking-widest text-slate-600 dark:text-white/70">
                                 {extensionInstalled === true ? t('extension_detected', language) : t('secure_wallet', language)}
                             </span>
                         </div>

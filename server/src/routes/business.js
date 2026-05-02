@@ -708,20 +708,23 @@ router.get('/app-metadata/:app_id', async (req, res) => {
     try {
         const { app_id } = req.params;
 
-        // Publicly expose ONLY name and branding info
+        // Publicly expose ONLY name, branding info, and requested scopes
         const app = await BusinessApp.findOne({ app_id, active: true })
-            .select('app_id name sdk_config.logo_url sdk_config.primary_color sdk_config.layout sdk_config.border_radius sdk_config.font_family sdk_config.platform');
+            .select('app_id name sdk_config requested_scopes website_url description');
 
         if (!app) {
             return res.status(404).json({ success: false, error: 'App not found' });
         }
 
-        return res.json({ 
-            success: true, 
+        return res.json({
+            success: true,
             app: {
                 app_id: app.app_id,
                 name: app.name,
                 logo_url: app.sdk_config?.logo_url || '',
+                website_url: app.website_url || '',
+                description: app.description || '',
+                requested_scopes: app.requested_scopes || ['verify:identity', 'read:profile', 'read:kyc_level'],
                 theme: {
                     primaryColor: app.sdk_config?.primary_color || '#8651e1',
                     borderRadius: app.sdk_config?.border_radius || '12',

@@ -441,7 +441,7 @@ const MintingIdentity: React.FC<MintingIdentityProps> = ({
                             }`} />
                     </div>
                     <div className="flex items-center gap-2 mt-4">
-                        <div className={`size-6 rounded-full overflow-hidden border border-white/10 ${status === 'completed'
+                        <div className={`size-6 rounded-full overflow-hidden border border-slate-200 dark:border-white/10 ${status === 'completed'
                             ? 'bg-gradient-to-tr from-green-500 to-[#6DE8EC]'
                             : status === 'failed'
                                 ? 'bg-gradient-to-tr from-red-500 to-orange-500'
@@ -452,14 +452,14 @@ const MintingIdentity: React.FC<MintingIdentityProps> = ({
                                 <motion.span 
                                     initial={{ opacity: 0 }}
                                     animate={{ opacity: 1 }}
-                                    className="text-[10px] font-bold text-white/90 truncate w-full text-left"
+                                    className="text-[10px] font-bold text-slate-800 dark:text-white/90 truncate w-full text-left"
                                 >
                                     {humanId}
                                 </motion.span>
                             ) : (
                                 <div className="h-1.5 w-12 bg-white/20 rounded-full mb-1" />
                             )}
-                            <div className="h-1 w-8 bg-white/10 rounded-full" />
+                            <div className="h-1 w-8 bg-slate-200 dark:bg-white/10 rounded-full" />
                         </div>
                     </div>
                     {status !== 'failed' && status !== 'completed' && (

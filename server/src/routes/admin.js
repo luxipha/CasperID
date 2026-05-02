@@ -67,9 +67,15 @@ router.get('/verification-requests', adminAuthWithRateLimit, async (req, res) =>
 
         // Map V2 requests (new format with verification_data)
         const mappedV2 = await Promise.all(requestsV2.map(async r => {
-            // Fetch user account to get wallet
+            // Fetch user account to get wallet and email
             const userAccount = await UserAccount.findOne({ user_id: r.user_id });
             const vData = r.verification_data || {};
+
+            // Fetch user profile for additional data
+            let userProfile = null;
+            if (userAccount?.wallet) {
+                userProfile = await UserProfile.findOne({ wallet: userAccount.wallet });
+            }
 
             return {
                 id: r._id,
@@ -91,27 +97,56 @@ router.get('/verification-requests', adminAuthWithRateLimit, async (req, res) =>
                 liveness_verified: vData.liveness_verified,
                 upload_id: vData.upload_id,
 
-                // Personal info from verification_data
-                first_name: vData.first_name,
-                last_name: vData.last_name,
-                date_of_birth: vData.date_of_birth,
+                // Personal info from verification_data (with fallback to profile)
+                first_name: vData.first_name || userProfile?.first_name,
+                last_name: vData.last_name || userProfile?.last_name,
+                email: userAccount?.recovery_email || userAccount?.email,
+                date_of_birth: vData.date_of_birth || userProfile?.date_of_birth,
                 gender: vData.gender,
                 nationality: vData.nationality,
                 nin: vData.nin,
                 home_address: vData.home_address,
-                phone_number: vData.phone_number,
+                phone_number: vData.phone_number || userProfile?.phone_number,
 
                 // Document images
                 front_image_url: vData.front_image_url,
+                front_image_file_id: vData.front_image_file_id,
                 back_image_url: vData.back_image_url,
+                back_image_file_id: vData.back_image_file_id,
 
-                // Liveness frames
+                // Liveness frames and AI analysis
                 liveness_frame_urls: vData.liveness_frame_urls || [],
                 liveness_completed_at: vData.liveness_completed_at,
                 liveness_confidence: vData.liveness_confidence,
+                liveness_ai_passed: vData.liveness_ai_passed,
+                liveness_ai_reasoning: vData.liveness_ai_reasoning,
 
                 // Submission timestamp
-                submitted_at: vData.submitted_at
+                submitted_at: vData.submitted_at,
+
+                // Create metadata object for frontend compatibility
+                metadata: {
+                    liveness_frames: vData.liveness_frame_urls || [],
+                    liveness_verified: vData.liveness_verified,
+                    liveness_completed_at: vData.liveness_completed_at,
+                    liveness_confidence: vData.liveness_confidence,
+                    liveness_ai_passed: vData.liveness_ai_passed,
+                    liveness_ai_reasoning: vData.liveness_ai_reasoning,
+                    document_type: vData.document_type,
+                    document_number: vData.document_number,
+                    nin: vData.nin,
+                    gender: vData.gender,
+                    nationality: vData.nationality,
+                    upload_id: vData.upload_id
+                },
+
+                // Profile data
+                human_id: userProfile?.human_id,
+                cns_name: userProfile?.cns_name,
+                socials: userProfile?.socials || {},
+                job_title: userProfile?.job_title,
+                education: userProfile?.education,
+                info: userProfile?.about
             };
         }));
 
