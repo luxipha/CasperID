@@ -2073,7 +2073,7 @@ const Yt = ({
           /* @__PURE__ */ e("span", { className: "text-xs font-semibold uppercase tracking-widest text-brand/80", children: t("verification_step", n) }),
           /* @__PURE__ */ e("span", { className: "text-xs font-bold text-muted", children: t("kyc_required", n) })
         ] }),
-        /* @__PURE__ */ e("div", { className: "w-full bg-slate-200 dark:bg-brand/10 h-1.5 rounded-full overflow-hidden", children: /* @__PURE__ */ e(
+        /* @__PURE__ */ e("div", { className: "w-full bg-brand-10 h-1.5 rounded-full overflow-hidden", children: /* @__PURE__ */ e(
           "div",
           {
             className: "bg-brand h-full rounded-full",
@@ -2085,7 +2085,7 @@ const Yt = ({
         /* @__PURE__ */ i("div", { className: "relative group", children: [
           /* @__PURE__ */ e("div", { className: "absolute inset-0 bg-cyan-400/20 blur-3xl rounded-full scale-75 group-hover:scale-100 transition-transform duration-500" }),
           /* @__PURE__ */ e("div", { className: "relative w-32 h-32 rounded-full bg-gradient-to-tr from-brand-20 to-brand-5 flex items-center justify-center border border-brand-30 shadow-inner", children: /* @__PURE__ */ e(Fe, { className: "w-16 h-16 text-brand" }) }),
-          /* @__PURE__ */ e("div", { className: "absolute bottom-1 right-1 w-8 h-8 rounded-full dark:bg-[#171220] bg-white border-2 border-brand flex items-center justify-center", children: /* @__PURE__ */ e(Te, { className: "w-4 h-4 text-brand" }) })
+          /* @__PURE__ */ e("div", { className: "absolute bottom-1 right-1 w-8 h-8 rounded-full glass-container border-2 border-brand flex items-center justify-center", children: /* @__PURE__ */ e(Te, { className: "w-4 h-4 text-brand" }) })
         ] }),
         /* @__PURE__ */ i("div", { className: "space-y-4", children: [
           /* @__PURE__ */ e("h1", { className: "text-2xl font-bold tracking-tight text-main leading-tight", children: t("security_upgrade_required", n) }),
@@ -2109,7 +2109,7 @@ const Yt = ({
           "button",
           {
             onClick: a,
-            className: "w-full dark:text-slate-400 text-slate-500 text-sm font-bold dark:hover:text-slate-200 hover:text-slate-800 transition-colors",
+            className: "w-full text-muted text-sm font-bold hover:text-main transition-colors",
             children: t("do_this_later", n)
           }
         )
@@ -2582,10 +2582,10 @@ const Yt = ({
       children: [
         /* @__PURE__ */ e("canvas", { ref: c, className: "hidden" }),
         /* @__PURE__ */ i("div", { className: "absolute inset-0 z-0", children: [
-          /* @__PURE__ */ e("div", { className: "w-full h-full bg-slate-800 flex items-center justify-center", children: /* @__PURE__ */ e("div", { className: "w-full h-full opacity-30 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-[#6DE8EC]/20 via-transparent to-transparent" }) }),
+          /* @__PURE__ */ e("div", { className: "w-full h-full bg-main opacity-10 flex items-center justify-center", children: /* @__PURE__ */ e("div", { className: "w-full h-full opacity-30 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-[#6DE8EC]/20 via-transparent to-transparent" }) }),
           /* @__PURE__ */ e("div", { className: "absolute inset-0 bg-black/30 backdrop-blur-[2px]" })
         ] }),
-        /* @__PURE__ */ e("div", { className: "relative z-10 p-6 flex flex-col items-center", children: /* @__PURE__ */ e("div", { className: "text-center px-4 py-2 dark:bg-black/40 bg-white/40 backdrop-blur-xl rounded-full border dark:border-white/10 border-black/5", children: /* @__PURE__ */ e("h3", { className: "text-main text-sm font-medium tracking-wide uppercase", children: t("scan_instruction", m).replace("{side}", t(T, m)).replace("{docType}", ei(m)[a]) }) }) }),
+        /* @__PURE__ */ e("div", { className: "relative z-10 p-6 flex flex-col items-center", children: /* @__PURE__ */ e("div", { className: "text-center px-4 py-2 bg-brand-10 backdrop-blur-xl rounded-full border border-brand-10", children: /* @__PURE__ */ e("h3", { className: "text-main text-sm font-medium tracking-wide uppercase", children: t("scan_instruction", m).replace("{side}", t(T, m)).replace("{docType}", ei(m)[a]) }) }) }),
         /* @__PURE__ */ e("div", { className: "relative z-10 flex-1 flex items-center justify-center px-6", children: /* @__PURE__ */ i("div", { className: "w-full aspect-[1.58/1] relative", children: [
           o ? /* @__PURE__ */ e(
             "img",
@@ -2623,7 +2623,7 @@ const Yt = ({
           /* @__PURE__ */ e(ve, { className: "w-5 h-5 text-red-500 shrink-0" }),
           /* @__PURE__ */ e("p", { className: "text-red-400 text-sm font-medium", children: V })
         ] }),
-        /* @__PURE__ */ i("div", { className: "relative z-10 p-8 dark:bg-black/60 bg-white/60 backdrop-blur-2xl border-t dark:border-white/10 border-black/5 rounded-t-3xl", children: [
+        /* @__PURE__ */ i("div", { className: "relative z-10 p-8 glass-container backdrop-blur-2xl border-t border-brand-10 rounded-t-3xl", children: [
           /* @__PURE__ */ e("p", { className: "text-muted text-xs text-center mb-6 font-medium", children: t(o ? "review_capture" : "align_document", m) }),
           /* @__PURE__ */ e("div", { className: "flex items-center justify-between gap-4", children: o ? /* @__PURE__ */ i(re, { children: [
             /* @__PURE__ */ e(
@@ -2631,7 +2631,7 @@ const Yt = ({
               {
                 onClick: C,
                 disabled: g,
-                className: "w-12 h-12 rounded-xl dark:bg-white/5 bg-black/5 flex items-center justify-center text-muted disabled:opacity-50",
+                className: "w-12 h-12 rounded-xl bg-brand-5 flex items-center justify-center text-muted disabled:opacity-50",
                 children: /* @__PURE__ */ e(Rt, { className: "w-6 h-6" })
               }
             ),
@@ -2650,7 +2650,7 @@ const Yt = ({
             /* @__PURE__ */ e("div", { className: "w-12 h-12" }),
             " "
           ] }) : /* @__PURE__ */ i(re, { children: [
-            /* @__PURE__ */ e("button", { className: "w-12 h-12 rounded-xl dark:bg-white/5 bg-black/5 flex items-center justify-center text-muted", children: /* @__PURE__ */ e(It, { className: "w-6 h-6" }) }),
+            /* @__PURE__ */ e("button", { className: "w-12 h-12 rounded-xl bg-brand-5 flex items-center justify-center text-muted", children: /* @__PURE__ */ e(It, { className: "w-6 h-6" }) }),
             /* @__PURE__ */ i(
               "button",
               {
@@ -2663,9 +2663,9 @@ const Yt = ({
                 ]
               }
             ),
-            /* @__PURE__ */ e("button", { className: "w-12 h-12 rounded-xl dark:bg-white/5 bg-black/5 flex items-center justify-center text-muted", children: /* @__PURE__ */ e(kt, { className: "w-6 h-6" }) })
+            /* @__PURE__ */ e("button", { className: "w-12 h-12 rounded-xl bg-brand-5 flex items-center justify-center text-muted", children: /* @__PURE__ */ e(kt, { className: "w-6 h-6" }) })
           ] }) }),
-          /* @__PURE__ */ e("div", { className: "w-32 h-1.5 bg-slate-600/30 rounded-full mx-auto mt-8" })
+          /* @__PURE__ */ e("div", { className: "w-32 h-1.5 bg-brand-10 rounded-full mx-auto mt-8" })
         ] })
       ]
     }
@@ -2779,7 +2779,7 @@ const Yt = ({
           /* @__PURE__ */ e("h1", { className: "text-2xl font-bold text-main mb-2", children: t("review_data", _) }),
           /* @__PURE__ */ e("p", { className: "text-muted text-sm leading-relaxed", children: t("verify_data_desc", _) })
         ] }),
-        W > 0 && /* @__PURE__ */ i("div", { className: "mb-6 p-3 rounded-xl dark:bg-white/5 bg-black/5 border dark:border-white/10 border-black/5", children: [
+        W > 0 && /* @__PURE__ */ i("div", { className: "mb-6 p-3 rounded-xl bg-brand-5 border border-brand-10", children: [
           /* @__PURE__ */ i("div", { className: "flex items-center justify-between mb-2", children: [
             /* @__PURE__ */ e("span", { className: "text-xs font-semibold text-muted", children: t("ocr_confidence", _) }),
             /* @__PURE__ */ i("span", { className: `text-xs font-bold ${B >= 80 ? "text-green-500" : B >= 60 ? "text-yellow-500" : "text-red-500"}`, children: [
@@ -2787,7 +2787,7 @@ const Yt = ({
               "%"
             ] })
           ] }),
-          /* @__PURE__ */ e("div", { className: "w-full h-1.5 dark:bg-white/10 bg-black/10 rounded-full overflow-hidden", children: /* @__PURE__ */ e(
+          /* @__PURE__ */ e("div", { className: "w-full h-1.5 bg-brand-10 rounded-full overflow-hidden", children: /* @__PURE__ */ e(
             "div",
             {
               className: `h-full rounded-full transition-all ${B >= 80 ? "bg-green-500" : B >= 60 ? "bg-yellow-500" : "bg-red-500"}`,
@@ -2809,7 +2809,7 @@ const Yt = ({
                 /* @__PURE__ */ e("div", { className: "flex flex-col w-full", children: /* @__PURE__ */ e(
                   "input",
                   {
-                    className: "bg-transparent border-none p-0 w-full focus:ring-0 text-main font-bold text-lg focus:outline-none placeholder:text-slate-400 dark:placeholder:text-slate-500",
+                    className: "bg-transparent border-none p-0 w-full focus:ring-0 text-main font-bold text-lg focus:outline-none placeholder:text-muted",
                     type: "text",
                     value: o.firstName,
                     onChange: (b) => T("firstName", b.target.value),
@@ -2823,7 +2823,7 @@ const Yt = ({
               /* @__PURE__ */ e("div", { className: "flex items-center px-1 transition-all", children: /* @__PURE__ */ e("div", { className: "flex flex-col w-full", children: /* @__PURE__ */ e(
                 "input",
                 {
-                  className: "bg-transparent border-none p-0 w-full focus:ring-0 text-main font-bold text-lg focus:outline-none placeholder:text-slate-400 dark:placeholder:text-slate-500",
+                  className: "bg-transparent border-none p-0 w-full focus:ring-0 text-main font-bold text-lg focus:outline-none placeholder:text-muted",
                   type: "text",
                   value: o.lastName,
                   onChange: (b) => T("lastName", b.target.value),
@@ -2839,7 +2839,7 @@ const Yt = ({
               /* @__PURE__ */ e(
                 "input",
                 {
-                  className: "bg-transparent border-none p-0 w-full focus:ring-0 text-main font-bold text-lg focus:outline-none placeholder:text-slate-400 dark:placeholder:text-slate-500",
+                  className: "bg-transparent border-none p-0 w-full focus:ring-0 text-main font-bold text-lg focus:outline-none placeholder:text-muted",
                   type: "text",
                   value: o.documentNumber,
                   onChange: (b) => T("documentNumber", b.target.value),
@@ -2855,7 +2855,7 @@ const Yt = ({
               /* @__PURE__ */ e(
                 "input",
                 {
-                  className: "bg-transparent border-none p-0 w-full focus:ring-0 text-main font-bold text-lg focus:outline-none placeholder:text-slate-400 dark:placeholder:text-slate-500",
+                  className: "bg-transparent border-none p-0 w-full focus:ring-0 text-main font-bold text-lg focus:outline-none placeholder:text-muted",
                   type: "text",
                   value: o.dateOfBirth,
                   onChange: (b) => T("dateOfBirth", b.target.value),
@@ -2871,7 +2871,7 @@ const Yt = ({
               /* @__PURE__ */ e(
                 "input",
                 {
-                  className: "bg-transparent border-none p-0 w-full focus:ring-0 text-main font-bold text-lg focus:outline-none placeholder:text-slate-400 dark:placeholder:text-slate-500",
+                  className: "bg-transparent border-none p-0 w-full focus:ring-0 text-main font-bold text-lg focus:outline-none placeholder:text-muted",
                   type: "text",
                   value: o.nationality,
                   onChange: (b) => T("nationality", b.target.value),
@@ -2885,7 +2885,7 @@ const Yt = ({
             /* @__PURE__ */ i("div", { className: "absolute inset-0 bg-brand/10 flex flex-col items-center justify-center p-4", children: [
               /* @__PURE__ */ i("div", { className: "flex items-center gap-3", children: [
                 /* @__PURE__ */ e(Ce, { className: "text-brand w-5 h-5" }),
-                /* @__PURE__ */ e("span", { className: "text-xs font-bold dark:text-slate-200 text-slate-700", children: t("scanned_successfully", _) })
+                /* @__PURE__ */ e("span", { className: "text-xs font-bold text-main", children: t("scanned_successfully", _) })
               ] }),
               c && /* @__PURE__ */ e(
                 "button",
@@ -2915,7 +2915,7 @@ const Yt = ({
               ] })
             }
           ),
-          /* @__PURE__ */ e("p", { className: "text-center text-[10px] mt-4 text-slate-500", children: t("secured_by_casper", _) })
+          /* @__PURE__ */ e("p", { className: "text-center text-[10px] mt-4 text-muted", children: t("secured_by_casper", _) })
         ] })
       ]
     }

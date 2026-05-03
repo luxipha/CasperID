@@ -175,14 +175,14 @@ const ReviewData: React.FC<ReviewDataProps> = ({
 
             {/* Confidence indicator */}
             {confidence > 0 && (
-                <div className="mb-6 p-3 rounded-xl dark:bg-white/5 bg-black/5 border dark:border-white/10 border-black/5">
+                <div className="mb-6 p-3 rounded-xl bg-brand-5 border border-brand-10">
                     <div className="flex items-center justify-between mb-2">
                         <span className="text-xs font-semibold text-muted">{t('ocr_confidence', language)}</span>
                         <span className={`text-xs font-bold ${confidencePercent >= 80 ? 'text-green-500' : confidencePercent >= 60 ? 'text-yellow-500' : 'text-red-500'}`}>
                             {confidencePercent}%
                         </span>
                     </div>
-                    <div className="w-full h-1.5 dark:bg-white/10 bg-black/10 rounded-full overflow-hidden">
+                    <div className="w-full h-1.5 bg-brand-10 rounded-full overflow-hidden">
                         <div
                             className={`h-full rounded-full transition-all ${confidencePercent >= 80 ? 'bg-green-500' : confidencePercent >= 60 ? 'bg-yellow-500' : 'bg-red-500'}`}
                             style={{ width: `${confidencePercent}%` }}
@@ -215,7 +215,7 @@ const ReviewData: React.FC<ReviewDataProps> = ({
                             <User className="text-brand mr-3 w-5 h-5 shrink-0" />
                             <div className="flex flex-col w-full">
                                 <input
-                                    className="bg-transparent border-none p-0 w-full focus:ring-0 text-main font-bold text-lg focus:outline-none placeholder:text-slate-400 dark:placeholder:text-slate-500"
+                                    className="bg-transparent border-none p-0 w-full focus:ring-0 text-main font-bold text-lg focus:outline-none placeholder:text-muted"
                                     type="text"
                                     value={formData.firstName}
                                     onChange={(e) => handleInputChange('firstName', e.target.value)}
@@ -233,7 +233,7 @@ const ReviewData: React.FC<ReviewDataProps> = ({
                         <div className="flex items-center px-1 transition-all">
                             <div className="flex flex-col w-full">
                                 <input
-                                    className="bg-transparent border-none p-0 w-full focus:ring-0 text-main font-bold text-lg focus:outline-none placeholder:text-slate-400 dark:placeholder:text-slate-500"
+                                    className="bg-transparent border-none p-0 w-full focus:ring-0 text-main font-bold text-lg focus:outline-none placeholder:text-muted"
                                     type="text"
                                     value={formData.lastName}
                                     onChange={(e) => handleInputChange('lastName', e.target.value)}
@@ -252,7 +252,7 @@ const ReviewData: React.FC<ReviewDataProps> = ({
                     <div className="flex items-center px-1 transition-all">
                         <CreditCard className="text-brand mr-4 w-6 h-6 shrink-0" />
                         <input
-                            className="bg-transparent border-none p-0 w-full focus:ring-0 text-main font-bold text-lg focus:outline-none placeholder:text-slate-400 dark:placeholder:text-slate-500"
+                            className="bg-transparent border-none p-0 w-full focus:ring-0 text-main font-bold text-lg focus:outline-none placeholder:text-muted"
                             type="text"
                             value={formData.documentNumber}
                             onChange={(e) => handleInputChange('documentNumber', e.target.value)}
@@ -269,7 +269,7 @@ const ReviewData: React.FC<ReviewDataProps> = ({
                     <div className="flex items-center px-1 transition-all">
                         <Calendar className="text-brand mr-4 w-6 h-6 shrink-0" />
                         <input
-                            className="bg-transparent border-none p-0 w-full focus:ring-0 text-main font-bold text-lg focus:outline-none placeholder:text-slate-400 dark:placeholder:text-slate-500"
+                            className="bg-transparent border-none p-0 w-full focus:ring-0 text-main font-bold text-lg focus:outline-none placeholder:text-muted"
                             type="text"
                             value={formData.dateOfBirth}
                             onChange={(e) => handleInputChange('dateOfBirth', e.target.value)}
@@ -286,7 +286,7 @@ const ReviewData: React.FC<ReviewDataProps> = ({
                     <div className="flex items-center px-1 transition-all">
                         <Globe className="text-brand mr-4 w-6 h-6 shrink-0" />
                         <input
-                            className="bg-transparent border-none p-0 w-full focus:ring-0 text-main font-bold text-lg focus:outline-none placeholder:text-slate-400 dark:placeholder:text-slate-500"
+                            className="bg-transparent border-none p-0 w-full focus:ring-0 text-main font-bold text-lg focus:outline-none placeholder:text-muted"
                             type="text"
                             value={formData.nationality}
                             onChange={(e) => handleInputChange('nationality', e.target.value)}
@@ -301,7 +301,7 @@ const ReviewData: React.FC<ReviewDataProps> = ({
                     <div className="absolute inset-0 bg-brand/10 flex flex-col items-center justify-center p-4">
                         <div className="flex items-center gap-3">
                             <CheckCircle2 className="text-brand w-5 h-5" />
-                            <span className="text-xs font-bold dark:text-slate-200 text-slate-700">
+                            <span className="text-xs font-bold text-main">
                                 {t('scanned_successfully', language)}
                             </span>
                         </div>
@@ -336,7 +336,7 @@ const ReviewData: React.FC<ReviewDataProps> = ({
                         </>
                     )}
                 </button>
-                <p className="text-center text-[10px] mt-4 text-slate-500">
+                <p className="text-center text-[10px] mt-4 text-muted">
                     {t('secured_by_casper', language)}
                 </p>
             </div>

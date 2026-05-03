@@ -23,7 +23,7 @@ const SecurityUpgrade: React.FC<SecurityUpgradeProps> = ({ onNext, onSkip, langu
                 </span>
                 <span className="text-xs font-bold text-muted">{t('kyc_required', language)}</span>
             </div>
-            <div className="w-full bg-slate-200 dark:bg-brand/10 h-1.5 rounded-full overflow-hidden">
+            <div className="w-full bg-brand-10 h-1.5 rounded-full overflow-hidden">
                 <div
                     className="bg-brand h-full rounded-full"
                     style={{ width: '40%' }}
@@ -37,7 +37,7 @@ const SecurityUpgrade: React.FC<SecurityUpgradeProps> = ({ onNext, onSkip, langu
                 <div className="relative w-32 h-32 rounded-full bg-gradient-to-tr from-brand-20 to-brand-5 flex items-center justify-center border border-brand-30 shadow-inner">
                     <Verified className="w-16 h-16 text-brand" />
                 </div>
-                <div className="absolute bottom-1 right-1 w-8 h-8 rounded-full dark:bg-[#171220] bg-white border-2 border-brand flex items-center justify-center">
+                <div className="absolute bottom-1 right-1 w-8 h-8 rounded-full glass-container border-2 border-brand flex items-center justify-center">
                     <RefreshCw className="w-4 h-4 text-brand" />
                 </div>
             </div>
@@ -71,7 +71,7 @@ const SecurityUpgrade: React.FC<SecurityUpgradeProps> = ({ onNext, onSkip, langu
             {onSkip && (
                 <button
                     onClick={onSkip}
-                    className="w-full dark:text-slate-400 text-slate-500 text-sm font-bold dark:hover:text-slate-200 hover:text-slate-800 transition-colors"
+                    className="w-full text-muted text-sm font-bold hover:text-main transition-colors"
                 >
                     {t('do_this_later', language)}
                 </button>

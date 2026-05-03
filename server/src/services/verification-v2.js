@@ -157,23 +157,14 @@ class VerificationServiceV2 {
             } = livenessData;
 
             // Find verification request
-            console.log(`[Liveness] Looking for verification request: ${requestId}`);
-
             const verificationRequest = await VerificationRequestV2.findOne({
                 request_id: requestId,
                 status: { $in: ['pending', 'in_progress'] }
             });
 
             if (!verificationRequest) {
-                // Log all requests for debugging
-                const allRequests = await VerificationRequestV2.find({ request_id: requestId }).limit(5);
-                console.error(`[Liveness] Request not found. RequestId: ${requestId}`);
-                console.error(`[Liveness] Found ${allRequests.length} requests with this ID:`,
-                    allRequests.map(r => ({ id: r.request_id, status: r.status, tier: r.verification_tier })));
                 throw new Error('Verification request not found or expired');
             }
-
-            console.log(`[Liveness] Found request: ${verificationRequest.request_id}, status: ${verificationRequest.status}, tier: ${verificationRequest.verification_tier}`);
 
             // Validate imageFrames
             if (!imageFrames || imageFrames.length === 0) {
@@ -191,7 +182,6 @@ class VerificationServiceV2 {
             let livenessFrameUrls = [];
             try {
                 const imagekit = require('./imagekit');
-                console.log(`[Liveness] Uploading ${imageFrames.length} frames to ImageKit...`);
 
                 const uploadPromises = imageFrames.map((frame, i) => {
                     return imagekit.files.upload({
@@ -203,7 +193,6 @@ class VerificationServiceV2 {
                 });
 
                 livenessFrameUrls = await Promise.all(uploadPromises);
-                console.log(`[Liveness] Successfully uploaded ${livenessFrameUrls.length} frames`);
             } catch (uploadError) {
                 console.error('[Liveness] ImageKit upload failed:', uploadError.message);
                 // Continue without frames - admin won't see them but verification can proceed
@@ -219,11 +208,6 @@ class VerificationServiceV2 {
                 livenessAnalysis = await geminiService.verifyLivenessSequence(frameBuffers, stepSequence);
                 // Convert confidence (0-100) to score (0-1)
                 livenessScore = livenessAnalysis.confidence / 100;
-                console.log('[Liveness] AI analysis result:', {
-                    passed: livenessAnalysis.passed,
-                    confidence: livenessAnalysis.confidence,
-                    score: livenessScore
-                });
             } catch (aiError) {
                 console.error('Liveness AI analysis failed:', aiError);
                 // Fallback to basic checks if AI fails
@@ -243,11 +227,9 @@ class VerificationServiceV2 {
             if (isLayer3) {
                 // Layer 3: Always accept for admin review, store AI analysis
                 livenessVerified = true;
-                console.log('[Liveness] Layer 3 - Accepting for admin review regardless of AI result');
             } else {
                 // Layer 2: AI decision is final
                 livenessVerified = livenessScore >= this.LIVENESS_THRESHOLD && livenessAnalysis.passed;
-                console.log(`[Liveness] Layer 2 - AI decision: ${livenessVerified ? 'PASS' : 'FAIL'}`);
             }
 
             // Update verification data with liveness frames

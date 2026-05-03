@@ -229,7 +229,7 @@ const DocumentScan: React.FC<DocumentScanProps> = ({
 
             {/* Simulated dark camera background */}
             <div className="absolute inset-0 z-0">
-                <div className="w-full h-full bg-slate-800 flex items-center justify-center">
+                <div className="w-full h-full bg-main opacity-10 flex items-center justify-center">
                     <div className="w-full h-full opacity-30 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-[#6DE8EC]/20 via-transparent to-transparent" />
                 </div>
                 <div className="absolute inset-0 bg-black/30 backdrop-blur-[2px]" />
@@ -237,7 +237,7 @@ const DocumentScan: React.FC<DocumentScanProps> = ({
 
             {/* Top label */}
             <div className="relative z-10 p-6 flex flex-col items-center">
-                <div className="text-center px-4 py-2 dark:bg-black/40 bg-white/40 backdrop-blur-xl rounded-full border dark:border-white/10 border-black/5">
+                <div className="text-center px-4 py-2 bg-brand-10 backdrop-blur-xl rounded-full border border-brand-10">
                     <h3 className="text-main text-sm font-medium tracking-wide uppercase">
                         {t('scan_instruction', language)
                             .replace('{side}', t(scanSide, language))
@@ -300,7 +300,7 @@ const DocumentScan: React.FC<DocumentScanProps> = ({
             )}
 
             {/* Bottom controls */}
-            <div className="relative z-10 p-8 dark:bg-black/60 bg-white/60 backdrop-blur-2xl border-t dark:border-white/10 border-black/5 rounded-t-3xl">
+            <div className="relative z-10 p-8 glass-container backdrop-blur-2xl border-t border-brand-10 rounded-t-3xl">
                 <p className="text-muted text-xs text-center mb-6 font-medium">
                     {capturedImageUrl
                         ? t('review_capture', language)
@@ -313,7 +313,7 @@ const DocumentScan: React.FC<DocumentScanProps> = ({
                             <button
                                 onClick={handleRetake}
                                 disabled={isUploading}
-                                className="w-12 h-12 rounded-xl dark:bg-white/5 bg-black/5 flex items-center justify-center text-muted disabled:opacity-50"
+                                className="w-12 h-12 rounded-xl bg-brand-5 flex items-center justify-center text-muted disabled:opacity-50"
                             >
                                 <RotateCcw className="w-6 h-6" />
                             </button>
@@ -335,7 +335,7 @@ const DocumentScan: React.FC<DocumentScanProps> = ({
                         </>
                     ) : (
                         <>
-                            <button className="w-12 h-12 rounded-xl dark:bg-white/5 bg-black/5 flex items-center justify-center text-muted">
+                            <button className="w-12 h-12 rounded-xl bg-brand-5 flex items-center justify-center text-muted">
                                 <Flashlight className="w-6 h-6" />
                             </button>
                             <button
@@ -346,13 +346,13 @@ const DocumentScan: React.FC<DocumentScanProps> = ({
                                 <Camera className="w-6 h-6" />
                                 <span>{t('capture', language)}</span>
                             </button>
-                            <button className="w-12 h-12 rounded-xl dark:bg-white/5 bg-black/5 flex items-center justify-center text-muted">
+                            <button className="w-12 h-12 rounded-xl bg-brand-5 flex items-center justify-center text-muted">
                                 <HelpCircle className="w-6 h-6" />
                             </button>
                         </>
                     )}
                 </div>
-                <div className="w-32 h-1.5 bg-slate-600/30 rounded-full mx-auto mt-8" />
+                <div className="w-32 h-1.5 bg-brand-10 rounded-full mx-auto mt-8" />
             </div>
         </motion.div>
     );

@@ -1,5 +1,63 @@
 [
   {
+    "version": "2.9.0",
+    "title": "Layer 3 Verification & SDK Theme Fixes",
+    "date": "May 2, 2026",
+    "status": "Active Feature Release",
+    "highlight": {
+      "title": "Complete Layer 3 Verification Overhaul",
+      "description": "Fixed critical data submission issues and reimagined AI's role in admin review workflows.",
+      "type": "sparkles"
+    },
+    "summary": "This release resolves critical issues where Layer 3 verification data wasn't appearing in the admin dashboard, reimagines the AI verification workflow to support human-in-the-loop approval, and fixes SDK light mode visibility across all screens. The result is a robust, production-ready Layer 3 KYC flow.",
+    "categories": [
+      {
+        "id": "v290-layer3",
+        "title": "Layer 3 Verification Fixes",
+        "items": [
+          "Fixed Liveness Frame Storage: Liveness check frames now upload to ImageKit and display in admin dashboard for review.",
+          "Fixed Document Image Persistence: Front/back document images now properly saved and visible to admins.",
+          "Fixed Personal Data Submission: Names, DOB, nationality, and all document fields now correctly stored in verification_data.",
+          "Enhanced Admin Data Mapping: V2 verification requests now properly flatten nested data for admin UI compatibility.",
+          "Added Metadata Compatibility Layer: Created metadata object bridge for frontend expectations (liveness_frames, document details)."
+        ]
+      },
+      {
+        "id": "v290-ai",
+        "title": "AI Verification Logic Redesign",
+        "items": [
+          "Layer 3 AI-Assisted Review: AI now provides analysis for admin review instead of making final decisions.",
+          "Auto-Accept for Admin Queue: Layer 3 submissions always proceed to admin review regardless of AI score.",
+          "AI Metadata Tracking: Stores AI decision (passed/failed), confidence score, and reasoning separately for admin visibility.",
+          "Layer 2 Auto-Approval: Maintained AI as final decision-maker for Layer 2 liveness-only verification.",
+          "Admin UI Enhancement: Added AI analysis panel showing decision, confidence, and reasoning in request details."
+        ]
+      },
+      {
+        "id": "v290-sdk",
+        "title": "SDK Light Mode & Theme Fixes",
+        "items": [
+          "Fixed Light Mode Visibility: Replaced all hardcoded dark/light colors with theme-aware CSS variables.",
+          "Universal Theme Support: All 14 SDK screens now properly adapt between light and dark modes.",
+          "Improved Contrast: Text, borders, backgrounds, and placeholders now visible in both themes.",
+          "Consistent Design System: Migrated to text-main, text-muted, bg-brand-5, bg-brand-10 utility classes.",
+          "Glass Container Polish: Unified glass-container class for consistent backdrop effects across themes."
+        ]
+      },
+      {
+        "id": "v290-tech",
+        "title": "Technical Improvements",
+        "items": [
+          "Data Preservation: /layer3/submit now preserves existing liveness data when document data is added.",
+          "ImageKit Parallel Uploads: Optimized liveness frame uploads with Promise.all for better performance.",
+          "Error Handling: Added graceful fallbacks for ImageKit upload failures (verification proceeds without frames).",
+          "Removed Debug Logging: Cleaned up verbose console.log statements while preserving critical error logs.",
+          "Request Validation: Enhanced logging for troubleshooting verification request lifecycle."
+        ]
+      }
+    ]
+  },
+  {
     "version": "2.8.0",
     "title": "Gamified Onboarding & Platform Tour",
     "date": "April 17, 2026",

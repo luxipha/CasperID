@@ -87,15 +87,7 @@ router.post('/liveness', upload.fields([
     try {
         const { requestId, metadata } = req.body;
 
-        console.log('[Liveness Endpoint] Received request:', {
-            requestId,
-            hasImageFrames: !!req.files?.imageFrames,
-            frameCount: req.files?.imageFrames?.length || 0,
-            metadata: metadata ? 'present' : 'missing'
-        });
-
         if (!requestId) {
-            console.error('[Liveness Endpoint] Missing requestId');
             return res.status(400).json({
                 success: false,
                 error: 'Request ID is required'
@@ -152,10 +144,7 @@ router.post('/layer3/start', extractApp, async (req, res) => {
         const sessionToken = req.cookies.casperid_session ||
             req.headers.authorization?.replace('Bearer ', '');
 
-        console.log('[Layer3 Start] Request received');
-
         if (!sessionToken) {
-            console.error('[Layer3 Start] Missing session token');
             return res.status(401).json({
                 success: false,
                 error: 'Authentication required'
@@ -163,7 +152,6 @@ router.post('/layer3/start', extractApp, async (req, res) => {
         }
 
         const { verificationMethod, purpose } = req.body;
-        console.log('[Layer3 Start] Parameters:', { verificationMethod, purpose });
 
         const result = await verificationServiceV2.startLayer3Verification(sessionToken, {
             verificationMethod,
@@ -171,15 +159,13 @@ router.post('/layer3/start', extractApp, async (req, res) => {
             appId: req.businessApp?.app_id // Pass appId from context
         });
 
-        console.log('[Layer3 Start] Success! RequestId:', result.requestId);
-
         res.json({
             success: true,
             verification: result
         });
 
     } catch (error) {
-        console.error('[Layer3 Start] Error:', error.message);
+        console.error('Layer 3 verification start failed:', error);
         res.status(400).json({
             success: false,
             error: error.message
@@ -488,15 +474,6 @@ router.post('/layer3/submit', async (req, res) => {
         // Enrich the existing request with document data
         pendingRequest.status = 'in_progress';
 
-        // Log what we're receiving
-        console.log('[Layer3 Submit] Received data:', {
-            upload_id,
-            front_image_url,
-            back_image_url,
-            document_data,
-            liveness_verified
-        });
-
         // Preserve existing verification_data (e.g., liveness data if already done)
         const existingData = pendingRequest.verification_data || {};
 
@@ -522,11 +499,7 @@ router.post('/layer3/submit', async (req, res) => {
             submitted_at: new Date().toISOString()
         };
 
-        console.log('[Layer3 Submit] Saving verification_data:', pendingRequest.verification_data);
-
         await pendingRequest.save();
-
-        console.log('[Layer3 Submit] Successfully saved request:', pendingRequest.request_id);
 
         res.json({
             success: true,
