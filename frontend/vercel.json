@@ -1,6 +1,10 @@
 {
     "rewrites": [
         {
+            "source": "/.well-known/:path*",
+            "destination": "https://apis.casperid.com/.well-known/:path*"
+        },
+        {
             "source": "/(.*)",
             "destination": "/index.html"
         }
