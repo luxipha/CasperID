@@ -19,6 +19,47 @@ const bcrypt = require('bcrypt');
 const { BusinessApp } = require('../database/models');
 
 /**
+ * Convert hex fingerprint (AA:BB:CC:...) to base64url format
+ */
+function hexFingerprintToBase64url(hexFingerprint) {
+    // Remove colons and convert hex to buffer
+    const hexClean = hexFingerprint.replace(/:/g, '');
+    const buffer = Buffer.from(hexClean, 'hex');
+    // Convert to base64url (replace + with -, / with _, remove =)
+    return buffer.toString('base64')
+        .replace(/\+/g, '-')
+        .replace(/\//g, '_')
+        .replace(/=+$/, '');
+}
+
+/**
+ * Build Android WebAuthn origins from android_digital_assets
+ * Format: android:apk-key-hash:<BASE64URL_SHA256>
+ */
+function buildAndroidOrigins(androidDigitalAssets) {
+    if (!androidDigitalAssets || !Array.isArray(androidDigitalAssets)) {
+        return [];
+    }
+
+    const androidOrigins = [];
+    for (const asset of androidDigitalAssets) {
+        if (asset.sha256_fingerprints && Array.isArray(asset.sha256_fingerprints)) {
+            for (const fingerprint of asset.sha256_fingerprints) {
+                let base64urlFingerprint = fingerprint;
+
+                // Check if fingerprint is in hex format (contains colons)
+                if (fingerprint.includes(':')) {
+                    base64urlFingerprint = hexFingerprintToBase64url(fingerprint);
+                }
+
+                androidOrigins.push(`android:apk-key-hash:${base64urlFingerprint}`);
+            }
+        }
+    }
+    return androidOrigins;
+}
+
+/**
  * Validate X-App-ID + X-Api-Secret and attach req.app.
  * Returns 401 if credentials are missing or invalid.
  */
@@ -62,11 +103,15 @@ const requireApp = async (req, res, next) => {
             { $inc: { request_count: 1 }, $set: { last_used_at: new Date() } }
         ).exec().catch(() => { });
 
+        // Merge allowed_origins with Android origins from digital assets
+        const androidOrigins = buildAndroidOrigins(app.android_digital_assets);
+        const allOrigins = [...(app.allowed_origins || []), ...androidOrigins];
+
         req.businessApp = {
             app_id: app.app_id,
             name: app.name,
             environment: app.environment,
-            allowed_origins: app.allowed_origins,
+            allowed_origins: allOrigins,
             owner_user_id: app.owner_user_id
         };
 
@@ -110,11 +155,15 @@ const extractApp = async (req, res, next) => {
                         { $inc: { request_count: 1 }, $set: { last_used_at: new Date() } }
                     ).exec().catch(() => { });
 
+                    // Merge allowed_origins with Android origins from digital assets
+                    const androidOrigins = buildAndroidOrigins(app.android_digital_assets);
+                    const allOrigins = [...(app.allowed_origins || []), ...androidOrigins];
+
                     req.businessApp = {
                         app_id: app.app_id,
                         name: app.name,
                         environment: app.environment,
-                        allowed_origins: app.allowed_origins,
+                        allowed_origins: allOrigins,
                         owner_user_id: app.owner_user_id
                     };
                     return next();
@@ -143,11 +192,15 @@ const extractApp = async (req, res, next) => {
                     { $inc: { request_count: 1 }, $set: { last_used_at: new Date() } }
                 ).exec().catch(() => { });
 
+                // Merge allowed_origins with Android origins from digital assets
+                const androidOrigins = buildAndroidOrigins(app.android_digital_assets);
+                const allOrigins = [...(app.allowed_origins || []), ...androidOrigins];
+
                 req.businessApp = {
                     app_id: app.app_id,
                     name: app.name,
                     environment: app.environment,
-                    allowed_origins: app.allowed_origins,
+                    allowed_origins: allOrigins,
                     owner_user_id: app.owner_user_id
                 };
             }

@@ -237,9 +237,27 @@ router.patch('/apps/:app_id', requireAuth, async (req, res) => {
 
         // Handle SDK config updates (Tier and Proofs)
         if (sdk_config) {
-            if (!app.sdk_config) app.sdk_config = {};
-            if (sdk_config.requiredTier) app.sdk_config.requiredTier = sdk_config.requiredTier;
-            if (sdk_config.proofs) app.sdk_config.proofs = sdk_config.proofs;
+            // Ensure sdk_config exists
+            if (!app.sdk_config) {
+                app.sdk_config = {
+                    primary_color: '#8651e1',
+                    border_radius: '12',
+                    font_family: 'Inter',
+                    mode: 'light',
+                    layout: 'auto',
+                    platform: 'desktop',
+                    language: 'EN'
+                };
+            }
+            
+            if (sdk_config.requiredTier !== undefined) {
+                app.sdk_config.requiredTier = sdk_config.requiredTier;
+            }
+            
+            if (sdk_config.proofs !== undefined) {
+                app.sdk_config.proofs = sdk_config.proofs;
+            }
+            
             app.markModified('sdk_config');
         }
 
