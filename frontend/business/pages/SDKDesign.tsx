@@ -2,8 +2,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Monitor, Smartphone } from 'lucide-react';
-import { CasperIDModal } from '../../../sdk/packages/react/src/CasperIDModal';
-import type { Screen } from '../../../sdk/packages/react/src/types';
+import SDKPreview from '../components/SDKPreview';
 
 // Safe way to access import.meta.env to avoid lint errors
 const API_BASE = (import.meta as any).env?.VITE_API_URL || 'http://localhost:3001';
@@ -42,7 +41,6 @@ const SDKDesign: React.FC = () => {
     const [borderRadius, setBorderRadius] = useState('12');
     const [fontFamily, setFontFamily] = useState('Inter');
     const [logoUrl, setLogoUrl] = useState('');
-    const [activeStep, setActiveStep] = useState(0);
     const [isDark, setIsDark] = useState(false);
     const [language, setLanguage] = useState('EN');
     const [layout, setLayout] = useState<'auto' | 'modal' | 'fullscreen'>('auto');
@@ -120,21 +118,6 @@ const SDKDesign: React.FC = () => {
             setTimeout(() => setSaveStatus('idle'), 3000);
         }
     };
-
-    // SDK screen order — matches the flow in CasperIDModal
-    const SCREEN_ORDER: Screen[] = [
-        'AuthSelection',
-        'Login',
-        'PinVerification',
-        'SecurityUpgrade',
-        'FaceScan',
-        'VerifyIdentityChoice',
-        'DocumentScan',
-        'ReviewData',
-        'MintingIdentity',
-        'IdentityVerified',
-        'PermissionsRequest',
-    ];
 
     const configCode = `{
   "apiKey": "YOUR_API_KEY",
@@ -351,52 +334,23 @@ const SDKDesign: React.FC = () => {
                             <p className="text-sm text-text-muted">Loading your saved configuration...</p>
                         </div>
                     ) : (
-                        <>
-                            {/* Real CasperIDModal in previewMode, scaled to phone proportions */}
-                            <div
-                                style={{
-                                    width: 380,
-                                    height: 1000,
-                                    transform: 'scale(0.7)',
-                                    transformOrigin: 'top center',
-                                    marginBottom: -300,
-                                }}
-                            >
-                                <CasperIDModal
-                                    isOpen={true}
-                                    apiKey={selectedAppId || 'preview'}
-                                    previewMode={true}
-                                    initialScreen={SCREEN_ORDER[activeStep] ?? 'AuthSelection'}
-                                    logoUrl={logoUrl}
-                                    apiBaseUrl={API_BASE}
-                                    platform={platform}
-                                    theme={{
-                                        primaryColor,
-                                        borderRadius,
-                                        fontFamily,
-                                        mode: isDark ? 'dark' : 'light',
-                                        layout,
-                                    }}
-                                    onClose={() => { }}
-                                />
-                            </div>
-
-                            {/* Screen navigation dots */}
-                            <div className="flex gap-2 flex-wrap justify-center max-w-sm">
-                                {SCREEN_ORDER.map((screenName, i) => (
-                                    <button
-                                        key={screenName}
-                                        title={screenName}
-                                        onClick={() => setActiveStep(i)}
-                                        className={`h-2 rounded-full transition-all ${activeStep === i ? 'w-6 bg-primary' : 'w-2 bg-border-muted hover:bg-primary/30'
-                                            }`}
-                                    />
-                                ))}
-                            </div>
-                            <p className="text-xs text-text-muted">
-                                {SCREEN_ORDER[activeStep]} screen &mdash; click dots to navigate
-                            </p>
-                        </>
+                        /* SDK Preview Component */
+                        <div
+                            className="w-full max-w-md h-full rounded-3xl overflow-hidden shadow-2xl border"
+                            style={{
+                                borderColor: isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)',
+                            }}
+                        >
+                            <SDKPreview
+                                primaryColor={primaryColor}
+                                borderRadius={borderRadius}
+                                fontFamily={fontFamily}
+                                isDark={isDark}
+                                logoUrl={logoUrl}
+                                platform={platform}
+                                language={language}
+                            />
+                        </div>
                     )}
                 </div>
             </div>

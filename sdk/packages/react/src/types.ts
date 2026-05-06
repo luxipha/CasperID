@@ -334,6 +334,7 @@ export interface AppMetadata {
     app_id: string;
     name: string;
     logo_url?: string;
+    required_tier?: VerificationTier;
     website_url?: string;
     description?: string;
     requested_scopes?: string[];

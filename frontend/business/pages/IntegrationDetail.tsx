@@ -3,11 +3,18 @@ import { useParams, useNavigate } from 'react-router-dom';
 import ActivityHeatmap from '../components/ActivityHeatmap';
 import { apiService } from '../../services/api';
 
+interface AndroidDigitalAsset {
+  package_name: string;
+  sha256_fingerprints: string[];
+  created_at?: string;
+}
+
 interface BusinessApp {
   app_id: string;
   name: string;
   environment: 'sandbox' | 'production';
   allowed_origins: string[];
+  android_digital_assets?: AndroidDigitalAsset[];
   active: boolean;
   request_count: number;
   last_used_at?: string;
@@ -44,6 +51,17 @@ const IntegrationDetail: React.FC = () => {
   const [logoUrl, setLogoUrl] = useState('');
   const logoInputRef = React.useRef<HTMLInputElement>(null);
 
+  // Redirect Configuration state
+  const [allowedOrigins, setAllowedOrigins] = useState<string[]>([]);
+  const [showOriginModal, setShowOriginModal] = useState(false);
+  const [newOrigin, setNewOrigin] = useState('');
+
+  // Android Digital Asset Links state
+  const [androidAssets, setAndroidAssets] = useState<AndroidDigitalAsset[]>([]);
+  const [showAndroidModal, setShowAndroidModal] = useState(false);
+  const [newPackageName, setNewPackageName] = useState('');
+  const [newFingerprints, setNewFingerprints] = useState('');
+
   useEffect(() => {
     const fetchApp = async () => {
       if (!id) return;
@@ -60,6 +78,8 @@ const IntegrationDetail: React.FC = () => {
           setTier(a.sdk_config?.requiredTier || 'L2');
           setProofs(a.sdk_config?.proofs || ['liveness', 'email']);
           setLogoUrl(a.sdk_config?.logo_url || '');
+          setAllowedOrigins(a.allowed_origins || []);
+          setAndroidAssets(a.android_digital_assets || []);
         } else {
           setError('App not found');
         }
@@ -82,6 +102,8 @@ const IntegrationDetail: React.FC = () => {
         website_url: website,
         environment,
         listing_status: listingStatus,
+        allowed_origins: allowedOrigins,
+        android_digital_assets: androidAssets,
         sdk_config: {
           requiredTier: tier,
           proofs: proofs
@@ -132,6 +154,64 @@ const IntegrationDetail: React.FC = () => {
     } finally {
       setSaving(false);
     }
+  };
+
+  const handleAddOrigin = () => {
+    if (!newOrigin.trim()) {
+      setToastMessage('URL is required');
+      setShowToast(true);
+      setTimeout(() => setShowToast(false), 3000);
+      return;
+    }
+
+    // Basic URL validation
+    try {
+      if (newOrigin !== '*') {
+        new URL(newOrigin.includes('://') ? newOrigin : `https://${newOrigin}`);
+      }
+    } catch (e) {
+      setToastMessage('Invalid URL format');
+      setShowToast(true);
+      setTimeout(() => setShowToast(false), 3000);
+      return;
+    }
+
+    setAllowedOrigins(prev => [...prev, newOrigin.trim()]);
+    setNewOrigin('');
+    setShowOriginModal(false);
+  };
+
+  const handleRemoveOrigin = (index: number) => {
+    setAllowedOrigins(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const handleAddAndroidAsset = () => {
+    if (!newPackageName.trim()) {
+      setToastMessage('Package name is required');
+      setShowToast(true);
+      setTimeout(() => setShowToast(false), 3000);
+      return;
+    }
+
+    const fingerprints = newFingerprints
+      .split(',')
+      .map(fp => fp.trim().toUpperCase())
+      .filter(Boolean);
+
+    const newAsset: AndroidDigitalAsset = {
+      package_name: newPackageName.trim(),
+      sha256_fingerprints: fingerprints,
+      created_at: new Date().toISOString()
+    };
+
+    setAndroidAssets(prev => [...prev, newAsset]);
+    setNewPackageName('');
+    setNewFingerprints('');
+    setShowAndroidModal(false);
+  };
+
+  const handleRemoveAndroidAsset = (index: number) => {
+    setAndroidAssets(prev => prev.filter((_, i) => i !== index));
   };
 
   if (loading) {
@@ -294,23 +374,76 @@ const IntegrationDetail: React.FC = () => {
           <div className="bg-white rounded-xl border border-border-muted shadow-sm overflow-hidden">
             <div className="px-6 py-4 border-b border-border-muted bg-background-light/30 flex justify-between items-center">
               <h3 className="font-bold text-text-main">Redirect Configuration</h3>
-              <button className="text-primary text-xs font-bold flex items-center gap-1 hover:underline">
+              <button 
+                onClick={() => setShowOriginModal(true)}
+                className="text-primary text-xs font-bold flex items-center gap-1 hover:underline"
+              >
                 <span className="material-symbols-outlined !text-sm">add</span> Add URL
               </button>
             </div>
             <div className="p-6 flex flex-col gap-4">
               <p className="text-xs text-text-muted">Users will only be redirected back to these specific URLs after a successful authentication.</p>
               <div className="flex flex-col gap-2">
-                {(app.allowed_origins || []).map((url, i) => (
+                {allowedOrigins.map((url, i) => (
                   <div key={i} className="flex items-center gap-2">
-                    <input className="flex-1 rounded-lg border-border-muted bg-background-light/30 text-sm p-3 text-text-muted" readOnly value={url} />
-                    <button className="p-2 text-text-muted hover:text-red-500 transition-colors">
+                    <input className="flex-1 rounded-lg border-border-muted bg-background-light/30 text-sm p-3 text-text-main" readOnly value={url} />
+                    <button 
+                      onClick={() => handleRemoveOrigin(i)}
+                      className="p-2 text-text-muted hover:text-red-500 transition-colors"
+                    >
                       <span className="material-symbols-outlined !text-xl">delete</span>
                     </button>
                   </div>
                 ))}
-                {(app.allowed_origins || []).length === 0 && (
+                {allowedOrigins.length === 0 && (
                   <p className="text-xs text-text-muted italic">No restricted origins configured.</p>
+                )}
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-white rounded-xl border border-border-muted shadow-sm overflow-hidden">
+            <div className="px-6 py-4 border-b border-border-muted bg-background-light/30 flex justify-between items-center">
+              <h3 className="font-bold text-text-main">Android Configuration</h3>
+              <button
+                onClick={() => setShowAndroidModal(true)}
+                className="text-primary text-xs font-bold flex items-center gap-1 hover:underline"
+              >
+                <span className="material-symbols-outlined !text-sm">add</span> Add Android App
+              </button>
+            </div>
+            <div className="p-6 flex flex-col gap-4">
+              <p className="text-xs text-text-muted">Configure Android apps that can use passkeys with CasperID. Each app requires a package name and SHA256 certificate fingerprints.</p>
+              <div className="flex flex-col gap-3">
+                {androidAssets.map((asset, i) => (
+                  <div key={i} className="border border-border-muted rounded-lg p-4 bg-background-light/20">
+                    <div className="flex items-start justify-between gap-2 mb-2">
+                      <div className="flex-1">
+                        <p className="text-sm font-bold text-text-main">{asset.package_name}</p>
+                        <p className="text-xs text-text-muted mt-1">
+                          {asset.sha256_fingerprints.length} fingerprint{asset.sha256_fingerprints.length !== 1 ? 's' : ''} configured
+                        </p>
+                      </div>
+                      <button
+                        onClick={() => handleRemoveAndroidAsset(i)}
+                        className="p-1 text-text-muted hover:text-red-500 transition-colors"
+                      >
+                        <span className="material-symbols-outlined !text-lg">delete</span>
+                      </button>
+                    </div>
+                    {asset.sha256_fingerprints.length > 0 && (
+                      <div className="mt-2 flex flex-col gap-1">
+                        {asset.sha256_fingerprints.map((fp, fpIndex) => (
+                          <code key={fpIndex} className="text-[10px] text-text-muted bg-background-light/50 px-2 py-1 rounded font-mono break-all">
+                            {fp}
+                          </code>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                ))}
+                {androidAssets.length === 0 && (
+                  <p className="text-xs text-text-muted italic">No Android apps configured.</p>
                 )}
               </div>
             </div>
@@ -373,6 +506,129 @@ const IntegrationDetail: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {/* Redirect URL Modal */}
+      {showOriginModal && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full overflow-hidden">
+            <div className="px-6 py-4 border-b border-border-muted bg-background-light/30 flex justify-between items-center">
+              <h3 className="font-bold text-text-main">Add Redirect URL</h3>
+              <button
+                onClick={() => {
+                  setShowOriginModal(false);
+                  setNewOrigin('');
+                }}
+                className="text-text-muted hover:text-text-main transition-colors"
+              >
+                <span className="material-symbols-outlined">close</span>
+              </button>
+            </div>
+            <div className="p-6 flex flex-col gap-4">
+              <div className="flex flex-col gap-2">
+                <label className="text-sm font-bold text-text-main">URL / Origin</label>
+                <input
+                  type="text"
+                  autoFocus
+                  value={newOrigin}
+                  onChange={(e) => setNewOrigin(e.target.value)}
+                  placeholder="https://myapp.com or http://localhost:3000"
+                  className="rounded-lg border border-border-muted bg-background-light/30 text-sm p-3 text-text-main focus:outline-none focus:ring-2 focus:ring-primary"
+                  onKeyDown={(e) => e.key === 'Enter' && handleAddOrigin()}
+                />
+                <p className="text-xs text-text-muted">Enter the exact origin (including protocol and port) that users will be redirected to.</p>
+              </div>
+
+              <div className="flex gap-3 mt-2">
+                <button
+                  onClick={() => {
+                    setShowOriginModal(false);
+                    setNewOrigin('');
+                  }}
+                  className="flex-1 px-4 py-2 rounded-lg border border-border-muted text-text-main font-bold text-sm hover:bg-background-light/50 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleAddOrigin}
+                  className="flex-1 px-4 py-2 rounded-lg bg-primary text-white font-bold text-sm hover:bg-primary/90 transition-colors shadow-lg shadow-primary/20"
+                >
+                  Add URL
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Android Asset Modal */}
+      {showAndroidModal && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full overflow-hidden">
+            <div className="px-6 py-4 border-b border-border-muted bg-background-light/30 flex justify-between items-center">
+              <h3 className="font-bold text-text-main">Add Android App</h3>
+              <button
+                onClick={() => {
+                  setShowAndroidModal(false);
+                  setNewPackageName('');
+                  setNewFingerprints('');
+                }}
+                className="text-text-muted hover:text-text-main transition-colors"
+              >
+                <span className="material-symbols-outlined">close</span>
+              </button>
+            </div>
+            <div className="p-6 flex flex-col gap-4">
+              <div className="flex flex-col gap-2">
+                <label className="text-sm font-bold text-text-main">Package Name</label>
+                <input
+                  type="text"
+                  value={newPackageName}
+                  onChange={(e) => setNewPackageName(e.target.value)}
+                  placeholder="com.example.app"
+                  className="rounded-lg border border-border-muted bg-background-light/30 text-sm p-3 text-text-main focus:outline-none focus:ring-2 focus:ring-primary"
+                />
+                <p className="text-xs text-text-muted">Your Android app's package name (e.g., com.orb.app)</p>
+              </div>
+
+              <div className="flex flex-col gap-2">
+                <label className="text-sm font-bold text-text-main">SHA256 Certificate Fingerprints</label>
+                <textarea
+                  value={newFingerprints}
+                  onChange={(e) => setNewFingerprints(e.target.value)}
+                  placeholder="AA:BB:CC:DD:EE:FF:..., XX:YY:ZZ:..."
+                  rows={3}
+                  className="rounded-lg border border-border-muted bg-background-light/30 text-sm p-3 text-text-main font-mono focus:outline-none focus:ring-2 focus:ring-primary resize-none"
+                />
+                <p className="text-xs text-text-muted">Comma-separated SHA256 fingerprints. Include both debug and release keys.</p>
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mt-1">
+                  <p className="text-xs font-bold text-blue-900 mb-1">Get your fingerprints:</p>
+                  <code className="text-[10px] text-blue-800 block mb-1">keytool -list -v -keystore ~/.android/debug.keystore -alias androiddebugkey -storepass android -keypass android</code>
+                  <code className="text-[10px] text-blue-800 block">keytool -list -v -keystore /path/to/release.keystore -alias your-alias</code>
+                </div>
+              </div>
+
+              <div className="flex gap-3 mt-2">
+                <button
+                  onClick={() => {
+                    setShowAndroidModal(false);
+                    setNewPackageName('');
+                    setNewFingerprints('');
+                  }}
+                  className="flex-1 px-4 py-2 rounded-lg border border-border-muted text-text-main font-bold text-sm hover:bg-background-light/50 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleAddAndroidAsset}
+                  className="flex-1 px-4 py-2 rounded-lg bg-primary text-white font-bold text-sm hover:bg-primary/90 transition-colors shadow-lg shadow-primary/20"
+                >
+                  Add App
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

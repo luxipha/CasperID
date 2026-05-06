@@ -1,7 +1,7 @@
 import { jsx as e, jsxs as i, Fragment as re } from "react/jsx-runtime";
-import _t, { forwardRef as Ze, createElement as je, useState as y, useEffect as ce, useCallback as J, useRef as se } from "react";
-import { motion as P, AnimatePresence as Me } from "framer-motion";
-const He = ({ children: r, className: a = "", theme: n = "" }) => (
+import yt, { forwardRef as Xe, createElement as je, useState as y, useEffect as oe, useCallback as K, useRef as ce } from "react";
+import { motion as P, AnimatePresence as Le } from "framer-motion";
+const We = ({ children: r, className: a = "", theme: n = "" }) => (
   // Destructure theme and provide default
   /* @__PURE__ */ e(
     "div",
@@ -17,14 +17,14 @@ const He = ({ children: r, className: a = "", theme: n = "" }) => (
  * This source code is licensed under the ISC license.
  * See the LICENSE file in the root directory of this source tree.
  */
-const yt = (r) => r.replace(/([a-z0-9])([A-Z])/g, "$1-$2").toLowerCase(), Xe = (...r) => r.filter((a, n, l) => !!a && l.indexOf(a) === n).join(" ");
+const xt = (r) => r.replace(/([a-z0-9])([A-Z])/g, "$1-$2").toLowerCase(), Qe = (...r) => r.filter((a, n, o) => !!a && o.indexOf(a) === n).join(" ");
 /**
  * @license lucide-react v0.400.0 - ISC
  *
  * This source code is licensed under the ISC license.
  * See the LICENSE file in the root directory of this source tree.
  */
-var xt = {
+var gt = {
   xmlns: "http://www.w3.org/2000/svg",
   width: 24,
   height: 24,
@@ -41,27 +41,27 @@ var xt = {
  * This source code is licensed under the ISC license.
  * See the LICENSE file in the root directory of this source tree.
  */
-const gt = Ze(
+const vt = Xe(
   ({
     color: r = "currentColor",
     size: a = 24,
     strokeWidth: n = 2,
-    absoluteStrokeWidth: l,
-    className: N = "",
+    absoluteStrokeWidth: o,
+    className: I = "",
     children: p,
     iconNode: f,
-    ...m
+    ...l
   }, s) => je(
     "svg",
     {
       ref: s,
-      ...xt,
+      ...gt,
       width: a,
       height: a,
       stroke: r,
-      strokeWidth: l ? Number(n) * 24 / Number(a) : n,
-      className: Xe("lucide", N),
-      ...m
+      strokeWidth: o ? Number(n) * 24 / Number(a) : n,
+      className: Qe("lucide", I),
+      ...l
     },
     [
       ...f.map(([c, d]) => je(c, d)),
@@ -76,12 +76,12 @@ const gt = Ze(
  * See the LICENSE file in the root directory of this source tree.
  */
 const j = (r, a) => {
-  const n = Ze(
-    ({ className: l, ...N }, p) => je(gt, {
+  const n = Xe(
+    ({ className: o, ...I }, p) => je(vt, {
       ref: p,
       iconNode: a,
-      className: Xe(`lucide-${yt(r)}`, l),
-      ...N
+      className: Qe(`lucide-${xt(r)}`, o),
+      ...I
     })
   );
   return n.displayName = `${r}`, n;
@@ -118,7 +118,7 @@ const Fe = j("BadgeCheck", [
  * This source code is licensed under the ISC license.
  * See the LICENSE file in the root directory of this source tree.
  */
-const vt = j("Calendar", [
+const wt = j("Calendar", [
   ["path", { d: "M8 2v4", key: "1cmpym" }],
   ["path", { d: "M16 2v4", key: "4m81vk" }],
   ["rect", { width: "18", height: "18", x: "3", y: "4", rx: "2", key: "1hopcy" }],
@@ -130,7 +130,7 @@ const vt = j("Calendar", [
  * This source code is licensed under the ISC license.
  * See the LICENSE file in the root directory of this source tree.
  */
-const wt = j("Camera", [
+const kt = j("Camera", [
   [
     "path",
     {
@@ -146,7 +146,7 @@ const wt = j("Camera", [
  * This source code is licensed under the ISC license.
  * See the LICENSE file in the root directory of this source tree.
  */
-const Le = j("ChevronRight", [
+const Me = j("ChevronRight", [
   ["path", { d: "m9 18 6-6-6-6", key: "mthhwq" }]
 ]);
 /**
@@ -166,7 +166,7 @@ const ve = j("CircleAlert", [
  * This source code is licensed under the ISC license.
  * See the LICENSE file in the root directory of this source tree.
  */
-const Ce = j("CircleCheck", [
+const Ie = j("CircleCheck", [
   ["circle", { cx: "12", cy: "12", r: "10", key: "1mglay" }],
   ["path", { d: "m9 12 2 2 4-4", key: "dzmm74" }]
 ]);
@@ -176,7 +176,7 @@ const Ce = j("CircleCheck", [
  * This source code is licensed under the ISC license.
  * See the LICENSE file in the root directory of this source tree.
  */
-const kt = j("CircleHelp", [
+const Nt = j("CircleHelp", [
   ["circle", { cx: "12", cy: "12", r: "10", key: "1mglay" }],
   ["path", { d: "M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3", key: "1u773s" }],
   ["path", { d: "M12 17h.01", key: "p32p05" }]
@@ -187,7 +187,7 @@ const kt = j("CircleHelp", [
  * This source code is licensed under the ISC license.
  * See the LICENSE file in the root directory of this source tree.
  */
-const Qe = j("CreditCard", [
+const et = j("CreditCard", [
   ["rect", { width: "20", height: "14", x: "2", y: "5", rx: "2", key: "ynyp8z" }],
   ["line", { x1: "2", x2: "22", y1: "10", y2: "10", key: "1b3vmo" }]
 ]);
@@ -197,7 +197,7 @@ const Qe = j("CreditCard", [
  * This source code is licensed under the ISC license.
  * See the LICENSE file in the root directory of this source tree.
  */
-const Nt = j("Delete", [
+const It = j("Delete", [
   ["path", { d: "M20 5H9l-7 7 7 7h11a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2Z", key: "1oy587" }],
   ["line", { x1: "18", x2: "12", y1: "9", y2: "15", key: "1olkx5" }],
   ["line", { x1: "12", x2: "18", y1: "9", y2: "15", key: "1n50pc" }]
@@ -208,7 +208,7 @@ const Nt = j("Delete", [
  * This source code is licensed under the ISC license.
  * See the LICENSE file in the root directory of this source tree.
  */
-const Ie = j("Fingerprint", [
+const Ne = j("Fingerprint", [
   ["path", { d: "M12 10a2 2 0 0 0-2 2c0 1.02-.1 2.51-.26 4", key: "1nerag" }],
   ["path", { d: "M14 13.12c0 2.38 0 6.38-1 8.88", key: "o46ks0" }],
   ["path", { d: "M17.29 21.02c.12-.6.43-2.3.5-3.02", key: "ptglia" }],
@@ -225,7 +225,7 @@ const Ie = j("Fingerprint", [
  * This source code is licensed under the ISC license.
  * See the LICENSE file in the root directory of this source tree.
  */
-const It = j("Flashlight", [
+const Ct = j("Flashlight", [
   [
     "path",
     {
@@ -242,7 +242,7 @@ const It = j("Flashlight", [
  * This source code is licensed under the ISC license.
  * See the LICENSE file in the root directory of this source tree.
  */
-const et = j("Globe", [
+const tt = j("Globe", [
   ["circle", { cx: "12", cy: "12", r: "10", key: "1mglay" }],
   ["path", { d: "M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20", key: "13o1zl" }],
   ["path", { d: "M2 12h20", key: "9i4pu4" }]
@@ -253,7 +253,7 @@ const et = j("Globe", [
  * This source code is licensed under the ISC license.
  * See the LICENSE file in the root directory of this source tree.
  */
-const Ct = j("Key", [
+const St = j("Key", [
   ["path", { d: "m15.5 7.5 2.3 2.3a1 1 0 0 0 1.4 0l2.1-2.1a1 1 0 0 0 0-1.4L19 4", key: "g0fldk" }],
   ["path", { d: "m21 2-9.6 9.6", key: "1j0ho8" }],
   ["circle", { cx: "7.5", cy: "15.5", r: "5.5", key: "yqb3hr" }]
@@ -273,7 +273,7 @@ const _e = j("LoaderCircle", [
  * This source code is licensed under the ISC license.
  * See the LICENSE file in the root directory of this source tree.
  */
-const tt = j("Lock", [
+const it = j("Lock", [
   ["rect", { width: "18", height: "11", x: "3", y: "11", rx: "2", ry: "2", key: "1w4ew1" }],
   ["path", { d: "M7 11V7a5 5 0 0 1 10 0v4", key: "fwvmzm" }]
 ]);
@@ -283,7 +283,7 @@ const tt = j("Lock", [
  * This source code is licensed under the ISC license.
  * See the LICENSE file in the root directory of this source tree.
  */
-const St = j("Mail", [
+const Et = j("Mail", [
   ["rect", { width: "20", height: "16", x: "2", y: "4", rx: "2", key: "18n3k1" }],
   ["path", { d: "m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7", key: "1ocrg3" }]
 ]);
@@ -293,7 +293,7 @@ const St = j("Mail", [
  * This source code is licensed under the ISC license.
  * See the LICENSE file in the root directory of this source tree.
  */
-const Et = j("Moon", [
+const At = j("Moon", [
   ["path", { d: "M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z", key: "a7tn18" }]
 ]);
 /**
@@ -302,7 +302,7 @@ const Et = j("Moon", [
  * This source code is licensed under the ISC license.
  * See the LICENSE file in the root directory of this source tree.
  */
-const At = j("Network", [
+const Dt = j("Network", [
   ["rect", { x: "16", y: "16", width: "6", height: "6", rx: "1", key: "4q2zg0" }],
   ["rect", { x: "2", y: "16", width: "6", height: "6", rx: "1", key: "8cvhb9" }],
   ["rect", { x: "9", y: "2", width: "6", height: "6", rx: "1", key: "1egb70" }],
@@ -315,7 +315,7 @@ const At = j("Network", [
  * This source code is licensed under the ISC license.
  * See the LICENSE file in the root directory of this source tree.
  */
-const Dt = j("Puzzle", [
+const Rt = j("Puzzle", [
   [
     "path",
     {
@@ -342,7 +342,7 @@ const Te = j("RefreshCw", [
  * This source code is licensed under the ISC license.
  * See the LICENSE file in the root directory of this source tree.
  */
-const Rt = j("RotateCcw", [
+const Pt = j("RotateCcw", [
   ["path", { d: "M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8", key: "1357e3" }],
   ["path", { d: "M3 3v5h5", key: "1xhq8a" }]
 ]);
@@ -352,7 +352,7 @@ const Rt = j("RotateCcw", [
  * This source code is licensed under the ISC license.
  * See the LICENSE file in the root directory of this source tree.
  */
-const Se = j("ShieldCheck", [
+const Ce = j("ShieldCheck", [
   [
     "path",
     {
@@ -368,7 +368,7 @@ const Se = j("ShieldCheck", [
  * This source code is licensed under the ISC license.
  * See the LICENSE file in the root directory of this source tree.
  */
-const it = j("Shield", [
+const at = j("Shield", [
   [
     "path",
     {
@@ -393,7 +393,7 @@ const qe = j("Smartphone", [
  * This source code is licensed under the ISC license.
  * See the LICENSE file in the root directory of this source tree.
  */
-const Pt = j("Sparkles", [
+const Tt = j("Sparkles", [
   [
     "path",
     {
@@ -412,7 +412,7 @@ const Pt = j("Sparkles", [
  * This source code is licensed under the ISC license.
  * See the LICENSE file in the root directory of this source tree.
  */
-const Tt = j("Sun", [
+const zt = j("Sun", [
   ["circle", { cx: "12", cy: "12", r: "4", key: "4exip2" }],
   ["path", { d: "M12 2v2", key: "tus03m" }],
   ["path", { d: "M12 20v2", key: "1lh1kg" }],
@@ -429,7 +429,7 @@ const Tt = j("Sun", [
  * This source code is licensed under the ISC license.
  * See the LICENSE file in the root directory of this source tree.
  */
-const zt = j("User", [
+const Vt = j("User", [
   ["path", { d: "M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2", key: "975kel" }],
   ["circle", { cx: "12", cy: "7", r: "4", key: "17ys0d" }]
 ]);
@@ -439,7 +439,7 @@ const zt = j("User", [
  * This source code is licensed under the ISC license.
  * See the LICENSE file in the root directory of this source tree.
  */
-const Vt = j("Wallet", [
+const jt = j("Wallet", [
   [
     "path",
     {
@@ -455,20 +455,20 @@ const Vt = j("Wallet", [
  * This source code is licensed under the ISC license.
  * See the LICENSE file in the root directory of this source tree.
  */
-const jt = j("X", [
+const Lt = j("X", [
   ["path", { d: "M18 6 6 18", key: "1bl5f8" }],
   ["path", { d: "m6 6 12 12", key: "d8bk6v" }]
-]), We = ({
+]), Ye = ({
   onClose: r,
   title: a = "CasperID",
   subtitle: n = "SECURE SDK",
-  showClose: l = !0,
-  theme: N,
+  showClose: o = !0,
+  theme: I,
   toggleTheme: p,
   logoUrl: f
 }) => /* @__PURE__ */ i("header", { className: "flex items-center justify-between px-6 pt-8 pb-4 relative z-20", children: [
   /* @__PURE__ */ i("div", { className: "flex items-center gap-3", children: [
-    /* @__PURE__ */ e("div", { className: "p-2 bg-brand rounded-xl flex items-center justify-center shadow-brand", children: f ? /* @__PURE__ */ e("img", { src: f, alt: a, className: "w-5 h-5 object-contain" }) : /* @__PURE__ */ e(it, { className: "text-white w-5 h-5" }) }),
+    /* @__PURE__ */ e("div", { className: "p-2 bg-brand rounded-xl flex items-center justify-center shadow-brand", children: f ? /* @__PURE__ */ e("img", { src: f, alt: a, className: "w-5 h-5 object-contain" }) : /* @__PURE__ */ e(at, { className: "text-white w-5 h-5" }) }),
     /* @__PURE__ */ i("div", { children: [
       /* @__PURE__ */ e("h2", { className: "text-lg font-bold tracking-tight text-main", children: a }),
       n && /* @__PURE__ */ e("p", { className: "text-[10px] uppercase tracking-widest text-brand font-bold", children: n })
@@ -481,20 +481,20 @@ const jt = j("X", [
         onClick: p,
         className: "p-2 dark:hover:bg-slate-200 dark:bg-white/10 hover:bg-slate-200/50 rounded-xl transition-colors text-muted",
         "aria-label": "Toggle theme",
-        children: N === "dark" ? /* @__PURE__ */ e(Tt, { className: "w-5 h-5" }) : /* @__PURE__ */ e(Et, { className: "w-5 h-5" })
+        children: I === "dark" ? /* @__PURE__ */ e(zt, { className: "w-5 h-5" }) : /* @__PURE__ */ e(At, { className: "w-5 h-5" })
       }
     ),
-    l && /* @__PURE__ */ e(
+    o && /* @__PURE__ */ e(
       "button",
       {
         onClick: r,
         className: "p-2 dark:hover:bg-slate-200 dark:bg-white/10 hover:bg-slate-200/50 rounded-full transition-colors text-muted",
         "aria-label": "Close",
-        children: /* @__PURE__ */ e(jt, { className: "w-5 h-5" })
+        children: /* @__PURE__ */ e(Lt, { className: "w-5 h-5" })
       }
     )
   ] })
-] }), Ye = ({ children: r }) => /* @__PURE__ */ e("footer", { className: "p-8 text-center relative z-20", children: r }), Ve = {
+] }), Ge = ({ children: r }) => /* @__PURE__ */ e("footer", { className: "p-8 text-center relative z-20", children: r }), Ve = {
   EN: {
     welcome_back: "Welcome back",
     enter_email: "Enter your email to receive a verification code.",
@@ -1189,55 +1189,56 @@ const jt = j("X", [
   onNext: r,
   onExtensionSuccess: a,
   onError: n,
-  language: l = "EN",
-  platform: N = "desktop"
+  language: o = "EN",
+  platform: I = "desktop",
+  logoUrl: p
 }) => {
-  const [p, f] = y(!1), [m, s] = y(null), [c, d] = y("");
-  ce(() => {
-    D();
-  }, []), ce(() => {
-    const o = (I) => {
-      f(!1), I.detail && I.detail.wallet && (a == null || a(I.detail));
+  const [f, l] = y(!1), [s, c] = y(null), [d, E] = y("");
+  oe(() => {
+    h();
+  }, []), oe(() => {
+    const N = (x) => {
+      l(!1), x.detail && x.detail.wallet && (a == null || a(x.detail));
     };
-    return window.addEventListener("casperid-login", o), () => {
-      window.removeEventListener("casperid-login", o);
+    return window.addEventListener("casperid-login", N), () => {
+      window.removeEventListener("casperid-login", N);
     };
   }, [a]);
-  const D = J(() => {
-    const o = document.getElementById("casperid-draggable-anchor");
-    let I = null;
+  const h = K(() => {
+    const N = document.getElementById("casperid-draggable-anchor");
+    let x = null;
     try {
-      I = localStorage.getItem("casperid_user");
+      x = localStorage.getItem("casperid_user");
     } catch {
     }
-    return o || I ? (s(!0), !0) : (setTimeout(() => {
-      const g = document.getElementById("casperid-draggable-anchor");
-      s(!!g);
+    return N || x ? (c(!0), !0) : (setTimeout(() => {
+      const v = document.getElementById("casperid-draggable-anchor");
+      c(!!v);
     }, 500), !1);
-  }, []), h = (o) => typeof o == "object" && o !== null && "wallet" in o && typeof o.wallet == "string" && o.wallet.length > 0, A = async () => {
-    f(!0), d("");
+  }, []), D = (N) => typeof N == "object" && N !== null && "wallet" in N && typeof N.wallet == "string" && N.wallet.length > 0, _ = async () => {
+    l(!0), E("");
     try {
-      const I = localStorage.getItem("casperid_user");
-      if (I) {
-        const g = JSON.parse(I);
-        if (h(g)) {
-          f(!1), a == null || a(g);
+      const x = localStorage.getItem("casperid_user");
+      if (x) {
+        const v = JSON.parse(x);
+        if (D(v)) {
+          l(!1), a == null || a(v);
           return;
         }
       }
     } catch {
     }
-    const o = document.getElementById("casperid-draggable-anchor");
-    o ? (o.click(), setTimeout(() => {
-      f(!1);
+    const N = document.getElementById("casperid-draggable-anchor");
+    N ? (N.click(), setTimeout(() => {
+      l(!1);
       try {
-        localStorage.getItem("casperid_user") || d(t("extension_connect_msg", l));
+        localStorage.getItem("casperid_user") || E(t("extension_connect_msg", o));
       } catch {
-        d(t("extension_connect_msg", l));
+        E(t("extension_connect_msg", o));
       }
-    }, 3e3)) : (f(!1), d(t("extension_not_detected", l)), n == null || n("Extension not installed"));
-  }, _ = () => {
-    d(""), r("otp");
+    }, 3e3)) : (l(!1), E(t("extension_not_detected", o)), n == null || n("Extension not installed"));
+  }, u = () => {
+    E(""), r("otp");
   };
   return /* @__PURE__ */ i(
     P.div,
@@ -1250,116 +1251,116 @@ const jt = j("X", [
         /* @__PURE__ */ i("div", { className: "text-center space-y-3", children: [
           /* @__PURE__ */ i("div", { className: "relative w-24 h-24 mx-auto mb-6", children: [
             /* @__PURE__ */ e("div", { className: "absolute inset-0 bg-brand-20 blur-2xl rounded-full" }),
-            /* @__PURE__ */ e("div", { className: "relative w-full h-full glass-container flex items-center justify-center rounded-2xl border border-brand-30", children: /* @__PURE__ */ e(Ie, { className: "w-10 h-10 text-brand" }) })
+            /* @__PURE__ */ e("div", { className: "relative w-full h-full glass-container flex items-center justify-center rounded-2xl border border-brand-30 overflow-hidden", children: p ? /* @__PURE__ */ e("img", { src: p, alt: "App Logo", className: "w-full h-full object-cover" }) : /* @__PURE__ */ e(Ne, { className: "w-10 h-10 text-brand" }) })
           ] }),
-          /* @__PURE__ */ e("h1", { className: "text-2xl font-extrabold leading-tight tracking-tight text-main", children: t("welcome_back", l) }),
-          /* @__PURE__ */ e("p", { className: "text-muted text-sm leading-relaxed", children: t("auth_subtitle", l) })
+          /* @__PURE__ */ e("h1", { className: "text-2xl font-extrabold leading-tight tracking-tight text-main", children: t("welcome_back", o) }),
+          /* @__PURE__ */ e("p", { className: "text-muted text-sm leading-relaxed", children: t("auth_subtitle", o) })
         ] }),
-        c && /* @__PURE__ */ i("div", { className: "flex items-start gap-3 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-2xl", children: [
+        d && /* @__PURE__ */ i("div", { className: "flex items-start gap-3 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-2xl", children: [
           /* @__PURE__ */ e(ve, { className: "w-5 h-5 text-red-500 shrink-0 mt-0.5" }),
-          /* @__PURE__ */ e("p", { className: "text-red-600 dark:text-red-400 text-sm font-medium", children: c })
+          /* @__PURE__ */ e("p", { className: "text-red-600 dark:text-red-400 text-sm font-medium", children: d })
         ] }),
         /* @__PURE__ */ i("div", { className: "space-y-4", children: [
-          N === "desktop" && /* @__PURE__ */ i(
+          I === "desktop" && /* @__PURE__ */ i(
             "button",
             {
-              onClick: A,
-              disabled: p,
+              onClick: _,
+              disabled: f,
               className: "w-full group relative overflow-hidden flex items-center gap-4 bg-brand hover:bg-brand-90 text-white py-5 px-6 rounded-2xl font-bold transition-all transform active:scale-[0.98] disabled:opacity-70 disabled:cursor-not-allowed shadow-brand",
               children: [
-                /* @__PURE__ */ e("div", { className: "bg-white/20 p-2 rounded-lg", children: p ? /* @__PURE__ */ e(_e, { className: "w-5 h-5 animate-spin" }) : /* @__PURE__ */ e(Dt, { className: "w-5 h-5" }) }),
+                /* @__PURE__ */ e("div", { className: "bg-white/20 p-2 rounded-lg", children: f ? /* @__PURE__ */ e(_e, { className: "w-5 h-5 animate-spin" }) : /* @__PURE__ */ e(Rt, { className: "w-5 h-5" }) }),
                 /* @__PURE__ */ i("div", { className: "flex flex-col items-start", children: [
-                  /* @__PURE__ */ e("span", { className: "text-base", children: t(p ? "connecting" : "sign_in_with_extension", l) }),
-                  /* @__PURE__ */ e("span", { className: "text-[10px] uppercase tracking-widest text-slate-600 dark:text-white/70", children: t(m === !0 ? "extension_detected" : "secure_wallet", l) })
+                  /* @__PURE__ */ e("span", { className: "text-base", children: t(f ? "connecting" : "sign_in_with_extension", o) }),
+                  /* @__PURE__ */ e("span", { className: "text-[10px] uppercase tracking-widest text-slate-600 dark:text-white/70", children: t(s === !0 ? "extension_detected" : "secure_wallet", o) })
                 ] }),
-                /* @__PURE__ */ e(Le, { className: "ml-auto w-4 h-4 opacity-50 group-hover:opacity-100 transition-opacity" })
+                /* @__PURE__ */ e(Me, { className: "ml-auto w-4 h-4 opacity-50 group-hover:opacity-100 transition-opacity" })
               ]
             }
           ),
           /* @__PURE__ */ i(
             "button",
             {
-              onClick: _,
-              disabled: p,
+              onClick: u,
+              disabled: f,
               className: "w-full group relative overflow-hidden flex items-center gap-4 dark:bg-white/5 bg-slate-100/50 hover:dark:bg-white/10 hover:bg-slate-200/80 border dark:border-white/10 border-slate-200 text-main py-5 px-6 rounded-2xl font-bold transition-all transform active:scale-[0.98] disabled:opacity-50",
               children: [
                 /* @__PURE__ */ e("div", { className: "bg-brand-10 p-2 rounded-lg", children: /* @__PURE__ */ e(qe, { className: "w-5 h-5 text-brand" }) }),
                 /* @__PURE__ */ i("div", { className: "flex flex-col items-start", children: [
-                  /* @__PURE__ */ e("span", { className: "text-base", children: t("sign_in_with_otp", l) }),
-                  /* @__PURE__ */ e("span", { className: "text-[10px] uppercase tracking-widest text-brand font-bold", children: t("two_factor_auth", l) })
+                  /* @__PURE__ */ e("span", { className: "text-base", children: t("sign_in_with_otp", o) }),
+                  /* @__PURE__ */ e("span", { className: "text-[10px] uppercase tracking-widest text-brand font-bold", children: t("two_factor_auth", o) })
                 ] }),
-                /* @__PURE__ */ e(Le, { className: "ml-auto w-4 h-4 opacity-50 group-hover:opacity-100 transition-opacity" })
+                /* @__PURE__ */ e(Me, { className: "ml-auto w-4 h-4 opacity-50 group-hover:opacity-100 transition-opacity" })
               ]
             }
           )
         ] }),
         /* @__PURE__ */ i("div", { className: "grid grid-cols-2 gap-3", children: [
           /* @__PURE__ */ i("div", { className: "glass-container p-4 rounded-2xl flex flex-col items-center gap-2 text-center border-slate-200/50", children: [
-            /* @__PURE__ */ e(Se, { className: "w-5 h-5 text-brand" }),
-            /* @__PURE__ */ e("span", { className: "text-[10px] font-bold text-muted", children: t("fully_audited", l) })
+            /* @__PURE__ */ e(Ce, { className: "w-5 h-5 text-brand" }),
+            /* @__PURE__ */ e("span", { className: "text-[10px] font-bold text-muted", children: t("fully_audited", o) })
           ] }),
           /* @__PURE__ */ i("div", { className: "glass-container p-4 rounded-2xl flex flex-col items-center gap-2 text-center border-slate-200/50", children: [
             /* @__PURE__ */ e(Te, { className: "w-5 h-5 text-brand" }),
-            /* @__PURE__ */ e("span", { className: "text-[10px] font-bold text-muted", children: t("non_custodial", l) })
+            /* @__PURE__ */ e("span", { className: "text-[10px] font-bold text-muted", children: t("non_custodial", o) })
           ] })
         ] })
       ]
     }
   );
-}, Lt = ({
+}, Ot = ({
   onNext: r,
   onPasskeyUser: a,
   onError: n,
-  apiBaseUrl: l = "https://apis.casperid.com",
-  apiKey: N = "",
+  apiBaseUrl: o = "https://apis.casperid.com",
+  apiKey: I = "",
   previewMode: p = !1,
   language: f = "EN"
 }) => {
-  const [m, s] = y(""), [c, d] = y(!1), [D, h] = y(""), A = async () => {
-    if (!m.trim()) {
+  const [l, s] = y(""), [c, d] = y(!1), [E, h] = y(""), D = async () => {
+    if (!l.trim()) {
       h(t("error_email_required", f));
       return;
     }
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(m)) {
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(l)) {
       h(t("error_invalid_email", f));
       return;
     }
     if (d(!0), h(""), p) {
       setTimeout(() => {
-        d(!1), r(m.trim().toLowerCase(), "mock-v-id-123456789");
+        d(!1), r(l.trim().toLowerCase(), "mock-v-id-123456789");
       }, 1e3);
       return;
     }
     try {
-      const I = await fetch(`${l}/api/auth/send-otp`, {
+      const N = await fetch(`${o}/api/auth/send-otp`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          ...N ? { "X-App-Id": N } : {}
+          ...I ? { "X-App-Id": I } : {}
         },
-        body: JSON.stringify({ email: m.trim().toLowerCase() })
+        body: JSON.stringify({ email: l.trim().toLowerCase() })
       });
-      if (!I.ok) {
-        const k = await I.json().catch(() => ({}));
-        throw new Error(k.error || `Request failed with status ${I.status}`);
+      if (!N.ok) {
+        const v = await N.json().catch(() => ({}));
+        throw new Error(v.error || `Request failed with status ${N.status}`);
       }
-      const g = await I.json();
-      if (g.success) {
-        if (g.userExists && g.hasPasskey) {
-          a ? a(m.trim().toLowerCase()) : h(t("error_passkey_registered", f)), d(!1);
+      const x = await N.json();
+      if (x.success) {
+        if (x.userExists && x.hasPasskey) {
+          a ? a(l.trim().toLowerCase()) : h(t("error_passkey_registered", f)), d(!1);
           return;
         }
-        g.verificationId ? r(m.trim().toLowerCase(), g.verificationId) : h(t("error_send_code_failed", f));
+        x.verificationId ? r(l.trim().toLowerCase(), x.verificationId) : h(t("error_send_code_failed", f));
       } else
-        h(g.error || t("error_send_code_failed", f)), n == null || n(g.error || t("error_send_code_failed", f));
+        h(x.error || t("error_send_code_failed", f)), n == null || n(x.error || t("error_send_code_failed", f));
     } catch {
-      const g = t("error_connection_failed", f);
-      h(g), n == null || n(g);
+      const x = t("error_connection_failed", f);
+      h(x), n == null || n(x);
     } finally {
       d(!1);
     }
-  }, _ = (o) => {
-    o.key === "Enter" && !c && A();
+  }, _ = (u) => {
+    u.key === "Enter" && !c && D();
   };
   return /* @__PURE__ */ i(
     P.div,
@@ -1380,12 +1381,12 @@ const jt = j("X", [
               /* @__PURE__ */ e(
                 "input",
                 {
-                  className: `w-full dark:bg-black/20 bg-slate-100/50 border ${D ? "border-red-400 dark:border-red-500" : "dark:border-white/10 border-slate-200"} rounded-2xl h-14 px-5 text-main placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-30 transition-all font-medium`,
+                  className: `w-full dark:bg-black/20 bg-slate-100/50 border ${E ? "border-red-400 dark:border-red-500" : "dark:border-white/10 border-slate-200"} rounded-2xl h-14 px-5 text-main placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-30 transition-all font-medium`,
                   placeholder: "name@example.com",
                   type: "email",
-                  value: m,
-                  onChange: (o) => {
-                    s(o.target.value), D && h("");
+                  value: l,
+                  onChange: (u) => {
+                    s(u.target.value), E && h("");
                   },
                   onKeyDown: _,
                   disabled: c,
@@ -1393,14 +1394,14 @@ const jt = j("X", [
                   autoFocus: !0
                 }
               ),
-              /* @__PURE__ */ e("div", { className: "absolute right-4 top-1/2 -translate-y-1/2 flex items-center text-slate-400", children: /* @__PURE__ */ e(St, { className: "w-5 h-5" }) })
+              /* @__PURE__ */ e("div", { className: "absolute right-4 top-1/2 -translate-y-1/2 flex items-center text-slate-400", children: /* @__PURE__ */ e(Et, { className: "w-5 h-5" }) })
             ] }),
-            D && /* @__PURE__ */ e("p", { className: "text-red-500 text-xs font-medium ml-1 mt-1", children: D })
+            E && /* @__PURE__ */ e("p", { className: "text-red-500 text-xs font-medium ml-1 mt-1", children: E })
           ] }),
           /* @__PURE__ */ e(
             "button",
             {
-              onClick: A,
+              onClick: D,
               disabled: c,
               className: "w-full h-14 bg-brand hover:bg-brand/90 text-white font-bold rounded-2xl shadow-xl shadow-brand flex items-center justify-center gap-2 transition-transform active:scale-[0.98] disabled:opacity-70 disabled:cursor-not-allowed",
               children: c ? /* @__PURE__ */ i(re, { children: [
@@ -1419,7 +1420,7 @@ const jt = j("X", [
             /* @__PURE__ */ e("p", { className: "text-[11px] text-muted leading-normal font-medium", children: t("security_notice", f) })
           ] }) }),
           /* @__PURE__ */ i("div", { className: "flex items-center justify-center gap-2 opacity-50", children: [
-            /* @__PURE__ */ e(tt, { className: "text-muted w-3 h-3" }),
+            /* @__PURE__ */ e(it, { className: "text-muted w-3 h-3" }),
             /* @__PURE__ */ e("span", { className: "text-[10px] uppercase tracking-[0.2em] font-bold text-muted", children: t("e2e_encrypted", f) })
           ] })
         ] })
@@ -1430,65 +1431,65 @@ const jt = j("X", [
 function xe(r) {
   const a = new Uint8Array(r);
   let n = "";
-  for (let l = 0; l < a.byteLength; l++)
-    n += String.fromCharCode(a[l]);
+  for (let o = 0; o < a.byteLength; o++)
+    n += String.fromCharCode(a[o]);
   return btoa(n).replace(/\+/g, "-").replace(/\//g, "_").replace(/=/g, "");
 }
-function Ne(r) {
-  const a = "=".repeat((4 - r.length % 4) % 4), n = r.replace(/-/g, "+").replace(/_/g, "/") + a, l = atob(n), N = new Uint8Array(l.length);
-  for (let p = 0; p < l.length; p++)
-    N[p] = l.charCodeAt(p);
-  return N.buffer;
+function ke(r) {
+  const a = "=".repeat((4 - r.length % 4) % 4), n = r.replace(/-/g, "+").replace(/_/g, "/") + a, o = atob(n), I = new Uint8Array(o.length);
+  for (let p = 0; p < o.length; p++)
+    I[p] = o.charCodeAt(p);
+  return I.buffer;
 }
-function Ee() {
+function Se() {
   return !!(window.PublicKeyCredential && typeof window.PublicKeyCredential == "function");
 }
-async function at() {
-  if (!Ee()) return !1;
+async function rt() {
+  if (!Se()) return !1;
   try {
     return await PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable();
   } catch {
     return !1;
   }
 }
-function Ot() {
+function Ft() {
   const r = navigator.userAgent.toLowerCase();
   return /iphone|ipod|android.*mobile|windows phone|blackberry/i.test(r) ? "mobile" : /ipad|android(?!.*mobile)|tablet/i.test(r) ? "tablet" : "desktop";
 }
-function Ft() {
+function qt() {
   return {
     platform: navigator.platform || "unknown",
     userAgent: navigator.userAgent,
-    deviceType: Ot()
-  };
-}
-function qt(r) {
-  var a;
-  return {
-    ...r,
-    challenge: Ne(r.challenge),
-    user: {
-      ...r.user,
-      id: Ne(r.user.id)
-    },
-    excludeCredentials: (a = r.excludeCredentials) == null ? void 0 : a.map((n) => ({
-      ...n,
-      id: Ne(n.id)
-    }))
+    deviceType: Ft()
   };
 }
 function Ut(r) {
   var a;
   return {
     ...r,
-    challenge: Ne(r.challenge),
-    allowCredentials: (a = r.allowCredentials) == null ? void 0 : a.map((n) => ({
+    challenge: ke(r.challenge),
+    user: {
+      ...r.user,
+      id: ke(r.user.id)
+    },
+    excludeCredentials: (a = r.excludeCredentials) == null ? void 0 : a.map((n) => ({
       ...n,
-      id: Ne(n.id)
+      id: ke(n.id)
     }))
   };
 }
 function $t(r) {
+  var a;
+  return {
+    ...r,
+    challenge: ke(r.challenge),
+    allowCredentials: (a = r.allowCredentials) == null ? void 0 : a.map((n) => ({
+      ...n,
+      id: ke(n.id)
+    }))
+  };
+}
+function Bt(r) {
   const a = r.response;
   return {
     id: r.id,
@@ -1499,10 +1500,10 @@ function $t(r) {
       attestationObject: xe(a.attestationObject)
     },
     clientExtensionResults: r.getClientExtensionResults(),
-    deviceInfo: Ft()
+    deviceInfo: qt()
   };
 }
-function Bt(r) {
+function Ht(r) {
   const a = r.response;
   return {
     id: r.id,
@@ -1517,54 +1518,54 @@ function Bt(r) {
     clientExtensionResults: r.getClientExtensionResults()
   };
 }
-async function Ht(r) {
-  if (!Ee())
+async function Wt(r) {
+  if (!Se())
     throw new Error("WebAuthn is not supported in this browser");
-  const a = qt(r), n = await navigator.credentials.create({
+  const a = Ut(r), n = await navigator.credentials.create({
     publicKey: a
   });
   if (!n)
     throw new Error("Passkey creation was cancelled or failed");
-  return $t(n);
+  return Bt(n);
 }
-async function Wt(r) {
-  if (!Ee())
+async function Yt(r) {
+  if (!Se())
     throw new Error("WebAuthn is not supported in this browser");
-  const a = Ut(r), n = await navigator.credentials.get({
+  const a = $t(r), n = await navigator.credentials.get({
     publicKey: a
   });
   if (!n)
     throw new Error("Passkey authentication was cancelled or failed");
-  return Bt(n);
+  return Ht(n);
 }
-const Yt = ({
+const Gt = ({
   email: r,
   onSuccess: a,
   onError: n,
-  onFallbackToOTP: l,
-  apiBaseUrl: N = "https://apis.casperid.com",
+  onFallbackToOTP: o,
+  apiBaseUrl: I = "https://apis.casperid.com",
   apiKey: p = "",
   previewMode: f = !1,
-  language: m = "EN"
+  language: l = "EN"
 }) => {
-  const [s, c] = y(!1), [d, D] = y(""), [h, A] = y(!0), [_, o] = y(!1);
-  ce(() => {
+  const [s, c] = y(!1), [d, E] = y(""), [h, D] = y(!0), [_, u] = y(!1);
+  oe(() => {
     (async () => {
-      const k = Ee(), V = await at();
-      A(k && V), (!k || !V) && D(t("webauthn_not_supported", m));
+      const v = Se(), V = await rt();
+      D(v && V), (!v || !V) && E(t("webauthn_not_supported", l));
     })();
-  }, [m]), ce(() => {
+  }, [l]), oe(() => {
     if (h && !_ && !f) {
-      o(!0);
-      const g = setTimeout(() => {
-        I();
+      u(!0);
+      const x = setTimeout(() => {
+        N();
       }, 500);
-      return () => clearTimeout(g);
+      return () => clearTimeout(x);
     }
   }, [h, _, f]);
-  const I = async () => {
+  const N = async () => {
     if (!s) {
-      if (c(!0), D(""), f) {
+      if (c(!0), E(""), f) {
         setTimeout(() => {
           c(!1), a("mock-session-token", {
             user_id: "mock-user-id",
@@ -1575,7 +1576,7 @@ const Yt = ({
         return;
       }
       try {
-        const g = await fetch(`${N}/api/passkey/auth/begin`, {
+        const x = await fetch(`${I}/api/passkey/auth/begin`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -1584,14 +1585,14 @@ const Yt = ({
           credentials: "include",
           body: JSON.stringify({ email: r })
         });
-        if (!g.ok) {
-          const Y = await g.json().catch(() => ({}));
-          throw new Error(Y.error || "Failed to initialize authentication");
+        if (!x.ok) {
+          const G = await x.json().catch(() => ({}));
+          throw new Error(G.error || "Failed to initialize authentication");
         }
-        const k = await g.json();
-        if (!k.success || !k.options)
-          throw new Error(k.error || "Invalid authentication options");
-        const V = await Wt(k.options), w = await fetch(`${N}/api/passkey/auth/finish`, {
+        const v = await x.json();
+        if (!v.success || !v.options)
+          throw new Error(v.error || "Invalid authentication options");
+        const V = await Yt(v.options), k = await fetch(`${I}/api/passkey/auth/finish`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -1600,22 +1601,22 @@ const Yt = ({
           credentials: "include",
           body: JSON.stringify({
             email: r,
-            challengeId: k.challengeId,
+            challengeId: v.challengeId,
             credential: V
           })
         });
-        if (!w.ok) {
-          const Y = await w.json().catch(() => ({}));
-          throw new Error(Y.error || "Authentication failed");
+        if (!k.ok) {
+          const G = await k.json().catch(() => ({}));
+          throw new Error(G.error || "Authentication failed");
         }
-        const T = await w.json();
+        const T = await k.json();
         if (T.success && T.session_token)
           a(T.session_token, T.user, T.business_token);
         else
           throw new Error(T.error || "Authentication failed");
-      } catch (g) {
-        const k = g instanceof Error ? g.message : "Authentication failed";
-        k.includes("cancelled") || k.includes("NotAllowedError") ? D(t("passkey_cancelled", m)) : (D(k), n == null || n(k));
+      } catch (x) {
+        const v = x instanceof Error ? x.message : "Authentication failed";
+        v.includes("cancelled") || v.includes("NotAllowedError") ? E(t("passkey_cancelled", l)) : (E(v), n == null || n(v));
       } finally {
         c(!1);
       }
@@ -1630,11 +1631,11 @@ const Yt = ({
       className: "flex-1 flex flex-col px-8 pt-12",
       children: [
         /* @__PURE__ */ i("div", { className: "mb-8", children: [
-          /* @__PURE__ */ e("h2", { className: "text-3xl font-extrabold text-main tracking-tight leading-tight", children: t("welcome_back", m) }),
-          /* @__PURE__ */ e("p", { className: "text-muted mt-3 text-sm leading-relaxed", children: t("passkey_auth_subtitle", m) })
+          /* @__PURE__ */ e("h2", { className: "text-3xl font-extrabold text-main tracking-tight leading-tight", children: t("welcome_back", l) }),
+          /* @__PURE__ */ e("p", { className: "text-muted mt-3 text-sm leading-relaxed", children: t("passkey_auth_subtitle", l) })
         ] }),
         /* @__PURE__ */ i("div", { className: "mb-6 p-4 dark:bg-white/5 bg-slate-100/50 rounded-2xl", children: [
-          /* @__PURE__ */ e("p", { className: "text-xs text-muted mb-1", children: t("signing_in_as", m) }),
+          /* @__PURE__ */ e("p", { className: "text-xs text-muted mb-1", children: t("signing_in_as", l) }),
           /* @__PURE__ */ e("p", { className: "text-main font-semibold", children: r })
         ] }),
         /* @__PURE__ */ i("div", { className: "flex-1 flex flex-col items-center justify-center py-8", children: [
@@ -1651,69 +1652,69 @@ const Yt = ({
                 ease: "easeInOut"
               },
               className: `w-24 h-24 rounded-full flex items-center justify-center mb-6 ${s ? "bg-brand/20 border-2 border-brand" : d ? "bg-red-500/10 border-2 border-red-400" : "bg-brand/10 border-2 border-brand/30"}`,
-              children: s ? /* @__PURE__ */ e(_e, { className: "w-10 h-10 text-brand animate-spin" }) : d ? /* @__PURE__ */ e(ve, { className: "w-10 h-10 text-red-400" }) : /* @__PURE__ */ e(Ie, { className: "w-10 h-10 text-brand" })
+              children: s ? /* @__PURE__ */ e(_e, { className: "w-10 h-10 text-brand animate-spin" }) : d ? /* @__PURE__ */ e(ve, { className: "w-10 h-10 text-red-400" }) : /* @__PURE__ */ e(Ne, { className: "w-10 h-10 text-brand" })
             }
           ),
-          /* @__PURE__ */ e("p", { className: "text-main font-semibold text-center mb-2", children: t(s ? "authenticating" : d ? "authentication_failed" : "use_passkey", m) }),
+          /* @__PURE__ */ e("p", { className: "text-main font-semibold text-center mb-2", children: t(s ? "authenticating" : d ? "authentication_failed" : "use_passkey", l) }),
           d && /* @__PURE__ */ e("p", { className: "text-red-500 text-sm text-center mb-4 max-w-xs", children: d }),
-          !s && /* @__PURE__ */ e("p", { className: "text-muted text-sm text-center max-w-xs", children: t("passkey_auth_hint", m) })
+          !s && /* @__PURE__ */ e("p", { className: "text-muted text-sm text-center max-w-xs", children: t("passkey_auth_hint", l) })
         ] }),
         /* @__PURE__ */ i("div", { className: "space-y-3 pb-8", children: [
           !s && /* @__PURE__ */ e(
             "button",
             {
-              onClick: I,
+              onClick: N,
               disabled: !h,
               className: "w-full h-14 bg-brand hover:bg-brand/90 text-white font-bold rounded-2xl shadow-xl shadow-brand/30 flex items-center justify-center gap-2 transition-transform active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed",
               children: d ? /* @__PURE__ */ i(re, { children: [
                 /* @__PURE__ */ e(Te, { className: "w-5 h-5" }),
-                /* @__PURE__ */ e("span", { children: t("try_again", m) })
+                /* @__PURE__ */ e("span", { children: t("try_again", l) })
               ] }) : /* @__PURE__ */ i(re, { children: [
-                /* @__PURE__ */ e(Ie, { className: "w-5 h-5" }),
-                /* @__PURE__ */ e("span", { children: t("authenticate", m) })
+                /* @__PURE__ */ e(Ne, { className: "w-5 h-5" }),
+                /* @__PURE__ */ e("span", { children: t("authenticate", l) })
               ] })
             }
           ),
-          l && /* @__PURE__ */ e(
+          o && /* @__PURE__ */ e(
             "button",
             {
-              onClick: l,
+              onClick: o,
               disabled: s,
               className: "w-full h-12 bg-transparent border dark:border-white/10 border-slate-200 text-muted hover:text-main font-medium rounded-2xl flex items-center justify-center gap-2 transition-colors disabled:opacity-50",
-              children: t("use_email_instead", m)
+              children: t("use_email_instead", l)
             }
           )
         ] }),
         /* @__PURE__ */ i("div", { className: "flex items-center justify-center gap-2 pb-4 opacity-50", children: [
-          /* @__PURE__ */ e(Se, { className: "text-muted w-3 h-3" }),
-          /* @__PURE__ */ e("span", { className: "text-[10px] uppercase tracking-[0.2em] font-bold text-muted", children: t("biometric_secured", m) })
+          /* @__PURE__ */ e(Ce, { className: "text-muted w-3 h-3" }),
+          /* @__PURE__ */ e("span", { className: "text-[10px] uppercase tracking-[0.2em] font-bold text-muted", children: t("biometric_secured", l) })
         ] })
       ]
     }
   );
-}, Gt = ({
+}, Jt = ({
   email: r,
   sessionToken: a,
   onSuccess: n,
-  onError: l,
-  onSkip: N,
+  onError: o,
+  onSkip: I,
   apiBaseUrl: p = "https://apis.casperid.com",
   apiKey: f = "",
-  previewMode: m = !1,
+  previewMode: l = !1,
   language: s = "EN"
 }) => {
-  const [c, d] = y(!1), [D, h] = y(""), [A, _] = y(!0), [o, I] = y(!1);
-  ce(() => {
+  const [c, d] = y(!1), [E, h] = y(""), [D, _] = y(!0), [u, N] = y(!1);
+  oe(() => {
     (async () => {
-      const w = Ee(), T = await at();
-      _(w && T), (!w || !T) && h(t("webauthn_not_supported", s));
+      const k = Se(), T = await rt();
+      _(k && T), (!k || !T) && h(t("webauthn_not_supported", s));
     })();
   }, [s]);
-  const g = async () => {
+  const x = async () => {
     if (!c) {
-      if (d(!0), h(""), m) {
+      if (d(!0), h(""), l) {
         setTimeout(() => {
-          d(!1), I(!0), setTimeout(() => {
+          d(!1), N(!0), setTimeout(() => {
             n({
               user_id: "mock-user-id",
               email: r,
@@ -1735,13 +1736,13 @@ const Yt = ({
           body: JSON.stringify({ email: r })
         });
         if (!V.ok) {
-          const B = await V.json().catch(() => ({}));
-          throw new Error(B.error || "Failed to initialize registration");
+          const H = await V.json().catch(() => ({}));
+          throw new Error(H.error || "Failed to initialize registration");
         }
-        const w = await V.json();
-        if (!w.success || !w.options)
-          throw new Error(w.error || "Invalid registration options");
-        const T = await Ht(w.options), Y = await fetch(`${p}/api/passkey/register/finish`, {
+        const k = await V.json();
+        if (!k.success || !k.options)
+          throw new Error(k.error || "Invalid registration options");
+        const T = await Wt(k.options), G = await fetch(`${p}/api/passkey/register/finish`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -1750,34 +1751,34 @@ const Yt = ({
           },
           credentials: "include",
           body: JSON.stringify({
-            userId: w.userId,
+            userId: k.userId,
             credential: T,
             deviceInfo: {
               userAgent: navigator.userAgent
             }
           })
         });
-        if (!Y.ok) {
-          const B = await Y.json().catch(() => ({}));
-          throw new Error(B.error || "Registration failed");
+        if (!G.ok) {
+          const H = await G.json().catch(() => ({}));
+          throw new Error(H.error || "Registration failed");
         }
-        const W = await Y.json();
-        if (W.success)
-          I(!0), setTimeout(() => {
-            n(W.user, W.business_token);
+        const Y = await G.json();
+        if (Y.success)
+          N(!0), setTimeout(() => {
+            n(Y.user, Y.business_token);
           }, 1e3);
         else
-          throw new Error(W.error || "Registration failed");
+          throw new Error(Y.error || "Registration failed");
       } catch (V) {
-        const w = V instanceof Error ? V.message : "Registration failed";
-        w.includes("cancelled") || w.includes("NotAllowedError") ? h(t("passkey_cancelled", s)) : (h(w), l == null || l(w));
+        const k = V instanceof Error ? V.message : "Registration failed";
+        k.includes("cancelled") || k.includes("NotAllowedError") ? h(t("passkey_cancelled", s)) : (h(k), o == null || o(k));
       } finally {
         d(!1);
       }
     }
-  }, k = [
-    { icon: Ct, text: t("passkey_benefit_1", s) },
-    { icon: Se, text: t("passkey_benefit_2", s) },
+  }, v = [
+    { icon: St, text: t("passkey_benefit_1", s) },
+    { icon: Ce, text: t("passkey_benefit_2", s) },
     { icon: qe, text: t("passkey_benefit_3", s) }
   ];
   return /* @__PURE__ */ i(
@@ -1798,12 +1799,12 @@ const Yt = ({
         ] }),
         /* @__PURE__ */ i("div", { className: "mb-8", children: [
           /* @__PURE__ */ e("p", { className: "text-sm font-semibold text-main mb-4", children: t("passkey_benefits_title", s) }),
-          /* @__PURE__ */ e("div", { className: "space-y-3", children: k.map((V, w) => /* @__PURE__ */ i("div", { className: "flex items-center gap-3", children: [
+          /* @__PURE__ */ e("div", { className: "space-y-3", children: v.map((V, k) => /* @__PURE__ */ i("div", { className: "flex items-center gap-3", children: [
             /* @__PURE__ */ e("div", { className: "w-10 h-10 rounded-xl bg-brand/10 flex items-center justify-center", children: /* @__PURE__ */ e(V.icon, { className: "w-5 h-5 text-brand" }) }),
             /* @__PURE__ */ e("span", { className: "text-sm text-muted", children: V.text })
-          ] }, w)) })
+          ] }, k)) })
         ] }),
-        (c || o || D) && /* @__PURE__ */ i("div", { className: "flex-1 flex flex-col items-center justify-center py-4", children: [
+        (c || u || E) && /* @__PURE__ */ i("div", { className: "flex-1 flex flex-col items-center justify-center py-4", children: [
           /* @__PURE__ */ e(
             P.div,
             {
@@ -1816,151 +1817,151 @@ const Yt = ({
                 repeat: c ? 1 / 0 : 0,
                 ease: "easeInOut"
               },
-              className: `w-20 h-20 rounded-full flex items-center justify-center mb-4 ${o ? "bg-green-500/20 border-2 border-green-400" : c ? "bg-brand/20 border-2 border-brand" : "bg-red-500/10 border-2 border-red-400"}`,
-              children: o ? /* @__PURE__ */ e(Ce, { className: "w-10 h-10 text-green-400" }) : c ? /* @__PURE__ */ e(_e, { className: "w-10 h-10 text-brand animate-spin" }) : /* @__PURE__ */ e(ve, { className: "w-10 h-10 text-red-400" })
+              className: `w-20 h-20 rounded-full flex items-center justify-center mb-4 ${u ? "bg-green-500/20 border-2 border-green-400" : c ? "bg-brand/20 border-2 border-brand" : "bg-red-500/10 border-2 border-red-400"}`,
+              children: u ? /* @__PURE__ */ e(Ie, { className: "w-10 h-10 text-green-400" }) : c ? /* @__PURE__ */ e(_e, { className: "w-10 h-10 text-brand animate-spin" }) : /* @__PURE__ */ e(ve, { className: "w-10 h-10 text-red-400" })
             }
           ),
-          /* @__PURE__ */ e("p", { className: "text-main font-semibold text-center", children: t(o ? "passkey_created" : c ? "creating_passkey" : "passkey_create_failed", s) }),
-          D && /* @__PURE__ */ e("p", { className: "text-red-500 text-sm text-center mt-2 max-w-xs", children: D })
+          /* @__PURE__ */ e("p", { className: "text-main font-semibold text-center", children: t(u ? "passkey_created" : c ? "creating_passkey" : "passkey_create_failed", s) }),
+          E && /* @__PURE__ */ e("p", { className: "text-red-500 text-sm text-center mt-2 max-w-xs", children: E })
         ] }),
         /* @__PURE__ */ i("div", { className: "mt-auto space-y-3 pb-8", children: [
-          !o && /* @__PURE__ */ e(
+          !u && /* @__PURE__ */ e(
             "button",
             {
-              onClick: g,
-              disabled: !A || c,
+              onClick: x,
+              disabled: !D || c,
               className: "w-full h-14 bg-brand hover:bg-brand/90 text-white font-bold rounded-2xl shadow-xl shadow-brand/30 flex items-center justify-center gap-2 transition-transform active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed",
               children: c ? /* @__PURE__ */ i(re, { children: [
                 /* @__PURE__ */ e(_e, { className: "w-5 h-5 animate-spin" }),
                 /* @__PURE__ */ e("span", { children: t("creating_passkey", s) })
               ] }) : /* @__PURE__ */ i(re, { children: [
-                /* @__PURE__ */ e(Ie, { className: "w-5 h-5" }),
+                /* @__PURE__ */ e(Ne, { className: "w-5 h-5" }),
                 /* @__PURE__ */ e("span", { children: t("register_passkey", s) })
               ] })
             }
           ),
-          N && !c && !o && /* @__PURE__ */ e(
+          I && !c && !u && /* @__PURE__ */ e(
             "button",
             {
-              onClick: N,
+              onClick: I,
               className: "w-full h-12 bg-transparent border dark:border-white/10 border-slate-200 text-muted hover:text-main font-medium rounded-2xl flex items-center justify-center transition-colors",
               children: t("do_this_later", s)
             }
           )
         ] }),
         /* @__PURE__ */ i("div", { className: "flex items-center justify-center gap-2 pb-4 opacity-50", children: [
-          /* @__PURE__ */ e(tt, { className: "text-muted w-3 h-3" }),
+          /* @__PURE__ */ e(it, { className: "text-muted w-3 h-3" }),
           /* @__PURE__ */ e("span", { className: "text-[10px] uppercase tracking-[0.2em] font-bold text-muted", children: t("e2e_encrypted", s) })
         ] })
       ]
     }
   );
-}, Jt = ({
+}, Kt = ({
   email: r,
   verificationId: a,
   onNext: n,
-  onError: l,
-  apiBaseUrl: N = "https://apis.casperid.com",
+  onError: o,
+  apiBaseUrl: I = "https://apis.casperid.com",
   apiKey: p,
   previewMode: f = !1,
-  language: m = "EN"
+  language: l = "EN"
 }) => {
-  const [s, c] = y(["", "", "", "", "", ""]), [d, D] = y(!1), [h, A] = y(!1), [_, o] = y(""), [I, g] = y(0), [k, V] = y(a);
-  ce(() => {
-    if (I > 0) {
-      const b = setTimeout(() => g(I - 1), 1e3);
+  const [s, c] = y(["", "", "", "", "", ""]), [d, E] = y(!1), [h, D] = y(!1), [_, u] = y(""), [N, x] = y(0), [v, V] = y(a);
+  oe(() => {
+    if (N > 0) {
+      const b = setTimeout(() => x(N - 1), 1e3);
       return () => clearTimeout(b);
     }
-  }, [I]), ce(() => {
-    s.every((b) => b !== "") && !d && Y();
+  }, [N]), oe(() => {
+    s.every((b) => b !== "") && !d && G();
   }, [s]);
-  const w = J((b) => {
-    o(""), c((C) => {
-      const S = [...C], L = S.findIndex((O) => O === "");
-      return L !== -1 && (S[L] = b), S;
+  const k = K((b) => {
+    u(""), c((C) => {
+      const A = [...C], M = A.findIndex((F) => F === "");
+      return M !== -1 && (A[M] = b), A;
     });
-  }, []), T = J(() => {
-    o(""), c((b) => {
+  }, []), T = K(() => {
+    u(""), c((b) => {
       const C = [...b];
-      for (let S = C.length - 1; S >= 0; S--)
-        if (C[S] !== "") {
-          C[S] = "";
+      for (let A = C.length - 1; A >= 0; A--)
+        if (C[A] !== "") {
+          C[A] = "";
           break;
         }
       return C;
     });
   }, []);
-  ce(() => {
+  oe(() => {
     const b = (C) => {
-      d || (/^[0-9]$/.test(C.key) ? (C.preventDefault(), w(C.key)) : (C.key === "Backspace" || C.key === "Delete") && (C.preventDefault(), T()));
+      d || (/^[0-9]$/.test(C.key) ? (C.preventDefault(), k(C.key)) : (C.key === "Backspace" || C.key === "Delete") && (C.preventDefault(), T()));
     };
     return window.addEventListener("keydown", b), () => window.removeEventListener("keydown", b);
-  }, [d, w, T]);
-  const Y = async () => {
+  }, [d, k, T]);
+  const G = async () => {
     const b = s.join("");
     if (b.length !== 6) {
-      o(t("error_pin_incomplete", m));
+      u(t("error_pin_incomplete", l));
       return;
     }
-    if (D(!0), o(""), f) {
+    if (E(!0), u(""), f) {
       setTimeout(() => {
-        D(!1), n("mock-session-token", null);
+        E(!1), n("mock-session-token", null);
       }, 1e3);
       return;
     }
     try {
-      const C = await fetch(`${N}/api/auth/verify-otp`, {
+      const C = await fetch(`${I}/api/auth/verify-otp`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           "X-App-ID": p || ""
         },
         body: JSON.stringify({
-          verificationId: k,
+          verificationId: v,
           otp: b
         })
       });
       if (!C.ok) {
-        const L = await C.json().catch(() => ({}));
-        throw new Error(L.error || `Verification failed with status ${C.status}`);
+        const M = await C.json().catch(() => ({}));
+        throw new Error(M.error || `Verification failed with status ${C.status}`);
       }
-      const S = await C.json();
-      S.success && S.sessionToken ? n(S.sessionToken, S.userAccount, S.business_token) : (o(S.error || t("invalid_code", m)), S.attemptsLeft !== void 0 && o(t("invalid_code_attempts", m).replace("{attempts}", S.attemptsLeft.toString())), c(["", "", "", "", "", ""]), l == null || l(S.error || t("verification_failed", m)));
+      const A = await C.json();
+      A.success && A.sessionToken ? n(A.sessionToken, A.userAccount, A.business_token) : (u(A.error || t("invalid_code", l)), A.attemptsLeft !== void 0 && u(t("invalid_code_attempts", l).replace("{attempts}", A.attemptsLeft.toString())), c(["", "", "", "", "", ""]), o == null || o(A.error || t("verification_failed", l)));
     } catch {
-      const S = t("error_verify_failed", m);
-      o(S), c(["", "", "", "", "", ""]), l == null || l(S);
+      const A = t("error_verify_failed", l);
+      u(A), c(["", "", "", "", "", ""]), o == null || o(A);
     } finally {
-      D(!1);
+      E(!1);
     }
-  }, W = async () => {
-    if (!(I > 0 || h)) {
-      if (A(!0), o(""), f) {
+  }, Y = async () => {
+    if (!(N > 0 || h)) {
+      if (D(!0), u(""), f) {
         setTimeout(() => {
-          A(!1), g(60), c(["", "", "", "", "", ""]);
+          D(!1), x(60), c(["", "", "", "", "", ""]);
         }, 800);
         return;
       }
       try {
-        const b = await fetch(`${N}/api/auth/resend-otp`, {
+        const b = await fetch(`${I}/api/auth/resend-otp`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json"
           },
-          body: JSON.stringify({ verificationId: k })
+          body: JSON.stringify({ verificationId: v })
         });
         if (!b.ok) {
-          const S = await b.json().catch(() => ({}));
-          throw new Error(S.error || `Request failed with status ${b.status}`);
+          const A = await b.json().catch(() => ({}));
+          throw new Error(A.error || `Request failed with status ${b.status}`);
         }
         const C = await b.json();
-        C.success ? (g(60), c(["", "", "", "", "", ""])) : o(C.error || t("error_resend_failed", m));
+        C.success ? (x(60), c(["", "", "", "", "", ""])) : u(C.error || t("error_resend_failed", l));
       } catch {
-        o(t("error_resend_failed", m));
+        u(t("error_resend_failed", l));
       } finally {
-        A(!1);
+        D(!1);
       }
     }
-  }, B = r.replace(/(.{2})(.*)(@.*)/, "$1***$3");
+  }, H = r.replace(/(.{2})(.*)(@.*)/, "$1***$3");
   return /* @__PURE__ */ i(
     P.div,
     {
@@ -1970,11 +1971,11 @@ const Yt = ({
       className: "flex-1 flex flex-col px-8 pt-12",
       children: [
         /* @__PURE__ */ i("div", { className: "space-y-2 mb-8", children: [
-          /* @__PURE__ */ e("h1", { className: "text-3xl font-bold tracking-tight text-main", children: t("verify_email", m) }),
+          /* @__PURE__ */ e("h1", { className: "text-3xl font-bold tracking-tight text-main", children: t("verify_email", l) }),
           /* @__PURE__ */ i("p", { className: "text-muted text-sm font-medium", children: [
-            t("enter_code", m),
+            t("enter_code", l),
             " ",
-            /* @__PURE__ */ e("span", { className: "text-main font-semibold", children: B })
+            /* @__PURE__ */ e("span", { className: "text-main font-semibold", children: H })
           ] })
         ] }),
         /* @__PURE__ */ e("div", { className: "flex justify-between gap-2 mb-6", children: s.map((b, C) => /* @__PURE__ */ i(
@@ -1983,7 +1984,7 @@ const Yt = ({
             className: `size-12 rounded-2xl dark:bg-black/20 bg-slate-100/50 flex items-center justify-center text-xl font-bold border transition-all ${b ? "text-brand dark:border-brand-30 border-brand-50" : "text-muted dark:border-white/10 border-slate-200"} ${_ ? "border-red-400 dark:border-red-500" : ""}`,
             children: [
               b,
-              !b && s.findIndex((S) => S === "") === C && /* @__PURE__ */ e("div", { className: "w-0.5 h-6 bg-brand animate-pulse" })
+              !b && s.findIndex((A) => A === "") === C && /* @__PURE__ */ e("div", { className: "w-0.5 h-6 bg-brand animate-pulse" })
             ]
           },
           C
@@ -1993,7 +1994,7 @@ const Yt = ({
           [1, 2, 3, 4, 5, 6, 7, 8, 9].map((b) => /* @__PURE__ */ e(
             "button",
             {
-              onClick: () => w(b.toString()),
+              onClick: () => k(b.toString()),
               disabled: d,
               className: "h-14 rounded-2xl dark:hover:bg-slate-100 dark:bg-white/5 hover:bg-slate-100 flex items-center justify-center text-xl font-bold transition-colors text-main disabled:opacity-50",
               children: b
@@ -2004,7 +2005,7 @@ const Yt = ({
           /* @__PURE__ */ e(
             "button",
             {
-              onClick: () => w("0"),
+              onClick: () => k("0"),
               disabled: d,
               className: "h-14 rounded-2xl dark:hover:bg-slate-100 dark:bg-white/5 hover:bg-slate-100 flex items-center justify-center text-xl font-bold transition-colors text-main disabled:opacity-50",
               children: "0"
@@ -2016,7 +2017,7 @@ const Yt = ({
               onClick: T,
               disabled: d,
               className: "h-14 rounded-2xl dark:hover:bg-slate-100 dark:bg-white/5 hover:bg-slate-100 flex items-center justify-center transition-colors text-main disabled:opacity-50",
-              children: /* @__PURE__ */ e(Nt, { className: "w-6 h-6" })
+              children: /* @__PURE__ */ e(It, { className: "w-6 h-6" })
             }
           )
         ] }),
@@ -2024,14 +2025,14 @@ const Yt = ({
           /* @__PURE__ */ e(
             "button",
             {
-              onClick: Y,
+              onClick: G,
               disabled: d || s.some((b) => b === ""),
               className: "w-full h-14 bg-brand hover:bg-brand/90 text-white font-bold rounded-2xl transition-all shadow-lg shadow-brand flex items-center justify-center gap-2 group disabled:opacity-50 disabled:cursor-not-allowed",
               children: d ? /* @__PURE__ */ i(re, { children: [
                 /* @__PURE__ */ e(_e, { className: "w-5 h-5 animate-spin" }),
-                /* @__PURE__ */ e("span", { children: t("verifying", m) })
+                /* @__PURE__ */ e("span", { children: t("verifying", l) })
               ] }) : /* @__PURE__ */ i(re, { children: [
-                /* @__PURE__ */ e("span", { children: t("verify", m) }),
+                /* @__PURE__ */ e("span", { children: t("verify", l) }),
                 /* @__PURE__ */ e(Oe, { className: "w-5 h-5 group-hover:translate-x-1 transition-transform" })
               ] })
             }
@@ -2039,20 +2040,20 @@ const Yt = ({
           /* @__PURE__ */ e(
             "button",
             {
-              onClick: W,
-              disabled: I > 0 || h,
+              onClick: Y,
+              disabled: N > 0 || h,
               className: "w-full h-14 dark:bg-white/5 hover:dark:bg-white/10 bg-slate-100 hover:bg-slate-200 text-muted font-bold rounded-2xl transition-all border dark:border-white/10 border-slate-200 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed",
               children: h ? /* @__PURE__ */ i(re, { children: [
                 /* @__PURE__ */ e(_e, { className: "w-4 h-4 animate-spin" }),
-                /* @__PURE__ */ e("span", { children: t("sending", m) })
-              ] }) : I > 0 ? /* @__PURE__ */ i("span", { children: [
-                t("resend_code", m),
+                /* @__PURE__ */ e("span", { children: t("sending", l) })
+              ] }) : N > 0 ? /* @__PURE__ */ i("span", { children: [
+                t("resend_code", l),
                 " (",
-                I,
+                N,
                 "s)"
               ] }) : /* @__PURE__ */ i(re, { children: [
                 /* @__PURE__ */ e(Te, { className: "w-4 h-4" }),
-                /* @__PURE__ */ e("span", { children: t("resend_code", m) })
+                /* @__PURE__ */ e("span", { children: t("resend_code", l) })
               ] })
             }
           )
@@ -2060,7 +2061,7 @@ const Yt = ({
       ]
     }
   );
-}, Kt = ({ onNext: r, onSkip: a, language: n = "EN" }) => /* @__PURE__ */ i(
+}, Zt = ({ onNext: r, onSkip: a, language: n = "EN" }) => /* @__PURE__ */ i(
   P.div,
   {
     initial: { opacity: 0 },
@@ -2116,138 +2117,138 @@ const Yt = ({
       ] })
     ]
   }
-), ke = [
+), we = [
   "Position your face in the frame",
   "Blink 3 times naturally",
   "Open your mouth",
   "Hold still",
   "Processing verification..."
-], Pe = (r, a) => Math.sqrt(Math.pow(r.x - a.x, 2) + Math.pow(r.y - a.y, 2)), Zt = ({
+], Pe = (r, a) => Math.sqrt(Math.pow(r.x - a.x, 2) + Math.pow(r.y - a.y, 2)), Xt = ({
   requestId: r,
   onNext: a,
   onError: n,
-  apiBaseUrl: l = "https://apis.casperid.com",
-  apiKey: N = "",
+  apiBaseUrl: o = "https://apis.casperid.com",
+  apiKey: I = "",
   previewMode: p = !1,
   language: f = "EN"
 }) => {
-  const m = se(null), s = se(null), c = se(null), d = se([]), D = se(null), h = se(null), [A, _] = y(0), [o, I] = y(!1), [g, k] = y(""), [V, w] = y(!1), [T, Y] = y(!1), [W, B] = y(0), [b, C] = y(!1), [S, L] = y(0), O = se(0), F = se(0), G = se(!1), Q = se(0), de = se(!1), ue = (v) => {
-    O.current = v, _(v);
-  }, te = (v) => {
-    F.current = v, B(v);
-  }, ie = (v) => {
-    G.current = v, C(v);
-  }, q = (v) => {
-    Q.current = v, L(v);
-  }, pe = A === 0 ? 0 : A === 1 ? W / 3 * 100 : A === 2 ? S : A === 3 ? 100 : Math.min(100, Math.round(A / (ke.length - 1) * 100));
-  ce(() => ((async () => {
+  const l = ce(null), s = ce(null), c = ce(null), d = ce([]), E = ce(null), h = ce(null), [D, _] = y(0), [u, N] = y(!1), [x, v] = y(""), [V, k] = y(!1), [T, G] = y(!1), [Y, H] = y(0), [b, C] = y(!1), [A, M] = y(0), F = ce(0), q = ce(0), J = ce(!1), Q = ce(0), de = ce(!1), ue = (w) => {
+    F.current = w, _(w);
+  }, te = (w) => {
+    q.current = w, H(w);
+  }, ie = (w) => {
+    J.current = w, C(w);
+  }, U = (w) => {
+    Q.current = w, M(w);
+  }, fe = D === 0 ? 0 : D === 1 ? Y / 3 * 100 : D === 2 ? A : D === 3 ? 100 : Math.min(100, Math.round(D / (we.length - 1) * 100));
+  oe(() => ((async () => {
     try {
-      const { FaceMesh: M } = await import("./face_mesh-DYMPc5Ce.js").then((z) => z.f), { Camera: Z } = await import("./camera_utils-BQaOSBPu.js").then((z) => z.c), fe = new M({
+      const { FaceMesh: L } = await import("./face_mesh-DYMPc5Ce.js").then((z) => z.f), { Camera: X } = await import("./camera_utils-BQaOSBPu.js").then((z) => z.c), pe = new L({
         locateFile: (z) => `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/${z}`
       });
-      if (fe.setOptions({
+      if (pe.setOptions({
         maxNumFaces: 1,
         refineLandmarks: !0,
         minDetectionConfidence: 0.3,
         minTrackingConfidence: 0.3
-      }), console.log("✅ MediaPipe FaceMesh loaded successfully"), fe.onResults(K), D.current = fe, m.current) {
-        const z = new Z(m.current, {
+      }), console.log("✅ MediaPipe FaceMesh loaded successfully"), pe.onResults(Z), E.current = pe, l.current) {
+        const z = new X(l.current, {
           onFrame: async () => {
-            D.current && m.current && await D.current.send({ image: m.current });
+            E.current && l.current && await E.current.send({ image: l.current });
           },
           width: 640,
           height: 480
         });
-        await z.start(), h.current = z, I(!0), console.log("📹 Camera started successfully");
+        await z.start(), h.current = z, N(!0), console.log("📹 Camera started successfully");
       }
-    } catch (M) {
-      console.error("FaceMesh initialization error:", M), M.name === "NotAllowedError" ? (Y(!0), k("Camera permission denied. Please enable camera access.")) : k("Unable to initialize face detection. Please try again."), n == null || n("FaceMesh initialization failed");
+    } catch (L) {
+      console.error("FaceMesh initialization error:", L), L.name === "NotAllowedError" ? (G(!0), v("Camera permission denied. Please enable camera access.")) : v("Unable to initialize face detection. Please try again."), n == null || n("FaceMesh initialization failed");
     }
   })(), () => {
-    h.current && h.current.stop(), c.current && c.current.getTracks().forEach((M) => M.stop());
+    h.current && h.current.stop(), c.current && c.current.getTracks().forEach((L) => L.stop());
   }), []);
-  const K = (v) => {
+  const Z = (w) => {
     if (!s.current || V) return;
-    const M = s.current, Z = M.getContext("2d");
-    if (!(!Z || !v.image))
-      if (Z.save(), Z.clearRect(0, 0, M.width, M.height), Z.translate(M.width, 0), Z.scale(-1, 1), Z.drawImage(v.image, 0, 0, M.width, M.height), Z.restore(), v.multiFaceLandmarks && v.multiFaceLandmarks.length > 0) {
-        const fe = v.multiFaceLandmarks[0];
-        me(fe);
+    const L = s.current, X = L.getContext("2d");
+    if (!(!X || !w.image))
+      if (X.save(), X.clearRect(0, 0, L.width, L.height), X.translate(L.width, 0), X.scale(-1, 1), X.drawImage(w.image, 0, 0, L.width, L.height), X.restore(), w.multiFaceLandmarks && w.multiFaceLandmarks.length > 0) {
+        const pe = w.multiFaceLandmarks[0];
+        me(pe);
       } else
         console.log("⚠️ No face detected in frame");
-  }, me = (v) => {
-    const M = O.current, Z = F.current, fe = G.current;
-    if (M === 0) {
-      const z = v[1], X = z.x > 0.35 && z.x < 0.65 && z.y > 0.35 && z.y < 0.65;
-      Math.random() < 0.05 && console.log(`📍 Face position: x=${z.x.toFixed(2)}, y=${z.y.toFixed(2)} (centered: ${X})`), X && (console.log("✅ Face centered! Advancing to blink detection..."), setTimeout(() => ue(1), 500));
-    } else if (M === 1) {
-      const z = Pe(v[159], v[145]), X = Pe(v[33], v[133]), he = z / X;
+  }, me = (w) => {
+    const L = F.current, X = q.current, pe = J.current;
+    if (L === 0) {
+      const z = w[1], O = z.x > 0.35 && z.x < 0.65 && z.y > 0.35 && z.y < 0.65;
+      Math.random() < 0.05 && console.log(`📍 Face position: x=${z.x.toFixed(2)}, y=${z.y.toFixed(2)} (centered: ${O})`), O && (console.log("✅ Face centered! Advancing to blink detection..."), setTimeout(() => ue(1), 500));
+    } else if (L === 1) {
+      const z = Pe(w[159], w[145]), O = Pe(w[33], w[133]), he = z / O;
       if (Math.random() < 0.1 && console.log(`👁️ Eye ratio: ${he.toFixed(3)} (threshold: 0.16, ${he < 0.16 ? "CLOSED" : "OPEN"})`), he < 0.16)
-        fe || (console.log("👁️ Blink started (eye closed)"), ie(!0));
-      else if (fe) {
-        const H = Z + 1;
-        console.log(`✅ Blink detected! Count: ${H}/3`), ie(!1), te(H), ee(), H >= 3 && (console.log("🎉 All 3 blinks completed! Moving to mouth opening step..."), setTimeout(() => {
-          ue(2), q(0);
+        pe || (console.log("👁️ Blink started (eye closed)"), ie(!0));
+      else if (pe) {
+        const W = X + 1;
+        console.log(`✅ Blink detected! Count: ${W}/3`), ie(!1), te(W), ee(), W >= 3 && (console.log("🎉 All 3 blinks completed! Moving to mouth opening step..."), setTimeout(() => {
+          ue(2), U(0);
         }, 300));
       }
-    } else if (M === 2) {
-      const z = v[13], X = v[14], he = Pe(z, X), H = v[10], oe = v[152], ge = Pe(H, oe), ae = he / ge, ye = Math.min(ae / 0.15 * 100, 100);
-      q(ye), d.current.length < 15 && ee(), ae > 0.12 && d.current.length >= 10 && !de.current && (de.current = !0, ee(), setTimeout(() => {
+    } else if (L === 2) {
+      const z = w[13], O = w[14], he = Pe(z, O), W = w[10], le = w[152], ge = Pe(W, le), ae = he / ge, ye = Math.min(ae / 0.15 * 100, 100);
+      U(ye), d.current.length < 15 && ee(), ae > 0.12 && d.current.length >= 10 && !de.current && (de.current = !0, ee(), setTimeout(() => {
         ue(3), ne();
       }, 500));
     }
   }, ee = () => {
-    !s.current || d.current.length >= 25 || s.current.toBlob((v) => {
-      v && d.current.push(v);
+    !s.current || d.current.length >= 25 || s.current.toBlob((w) => {
+      w && d.current.push(w);
     }, "image/jpeg", 0.8);
   }, ne = async () => {
-    var v, M, Z, fe;
-    if (w(!0), ue(4), p) {
+    var w, L, X, pe;
+    if (k(!0), ue(4), p) {
       setTimeout(() => {
-        w(!1), a(!0);
+        k(!1), a(!0);
       }, 2e3);
       return;
     }
     try {
-      const z = new FormData(), X = !!r, he = X ? `${l}/api/v2/verification/liveness` : `${l}/api/ai/verify-liveness-sequence`;
-      if (X) {
+      const z = new FormData(), O = !!r, he = O ? `${o}/api/v2/verification/liveness` : `${o}/api/ai/verify-liveness-sequence`;
+      if (O) {
         z.append("requestId", r);
         const ae = {
           totalFrames: d.current.length,
           stepSequence: ["blink", "open_mouth"],
           timestamp: Date.now()
         };
-        z.append("metadata", JSON.stringify(ae)), d.current.slice(-10).forEach((Ae, De) => {
-          z.append("imageFrames", Ae, `frame_${De}.jpg`);
+        z.append("metadata", JSON.stringify(ae)), d.current.slice(-10).forEach((Ee, Ae) => {
+          z.append("imageFrames", Ee, `frame_${Ae}.jpg`);
         });
       } else
         d.current.forEach((ae, ye) => {
           z.append(`frame_${ye}`, ae, `frame_${ye}.jpg`);
         }), z.append("totalFrames", d.current.length.toString()), z.append("stepSequence", JSON.stringify(["blink", "open_mouth"]));
-      const H = await fetch(he, {
+      const W = await fetch(he, {
         method: "POST",
         headers: {
-          ...N ? { "X-App-Id": N } : {}
+          ...I ? { "X-App-Id": I } : {}
         },
         body: z,
         credentials: "include"
       });
-      if (!H.ok) {
-        const ae = await H.json().catch(() => ({}));
-        throw new Error(ae.error || `Liveness check failed with status ${H.status}`);
+      if (!W.ok) {
+        const ae = await W.json().catch(() => ({}));
+        throw new Error(ae.error || `Liveness check failed with status ${W.status}`);
       }
-      const oe = await H.json();
-      if (X ? oe.success && (((v = oe.liveness) == null ? void 0 : v.success) || ((M = oe.liveness) == null ? void 0 : M.status) === "completed" || ((Z = oe.liveness) == null ? void 0 : Z.status) === "approved") : oe.success && oe.passed)
+      const le = await W.json();
+      if (O ? le.success && (((w = le.liveness) == null ? void 0 : w.success) || ((L = le.liveness) == null ? void 0 : L.status) === "completed" || ((X = le.liveness) == null ? void 0 : X.status) === "approved") : le.success && le.passed)
         h.current && h.current.stop(), c.current && c.current.getTracks().forEach((ae) => ae.stop()), a(!0);
       else {
-        const ae = oe.error || ((fe = oe.liveness) == null ? void 0 : fe.error) || "Liveness check failed. Please try again.";
-        k(ae), ue(0), te(0), q(0), d.current = [], w(!1), de.current = !1;
+        const ae = le.error || ((pe = le.liveness) == null ? void 0 : pe.error) || "Liveness check failed. Please try again.";
+        v(ae), ue(0), te(0), U(0), d.current = [], k(!1), de.current = !1;
       }
     } catch {
-      k("Verification failed. Please try again."), ue(0), te(0), q(0), d.current = [], w(!1), n == null || n("Liveness submission failed");
+      v("Verification failed. Please try again."), ue(0), te(0), U(0), d.current = [], k(!1), n == null || n("Liveness submission failed");
     }
-  }, U = () => {
-    k(""), ue(0), te(0), q(0), d.current = [], w(!1), de.current = !1;
+  }, $ = () => {
+    v(""), ue(0), te(0), U(0), d.current = [], k(!1), de.current = !1;
   };
   return T ? /* @__PURE__ */ i(
     P.div,
@@ -2280,7 +2281,7 @@ const Yt = ({
         /* @__PURE__ */ e(
           "video",
           {
-            ref: m,
+            ref: l,
             className: "hidden",
             playsInline: !0,
             muted: !0
@@ -2311,18 +2312,18 @@ const Yt = ({
             { t: "60%", l: "45%" },
             { t: "60%", l: "55%" },
             { t: "70%", l: "50%" }
-          ].map((v, M) => /* @__PURE__ */ e(
+          ].map((w, L) => /* @__PURE__ */ e(
             P.div,
             {
               initial: { scale: 0, opacity: 0 },
               animate: {
                 scale: [0, 1.5, 1],
-                opacity: pe > M * 11 ? 1 : 0
+                opacity: fe > L * 11 ? 1 : 0
               },
               className: "absolute w-2 h-2 bg-[#6DE8EC] rounded-full shadow-[0_0_12px_#6DE8EC]",
-              style: { top: v.t, left: v.l }
+              style: { top: w.t, left: w.l }
             },
-            M
+            L
           )) }),
           /* @__PURE__ */ i("div", { className: "absolute -inset-6 z-40", children: [
             /* @__PURE__ */ e(
@@ -2369,69 +2370,69 @@ const Yt = ({
           )
         ] }) }),
         /* @__PURE__ */ i("div", { className: "relative z-50 px-8 pb-20 pt-4 flex flex-col items-center gap-6", children: [
-          g ? /* @__PURE__ */ i(
+          x ? /* @__PURE__ */ i(
             P.div,
             {
               initial: { opacity: 0, scale: 0.9 },
               animate: { opacity: 1, scale: 1 },
               className: "bg-red-900/30 border border-red-500/50 p-6 rounded-3xl w-full text-center",
               children: [
-                /* @__PURE__ */ e("p", { className: "text-red-400 font-bold text-lg mb-4", children: g }),
+                /* @__PURE__ */ e("p", { className: "text-red-400 font-bold text-lg mb-4", children: x }),
                 /* @__PURE__ */ e(
                   "button",
                   {
-                    onClick: U,
+                    onClick: $,
                     className: "px-8 py-3 bg-red-500 hover:bg-red-600 text-white rounded-xl font-bold transition-colors",
                     children: "Try Again"
                   }
                 )
               ]
             }
-          ) : /* @__PURE__ */ e(Me, { mode: "wait", children: /* @__PURE__ */ e(
+          ) : /* @__PURE__ */ e(Le, { mode: "wait", children: /* @__PURE__ */ e(
             P.div,
             {
               initial: { opacity: 0, y: 10, filter: "blur(5px)" },
               animate: { opacity: 1, y: 0, filter: "blur(0px)" },
               exit: { opacity: 0, y: -10, filter: "blur(5px)" },
               className: "text-white text-center font-bold text-xl leading-tight min-h-[3rem] flex items-center justify-center drop-shadow-lg flex-col gap-2",
-              children: V && A === 4 ? /* @__PURE__ */ i("span", { className: "flex items-center gap-3", children: [
+              children: V && D === 4 ? /* @__PURE__ */ i("span", { className: "flex items-center gap-3", children: [
                 /* @__PURE__ */ i("svg", { className: "animate-spin h-5 w-5", viewBox: "0 0 24 24", children: [
                   /* @__PURE__ */ e("circle", { className: "opacity-25", cx: "12", cy: "12", r: "10", stroke: "currentColor", strokeWidth: "4", fill: "none" }),
                   /* @__PURE__ */ e("path", { className: "opacity-75", fill: "currentColor", d: "M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" })
                 ] }),
-                ke[A]
+                we[D]
               ] }) : /* @__PURE__ */ i(re, { children: [
-                /* @__PURE__ */ e("span", { children: ke[A] }),
-                A === 1 && /* @__PURE__ */ i("span", { className: "text-[#6DE8EC] text-2xl", children: [
+                /* @__PURE__ */ e("span", { children: we[D] }),
+                D === 1 && /* @__PURE__ */ i("span", { className: "text-[#6DE8EC] text-2xl", children: [
                   "(",
-                  W,
+                  Y,
                   "/3)"
                 ] })
               ] })
             },
-            A === 1 ? `${ke[A]}-${W}` : ke[A]
+            D === 1 ? `${we[D]}-${Y}` : we[D]
           ) }),
           /* @__PURE__ */ e("div", { className: "w-full max-w-[240px] h-1.5 bg-slate-200 dark:bg-white/10 rounded-full overflow-hidden", children: /* @__PURE__ */ e(
             P.div,
             {
               className: "h-full bg-gradient-to-r from-[#8651e1] to-[#6DE8EC]",
-              animate: { width: `${pe}%` },
+              animate: { width: `${fe}%` },
               transition: { duration: 0.3 }
             }
           ) }),
-          !g && /* @__PURE__ */ i("div", { className: "flex items-center gap-2 text-gray-400 text-xs", children: [
-            /* @__PURE__ */ e("div", { className: `w-2 h-2 rounded-full ${o ? "bg-[#6DE8EC] shadow-[0_0_8px_#6DE8EC]" : "bg-yellow-500 animate-pulse"}` }),
-            /* @__PURE__ */ e("span", { className: "uppercase tracking-widest font-bold", children: o ? "LIVE CAMERA" : "INITIALIZING..." })
+          !x && /* @__PURE__ */ i("div", { className: "flex items-center gap-2 text-gray-400 text-xs", children: [
+            /* @__PURE__ */ e("div", { className: `w-2 h-2 rounded-full ${u ? "bg-[#6DE8EC] shadow-[0_0_8px_#6DE8EC]" : "bg-yellow-500 animate-pulse"}` }),
+            /* @__PURE__ */ e("span", { className: "uppercase tracking-widest font-bold", children: u ? "LIVE CAMERA" : "INITIALIZING..." })
           ] })
         ] })
       ]
     }
   );
-}, Xt = [
-  { id: "passport", title: "Passport", desc: "All countries supported", Icon: et },
-  { id: "drivers_license", title: "Driver License", desc: "Government issued card", Icon: Qe },
+}, Qt = [
+  { id: "passport", title: "Passport", desc: "All countries supported", Icon: tt },
+  { id: "drivers_license", title: "Driver License", desc: "Government issued card", Icon: et },
   { id: "national_id", title: "ID Card", desc: "National identity document", Icon: qe }
-], Qt = ({ onNext: r, language: a = "EN" }) => /* @__PURE__ */ i(
+], ei = ({ onNext: r, language: a = "EN" }) => /* @__PURE__ */ i(
   P.div,
   {
     initial: { opacity: 0, x: 20 },
@@ -2442,7 +2443,7 @@ const Yt = ({
       /* @__PURE__ */ e("h3", { className: "text-2xl font-bold mb-2 text-main", children: t("verify_identity", a) }),
       /* @__PURE__ */ e("p", { className: "text-muted text-sm mb-8 leading-relaxed", children: t("choose_document", a) }),
       /* @__PURE__ */ i("div", { className: "space-y-4 overflow-y-auto pr-1 pb-6", children: [
-        Xt.map(({ id: n, title: l, desc: N, Icon: p }) => /* @__PURE__ */ i(
+        Qt.map(({ id: n, title: o, desc: I, Icon: p }) => /* @__PURE__ */ i(
           "button",
           {
             onClick: () => r(n),
@@ -2453,7 +2454,7 @@ const Yt = ({
                 /* @__PURE__ */ e("h4", { className: "font-bold text-base text-main", children: t(n, a) }),
                 /* @__PURE__ */ e("p", { className: "text-xs text-muted font-medium", children: t(`${n}_desc`, a) })
               ] }),
-              /* @__PURE__ */ e(Le, { className: "text-brand w-5 h-5" })
+              /* @__PURE__ */ e(Me, { className: "text-brand w-5 h-5" })
             ]
           },
           n
@@ -2461,31 +2462,31 @@ const Yt = ({
         /* @__PURE__ */ i("div", { className: "mt-8 relative h-32 w-full rounded-2xl overflow-hidden dark:bg-white/5 bg-slate-100/30 flex items-center justify-center border border-dashed dark:border-brand-30 border-brand-40", children: [
           /* @__PURE__ */ e("div", { className: "absolute inset-0 opacity-10 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-brand via-transparent to-transparent" }),
           /* @__PURE__ */ i("div", { className: "text-center z-10", children: [
-            /* @__PURE__ */ e(Se, { className: "text-brand/40 w-10 h-10 mx-auto mb-1" }),
+            /* @__PURE__ */ e(Ce, { className: "text-brand/40 w-10 h-10 mx-auto mb-1" }),
             /* @__PURE__ */ e("p", { className: "text-[10px] text-muted uppercase tracking-tighter font-bold", children: "Encrypted E2E" })
           ] })
         ] })
       ] })
     ]
   }
-), ei = (r) => ({
+), ti = (r) => ({
   passport: t("passport", r),
   drivers_license: t("drivers_license", r),
   national_id: t("national_id", r)
-}), ti = ({
+}), ii = ({
   requestId: r,
   documentType: a,
   onNext: n,
-  onError: l,
-  apiBaseUrl: N = "https://apis.casperid.com",
+  onError: o,
+  apiBaseUrl: I = "https://apis.casperid.com",
   apiKey: p = "",
   previewMode: f = !1,
-  language: m = "EN"
+  language: l = "EN"
 }) => {
-  const s = se(null), c = se(null), d = se(null), [D, h] = y(!1), [A, _] = y(null), [o, I] = y(null), [g, k] = y(!1), [V, w] = y(""), [T, Y] = y("front"), [W, B] = y(null);
-  ce(() => ((async () => {
+  const s = ce(null), c = ce(null), d = ce(null), [E, h] = y(!1), [D, _] = y(null), [u, N] = y(null), [x, v] = y(!1), [V, k] = y(""), [T, G] = y("front"), [Y, H] = y(null);
+  oe(() => ((async () => {
     try {
-      const O = await navigator.mediaDevices.getUserMedia({
+      const F = await navigator.mediaDevices.getUserMedia({
         video: {
           facingMode: "environment",
           // Use back camera for documents
@@ -2493,36 +2494,36 @@ const Yt = ({
           height: { ideal: 720 }
         }
       });
-      d.current = O, s.current && (s.current.srcObject = O, s.current.onloadedmetadata = () => {
+      d.current = F, s.current && (s.current.srcObject = F, s.current.onloadedmetadata = () => {
         h(!0);
       });
     } catch {
       try {
-        const F = await navigator.mediaDevices.getUserMedia({
+        const q = await navigator.mediaDevices.getUserMedia({
           video: { facingMode: "user", width: { ideal: 1280 }, height: { ideal: 720 } }
         });
-        d.current = F, s.current && (s.current.srcObject = F, s.current.onloadedmetadata = () => {
+        d.current = q, s.current && (s.current.srcObject = q, s.current.onloadedmetadata = () => {
           h(!0);
         });
       } catch {
-        w(t("unable_access_camera", m)), l == null || l("Camera access failed");
+        k(t("unable_access_camera", l)), o == null || o("Camera access failed");
       }
     }
   })(), () => {
-    d.current && d.current.getTracks().forEach((O) => O.stop()), o && URL.revokeObjectURL(o);
-  }), [l]);
+    d.current && d.current.getTracks().forEach((F) => F.stop()), u && URL.revokeObjectURL(u);
+  }), [o]);
   const b = async () => {
     if (!s.current || !c.current) return;
-    const L = c.current, O = s.current, F = L.getContext("2d");
-    F && (L.width = O.videoWidth, L.height = O.videoHeight, F.drawImage(O, 0, 0), L.toBlob((G) => {
-      G && (_(G), I(URL.createObjectURL(G)));
+    const M = c.current, F = s.current, q = M.getContext("2d");
+    q && (M.width = F.videoWidth, M.height = F.videoHeight, q.drawImage(F, 0, 0), M.toBlob((J) => {
+      J && (_(J), N(URL.createObjectURL(J)));
     }, "image/jpeg", 0.9));
   }, C = () => {
-    o && URL.revokeObjectURL(o), _(null), I(null), w("");
-  }, S = async () => {
-    if (k(!0), f) {
+    u && URL.revokeObjectURL(u), _(null), N(null), k("");
+  }, A = async () => {
+    if (v(!0), f) {
       setTimeout(() => {
-        k(!1), n({
+        v(!1), n({
           first_name: "JOHN",
           last_name: "DOE",
           date_of_birth: "01 JAN 1990",
@@ -2536,40 +2537,40 @@ const Yt = ({
       }, 2e3);
       return;
     }
-    if (!A) {
-      k(!1);
+    if (!D) {
+      v(!1);
       return;
     }
     if (T === "front" && a !== "passport") {
-      B(A), _(null), I(null), Y("back"), k(!1);
+      H(D), _(null), N(null), G("back"), v(!1);
       return;
     }
-    k(!0), w("");
+    v(!0), k("");
     try {
-      const L = new FormData();
-      L.append("document_type", a), W ? (L.append("front_image", W, "front.jpg"), L.append("back_image", A, "back.jpg")) : L.append("front_image", A, "document.jpg");
-      const O = await fetch(`${N}/api/v2/verification/layer3/documents/upload`, {
+      const M = new FormData();
+      M.append("document_type", a), Y ? (M.append("front_image", Y, "front.jpg"), M.append("back_image", D, "back.jpg")) : M.append("front_image", D, "document.jpg");
+      const F = await fetch(`${I}/api/v2/verification/layer3/documents/upload`, {
         method: "POST",
-        body: L,
+        body: M,
         credentials: "include",
         headers: {
           "X-Request-Id": r,
           ...p ? { "X-App-Id": p } : {}
         }
       });
-      if (!O.ok) {
-        const G = await O.json().catch(() => ({}));
-        throw new Error(G.error || `Document upload failed with status ${O.status}`);
+      if (!F.ok) {
+        const J = await F.json().catch(() => ({}));
+        throw new Error(J.error || `Document upload failed with status ${F.status}`);
       }
-      const F = await O.json();
-      F.success && F.extracted_data ? (d.current && d.current.getTracks().forEach((G) => G.stop()), n(F.extracted_data, F.upload_id || "", {
-        frontImageUrl: F.front_image_url,
-        frontImageFileId: F.front_image_file_id,
-        backImageUrl: F.back_image_url,
-        backImageFileId: F.back_image_file_id
-      })) : (w(F.error || "Failed to process document. Please try again."), k(!1));
+      const q = await F.json();
+      q.success && q.extracted_data ? (d.current && d.current.getTracks().forEach((J) => J.stop()), n(q.extracted_data, q.upload_id || "", {
+        frontImageUrl: q.front_image_url,
+        frontImageFileId: q.front_image_file_id,
+        backImageUrl: q.back_image_url,
+        backImageFileId: q.back_image_file_id
+      })) : (k(q.error || "Failed to process document. Please try again."), v(!1));
     } catch {
-      w("Upload failed. Please try again."), k(!1), l == null || l("Document upload failed");
+      k("Upload failed. Please try again."), v(!1), o == null || o("Document upload failed");
     }
   };
   return /* @__PURE__ */ i(
@@ -2585,12 +2586,12 @@ const Yt = ({
           /* @__PURE__ */ e("div", { className: "w-full h-full bg-main opacity-10 flex items-center justify-center", children: /* @__PURE__ */ e("div", { className: "w-full h-full opacity-30 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-[#6DE8EC]/20 via-transparent to-transparent" }) }),
           /* @__PURE__ */ e("div", { className: "absolute inset-0 bg-black/30 backdrop-blur-[2px]" })
         ] }),
-        /* @__PURE__ */ e("div", { className: "relative z-10 p-6 flex flex-col items-center", children: /* @__PURE__ */ e("div", { className: "text-center px-4 py-2 bg-brand-10 backdrop-blur-xl rounded-full border border-brand-10", children: /* @__PURE__ */ e("h3", { className: "text-main text-sm font-medium tracking-wide uppercase", children: t("scan_instruction", m).replace("{side}", t(T, m)).replace("{docType}", ei(m)[a]) }) }) }),
+        /* @__PURE__ */ e("div", { className: "relative z-10 p-6 flex flex-col items-center", children: /* @__PURE__ */ e("div", { className: "text-center px-4 py-2 bg-brand-10 backdrop-blur-xl rounded-full border border-brand-10", children: /* @__PURE__ */ e("h3", { className: "text-main text-sm font-medium tracking-wide uppercase", children: t("scan_instruction", l).replace("{side}", t(T, l)).replace("{docType}", ti(l)[a]) }) }) }),
         /* @__PURE__ */ e("div", { className: "relative z-10 flex-1 flex items-center justify-center px-6", children: /* @__PURE__ */ i("div", { className: "w-full aspect-[1.58/1] relative", children: [
-          o ? /* @__PURE__ */ e(
+          u ? /* @__PURE__ */ e(
             "img",
             {
-              src: o,
+              src: u,
               alt: "Captured document",
               className: "absolute inset-0 w-full h-full object-cover rounded-2xl"
             }
@@ -2609,7 +2610,7 @@ const Yt = ({
           /* @__PURE__ */ e("div", { className: "absolute top-0 right-0 w-8 h-8 border-t-4 border-r-4 border-[#6DE8EC] rounded-tr-2xl" }),
           /* @__PURE__ */ e("div", { className: "absolute bottom-0 left-0 w-8 h-8 border-b-4 border-l-4 border-[#6DE8EC] rounded-bl-2xl" }),
           /* @__PURE__ */ e("div", { className: "absolute bottom-0 right-0 w-8 h-8 border-b-4 border-r-4 border-[#6DE8EC] rounded-br-2xl" }),
-          !o && D && /* @__PURE__ */ e(
+          !u && E && /* @__PURE__ */ e(
             P.div,
             {
               animate: { top: ["0%", "100%", "0%"] },
@@ -2617,106 +2618,106 @@ const Yt = ({
               className: "absolute left-0 w-full h-[2px] bg-gradient-to-r from-transparent via-[#6DE8EC] to-transparent opacity-50"
             }
           ),
-          !D && !o && /* @__PURE__ */ e("div", { className: "absolute inset-0 flex items-center justify-center bg-black/50 rounded-2xl", children: /* @__PURE__ */ e(_e, { className: "w-8 h-8 text-[#6DE8EC] animate-spin" }) })
+          !E && !u && /* @__PURE__ */ e("div", { className: "absolute inset-0 flex items-center justify-center bg-black/50 rounded-2xl", children: /* @__PURE__ */ e(_e, { className: "w-8 h-8 text-[#6DE8EC] animate-spin" }) })
         ] }) }),
         V && /* @__PURE__ */ i("div", { className: "relative z-10 mx-6 mb-4 p-4 bg-red-500/20 border border-red-500/30 rounded-xl flex items-center gap-3", children: [
           /* @__PURE__ */ e(ve, { className: "w-5 h-5 text-red-500 shrink-0" }),
           /* @__PURE__ */ e("p", { className: "text-red-400 text-sm font-medium", children: V })
         ] }),
         /* @__PURE__ */ i("div", { className: "relative z-10 p-8 glass-container backdrop-blur-2xl border-t border-brand-10 rounded-t-3xl", children: [
-          /* @__PURE__ */ e("p", { className: "text-muted text-xs text-center mb-6 font-medium", children: t(o ? "review_capture" : "align_document", m) }),
-          /* @__PURE__ */ e("div", { className: "flex items-center justify-between gap-4", children: o ? /* @__PURE__ */ i(re, { children: [
+          /* @__PURE__ */ e("p", { className: "text-muted text-xs text-center mb-6 font-medium", children: t(u ? "review_capture" : "align_document", l) }),
+          /* @__PURE__ */ e("div", { className: "flex items-center justify-between gap-4", children: u ? /* @__PURE__ */ i(re, { children: [
             /* @__PURE__ */ e(
               "button",
               {
                 onClick: C,
-                disabled: g,
+                disabled: x,
                 className: "w-12 h-12 rounded-xl bg-brand-5 flex items-center justify-center text-muted disabled:opacity-50",
-                children: /* @__PURE__ */ e(Rt, { className: "w-6 h-6" })
+                children: /* @__PURE__ */ e(Pt, { className: "w-6 h-6" })
               }
             ),
             /* @__PURE__ */ e(
               "button",
               {
-                onClick: S,
-                disabled: g,
+                onClick: A,
+                disabled: x,
                 className: "flex-1 bg-brand hover:bg-brand/90 text-white h-14 rounded-2xl flex items-center justify-center gap-2 font-bold text-lg transition-all active:scale-95 shadow-[0_0_25px_rgba(130,66,240,0.5)] disabled:opacity-70",
-                children: g ? /* @__PURE__ */ i(re, { children: [
+                children: x ? /* @__PURE__ */ i(re, { children: [
                   /* @__PURE__ */ e(_e, { className: "w-6 h-6 animate-spin" }),
-                  /* @__PURE__ */ e("span", { children: t("processing", m) })
-                ] }) : /* @__PURE__ */ e("span", { children: t(T === "front" && a !== "passport" ? "next_back_side" : "confirm", m) })
+                  /* @__PURE__ */ e("span", { children: t("processing", l) })
+                ] }) : /* @__PURE__ */ e("span", { children: t(T === "front" && a !== "passport" ? "next_back_side" : "confirm", l) })
               }
             ),
             /* @__PURE__ */ e("div", { className: "w-12 h-12" }),
             " "
           ] }) : /* @__PURE__ */ i(re, { children: [
-            /* @__PURE__ */ e("button", { className: "w-12 h-12 rounded-xl bg-brand-5 flex items-center justify-center text-muted", children: /* @__PURE__ */ e(It, { className: "w-6 h-6" }) }),
+            /* @__PURE__ */ e("button", { className: "w-12 h-12 rounded-xl bg-brand-5 flex items-center justify-center text-muted", children: /* @__PURE__ */ e(Ct, { className: "w-6 h-6" }) }),
             /* @__PURE__ */ i(
               "button",
               {
                 onClick: b,
-                disabled: !D,
+                disabled: !E,
                 className: "flex-1 bg-brand hover:bg-brand/90 text-white h-14 rounded-2xl flex items-center justify-center gap-2 font-bold text-lg transition-all active:scale-95 shadow-[0_0_25px_rgba(130,66,240,0.5)] disabled:opacity-50",
                 children: [
-                  /* @__PURE__ */ e(wt, { className: "w-6 h-6" }),
-                  /* @__PURE__ */ e("span", { children: t("capture", m) })
+                  /* @__PURE__ */ e(kt, { className: "w-6 h-6" }),
+                  /* @__PURE__ */ e("span", { children: t("capture", l) })
                 ]
               }
             ),
-            /* @__PURE__ */ e("button", { className: "w-12 h-12 rounded-xl bg-brand-5 flex items-center justify-center text-muted", children: /* @__PURE__ */ e(kt, { className: "w-6 h-6" }) })
+            /* @__PURE__ */ e("button", { className: "w-12 h-12 rounded-xl bg-brand-5 flex items-center justify-center text-muted", children: /* @__PURE__ */ e(Nt, { className: "w-6 h-6" }) })
           ] }) }),
           /* @__PURE__ */ e("div", { className: "w-32 h-1.5 bg-brand-10 rounded-full mx-auto mt-8" })
         ] })
       ]
     }
   );
-}, ii = ({
+}, ai = ({
   requestId: r,
   documentType: a,
   extractedData: n,
-  uploadId: l,
-  frontImageUrl: N,
+  uploadId: o,
+  frontImageUrl: I,
   frontImageFileId: p,
   backImageUrl: f,
-  backImageFileId: m,
+  backImageFileId: l,
   onNext: s,
   onRetake: c,
   onError: d,
-  apiBaseUrl: D = "https://apis.casperid.com",
+  apiBaseUrl: E = "https://apis.casperid.com",
   apiKey: h = "",
-  previewMode: A = !1,
+  previewMode: D = !1,
   language: _ = "EN"
 }) => {
-  const [o, I] = y({
+  const [u, N] = y({
     firstName: n.first_name || "",
     lastName: n.last_name || "",
     documentNumber: n.document_number || "",
     dateOfBirth: n.date_of_birth || "",
     nationality: n.nationality || "",
     gender: n.gender || ""
-  }), [g, k] = y(!1), [V, w] = y(""), T = (b, C) => {
-    I((S) => ({ ...S, [b]: C }));
-  }, Y = async () => {
-    if (!o.firstName || !o.lastName || !o.documentNumber) {
-      w(t("error_required_fields", _));
+  }), [x, v] = y(!1), [V, k] = y(""), T = (b, C) => {
+    N((A) => ({ ...A, [b]: C }));
+  }, G = async () => {
+    if (!u.firstName || !u.lastName || !u.documentNumber) {
+      k(t("error_required_fields", _));
       return;
     }
-    if (k(!0), w(""), A) {
+    if (v(!0), k(""), D) {
       setTimeout(() => {
-        k(!1), s({
-          first_name: o.firstName,
-          last_name: o.lastName,
-          document_number: o.documentNumber,
-          date_of_birth: o.dateOfBirth,
-          nationality: o.nationality,
-          gender: o.gender,
+        v(!1), s({
+          first_name: u.firstName,
+          last_name: u.lastName,
+          document_number: u.documentNumber,
+          date_of_birth: u.dateOfBirth,
+          nationality: u.nationality,
+          gender: u.gender,
           document_type: a
         });
       }, 1500);
       return;
     }
     try {
-      const b = await fetch(`${D}/api/v2/verification/layer3/submit`, {
+      const b = await fetch(`${E}/api/v2/verification/layer3/submit`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -2724,42 +2725,42 @@ const Yt = ({
         },
         credentials: "include",
         body: JSON.stringify({
-          upload_id: l,
-          front_image_url: N,
+          upload_id: o,
+          front_image_url: I,
           front_image_file_id: p,
           back_image_url: f,
-          back_image_file_id: m,
+          back_image_file_id: l,
           liveness_verified: !1,
           // Will be updated after FaceScan
           document_data: {
-            first_name: o.firstName,
-            last_name: o.lastName,
-            document_number: o.documentNumber,
-            date_of_birth: o.dateOfBirth,
-            nationality: o.nationality,
-            gender: o.gender,
+            first_name: u.firstName,
+            last_name: u.lastName,
+            document_number: u.documentNumber,
+            date_of_birth: u.dateOfBirth,
+            nationality: u.nationality,
+            gender: u.gender,
             document_type: a
           }
         })
       });
       if (!b.ok) {
-        const S = await b.json().catch(() => ({}));
-        throw new Error(S.error || `Data submission failed with status ${b.status}`);
+        const A = await b.json().catch(() => ({}));
+        throw new Error(A.error || `Data submission failed with status ${b.status}`);
       }
       const C = await b.json();
       C.success ? s({
-        first_name: o.firstName,
-        last_name: o.lastName,
-        document_number: o.documentNumber,
-        date_of_birth: o.dateOfBirth,
-        nationality: o.nationality,
-        gender: o.gender,
+        first_name: u.firstName,
+        last_name: u.lastName,
+        document_number: u.documentNumber,
+        date_of_birth: u.dateOfBirth,
+        nationality: u.nationality,
+        gender: u.gender,
         document_type: a
-      }) : (w(C.error || "Failed to submit data. Please try again."), k(!1));
+      }) : (k(C.error || "Failed to submit data. Please try again."), v(!1));
     } catch {
-      w("Failed to submit data. Please try again."), k(!1), d == null || d("Data submission failed");
+      k("Failed to submit data. Please try again."), v(!1), d == null || d("Data submission failed");
     }
-  }, W = n.confidence || 0, B = Math.round(W);
+  }, Y = n.confidence || 0, H = Math.round(Y);
   return /* @__PURE__ */ i(
     P.div,
     {
@@ -2779,22 +2780,22 @@ const Yt = ({
           /* @__PURE__ */ e("h1", { className: "text-2xl font-bold text-main mb-2", children: t("review_data", _) }),
           /* @__PURE__ */ e("p", { className: "text-muted text-sm leading-relaxed", children: t("verify_data_desc", _) })
         ] }),
-        W > 0 && /* @__PURE__ */ i("div", { className: "mb-6 p-3 rounded-xl bg-brand-5 border border-brand-10", children: [
+        Y > 0 && /* @__PURE__ */ i("div", { className: "mb-6 p-3 rounded-xl bg-brand-5 border border-brand-10", children: [
           /* @__PURE__ */ i("div", { className: "flex items-center justify-between mb-2", children: [
             /* @__PURE__ */ e("span", { className: "text-xs font-semibold text-muted", children: t("ocr_confidence", _) }),
-            /* @__PURE__ */ i("span", { className: `text-xs font-bold ${B >= 80 ? "text-green-500" : B >= 60 ? "text-yellow-500" : "text-red-500"}`, children: [
-              B,
+            /* @__PURE__ */ i("span", { className: `text-xs font-bold ${H >= 80 ? "text-green-500" : H >= 60 ? "text-yellow-500" : "text-red-500"}`, children: [
+              H,
               "%"
             ] })
           ] }),
           /* @__PURE__ */ e("div", { className: "w-full h-1.5 bg-brand-10 rounded-full overflow-hidden", children: /* @__PURE__ */ e(
             "div",
             {
-              className: `h-full rounded-full transition-all ${B >= 80 ? "bg-green-500" : B >= 60 ? "bg-yellow-500" : "bg-red-500"}`,
-              style: { width: `${B}%` }
+              className: `h-full rounded-full transition-all ${H >= 80 ? "bg-green-500" : H >= 60 ? "bg-yellow-500" : "bg-red-500"}`,
+              style: { width: `${H}%` }
             }
           ) }),
-          B < 80 && /* @__PURE__ */ e("p", { className: "text-[10px] text-yellow-500 mt-2", children: t("verify_data_carefully", _) })
+          H < 80 && /* @__PURE__ */ e("p", { className: "text-[10px] text-yellow-500 mt-2", children: t("verify_data_carefully", _) })
         ] }),
         V && /* @__PURE__ */ i("div", { className: "mb-4 p-3 bg-red-500/20 border border-red-500/30 rounded-xl flex items-center gap-2", children: [
           /* @__PURE__ */ e(ve, { className: "w-4 h-4 text-red-500 shrink-0" }),
@@ -2805,13 +2806,13 @@ const Yt = ({
             /* @__PURE__ */ i("div", { className: "space-y-3", children: [
               /* @__PURE__ */ e("label", { className: "text-xs font-bold uppercase tracking-[0.15em] text-brand ml-1", children: t("first_name", _) || "First Name" }),
               /* @__PURE__ */ i("div", { className: "flex items-center px-1 transition-all", children: [
-                /* @__PURE__ */ e(zt, { className: "text-brand mr-3 w-5 h-5 shrink-0" }),
+                /* @__PURE__ */ e(Vt, { className: "text-brand mr-3 w-5 h-5 shrink-0" }),
                 /* @__PURE__ */ e("div", { className: "flex flex-col w-full", children: /* @__PURE__ */ e(
                   "input",
                   {
                     className: "bg-transparent border-none p-0 w-full focus:ring-0 text-main font-bold text-lg focus:outline-none placeholder:text-muted",
                     type: "text",
-                    value: o.firstName,
+                    value: u.firstName,
                     onChange: (b) => T("firstName", b.target.value),
                     placeholder: t("enter_first_name", _) || "First name"
                   }
@@ -2825,7 +2826,7 @@ const Yt = ({
                 {
                   className: "bg-transparent border-none p-0 w-full focus:ring-0 text-main font-bold text-lg focus:outline-none placeholder:text-muted",
                   type: "text",
-                  value: o.lastName,
+                  value: u.lastName,
                   onChange: (b) => T("lastName", b.target.value),
                   placeholder: t("enter_last_name", _) || "Last name"
                 }
@@ -2835,13 +2836,13 @@ const Yt = ({
           /* @__PURE__ */ i("div", { className: "space-y-3", children: [
             /* @__PURE__ */ e("label", { className: "text-xs font-bold uppercase tracking-[0.15em] text-brand ml-1", children: t("id_number", _) }),
             /* @__PURE__ */ i("div", { className: "flex items-center px-1 transition-all", children: [
-              /* @__PURE__ */ e(Qe, { className: "text-brand mr-4 w-6 h-6 shrink-0" }),
+              /* @__PURE__ */ e(et, { className: "text-brand mr-4 w-6 h-6 shrink-0" }),
               /* @__PURE__ */ e(
                 "input",
                 {
                   className: "bg-transparent border-none p-0 w-full focus:ring-0 text-main font-bold text-lg focus:outline-none placeholder:text-muted",
                   type: "text",
-                  value: o.documentNumber,
+                  value: u.documentNumber,
                   onChange: (b) => T("documentNumber", b.target.value),
                   placeholder: t("enter_doc_number", _)
                 }
@@ -2851,13 +2852,13 @@ const Yt = ({
           /* @__PURE__ */ i("div", { className: "space-y-3", children: [
             /* @__PURE__ */ e("label", { className: "text-xs font-bold uppercase tracking-[0.15em] text-brand ml-1", children: t("date_of_birth", _) }),
             /* @__PURE__ */ i("div", { className: "flex items-center px-1 transition-all", children: [
-              /* @__PURE__ */ e(vt, { className: "text-brand mr-4 w-6 h-6 shrink-0" }),
+              /* @__PURE__ */ e(wt, { className: "text-brand mr-4 w-6 h-6 shrink-0" }),
               /* @__PURE__ */ e(
                 "input",
                 {
                   className: "bg-transparent border-none p-0 w-full focus:ring-0 text-main font-bold text-lg focus:outline-none placeholder:text-muted",
                   type: "text",
-                  value: o.dateOfBirth,
+                  value: u.dateOfBirth,
                   onChange: (b) => T("dateOfBirth", b.target.value),
                   placeholder: t("date_format", _)
                 }
@@ -2867,13 +2868,13 @@ const Yt = ({
           /* @__PURE__ */ i("div", { className: "space-y-3", children: [
             /* @__PURE__ */ e("label", { className: "text-xs font-bold uppercase tracking-[0.15em] text-brand ml-1", children: t("nationality", _) }),
             /* @__PURE__ */ i("div", { className: "flex items-center px-1 transition-all", children: [
-              /* @__PURE__ */ e(et, { className: "text-brand mr-4 w-6 h-6 shrink-0" }),
+              /* @__PURE__ */ e(tt, { className: "text-brand mr-4 w-6 h-6 shrink-0" }),
               /* @__PURE__ */ e(
                 "input",
                 {
                   className: "bg-transparent border-none p-0 w-full focus:ring-0 text-main font-bold text-lg focus:outline-none placeholder:text-muted",
                   type: "text",
-                  value: o.nationality,
+                  value: u.nationality,
                   onChange: (b) => T("nationality", b.target.value),
                   placeholder: t("enter_nationality", _)
                 }
@@ -2884,7 +2885,7 @@ const Yt = ({
             /* @__PURE__ */ e("div", { className: "absolute inset-0 bg-gradient-to-tr from-brand-20 to-cyan-500/10 blur-sm" }),
             /* @__PURE__ */ i("div", { className: "absolute inset-0 bg-brand/10 flex flex-col items-center justify-center p-4", children: [
               /* @__PURE__ */ i("div", { className: "flex items-center gap-3", children: [
-                /* @__PURE__ */ e(Ce, { className: "text-brand w-5 h-5" }),
+                /* @__PURE__ */ e(Ie, { className: "text-brand w-5 h-5" }),
                 /* @__PURE__ */ e("span", { className: "text-xs font-bold text-main", children: t("scanned_successfully", _) })
               ] }),
               c && /* @__PURE__ */ e(
@@ -2903,15 +2904,15 @@ const Yt = ({
           /* @__PURE__ */ e(
             "button",
             {
-              onClick: Y,
-              disabled: g,
+              onClick: G,
+              disabled: x,
               className: "w-full bg-brand hover:bg-brand/90 text-white font-bold py-4 rounded-2xl shadow-lg shadow-brand flex items-center justify-center gap-2 transition-transform active:scale-95 disabled:opacity-70",
-              children: g ? /* @__PURE__ */ i(re, { children: [
+              children: x ? /* @__PURE__ */ i(re, { children: [
                 /* @__PURE__ */ e("div", { className: "w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" }),
                 /* @__PURE__ */ e("span", { children: t("submitting", _) })
               ] }) : /* @__PURE__ */ i(re, { children: [
                 /* @__PURE__ */ e("span", { children: t("confirm_mint", _) }),
-                /* @__PURE__ */ e(Pt, { className: "w-5 h-5" })
+                /* @__PURE__ */ e(Tt, { className: "w-5 h-5" })
               ] })
             }
           ),
@@ -2920,7 +2921,7 @@ const Yt = ({
       ]
     }
   );
-}, ai = (r, a) => r === "layer_1" ? {
+}, ri = (r, a) => r === "layer_1" ? {
   processing: {
     title: t("generating_wallet", a),
     subtitle: t("wallet_subtitle", a)
@@ -2971,35 +2972,35 @@ const Yt = ({
     title: t("verification_failed", a),
     subtitle: t("verification_failed_subtitle", a)
   }
-}, ri = ({
+}, ni = ({
   tier: r,
   sessionToken: a,
   requestId: n,
-  onNext: l,
-  onError: N,
+  onNext: o,
+  onError: I,
   apiBaseUrl: p = "https://apis.casperid.com",
   apiKey: f = "",
-  previewMode: m = !1,
+  previewMode: l = !1,
   language: s = "EN"
 }) => {
-  const [c, d] = y("processing"), [D, h] = y(0), [A, _] = y(""), [o, I] = y(null), [g, k] = y(null), [V, w] = y(null), [T, Y] = y(null), W = se(!1), b = ai(r, s)[c];
-  ce(() => {
-    W.current || (W.current = !0, m ? C() : S());
+  const [c, d] = y("processing"), [E, h] = y(0), [D, _] = y(""), [u, N] = y(null), [x, v] = y(null), [V, k] = y(null), [T, G] = y(null), Y = ce(!1), b = ri(r, s)[c];
+  oe(() => {
+    Y.current || (Y.current = !0, l ? C() : A());
   }, []);
   const C = async () => {
-    d("processing"), h(20), await Q(1e3), h(50), await Q(1e3), d("minting"), h(70), await Q(1e3), h(100), d("completed"), r === "layer_1" ? (I("account-hash-abc123..."), Y("casper-user-1234"), k("did:casper:abc123...")) : w("mock-credential-hash-xyz"), await Q(1500), l({
+    d("processing"), h(20), await Q(1e3), h(50), await Q(1e3), d("minting"), h(70), await Q(1e3), h(100), d("completed"), r === "layer_1" ? (N("account-hash-abc123..."), G("casper-user-1234"), v("did:casper:abc123...")) : k("mock-credential-hash-xyz"), await Q(1500), o({
       wallet: "account-hash-abc123...",
       didAddress: "did:casper:abc123...",
       credentialHash: "mock-credential-hash-xyz"
     });
-  }, S = async () => {
+  }, A = async () => {
     try {
-      r === "layer_1" ? await L() : await G();
+      r === "layer_1" ? await M() : await J();
     } catch (ie) {
-      const q = ie instanceof Error ? ie.message : "Setup failed";
-      _(q), d("failed"), N == null || N(q);
+      const U = ie instanceof Error ? ie.message : "Setup failed";
+      _(U), d("failed"), I == null || I(U);
     }
-  }, L = async () => {
+  }, M = async () => {
     var me;
     d("processing"), h(10);
     const ie = await fetch(`${p}/api/passkey/wallet/generate`, {
@@ -3015,11 +3016,11 @@ const Yt = ({
       const ee = await ie.json().catch(() => ({}));
       throw new Error(ee.error || "Failed to generate wallet");
     }
-    const q = await ie.json();
-    if (!q.success || !((me = q.walletInfo) != null && me.walletAddress))
-      throw new Error(q.error || "Wallet generation failed");
-    I(q.walletInfo.walletAddress), q.walletInfo.humanId && Y(q.walletInfo.humanId), h(50), d("minting"), h(60);
-    const pe = await fetch(`${p}/api/passkey/did/mint`, {
+    const U = await ie.json();
+    if (!U.success || !((me = U.walletInfo) != null && me.walletAddress))
+      throw new Error(U.error || "Wallet generation failed");
+    N(U.walletInfo.walletAddress), U.walletInfo.humanId && G(U.walletInfo.humanId), h(50), d("minting"), h(60);
+    const fe = await fetch(`${p}/api/passkey/did/mint`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -3028,26 +3029,26 @@ const Yt = ({
       },
       credentials: "include"
     });
-    if (!pe.ok) {
-      const ee = await pe.json().catch(() => ({}));
+    if (!fe.ok) {
+      const ee = await fe.json().catch(() => ({}));
       throw new Error(ee.error || "Failed to mint DID");
     }
-    const K = await pe.json();
-    if (!K.success)
-      throw new Error(K.error || "DID minting failed");
-    k(K.did_address), w(K.transaction_hash), h(100), d("completed"), await Q(1500), l({
-      wallet: q.walletInfo.walletAddress,
-      didAddress: K.did_address,
-      credentialHash: K.transaction_hash
+    const Z = await fe.json();
+    if (!Z.success)
+      throw new Error(Z.error || "DID minting failed");
+    v(Z.did_address), k(Z.transaction_hash), h(100), d("completed"), await Q(1500), o({
+      wallet: U.walletInfo.walletAddress,
+      didAddress: Z.did_address,
+      credentialHash: Z.transaction_hash
     });
-  }, O = async () => {
-    var pe, K, me, ee;
+  }, F = async () => {
+    var fe, Z, me, ee;
     if (d("processing"), h(20), !n)
       throw new Error("No verification request ID provided");
-    const ie = 10, q = 1500;
+    const ie = 10, U = 1500;
     for (let ne = 0; ne < ie; ne++)
       try {
-        const U = await fetch(`${p}/api/v2/verification/${n}/status`, {
+        const $ = await fetch(`${p}/api/v2/verification/${n}/status`, {
           method: "GET",
           headers: {
             "Content-Type": "application/json",
@@ -3055,31 +3056,31 @@ const Yt = ({
           },
           credentials: "include"
         });
-        if (!U.ok)
+        if (!$.ok)
           throw new Error("Failed to check verification status");
-        const v = await U.json(), M = (pe = v.verification) == null ? void 0 : pe.status;
-        if (h(Math.min(20 + ne * 8, 80)), M === "completed") {
+        const w = await $.json(), L = (fe = w.verification) == null ? void 0 : fe.status;
+        if (h(Math.min(20 + ne * 8, 80)), L === "completed") {
           d("minting"), h(90), await Q(500), h(100), d("completed");
-          const Z = (me = (K = v.verification) == null ? void 0 : K.results) == null ? void 0 : me.proofHash;
-          await Q(1500), l({ credentialHash: Z || n });
+          const X = (me = (Z = w.verification) == null ? void 0 : Z.results) == null ? void 0 : me.proofHash;
+          await Q(1500), o({ credentialHash: X || n });
           return;
         }
-        if (M === "failed")
-          throw new Error(((ee = v.verification) == null ? void 0 : ee.error) || "Verification failed");
-        await Q(q);
-      } catch (U) {
+        if (L === "failed")
+          throw new Error(((ee = w.verification) == null ? void 0 : ee.error) || "Verification failed");
+        await Q(U);
+      } catch ($) {
         if (ne === ie - 1)
-          throw U;
-        await Q(q);
+          throw $;
+        await Q(U);
       }
-    d("minting"), h(90), await Q(500), h(100), d("completed"), await Q(1500), l({ credentialHash: n });
-  }, F = async () => {
-    d("processing"), h(30), await Q(800), h(60), d("minting"), h(80), await Q(800), h(100), d("completed"), await Q(2e3), l({ credentialHash: n });
-  }, G = async () => {
-    r === "layer_2" ? await O() : await F();
-  }, Q = (ie) => new Promise((q) => setTimeout(q, ie)), de = () => {
-    d("processing"), h(0), _(""), W.current = !1, m ? C() : S();
-  }, ue = () => r === "layer_1" ? c === "minting" ? /* @__PURE__ */ e(Ie, { className: "text-brand w-4 h-4" }) : /* @__PURE__ */ e(Vt, { className: "text-brand w-4 h-4" }) : /* @__PURE__ */ e(it, { className: "text-brand w-4 h-4" }), te = () => {
+    d("minting"), h(90), await Q(500), h(100), d("completed"), await Q(1500), o({ credentialHash: n });
+  }, q = async () => {
+    d("processing"), h(30), await Q(800), h(60), d("minting"), h(80), await Q(800), h(100), d("completed"), await Q(2e3), o({ credentialHash: n });
+  }, J = async () => {
+    r === "layer_2" ? await F() : await q();
+  }, Q = (ie) => new Promise((U) => setTimeout(U, ie)), de = () => {
+    d("processing"), h(0), _(""), Y.current = !1, l ? C() : A();
+  }, ue = () => r === "layer_1" ? c === "minting" ? /* @__PURE__ */ e(Ne, { className: "text-brand w-4 h-4" }) : /* @__PURE__ */ e(jt, { className: "text-brand w-4 h-4" }) : /* @__PURE__ */ e(at, { className: "text-brand w-4 h-4" }), te = () => {
     if (r === "layer_1") {
       if (c === "processing") return t("creating_wallet", s);
       if (c === "minting") return t("minting_did_chain", s);
@@ -3110,7 +3111,7 @@ const Yt = ({
               className: `relative w-40 h-56 backdrop-blur-xl border rounded-2xl flex flex-col p-4 ${c === "completed" ? "bg-green-500/10 border-green-500/30 shadow-[0_0_50px_-12px_rgba(34,197,94,0.5)]" : c === "failed" ? "bg-red-500/10 border-red-500/30 shadow-[0_0_50px_-12px_rgba(239,68,68,0.5)]" : "bg-brand/10 border-brand-30 shadow-[0_0_50px_-12px_rgba(114,43,238,0.5)]"}`,
               children: [
                 /* @__PURE__ */ i("div", { className: "flex justify-between items-start mb-6", children: [
-                  /* @__PURE__ */ e("div", { className: `w-8 h-8 rounded flex items-center justify-center ${c === "completed" ? "bg-green-500/30" : c === "failed" ? "bg-red-500/30" : "bg-brand/30"}`, children: c === "completed" ? /* @__PURE__ */ e(Ce, { className: "text-green-500 w-4 h-4" }) : c === "failed" ? /* @__PURE__ */ e(ve, { className: "text-red-500 w-4 h-4" }) : ue() }),
+                  /* @__PURE__ */ e("div", { className: `w-8 h-8 rounded flex items-center justify-center ${c === "completed" ? "bg-green-500/30" : c === "failed" ? "bg-red-500/30" : "bg-brand/30"}`, children: c === "completed" ? /* @__PURE__ */ e(Ie, { className: "text-green-500 w-4 h-4" }) : c === "failed" ? /* @__PURE__ */ e(ve, { className: "text-red-500 w-4 h-4" }) : ue() }),
                   /* @__PURE__ */ e("div", { className: `w-6 h-1 rounded-full ${c === "completed" ? "bg-green-500/40" : c === "failed" ? "bg-red-500/40" : "bg-brand/40"}` })
                 ] }),
                 /* @__PURE__ */ i("div", { className: "space-y-3 mb-auto", children: [
@@ -3149,7 +3150,7 @@ const Yt = ({
           /* @__PURE__ */ e("p", { className: "dark:text-slate-400 text-slate-500 text-sm leading-relaxed max-w-[280px] mx-auto", children: b.subtitle })
         ] }),
         c === "failed" && /* @__PURE__ */ i("div", { className: "mt-6 space-y-3", children: [
-          /* @__PURE__ */ e("p", { className: "text-red-500 text-sm", children: A }),
+          /* @__PURE__ */ e("p", { className: "text-red-500 text-sm", children: D }),
           /* @__PURE__ */ e(
             "button",
             {
@@ -3159,12 +3160,12 @@ const Yt = ({
             }
           )
         ] }),
-        r === "layer_1" && o && c === "completed" && /* @__PURE__ */ i("div", { className: "mt-6 p-3 dark:bg-white/5 bg-black/5 rounded-xl border dark:border-white/10 border-black/5", children: [
+        r === "layer_1" && u && c === "completed" && /* @__PURE__ */ i("div", { className: "mt-6 p-3 dark:bg-white/5 bg-black/5 rounded-xl border dark:border-white/10 border-black/5", children: [
           /* @__PURE__ */ e("p", { className: "text-[10px] text-muted mb-1", children: t("your_wallet", s) }),
           /* @__PURE__ */ i("p", { className: "text-xs font-mono text-main break-all", children: [
-            o.slice(0, 20),
+            u.slice(0, 20),
             "...",
-            o.slice(-10)
+            u.slice(-10)
           ] })
         ] }),
         r !== "layer_1" && V && c === "completed" && /* @__PURE__ */ i("div", { className: "mt-6 p-3 dark:bg-white/5 bg-black/5 rounded-xl border dark:border-white/10 border-black/5", children: [
@@ -3177,26 +3178,26 @@ const Yt = ({
         c !== "failed" && /* @__PURE__ */ i("div", { className: "w-full mt-12 p-6 dark:bg-brand/5 bg-brand/5 border-t dark:border-white/5 border-black/5", children: [
           /* @__PURE__ */ i("div", { className: "flex justify-between items-center mb-3", children: [
             /* @__PURE__ */ e("span", { className: "text-xs font-medium text-brand uppercase tracking-widest", children: t(r === "layer_1" ? "setup_status" : "transaction_status", s) }),
-            /* @__PURE__ */ e("span", { className: `text-xs font-bold ${c === "completed" ? "text-green-500" : "text-[#6DE8EC]"}`, children: t("complete_percent", s).replace("{percent}", D.toString()) })
+            /* @__PURE__ */ e("span", { className: `text-xs font-bold ${c === "completed" ? "text-green-500" : "text-[#6DE8EC]"}`, children: t("complete_percent", s).replace("{percent}", E.toString()) })
           ] }),
           /* @__PURE__ */ e("div", { className: "w-full h-1.5 dark:bg-brand/10 bg-brand/10 rounded-full overflow-hidden mb-4", children: /* @__PURE__ */ e(
             P.div,
             {
               initial: { width: "0%" },
-              animate: { width: `${D}%` },
+              animate: { width: `${E}%` },
               transition: { duration: 0.5 },
               className: `h-full rounded-full ${c === "completed" ? "bg-gradient-to-r from-green-500 to-[#6DE8EC]" : "bg-gradient-to-r from-brand to-[#6DE8EC]"} shadow-[0_0_10px_rgba(114,43,238,0.5)]`
             }
           ) }),
           /* @__PURE__ */ i("div", { className: "flex items-center gap-3 px-3 py-2 dark:bg-brand/10 bg-brand/10 rounded-xl border dark:border-brand-10 border-brand-5", children: [
-            /* @__PURE__ */ e(At, { className: `w-4 h-4 ${c === "completed" ? "text-green-500" : "text-brand"}` }),
+            /* @__PURE__ */ e(Dt, { className: `w-4 h-4 ${c === "completed" ? "text-green-500" : "text-brand"}` }),
             /* @__PURE__ */ e("p", { className: "text-[10px] dark:text-slate-300 text-slate-600 font-medium", children: te() })
           ] })
         ] })
       ]
     }
   );
-}, ni = ({ onNext: r, language: a = "EN" }) => /* @__PURE__ */ i(
+}, si = ({ onNext: r, language: a = "EN" }) => /* @__PURE__ */ i(
   P.div,
   {
     initial: { opacity: 0, scale: 0.9 },
@@ -3206,7 +3207,7 @@ const Yt = ({
     children: [
       /* @__PURE__ */ i("div", { className: "relative mb-10 group", children: [
         /* @__PURE__ */ e("div", { className: "absolute inset-0 bg-[#6fe8ec]/30 rounded-3xl blur-3xl group-hover:blur-2xl transition-all" }),
-        /* @__PURE__ */ e("div", { className: "relative w-32 h-32 rounded-2xl bg-[#6fe8ec] flex items-center justify-center shadow-[0_0_40px_rgba(111,232,236,0.4)] border-4 dark:border-white border-slate-100", children: /* @__PURE__ */ e(Ce, { className: "text-slate-900 w-16 h-16" }) })
+        /* @__PURE__ */ e("div", { className: "relative w-32 h-32 rounded-2xl bg-[#6fe8ec] flex items-center justify-center shadow-[0_0_40px_rgba(111,232,236,0.4)] border-4 dark:border-white border-slate-100", children: /* @__PURE__ */ e(Ie, { className: "text-slate-900 w-16 h-16" }) })
       ] }),
       /* @__PURE__ */ e("h1", { className: "text-main text-3xl font-bold leading-tight mb-3", children: t("identity_verified", a) }),
       /* @__PURE__ */ e("p", { className: "text-muted text-base leading-relaxed mb-12", children: t("identity_verified_desc", a) }),
@@ -3230,19 +3231,19 @@ const Yt = ({
       )
     ]
   }
-), si = [
+), ci = [
   "verify:identity",
   "read:profile",
   "read:kyc_level"
-], ci = ({
+], oi = ({
   appName: r = "This App",
   appLogo: a,
   requestedScopes: n,
-  onApprove: l,
-  onDeny: N,
+  onApprove: o,
+  onDeny: I,
   language: p = "EN"
 }) => {
-  const f = n || si;
+  const f = n || ci;
   return /* @__PURE__ */ i(
     P.div,
     {
@@ -3263,20 +3264,20 @@ const Yt = ({
         ] }),
         /* @__PURE__ */ i("div", { className: "w-full space-y-3", children: [
           /* @__PURE__ */ e("h3", { className: "text-xs font-semibold uppercase tracking-widest text-slate-500 mb-4 px-1", children: t("permission_request", p) }),
-          f.map((m) => /* @__PURE__ */ i(
+          f.map((l) => /* @__PURE__ */ i(
             "div",
             {
               className: "flex items-center gap-4 p-4 rounded-2xl dark:bg-white/5 bg-black/5 transition-all",
               children: [
-                /* @__PURE__ */ e("div", { className: "flex items-center justify-center w-8 h-8 rounded-full bg-cyan-400/10 text-cyan-400 shrink-0", children: /* @__PURE__ */ e(Ce, { className: "w-5 h-5" }) }),
-                /* @__PURE__ */ e("p", { className: "text-sm font-medium text-main", children: t(m, p) })
+                /* @__PURE__ */ e("div", { className: "flex items-center justify-center w-8 h-8 rounded-full bg-cyan-400/10 text-cyan-400 shrink-0", children: /* @__PURE__ */ e(Ie, { className: "w-5 h-5" }) }),
+                /* @__PURE__ */ e("p", { className: "text-sm font-medium text-main", children: t(l, p) })
               ]
             },
-            m
+            l
           ))
         ] }),
         /* @__PURE__ */ i("div", { className: "mt-8 flex gap-3 p-4 rounded-2xl dark:bg-brand/5 bg-brand/5", children: [
-          /* @__PURE__ */ e(Se, { className: "text-brand w-5 h-5 shrink-0" }),
+          /* @__PURE__ */ e(Ce, { className: "text-brand w-5 h-5 shrink-0" }),
           /* @__PURE__ */ i("p", { className: "text-xs leading-relaxed text-muted", children: [
             /* @__PURE__ */ i("span", { className: "font-bold text-main", children: [
               t("privacy_note", p),
@@ -3290,7 +3291,7 @@ const Yt = ({
           /* @__PURE__ */ i(
             "button",
             {
-              onClick: l,
+              onClick: o,
               className: "w-full py-4 rounded-2xl bg-brand hover:bg-brand-90 text-white font-bold text-base shadow-xl shadow-brand transition-all flex items-center justify-center gap-2",
               children: [
                 t("approve_verify", p),
@@ -3301,7 +3302,7 @@ const Yt = ({
           /* @__PURE__ */ e(
             "button",
             {
-              onClick: N,
+              onClick: I,
               className: "w-full py-3 rounded-2xl bg-transparent dark:hover:bg-slate-100 dark:bg-white/5 hover:bg-black/5 dark:text-slate-400 text-slate-500 font-semibold text-sm transition-all",
               children: t("deny", p)
             }
@@ -3311,96 +3312,96 @@ const Yt = ({
     }
   );
 };
-function Ge(r = "light") {
+function Je(r = "light") {
   return r === "system" ? window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light" : r;
 }
-const Je = ["AuthSelection", "Login", "PasskeyAuth", "PinVerification", "PasskeyRegister"], oi = "https://apis.casperid.com", Ke = {
+const Ke = ["AuthSelection", "Login", "PasskeyAuth", "PinVerification", "PasskeyRegister"], li = "https://apis.casperid.com", Ze = {
   requestId: "",
   verificationTier: "layer_3"
 }, pi = ({
   isOpen: r,
   apiKey: a,
   theme: n = {},
-  requiredTier: l,
-  onSuccess: N,
+  requiredTier: o,
+  onSuccess: I,
   onClose: p,
   onError: f,
-  mode: m = "login",
+  mode: l = "login",
   previewMode: s = !1,
   initialScreen: c,
   apiBaseUrl: d,
-  termsUrl: D = "#",
+  termsUrl: E = "#",
   privacyUrl: h = "#",
-  logoUrl: A,
+  logoUrl: D,
   language: _ = "EN",
-  layout: o,
-  platform: I
+  layout: u,
+  platform: N
 }) => {
   var Be;
-  const [g, k] = y({}), [V, w] = y(!s && !!a), {
+  const [x, v] = y({}), [V, k] = y(!s && !!a), {
     primaryColor: T,
-    borderRadius: Y,
-    fontFamily: W,
-    mode: B = "light",
+    borderRadius: G,
+    fontFamily: Y,
+    mode: H = "light",
     layout: b,
     platform: C
-  } = n || {}, S = typeof navigator < "u" && /iPhone|iPad|iPod|Android/i.test(navigator.userAgent), L = T || g.primaryColor || "#8651e1", O = Y || g.borderRadius || "12", F = W || g.fontFamily || "Inter", G = o || b || g.layout || "auto", Q = I || C || g.platform || (S ? "mobile" : "desktop"), [de, ue] = y(Ge(B)), [te, ie] = y(
-    c ?? (m === "verify" ? "SecurityUpgrade" : "AuthSelection")
-  ), [q, pe] = y({ email: "", verificationId: "" }), [K, me] = y(null), [ee, ne] = y({
+  } = n || {}, A = typeof navigator < "u" && /iPhone|iPad|iPod|Android/i.test(navigator.userAgent), M = T || x.primaryColor || "#8651e1", F = G || x.borderRadius || "12", q = Y || x.fontFamily || "Inter", J = u || b || x.layout || "auto", Q = N || C || x.platform || (A ? "mobile" : "desktop"), [de, ue] = y(Je(H)), [te, ie] = y(
+    c ?? (l === "verify" ? "SecurityUpgrade" : "AuthSelection")
+  ), [U, fe] = y({ email: "", verificationId: "" }), [Z, me] = y(null), [ee, ne] = y({
     email: "",
     userExists: !1,
     hasPasskey: !1,
     userAccount: null
-  }), [U, v] = y(Ke), [M, Z] = y(""), [fe, z] = y(""), [X, he] = y(null), H = d || oi, oe = O.toString().endsWith("px") ? O.toString() : `${O}px`, ge = F.includes(" ") ? `"${F}", sans-serif` : `${F}, sans-serif`, ae = _t.useId().replace(/:/g, ""), ye = {
-    "--casperid-primary": L,
-    "--casperid-radius": oe,
+  }), [$, w] = y(Ze), [L, X] = y(""), [pe, z] = y(""), [O, he] = y(null), W = d || li, le = F.toString().endsWith("px") ? F.toString() : `${F}px`, ge = q.includes(" ") ? `"${q}", sans-serif` : `${q}, sans-serif`, ae = yt.useId().replace(/:/g, ""), ye = {
+    "--casperid-primary": M,
+    "--casperid-radius": le,
     "--casperid-font": ge
-  }, Ae = `${ae}-${L}-${oe}-${ge}`, De = `
+  }, Ee = `${ae}-${M}-${le}-${ge}`, Ae = `
         #casperid-modal-${ae},
         #casperid-modal-${ae} * {
-            --casperid-primary: ${L} !important;
-            --casperid-radius: ${oe} !important;
+            --casperid-primary: ${M} !important;
+            --casperid-radius: ${le} !important;
             --casperid-font: ${ge} !important;
         }
     `;
-  ce(() => {
-    if (B === "system") {
-      const u = window.matchMedia("(prefers-color-scheme: dark)"), x = (E) => ue(E.matches ? "dark" : "light");
-      return u.addEventListener("change", x), () => u.removeEventListener("change", x);
+  oe(() => {
+    if (H === "system") {
+      const m = window.matchMedia("(prefers-color-scheme: dark)"), g = (S) => ue(S.matches ? "dark" : "light");
+      return m.addEventListener("change", g), () => m.removeEventListener("change", g);
     } else
-      ue(Ge(B));
-  }, [B]), ce(() => {
+      ue(Je(H));
+  }, [H]), oe(() => {
     s && c && ie(c);
-  }, [s, c]), ce(() => {
-    r && !s && (ie(c ?? (m === "verify" ? "SecurityUpgrade" : "AuthSelection")), pe({ email: "", verificationId: "" }), me(null), ne({ email: "", userExists: !1, hasPasskey: !1, userAccount: null }), v(Ke), Z(""), z(""));
-  }, [r, m, s, c]), ce(() => {
+  }, [s, c]), oe(() => {
+    r && !s && (ie(c ?? (l === "verify" ? "SecurityUpgrade" : "AuthSelection")), fe({ email: "", verificationId: "" }), me(null), ne({ email: "", userExists: !1, hasPasskey: !1, userAccount: null }), w(Ze), X(""), z(""));
+  }, [r, l, s, c]), oe(() => {
     if (!a || s) {
-      w(!1);
+      k(!1);
       return;
     }
     (async () => {
       try {
-        const x = await fetch(`${H}/api/business/app-metadata/${a}`);
-        if (x.ok) {
-          const E = await x.json();
-          E.success && E.app && (he(E.app), E.app.theme && k({
-            primaryColor: E.app.theme.primaryColor,
-            borderRadius: E.app.theme.borderRadius,
-            fontFamily: E.app.theme.fontFamily,
-            layout: E.app.theme.layout,
-            platform: E.app.theme.platform
+        const g = await fetch(`${W}/api/business/app-metadata/${a}`);
+        if (g.ok) {
+          const S = await g.json();
+          S.success && S.app && (he(S.app), S.app.theme && v({
+            primaryColor: S.app.theme.primaryColor,
+            borderRadius: S.app.theme.borderRadius,
+            fontFamily: S.app.theme.fontFamily,
+            layout: S.app.theme.layout,
+            platform: S.app.theme.platform
           }));
         }
-      } catch (x) {
-        console.warn("[CasperID] Failed to fetch app metadata:", x);
+      } catch (g) {
+        console.warn("[CasperID] Failed to fetch app metadata:", g);
       } finally {
-        w(!1);
+        k(!1);
       }
     })();
-  }, [a, H, s]);
-  const Ue = () => ue((u) => u === "dark" ? "light" : "dark"), R = J((u) => ie(u), []), ze = J(async (u) => {
+  }, [a, W, s]);
+  const Ue = () => ue((m) => m === "dark" ? "light" : "dark"), R = K((m) => ie(m), []), ze = K(async (m) => {
     try {
-      const x = u === "layer_2" ? `${d}/api/v2/verification/layer2/start` : `${d}/api/v2/verification/layer3/start`, E = await fetch(x, {
+      const g = m === "layer_2" ? `${d}/api/v2/verification/layer2/start` : `${d}/api/v2/verification/layer3/start`, S = await fetch(g, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -3409,133 +3410,133 @@ const Je = ["AuthSelection", "Login", "PasskeyAuth", "PinVerification", "Passkey
         credentials: "include",
         body: JSON.stringify({
           purpose: "sdk_verification",
-          ...u === "layer_3" ? { verificationMethod: "document" } : {}
+          ...m === "layer_3" ? { verificationMethod: "document" } : {}
         })
       });
-      if (!E.ok) {
-        const le = await E.json().catch(() => ({}));
-        throw new Error(le.error || `Request failed with status ${E.status}`);
+      if (!S.ok) {
+        const se = await S.json().catch(() => ({}));
+        throw new Error(se.error || `Request failed with status ${S.status}`);
       }
-      const $ = await E.json();
-      if ($.success && $.verification)
-        return v((le) => ({
-          ...le,
-          requestId: $.verification.requestId,
-          verificationTier: u
-        })), $.verification.requestId;
-      throw new Error($.error || "Failed to start verification");
-    } catch (x) {
-      return f == null || f(x instanceof Error ? x : new Error("Failed to start verification")), null;
+      const B = await S.json();
+      if (B.success && B.verification)
+        return w((se) => ({
+          ...se,
+          requestId: B.verification.requestId,
+          verificationTier: m
+        })), B.verification.requestId;
+      throw new Error(B.error || "Failed to start verification");
+    } catch (g) {
+      return f == null || f(g instanceof Error ? g : new Error("Failed to start verification")), null;
     }
-  }, [d, a, f]), rt = J((u, x, E) => {
-    me(u), ne(($) => ({
-      ...$,
-      sessionToken: u,
-      businessToken: E,
-      userAccount: x || null
-    })), x != null && x.wallet && (x != null && x.did_address) && ee.hasPasskey ? Re(x.tier) : R("PasskeyRegister");
-  }, [R, ee.hasPasskey]), nt = J((u) => {
-    ne((x) => ({ ...x, email: u, hasPasskey: !0, userExists: !0 })), R("PasskeyAuth");
-  }, [R]), st = J((u, x, E) => {
-    me(u), ne(($) => ({
-      ...$,
-      sessionToken: u,
-      businessToken: E,
-      userAccount: x ? {
-        user_id: x.user_id,
-        wallet: x.wallet,
-        tier: x.tier,
-        did_address: x.did_address
+  }, [d, a, f]), nt = K((m, g, S) => {
+    me(m), ne((B) => ({
+      ...B,
+      sessionToken: m,
+      businessToken: S,
+      userAccount: g || null
+    })), g != null && g.wallet && (g != null && g.did_address) && ee.hasPasskey ? De(g.tier) : R("PasskeyRegister");
+  }, [R, ee.hasPasskey]), st = K((m) => {
+    ne((g) => ({ ...g, email: m, hasPasskey: !0, userExists: !0 })), R("PasskeyAuth");
+  }, [R]), ct = K((m, g, S) => {
+    me(m), ne((B) => ({
+      ...B,
+      sessionToken: m,
+      businessToken: S,
+      userAccount: g ? {
+        user_id: g.user_id,
+        wallet: g.wallet,
+        tier: g.tier,
+        did_address: g.did_address
       } : null
-    })), Re(x == null ? void 0 : x.tier);
-  }, []), ct = J((u, x) => {
-    ne((E) => ({
-      ...E,
+    })), De(g == null ? void 0 : g.tier);
+  }, []), ot = K((m, g) => {
+    ne((S) => ({
+      ...S,
       hasPasskey: !0,
-      businessToken: x,
-      userAccount: u ? {
-        user_id: u.user_id,
-        tier: u.tier
-      } : E.userAccount
+      businessToken: g,
+      userAccount: m ? {
+        user_id: m.user_id,
+        tier: m.tier
+      } : S.userAccount
     })), R("MintingIdentity");
-  }, [R]), Re = J((u) => {
-    const x = u || "layer_0";
-    if (!l) {
+  }, [R]), De = K((m) => {
+    const g = m || "layer_0", S = o || (O == null ? void 0 : O.required_tier);
+    if (!S) {
       R("IdentityVerified");
       return;
     }
-    const E = l === "L1" ? "layer_1" : l === "L2" ? "layer_2" : l === "L3" ? "layer_3" : "layer_1", $ = ["layer_0", "layer_1", "layer_2", "layer_3"], le = $.indexOf(x), we = $.indexOf(E);
-    le >= we ? R("IdentityVerified") : we >= 2 ? R("SecurityUpgrade") : R("IdentityVerified");
-  }, [l, R]), ot = J(async (u) => {
-    var E;
-    if (u != null && u.wallet && ne(($) => {
-      var le;
+    const B = S === "L1" ? "layer_1" : S === "L2" ? "layer_2" : S === "L3" ? "layer_3" : "layer_1", se = ["layer_0", "layer_1", "layer_2", "layer_3"], Re = se.indexOf(g), He = se.indexOf(B);
+    Re >= He ? R("IdentityVerified") : He >= 2 ? R("SecurityUpgrade") : R("IdentityVerified");
+  }, [o, R]), lt = K(async (m) => {
+    var S;
+    if (m != null && m.wallet && ne((B) => {
+      var se;
       return {
-        ...$,
+        ...B,
         userAccount: {
-          ...$.userAccount,
-          user_id: ((le = $.userAccount) == null ? void 0 : le.user_id) || "",
-          wallet: u.wallet,
-          did_address: u.didAddress,
+          ...B.userAccount,
+          user_id: ((se = B.userAccount) == null ? void 0 : se.user_id) || "",
+          wallet: m.wallet,
+          did_address: m.didAddress,
           tier: "layer_1"
         }
       };
-    }), u != null && u.credentialHash && z(u.credentialHash), K && !s)
+    }), m != null && m.credentialHash && z(m.credentialHash), Z && !s)
       try {
-        const $ = await fetch(`${H}/api/casperid/refresh`, {
+        const B = await fetch(`${W}/api/casperid/refresh`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ token: K, apiKey: a })
+          body: JSON.stringify({ token: Z, apiKey: a })
         });
-        if ($.ok) {
-          const le = await $.json();
-          le.success && le.token && (console.log("[CasperID SDK] Token refreshed after verification"), me(le.token), ne((we) => ({
-            ...we,
-            sessionToken: le.token,
-            businessToken: le.business_token || we.businessToken
+        if (B.ok) {
+          const se = await B.json();
+          se.success && se.token && (console.log("[CasperID SDK] Token refreshed after verification"), me(se.token), ne((Re) => ({
+            ...Re,
+            sessionToken: se.token,
+            businessToken: se.business_token || Re.businessToken
           })));
         }
-      } catch ($) {
-        console.warn("[CasperID SDK] Failed to refresh token after verification:", $);
+      } catch (B) {
+        console.warn("[CasperID SDK] Failed to refresh token after verification:", B);
       }
-    let x = u != null && u.wallet ? "layer_1" : ((E = ee.userAccount) == null ? void 0 : E.tier) || "layer_1";
-    U.livenessVerified && U.verificationTier === "layer_2" ? x = "layer_2" : U.documentType && U.verificationTier === "layer_3" && (x = "layer_3"), Re(x);
-  }, [(Be = ee.userAccount) == null ? void 0 : Be.tier, Re, K, H, s, U]), lt = J((u) => {
-    const x = (u == null ? void 0 : u.sessionToken) || (u == null ? void 0 : u.token), E = (u == null ? void 0 : u.business_token) || (u == null ? void 0 : u.businessToken);
-    x && me(x), E && ne(($) => ({ ...$, businessToken: E })), R("SecurityUpgrade");
-  }, [R]), dt = J(async () => {
-    l === "L3" ? await ze("layer_3") && R("VerifyIdentityChoice") : await ze("layer_2") && R("FaceScan");
-  }, [l, ze, R]), ut = J(async (u) => {
-    v((x) => ({ ...x, livenessVerified: u })), R("MintingIdentity");
-  }, [R]), mt = J((u) => {
-    v((x) => ({ ...x, documentType: u })), R("DocumentScan");
-  }, [R]), pt = J((u, x, E) => {
-    v(($) => ({
-      ...$,
-      extractedData: u,
-      frontImageUrl: E.frontImageUrl,
-      frontImageFileId: E.frontImageFileId,
-      backImageUrl: E.backImageUrl,
-      backImageFileId: E.backImageFileId
-    })), Z(x), R("ReviewData");
-  }, [R]), ft = J((u) => {
-    v((x) => ({ ...x, extractedData: u })), R("FaceScan");
+    let g = m != null && m.wallet ? "layer_1" : ((S = ee.userAccount) == null ? void 0 : S.tier) || "layer_1";
+    $.livenessVerified && $.verificationTier === "layer_2" ? g = "layer_2" : $.documentType && $.verificationTier === "layer_3" && (g = "layer_3"), De(g);
+  }, [(Be = ee.userAccount) == null ? void 0 : Be.tier, De, Z, W, s, $]), dt = K((m) => {
+    const g = (m == null ? void 0 : m.sessionToken) || (m == null ? void 0 : m.token), S = (m == null ? void 0 : m.business_token) || (m == null ? void 0 : m.businessToken);
+    g && me(g), S && ne((B) => ({ ...B, businessToken: S })), R("SecurityUpgrade");
+  }, [R]), ut = K(async () => {
+    o === "L3" ? await ze("layer_3") && R("VerifyIdentityChoice") : await ze("layer_2") && R("FaceScan");
+  }, [o, ze, R]), mt = K(async (m) => {
+    w((g) => ({ ...g, livenessVerified: m })), R("MintingIdentity");
+  }, [R]), ft = K((m) => {
+    w((g) => ({ ...g, documentType: m })), R("DocumentScan");
+  }, [R]), pt = K((m, g, S) => {
+    w((B) => ({
+      ...B,
+      extractedData: m,
+      frontImageUrl: S.frontImageUrl,
+      frontImageFileId: S.frontImageFileId,
+      backImageUrl: S.backImageUrl,
+      backImageFileId: S.backImageFileId
+    })), X(g), R("ReviewData");
+  }, [R]), ht = K((m) => {
+    w((g) => ({ ...g, extractedData: m })), R("FaceScan");
   }, [R]);
-  J(() => {
-    v((u) => ({ ...u, extractedData: void 0 })), Z(""), R("DocumentScan");
+  K(() => {
+    w((m) => ({ ...m, extractedData: void 0 })), X(""), R("DocumentScan");
   }, [R]);
-  const ht = J(() => {
-    if (!K) {
+  const bt = K(() => {
+    if (!Z) {
       f == null || f(new Error("No valid session token available"));
       return;
     }
-    N == null || N(K, {
+    I == null || I(Z, {
       businessToken: ee.businessToken
     }), p == null || p();
-  }, [K, ee.businessToken, N, p, f]), be = J((u) => {
-    f == null || f(new Error(u));
-  }, [f]), bt = J((u, x) => {
-    pe({ email: u, verificationId: x }), ne((E) => ({ ...E, email: u })), R("PinVerification");
+  }, [Z, ee.businessToken, I, p, f]), be = K((m) => {
+    f == null || f(new Error(m));
+  }, [f]), _t = K((m, g) => {
+    fe({ email: m, verificationId: g }), ne((S) => ({ ...S, email: m })), R("PinVerification");
   }, [R]);
   if (!r && !s) return null;
   if (V && !s)
@@ -3553,21 +3554,22 @@ const Je = ["AuthSelection", "Login", "PasskeyAuth", "PinVerification", "Passkey
         return /* @__PURE__ */ e(
           Mt,
           {
-            onNext: (x) => R(x === "otp" ? "Login" : "SecurityUpgrade"),
-            onExtensionSuccess: lt,
+            onNext: (g) => R(g === "otp" ? "Login" : "SecurityUpgrade"),
+            onExtensionSuccess: dt,
             onError: be,
             language: _,
-            platform: Q
+            platform: Q,
+            logoUrl: D || (O == null ? void 0 : O.logo_url)
           }
         );
       case "Login":
         return /* @__PURE__ */ e(
-          Lt,
+          Ot,
           {
-            onNext: bt,
-            onPasskeyUser: nt,
+            onNext: _t,
+            onPasskeyUser: st,
             onError: be,
-            apiBaseUrl: H,
+            apiBaseUrl: W,
             apiKey: a,
             previewMode: s,
             language: _
@@ -3575,13 +3577,13 @@ const Je = ["AuthSelection", "Login", "PasskeyAuth", "PinVerification", "Passkey
         );
       case "PasskeyAuth":
         return /* @__PURE__ */ e(
-          Yt,
+          Gt,
           {
             email: ee.email,
-            onSuccess: st,
+            onSuccess: ct,
             onError: be,
             onFallbackToOTP: () => R("Login"),
-            apiBaseUrl: H,
+            apiBaseUrl: W,
             apiKey: a,
             previewMode: s,
             language: _
@@ -3589,13 +3591,13 @@ const Je = ["AuthSelection", "Login", "PasskeyAuth", "PinVerification", "Passkey
         );
       case "PasskeyRegister":
         return /* @__PURE__ */ e(
-          Gt,
+          Jt,
           {
-            email: ee.email || q.email,
-            sessionToken: K || "",
-            onSuccess: ct,
+            email: ee.email || U.email,
+            sessionToken: Z || "",
+            onSuccess: ot,
             onError: be,
-            apiBaseUrl: H,
+            apiBaseUrl: W,
             apiKey: a,
             previewMode: s,
             language: _
@@ -3603,13 +3605,13 @@ const Je = ["AuthSelection", "Login", "PasskeyAuth", "PinVerification", "Passkey
         );
       case "PinVerification":
         return /* @__PURE__ */ e(
-          Jt,
+          Kt,
           {
-            email: q.email,
-            verificationId: q.verificationId,
-            onNext: rt,
+            email: U.email,
+            verificationId: U.verificationId,
+            onNext: nt,
             onError: be,
-            apiBaseUrl: H,
+            apiBaseUrl: W,
             apiKey: a,
             previewMode: s,
             language: _
@@ -3617,21 +3619,21 @@ const Je = ["AuthSelection", "Login", "PasskeyAuth", "PinVerification", "Passkey
         );
       case "SecurityUpgrade":
         return /* @__PURE__ */ e(
-          Kt,
+          Zt,
           {
-            onNext: dt,
+            onNext: ut,
             onSkip: () => R("IdentityVerified"),
             language: _
           }
         );
       case "FaceScan":
         return /* @__PURE__ */ e(
-          Zt,
+          Xt,
           {
-            requestId: U.requestId,
-            onNext: ut,
+            requestId: $.requestId,
+            onNext: mt,
             onError: be,
-            apiBaseUrl: H,
+            apiBaseUrl: W,
             apiKey: a,
             previewMode: s,
             language: _
@@ -3639,21 +3641,21 @@ const Je = ["AuthSelection", "Login", "PasskeyAuth", "PinVerification", "Passkey
         );
       case "VerifyIdentityChoice":
         return /* @__PURE__ */ e(
-          Qt,
+          ei,
           {
-            onNext: mt,
+            onNext: ft,
             language: _
           }
         );
       case "DocumentScan":
         return /* @__PURE__ */ e(
-          ti,
+          ii,
           {
-            requestId: U.requestId,
-            documentType: U.documentType,
+            requestId: $.requestId,
+            documentType: $.documentType,
             onNext: pt,
             onError: be,
-            apiBaseUrl: H,
+            apiBaseUrl: W,
             apiKey: a,
             previewMode: s,
             language: _
@@ -3661,53 +3663,53 @@ const Je = ["AuthSelection", "Login", "PasskeyAuth", "PinVerification", "Passkey
         );
       case "ReviewData":
         return /* @__PURE__ */ e(
-          ii,
+          ai,
           {
-            requestId: U.requestId,
-            documentType: U.documentType,
-            extractedData: U.extractedData,
-            uploadId: M,
-            frontImageUrl: U.frontImageUrl,
-            frontImageFileId: U.frontImageFileId,
-            backImageUrl: U.backImageUrl,
-            backImageFileId: U.backImageFileId,
-            onNext: ft,
+            requestId: $.requestId,
+            documentType: $.documentType,
+            extractedData: $.extractedData,
+            uploadId: L,
+            frontImageUrl: $.frontImageUrl,
+            frontImageFileId: $.frontImageFileId,
+            backImageUrl: $.backImageUrl,
+            backImageFileId: $.backImageFileId,
+            onNext: ht,
             onRetake: () => R("DocumentScan"),
             onError: be,
-            apiBaseUrl: H,
+            apiBaseUrl: W,
             apiKey: a,
             previewMode: s,
             language: _
           }
         );
       case "MintingIdentity":
-        const u = U.requestId ? U.verificationTier : "layer_1";
+        const m = $.requestId ? $.verificationTier : "layer_1";
         return /* @__PURE__ */ e(
-          ri,
+          ni,
           {
-            tier: u,
-            sessionToken: K || "",
-            requestId: U.requestId,
-            onNext: ot,
+            tier: m,
+            sessionToken: Z || "",
+            requestId: $.requestId,
+            onNext: lt,
             onError: be,
-            apiBaseUrl: H,
+            apiBaseUrl: W,
             apiKey: a,
             previewMode: s,
             language: _
           }
         );
       case "IdentityVerified":
-        return /* @__PURE__ */ e(ni, { onNext: () => R("PermissionsRequest"), language: _ });
+        return /* @__PURE__ */ e(si, { onNext: () => R("PermissionsRequest"), language: _ });
       case "PermissionsRequest":
         return /* @__PURE__ */ e(
-          ci,
+          oi,
           {
-            onApprove: ht,
+            onApprove: bt,
             onDeny: () => p == null ? void 0 : p(),
             language: _,
-            appName: X == null ? void 0 : X.name,
-            appLogo: A || (X == null ? void 0 : X.logo_url),
-            requestedScopes: X == null ? void 0 : X.requested_scopes
+            appName: O == null ? void 0 : O.name,
+            appLogo: D || (O == null ? void 0 : O.logo_url),
+            requestedScopes: O == null ? void 0 : O.requested_scopes
           }
         );
       default:
@@ -3715,10 +3717,10 @@ const Je = ["AuthSelection", "Login", "PasskeyAuth", "PinVerification", "Passkey
     }
   };
   return s ? /* @__PURE__ */ i(re, { children: [
-    /* @__PURE__ */ e("style", { children: De }, Ae),
-    /* @__PURE__ */ e("div", { id: `casperid-modal-${ae}`, style: ye, className: `relative ${de}`, children: /* @__PURE__ */ i(He, { className: "backdrop-blur-3xl", theme: de, children: [
+    /* @__PURE__ */ e("style", { children: Ae }, Ee),
+    /* @__PURE__ */ e("div", { id: `casperid-modal-${ae}`, style: ye, className: `relative ${de}`, children: /* @__PURE__ */ i(We, { className: "backdrop-blur-3xl", theme: de, children: [
       te !== "FaceScan" && /* @__PURE__ */ e(
-        We,
+        Ye,
         {
           onClose: p,
           showClose: te !== "AuthSelection",
@@ -3727,11 +3729,11 @@ const Je = ["AuthSelection", "Login", "PasskeyAuth", "PinVerification", "Passkey
           toggleTheme: Ue
         }
       ),
-      /* @__PURE__ */ e("div", { className: "flex-1 flex flex-col relative overflow-hidden", children: /* @__PURE__ */ e(Me, { mode: "wait", children: /* @__PURE__ */ e(P.div, { className: "flex-1 flex flex-col", children: $e() }, te) }) }),
-      Je.includes(te) && /* @__PURE__ */ e(Ye, { children: /* @__PURE__ */ i("p", { className: "text-[11px] text-slate-500 font-medium", children: [
+      /* @__PURE__ */ e("div", { className: "flex-1 flex flex-col relative overflow-hidden", children: /* @__PURE__ */ e(Le, { mode: "wait", children: /* @__PURE__ */ e(P.div, { className: "flex-1 flex flex-col", children: $e() }, te) }) }),
+      Ke.includes(te) && /* @__PURE__ */ e(Ge, { children: /* @__PURE__ */ i("p", { className: "text-[11px] text-slate-500 font-medium", children: [
         "By connecting, you agree to our",
         " ",
-        /* @__PURE__ */ e("a", { className: "text-brand hover:underline ml-1", href: D, target: "_blank", rel: "noopener noreferrer", children: "Terms of Service" }),
+        /* @__PURE__ */ e("a", { className: "text-brand hover:underline ml-1", href: E, target: "_blank", rel: "noopener noreferrer", children: "Terms of Service" }),
         " ",
         "&",
         " ",
@@ -3739,20 +3741,20 @@ const Je = ["AuthSelection", "Login", "PasskeyAuth", "PinVerification", "Passkey
       ] }) })
     ] }) })
   ] }) : /* @__PURE__ */ i(re, { children: [
-    /* @__PURE__ */ e("style", { children: De }, Ae),
+    /* @__PURE__ */ e("style", { children: Ae }, Ee),
     /* @__PURE__ */ i(
       "div",
       {
-        className: `fixed inset-0 z-[9999] flex items-center justify-center ${G === "fullscreen" ? "p-0" : "p-4"}`,
-        style: { backgroundColor: G === "fullscreen" ? "transparent" : "rgba(0,0,0,0.6)", backdropFilter: G === "fullscreen" ? "none" : "blur(6px)" },
-        onClick: (u) => u.target === u.currentTarget && (p == null ? void 0 : p()),
+        className: `fixed inset-0 z-[9999] flex items-center justify-center ${J === "fullscreen" ? "p-0" : "p-4"}`,
+        style: { backgroundColor: J === "fullscreen" ? "transparent" : "rgba(0,0,0,0.6)", backdropFilter: J === "fullscreen" ? "none" : "blur(6px)" },
+        onClick: (m) => m.target === m.currentTarget && (p == null ? void 0 : p()),
         children: [
-          G !== "fullscreen" && /* @__PURE__ */ i("div", { className: "absolute inset-0 pointer-events-none overflow-hidden", children: [
+          J !== "fullscreen" && /* @__PURE__ */ i("div", { className: "absolute inset-0 pointer-events-none overflow-hidden", children: [
             /* @__PURE__ */ e(
               "div",
               {
                 className: "absolute top-[-10%] left-[-10%] w-[60%] h-[40%] rounded-full blur-[120px]",
-                style: { backgroundColor: `${L}1a` }
+                style: { backgroundColor: `${M}1a` }
               }
             ),
             /* @__PURE__ */ e("div", { className: "absolute bottom-[-5%] right-[-5%] w-[50%] h-[30%] bg-[#6DE8EC]/5 blur-[100px] rounded-full" })
@@ -3761,15 +3763,15 @@ const Je = ["AuthSelection", "Login", "PasskeyAuth", "PinVerification", "Passkey
             P.div,
             {
               id: `casperid-modal-${ae}`,
-              initial: G === "fullscreen" ? { opacity: 0 } : { opacity: 0, scale: 0.95, y: 20 },
+              initial: J === "fullscreen" ? { opacity: 0 } : { opacity: 0, scale: 0.95, y: 20 },
               animate: { opacity: 1, scale: 1, y: 0 },
-              exit: G === "fullscreen" ? { opacity: 0 } : { opacity: 0, scale: 0.95, y: 20 },
+              exit: J === "fullscreen" ? { opacity: 0 } : { opacity: 0, scale: 0.95, y: 20 },
               transition: { type: "spring", damping: 28, stiffness: 300 },
               style: ye,
-              className: `relative selection:bg-brand/30 ${de} ${G === "fullscreen" ? "w-full h-full" : Q === "mobile" ? "w-full max-w-md h-[90vh] max-h-[800px]" : "w-full max-w-xl h-[85vh] max-h-[900px]"}`,
-              children: /* @__PURE__ */ i(He, { className: `backdrop-blur-3xl ${G === "fullscreen" ? "w-full h-full rounded-none" : ""}`, theme: de, children: [
+              className: `relative selection:bg-brand/30 ${de} ${J === "fullscreen" ? "w-full h-full" : Q === "mobile" ? "w-full max-w-md h-[90vh] max-h-[800px]" : "w-full max-w-xl h-[85vh] max-h-[900px]"}`,
+              children: /* @__PURE__ */ i(We, { className: `backdrop-blur-3xl ${J === "fullscreen" ? "w-full h-full rounded-none" : ""}`, theme: de, children: [
                 te !== "FaceScan" && /* @__PURE__ */ e(
-                  We,
+                  Ye,
                   {
                     onClose: p,
                     showClose: te !== "AuthSelection",
@@ -3778,11 +3780,11 @@ const Je = ["AuthSelection", "Login", "PasskeyAuth", "PinVerification", "Passkey
                     toggleTheme: Ue
                   }
                 ),
-                /* @__PURE__ */ e("div", { className: "flex-1 flex flex-col relative overflow-hidden", children: /* @__PURE__ */ e(Me, { mode: "wait", children: /* @__PURE__ */ e(P.div, { className: "flex-1 flex flex-col", children: $e() }, te) }) }),
-                Je.includes(te) && /* @__PURE__ */ e(Ye, { children: /* @__PURE__ */ i("p", { className: "text-[11px] text-slate-500 font-medium", children: [
+                /* @__PURE__ */ e("div", { className: "flex-1 flex flex-col relative overflow-hidden", children: /* @__PURE__ */ e(Le, { mode: "wait", children: /* @__PURE__ */ e(P.div, { className: "flex-1 flex flex-col", children: $e() }, te) }) }),
+                Ke.includes(te) && /* @__PURE__ */ e(Ge, { children: /* @__PURE__ */ i("p", { className: "text-[11px] text-slate-500 font-medium", children: [
                   "By connecting, you agree to our",
                   " ",
-                  /* @__PURE__ */ e("a", { className: "text-brand hover:underline ml-1", href: D, target: "_blank", rel: "noopener noreferrer", children: "Terms of Service" }),
+                  /* @__PURE__ */ e("a", { className: "text-brand hover:underline ml-1", href: E, target: "_blank", rel: "noopener noreferrer", children: "Terms of Service" }),
                   " ",
                   "&",
                   " ",
@@ -3796,26 +3798,26 @@ const Je = ["AuthSelection", "Login", "PasskeyAuth", "PinVerification", "Passkey
     )
   ] });
 };
-async function fi(r, a = {}, n = 3e4) {
-  const l = new AbortController(), N = setTimeout(() => l.abort(), n);
+async function hi(r, a = {}, n = 3e4) {
+  const o = new AbortController(), I = setTimeout(() => o.abort(), n);
   try {
     return await fetch(r, {
       ...a,
-      signal: l.signal
+      signal: o.signal
     });
   } finally {
-    clearTimeout(N);
+    clearTimeout(I);
   }
 }
-class li extends Error {
+class di extends Error {
   constructor(a, n) {
     super(a), this.name = "ApiError", this.status = n;
   }
 }
-async function hi(r) {
+async function bi(r) {
   if (!r.ok) {
     const a = await r.json().catch(() => ({}));
-    throw new li(
+    throw new di(
       a.error || a.message || `Request failed with status ${r.status}`,
       r.status
     );
@@ -3823,24 +3825,24 @@ async function hi(r) {
   return r.json();
 }
 export {
-  li as ApiError,
+  di as ApiError,
   Mt as AuthSelectionScreen,
   pi as CasperIDModal,
-  ti as DocumentScanScreen,
-  Zt as FaceScanScreen,
-  Ye as Footer,
-  He as GlassContainer,
-  We as Header,
-  ni as IdentityVerifiedScreen,
-  Lt as LoginScreen,
-  ri as MintingIdentityScreen,
-  ci as PermissionsRequestScreen,
-  Jt as PinVerificationScreen,
-  ii as ReviewDataScreen,
-  Kt as SecurityUpgradeScreen,
-  Qt as VerifyIdentityChoiceScreen,
+  ii as DocumentScanScreen,
+  Xt as FaceScanScreen,
+  Ge as Footer,
+  We as GlassContainer,
+  Ye as Header,
+  si as IdentityVerifiedScreen,
+  Ot as LoginScreen,
+  ni as MintingIdentityScreen,
+  oi as PermissionsRequestScreen,
+  Kt as PinVerificationScreen,
+  ai as ReviewDataScreen,
+  Zt as SecurityUpgradeScreen,
+  ei as VerifyIdentityChoiceScreen,
   pi as default,
-  fi as fetchWithTimeout,
-  hi as handleApiResponse
+  hi as fetchWithTimeout,
+  bi as handleApiResponse
 };
 //# sourceMappingURL=index.mjs.map

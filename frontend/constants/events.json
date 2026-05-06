@@ -2,102 +2,95 @@
     "events": [
         {
             "id": "1",
-            "title": "CasperID Global Hackathon 2026",
-            "description": "Build the next generation of privacy-preserving applications using the MCI Algorithm. $50,000 in prizes.",
-            "fullContent": "The CasperID Global Hackathon is our flagship developer event. We are looking for innovative solutions that leverage the MCI (Multi-Context Identity) algorithm to solve real-world privacy challenges. Whether you are building DeFi protocols, social networks, or enterprise tools, CasperID provides the root identity layer you need.",
-            "date": "April 15 - May 15, 2026",
-            "location": "Global / Online",
+            "title": "CasperID Nigeria Hackathon",
+            "description": "Build with Identity — verify once, use everywhere. $1,000 prize pool and $25k cloud credits.",
+            "fullContent": "CasperID is building reusable digital identity — verify once, use everywhere. We’re inviting developers, builders, and teams to integrate CasperID into real applications and explore what’s possible when identity becomes portable.\n\n🎯 The Challenge\nBuild an application that integrates CasperID. Focus on:\n• Seamless onboarding (passwordless / KYC reuse)\n• Cross-platform identity & reputation\n• AI-assisted workflows using identity\n• Privacy-first data sharing\n\n💰 Rewards & Perks\n• $1,000 Prize Pool\n• PR & Media Exposure\n• 1:1 Mentorship with CasperID team\n• Up to $25,000 in Cloud Credits (AWS, Google Cloud, MongoDB, etc.)\n• Plus more rewards to be announced soon!",
+            "date": "Coming Soon",
+            "location": "Lagos, Nigeria / Online",
             "type": "Hackathon",
-            "status": "Upcoming",
-            "image": "https://picsum.photos/seed/hackathon/800/450",
-            "rewardPool": "$50,000",
-            "attendees": 1240,
+            "status": "Coming Soon",
+            "image": "https://drive.google.com/file/d/1Y39OGPaxvHl7nw_xm3QaVUZOM96tmLQZ/view?usp=sharing",
+            "rewardPool": "$1,000 + $25k Credits (More TBA)",
+            "attendees": 0,
+            "partners": [
+                { "name": "MongoDB", "logo": "https://www.vectorlogo.zone/logos/mongodb/mongodb-icon.svg" },
+                { "name": "Google Cloud", "logo": "https://www.vectorlogo.zone/logos/google_cloud/google_cloud-icon.svg" },
+                { "name": "AWS", "logo": "https://www.vectorlogo.zone/logos/amazon_aws/amazon_aws-icon.svg" },
+                { "name": "Casper Network", "logo": "https://cryptologos.cc/logos/casper-cspr-logo.svg" }
+            ],
             "agenda": [
                 {
-                    "time": "April 15",
+                    "time": "TBA",
                     "activity": "Opening Ceremony & Team Formation"
                 },
                 {
-                    "time": "April 20",
-                    "activity": "Technical Workshop: MCI Integration"
-                },
-                {
-                    "time": "May 10",
-                    "activity": "Submission Deadline"
-                },
-                {
-                    "time": "May 15",
-                    "activity": "Winners Announcement"
+                    "time": "TBA",
+                    "activity": "Technical Workshop: SDK Integration"
                 }
             ],
             "speakers": [
                 {
-                    "name": "Dr. Sarah Chen",
-                    "role": "Lead Cryptographer",
-                    "avatar": "https://api.dicebear.com/7.x/avataaars/svg?seed=Sarah"
-                },
-                {
-                    "name": "Marcus Thorne",
-                    "role": "Head of Engineering",
-                    "avatar": "https://api.dicebear.com/7.x/avataaars/svg?seed=Marcus"
+                    "name": "TBA",
+                    "role": "Core Developer",
+                    "avatar": "https://api.dicebear.com/7.x/avataaars/svg?seed=TBA"
                 }
             ]
         },
         {
             "id": "2",
-            "title": "Identity Governance Summit",
-            "description": "Join the core team to discuss the future of .cid registry and decentralized governance models.",
-            "fullContent": "Shape the future of decentralized identity. The Identity Governance Summit brings together stakeholders, developers, and community members to vote on key protocol upgrades and the long-term roadmap of the .cid registry.",
-            "date": "March 28, 2026",
-            "location": "Zug, Switzerland",
-            "type": "Governance",
-            "status": "Upcoming",
-            "image": "https://picsum.photos/seed/summit/800/450",
-            "attendees": 450,
+            "title": "CasperID Builders Meetup — Lagos",
+            "description": "Join the core team and fellow builders for an evening of technical discussions and networking in Lagos.",
+            "fullContent": "A local community event for developers and identity enthusiasts in Lagos, Nigeria.\n\n📍 What to Expect\n• Deep dive into CasperID Protocol updates\n• Exploration of real-world MCI use cases\n• Networking with local builders & identity experts\n• Drinks, snacks, and community discussions",
+            "date": "Coming Soon",
+            "location": "Lagos, Nigeria",
+            "type": "Meetup",
+            "status": "Coming Soon",
+            "image": "https://drive.google.com/file/d/1pnb7DvNXP9slH7X5dwCf8gY879g9Y1PY/view?usp=sharing",
+            "attendees": 0,
             "agenda": [
                 {
-                    "time": "09:00 AM",
-                    "activity": "Keynote: The State of Decentralized ID"
+                    "time": "TBA",
+                    "activity": "Registration & Networking"
                 },
                 {
-                    "time": "11:00 AM",
-                    "activity": "Panel: Privacy vs. Compliance"
+                    "time": "TBA",
+                    "activity": "CasperID Protocol Update"
                 },
                 {
-                    "time": "02:00 PM",
-                    "activity": "Governance Voting Session"
+                    "time": "TBA",
+                    "activity": "Community Q&A"
                 }
             ],
             "speakers": [
                 {
-                    "name": "Elena Rossi",
-                    "role": "Governance Lead",
-                    "avatar": "https://api.dicebear.com/7.x/avataaars/svg?seed=Elena"
+                    "name": "TBA",
+                    "role": "Community Lead",
+                    "avatar": "https://api.dicebear.com/7.x/avataaars/svg?seed=Nigeria"
                 }
             ]
         },
         {
             "id": "3",
-            "title": "Monthly Community Call #14",
+            "title": "Monthly Community Call #10",
             "description": "Product updates, roadmap reveal for Q2, and live Q&A with the engineering leads.",
             "fullContent": "Get the latest updates directly from the CasperID core team. We will be revealing the Q2 roadmap, demonstrating new MCI features, and answering your questions live.",
-            "date": "March 20, 2026",
+            "date": "TBA",
             "location": "Discord / YouTube",
             "type": "Community Call",
-            "status": "Upcoming",
-            "image": "https://picsum.photos/seed/call/800/450",
-            "attendees": 890,
+            "status": "Coming Soon",
+            "image": "https://drive.google.com/file/d/1hbI0zk20m9ITffMeAYsdRfsq0Qn_ghD5/view?usp=sharing",
+            "attendees": 0,
             "agenda": [
                 {
-                    "time": "04:00 PM",
+                    "time": "TBA",
                     "activity": "Q1 Recap & Q2 Roadmap Reveal"
                 },
                 {
-                    "time": "04:30 PM",
+                    "time": "TBA",
                     "activity": "Live Demo: MCI v2.0"
                 },
                 {
-                    "time": "05:00 PM",
+                    "time": "TBA",
                     "activity": "Community Q&A"
                 }
             ]
@@ -107,46 +100,61 @@
             "title": "ZK-Proof Workshop: Advanced MCI",
             "description": "Deep dive into implementing zero-knowledge proofs for enterprise identity solutions.",
             "fullContent": "A technical deep-dive into the mathematics and implementation of zero-knowledge proofs within the CasperID framework. Perfect for developers looking to build enterprise-grade privacy solutions.",
-            "date": "March 15, 2026",
+            "date": "Coming Soon",
             "location": "Online Workshop",
             "type": "Workshop",
-            "status": "Live",
-            "image": "https://picsum.photos/seed/workshop/800/450",
-            "attendees": 320,
+            "status": "Coming Soon",
+            "image": "https://drive.google.com/file/d/1pnb7DvNXP9slH7X5dwCf8gY879g9Y1PY/view?usp=sharing",
+            "attendees": 0,
             "agenda": [
                 {
-                    "time": "10:00 AM",
+                    "time": "TBA",
                     "activity": "Introduction to ZK-SNARKs"
                 },
                 {
-                    "time": "11:30 AM",
+                    "time": "TBA",
                     "activity": "MCI Circuit Design"
                 },
                 {
-                    "time": "01:00 PM",
+                    "time": "TBA",
                     "activity": "Hands-on Implementation"
                 }
             ]
         },
         {
             "id": "5",
-            "title": "Identity Pioneer Program v1",
-            "description": "Our first major community onboarding event. Exclusive badges for early adopters.",
-            "fullContent": "The Identity Pioneer Program celebrates our earliest supporters. By participating in this campaign, you earn exclusive on-chain badges that grant early access to future protocol features.",
-            "date": "Jan - Feb 2026",
-            "location": "Global",
+            "title": "CasperID Bug Bounty — Phase 1",
+            "description": "Help us secure the future of reusable digital identity. Up to 100,000 CSPR in rewards.",
+            "fullContent": "CasperID is building reusable digital identity — verify once, use everywhere. Security is foundational to that vision. We’re opening our system for Phase 1 of our bug bounty program.\n\n💰 Reward Pool\nUp to 100,000 CSPR available in rewards. Payouts depend on impact, severity, and report quality.\n\n🎯 Reward Structure\n• Critical → High-tier rewards\n• High → Mid-high rewards\n• Medium → Moderate rewards\n• Low → Small or no reward\n\n🎯 Scope\n• Authentication & session management\n• Identity verification flows\n• Data access & privacy boundaries\n• CasperID Connect & API endpoints\n\n📥 Submission\nInclude clear description, steps to reproduce, and proof (screenshots/logs).",
+            "date": "May 11 – 17, 2026",
+            "location": "Online / Testing Environment",
             "type": "Campaign",
-            "status": "Past",
-            "image": "https://picsum.photos/seed/pioneer/800/450",
-            "rewardPool": "Limited Badges"
+            "status": "Upcoming",
+            "image": "https://drive.google.com/file/d/1TiEzVQ9Ot7KLm1x6Oj7YdGIj2NsM9B-I/view?usp=sharing",
+            "rewardPool": "100,000 CSPR Pool",
+            "attendees": 0,
+            "agenda": [
+                {
+                    "time": "May 11",
+                    "activity": "Phase 1 Launch"
+                },
+                {
+                    "time": "May 14",
+                    "activity": "Mid-Phase Security Review"
+                },
+                {
+                    "time": "May 17",
+                    "activity": "Phase 1 Conclusion"
+                }
+            ]
         }
     ],
     "featuredCampaign": {
-        "title": "SEA Full Speed Scratch & Win",
-        "description": "Complete identity verification tasks to earn scratch attempts. Win exclusive .cid domains and CSPR tokens instantly.",
-        "rewardPool": "50,000 CSPR Pool",
-        "participants": "12k+ Participants",
-        "image": "https://picsum.photos/seed/casper-event/800/600"
+        "title": "CasperID Nigeria Hackathon",
+        "description": "The first major CasperID event in Nigeria. Build the future of portable identity and win from a $1,000 prize pool and $25k in cloud credits.",
+        "rewardPool": "$1k + $25k Credits",
+        "participants": "Coming Soon",
+        "image": "https://drive.google.com/file/d/1Y39OGPaxvHl7nw_xm3QaVUZOM96tmLQZ/view?usp=sharing"
     },
     "tasks": [
         {

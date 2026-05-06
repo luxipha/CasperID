@@ -4,9 +4,10 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
-import { Calendar, MapPin, Users, ArrowRight, Filter, Search, CheckCircle2, Trophy, Code, Mic2 } from 'lucide-react';
+import { Calendar, MapPin, Users, ArrowRight, Filter, Search, CheckCircle2, Trophy, Code, Mic2, Plus } from 'lucide-react';
 import { FooterMarketing } from "../FooterMarketing";
 import Logo from "../Logo";
+import { getDriveImageUrl } from '../../utils/media';
 
 gsap.registerPlugin(ScrollTrigger);
 
@@ -18,12 +19,13 @@ interface Event {
     date: string;
     location: string;
     type: 'Hackathon' | 'Community Call' | 'Governance' | 'Workshop' | 'Campaign';
-    status: 'Upcoming' | 'Live' | 'Past';
+    status: 'Upcoming' | 'Live' | 'Past' | 'Coming Soon';
     image: string;
     rewardPool?: string;
     attendees?: number;
     agenda?: { time: string; activity: string }[];
     speakers?: { name: string; role: string; avatar: string }[];
+    partners?: { name: string; logo: string }[];
 }
 
 interface CampaignData {
@@ -218,22 +220,22 @@ const ScratchCard: React.FC<ScratchCardProps> = ({ onComplete, attempts, onUseAt
                 {/* Result Layer */}
                 <div className="absolute inset-0 flex flex-col items-center justify-center p-6 text-center">
                     {!isStarted ? (
-                        <div className="text-text-muted-light dark:text-text-muted-dark">
+                        <div className="text-text-muted dark:text-text-muted-dark">
                             <span className="material-icons text-4xl mb-2 opacity-20">redeem</span>
                             <p className="text-sm font-bold uppercase tracking-widest">Ready to scratch</p>
                         </div>
                     ) : result?.isWin ? (
                         <div className="animate-fade-scale">
                             <p className="text-xs font-black text-primary uppercase tracking-widest mb-1">{result.rarity} Reward</p>
-                            <p className="text-2xl font-black text-text-light dark:text-white mb-4">{result.label}</p>
+                            <p className="text-2xl font-black text-text-main dark:text-white mb-4">{result.label}</p>
                             <button className="px-6 py-2 bg-emerald-500 text-white rounded-xl font-bold text-sm hover:bg-emerald-600 transition-all">
                                 Claim Reward
                             </button>
                         </div>
                     ) : (
                         <div className="animate-fade-scale">
-                            <p className="text-xl font-black text-text-light dark:text-white">Better luck next time!</p>
-                            <p className="text-sm text-text-muted-light dark:text-text-muted-dark mt-1">Complete more tasks for attempts.</p>
+                            <p className="text-xl font-black text-text-main dark:text-white">Better luck next time!</p>
+                            <p className="text-sm text-text-muted dark:text-text-muted-dark mt-1">Complete more tasks for attempts.</p>
                         </div>
                     )}
                 </div>
@@ -295,13 +297,13 @@ const TaskItem: React.FC<{
         <div className="bg-white dark:bg-surface-dark border border-gray-100 dark:border-white/5 rounded-2xl overflow-hidden flex flex-col md:flex-row shadow-sm">
             <div className="md:w-48 bg-gray-50 dark:bg-black/20 p-8 flex flex-col items-center justify-center border-b md:border-b-0 md:border-r border-gray-100 dark:border-white/5">
                 <span className="text-primary text-3xl font-black mb-1">+{reward}</span>
-                <span className="text-[10px] font-black text-text-muted-light dark:text-text-muted-dark uppercase tracking-widest text-center">Scratch attempts</span>
+                <span className="text-[10px] font-black text-text-muted dark:text-text-muted-dark uppercase tracking-widest text-center">Scratch attempts</span>
             </div>
             <div className="flex-grow p-8">
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
                     <div>
-                        <h4 className="text-xl font-bold text-text-light dark:text-white mb-1">{title}</h4>
-                        <p className="text-sm text-text-muted-light dark:text-text-muted-dark">{desc}</p>
+                        <h4 className="text-xl font-bold text-text-main dark:text-white mb-1">{title}</h4>
+                        <p className="text-sm text-text-muted dark:text-text-muted-dark">{desc}</p>
                     </div>
                     <button className="px-6 py-2 bg-primary text-white rounded-lg font-bold text-sm hover:scale-105 transition-all shadow-md shadow-primary/10">
                         Go
@@ -309,7 +311,7 @@ const TaskItem: React.FC<{
                 </div>
 
                 <div className="space-y-2">
-                    <div className="flex justify-between text-[10px] font-black text-text-muted-light dark:text-text-muted-dark uppercase tracking-widest">
+                    <div className="flex justify-between text-[10px] font-black text-text-muted dark:text-text-muted-dark uppercase tracking-widest">
                         <span>Progress</span>
                         <span>{current} / {total} {unit}</span>
                     </div>
@@ -461,7 +463,7 @@ const EventsPage: React.FC = () => {
                         <h1 className="text-5xl md:text-8xl font-black mb-8 tracking-tighter leading-none">
                             CasperID <span className="text-primary italic font-serif">Events.</span>
                         </h1>
-                        <p className="text-xl text-text-muted-light dark:text-text-muted-dark font-medium leading-relaxed mb-12">
+                        <p className="text-xl text-text-muted dark:text-text-muted-dark font-medium leading-relaxed mb-12">
                             Join the global movement for decentralized identity. From technical hackathons to community summits, find your place in the CasperID ecosystem.
                         </p>
                     </motion.div>
@@ -481,7 +483,7 @@ const EventsPage: React.FC = () => {
                                 <h2 className="text-4xl md:text-5xl font-black mb-6 tracking-tight leading-tight">
                                     {CAMPAIGN.title.split(' ').slice(0, -3).join(' ')} <br /><span className="text-primary">{CAMPAIGN.title.split(' ').slice(-3).join(' ')}</span>
                                 </h2>
-                                <p className="text-lg text-text-muted-light dark:text-text-muted-dark mb-8 leading-relaxed">
+                                <p className="text-lg text-text-muted dark:text-text-muted-dark mb-8 leading-relaxed">
                                     {CAMPAIGN.description}
                                 </p>
 
@@ -511,7 +513,7 @@ const EventsPage: React.FC = () => {
                                 <div className="relative group">
                                     <div className="absolute -inset-4 bg-gradient-to-tr from-primary/20 to-secondary/20 rounded-[2.5rem] blur-2xl opacity-0 group-hover:opacity-100 transition duration-1000"></div>
                                     <img
-                                        src={CAMPAIGN.image}
+                                        src={getDriveImageUrl(CAMPAIGN.image)}
                                         alt={CAMPAIGN.title}
                                         className="relative z-10 rounded-[2rem] border border-white dark:border-white/10 shadow-2xl transition-transform duration-700 group-hover:scale-[1.02]"
                                         referrerPolicy="no-referrer"
@@ -527,12 +529,12 @@ const EventsPage: React.FC = () => {
                     <div className="flex flex-col md:flex-row md:items-center justify-between gap-8 mb-16">
                         <div>
                             <h2 className="text-4xl font-black tracking-tight mb-2">Events Directory</h2>
-                            <p className="text-text-muted-light dark:text-text-muted-dark font-medium">Browse and apply for upcoming ecosystem activities.</p>
+                            <p className="text-text-muted dark:text-text-muted-dark font-medium">Browse and apply for upcoming ecosystem activities.</p>
                         </div>
 
                         <div className="flex flex-col sm:flex-row items-center gap-4">
                             <div className="relative w-full sm:w-64">
-                                <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-text-muted-light" />
+                                <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-text-muted" />
                                 <input
                                     type="text"
                                     placeholder="Search events..."
@@ -546,7 +548,7 @@ const EventsPage: React.FC = () => {
                                     <button
                                         key={tab}
                                         onClick={() => setActiveTab(tab as any)}
-                                        className={`px-4 py-2 rounded-lg text-xs font-black uppercase tracking-widest transition-all ${activeTab === tab ? 'bg-white dark:bg-surface-dark text-primary shadow-sm' : 'text-text-muted-light hover:bg-white dark:hover:bg-white/5 hover:text-primary hover:shadow-sm'}`}
+                                        className={`px-4 py-2 rounded-lg text-xs font-black uppercase tracking-widest transition-all ${activeTab === tab ? 'bg-white dark:bg-surface-dark text-primary shadow-sm' : 'text-text-muted hover:bg-white dark:hover:bg-white/5 hover:text-primary hover:shadow-sm'}`}
                                     >
                                         {tab}
                                     </button>
@@ -568,14 +570,17 @@ const EventsPage: React.FC = () => {
                                 >
                                     <div className="relative h-56 overflow-hidden cursor-pointer" onClick={() => setSelectedEventId(event.id)}>
                                         <motion.img
-                                            src={event.image}
+                                            src={getDriveImageUrl(event.image)}
                                             alt={event.title}
                                             className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
                                             referrerPolicy="no-referrer"
                                         />
                                         <div className="absolute top-4 left-4">
-                                            <span className={`px-3 py-1 rounded-lg backdrop-blur-md border border-white/20 text-[10px] font-black uppercase tracking-widest ${event.status === 'Live' ? 'bg-emerald-500/80 text-white' :
-                                                event.status === 'Upcoming' ? 'bg-primary/80 text-white' : 'bg-gray-500/80 text-white'
+                                            <span className={`px-3 py-1 rounded-lg backdrop-blur-md border border-white/20 text-[10px] font-black uppercase tracking-widest ${
+                                                event.status === 'Live' ? 'bg-emerald-500/80 text-white' :
+                                                event.status === 'Upcoming' ? 'bg-primary/80 text-white' : 
+                                                event.status === 'Coming Soon' ? 'bg-amber-500/80 text-white' :
+                                                'bg-gray-500/80 text-white'
                                                 }`}>
                                                 {event.status}
                                             </span>
@@ -594,16 +599,16 @@ const EventsPage: React.FC = () => {
                                         >
                                             {event.title}
                                         </h3>
-                                        <p className="text-sm text-text-muted-light dark:text-text-muted-dark leading-relaxed mb-8 line-clamp-2">
+                                        <p className="text-sm text-text-muted dark:text-text-muted-dark leading-relaxed mb-8 line-clamp-2">
                                             {event.description}
                                         </p>
 
                                         <div className="space-y-4 mb-8">
-                                            <div className="flex items-center gap-3 text-sm font-bold text-text-muted-light dark:text-text-muted-dark">
+                                            <div className="flex items-center gap-3 text-sm font-bold text-text-muted dark:text-text-muted-dark">
                                                 <Calendar className="w-4 h-4 text-primary" />
                                                 {event.date}
                                             </div>
-                                            <div className="flex items-center gap-3 text-sm font-bold text-text-muted-light dark:text-text-muted-dark">
+                                            <div className="flex items-center gap-3 text-sm font-bold text-text-muted dark:text-text-muted-dark">
                                                 <MapPin className="w-4 h-4 text-primary" />
                                                 {event.location}
                                             </div>
@@ -624,14 +629,22 @@ const EventsPage: React.FC = () => {
                                                         </div>
                                                     ))}
                                                 </div>
-                                                <span className="text-[10px] font-black text-text-muted-light uppercase tracking-widest">
+                                                <span className="text-[10px] font-black text-text-muted uppercase tracking-widest">
                                                     {event.attendees ? `${(event.attendees / 1000).toFixed(1)}k+` : 'Limited'}
                                                 </span>
                                             </div>
 
                                             <button
-                                                onClick={() => setShowApplyModal(event.id)}
-                                                className="px-6 py-2.5 bg-gray-900 dark:bg-white text-white dark:text-black rounded-xl font-black text-xs uppercase tracking-widest hover:scale-105 transition-all shadow-lg"
+                                                disabled={event.status === 'Coming Soon'}
+                                                onClick={() => {
+                                                    if (event.status === 'Coming Soon') return;
+                                                    setShowApplyModal(event.id);
+                                                }}
+                                                className={`px-6 py-2.5 rounded-xl font-black text-xs uppercase tracking-widest transition-all ${
+                                                    event.status === 'Coming Soon'
+                                                        ? 'bg-gray-100 text-gray-400 cursor-not-allowed shadow-none'
+                                                        : 'bg-gray-900 dark:bg-white text-white dark:text-black hover:scale-105 shadow-lg'
+                                                }`}
                                             >
                                                 Apply Now
                                             </button>
@@ -647,7 +660,7 @@ const EventsPage: React.FC = () => {
                 <section id="bounties-section" className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-32 text-center border-t border-gray-100 dark:border-white/5">
                     <div className="max-w-3xl mx-auto mb-20">
                         <h2 className="text-5xl font-black mb-6 tracking-tighter">Active Bounties</h2>
-                        <p className="text-xl text-text-muted-light dark:text-text-muted-dark font-medium">Complete tasks to earn scratch attempts and win instant rewards.</p>
+                        <p className="text-xl text-text-muted dark:text-text-muted-dark font-medium">Complete tasks to earn scratch attempts and win instant rewards.</p>
                     </div>
 
                     <div className="grid lg:grid-cols-2 gap-12 items-start text-left">
@@ -673,7 +686,7 @@ const EventsPage: React.FC = () => {
                             />
                             <div className="mt-8 flex items-center justify-between">
                                 <div>
-                                    <p className="text-xs font-black text-text-muted-light uppercase tracking-widest mb-1">Your Balance</p>
+                                    <p className="text-xs font-black text-text-muted uppercase tracking-widest mb-1">Your Balance</p>
                                     <p className="text-2xl font-black text-primary">{attempts} Attempts</p>
                                 </div>
                                 <button className="px-6 py-3 bg-primary/10 text-primary rounded-xl font-black text-xs uppercase tracking-widest hover:bg-primary/20 transition-all">
@@ -698,13 +711,13 @@ const EventsPage: React.FC = () => {
 
                             <motion.div
                                 layoutId={`event-card-${selectedEvent.id}`}
-                                className="relative w-full max-w-6xl h-full md:h-[85vh] bg-white dark:bg-surface-dark md:rounded-[3rem] overflow-hidden shadow-2xl border border-white/10 flex flex-col md:flex-row"
+                                className="relative w-full max-w-6xl h-full md:h-[85vh] bg-white md:rounded-[3rem] overflow-hidden shadow-2xl border border-gray-100 flex flex-col md:flex-row"
                             >
                                 {/* Left Side: Visual & Identity */}
                                 <div className="md:w-2/5 h-64 md:h-full relative overflow-hidden">
                                     <motion.img
                                         layoutId={`event-image-${selectedEvent.id}`}
-                                        src={selectedEvent.image}
+                                        src={getDriveImageUrl(selectedEvent.image)}
                                         alt={selectedEvent.title}
                                         className="w-full h-full object-cover"
                                         referrerPolicy="no-referrer"
@@ -742,7 +755,7 @@ const EventsPage: React.FC = () => {
                                     <div className="max-w-2xl mx-auto">
                                         <div className="mb-12">
                                             <h3 className="text-xs font-black text-primary uppercase tracking-[0.2em] mb-4">The Mission</h3>
-                                            <p className="text-xl text-text-light dark:text-white font-medium leading-relaxed">
+                                            <p className="text-xl text-text-main font-medium leading-relaxed whitespace-pre-line">
                                                 {selectedEvent.fullContent || selectedEvent.description}
                                             </p>
                                         </div>
@@ -753,12 +766,12 @@ const EventsPage: React.FC = () => {
                                                 <div className="space-y-8">
                                                     {selectedEvent.agenda.map((item, i) => (
                                                         <div key={i} className="flex gap-6">
-                                                            <div className="w-24 shrink-0 text-sm font-black text-text-muted-light dark:text-text-muted-dark uppercase tracking-widest pt-1">
+                                                            <div className="w-24 shrink-0 text-sm font-black text-text-muted uppercase tracking-widest pt-1">
                                                                 {item.time}
                                                             </div>
                                                             <div className="relative pl-6 border-l border-gray-100 dark:border-white/10">
                                                                 <div className="absolute top-2 -left-[5px] w-2 h-2 rounded-full bg-primary"></div>
-                                                                <p className="text-lg font-bold text-text-light dark:text-white">{item.activity}</p>
+                                                                <p className="text-lg font-bold text-text-main">{item.activity}</p>
                                                             </div>
                                                         </div>
                                                     ))}
@@ -771,11 +784,11 @@ const EventsPage: React.FC = () => {
                                                 <h3 className="text-xs font-black text-primary uppercase tracking-[0.2em] mb-8">Speakers</h3>
                                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                                                     {selectedEvent.speakers.map((speaker, i) => (
-                                                        <div key={i} className="flex items-center gap-4 p-4 rounded-2xl bg-gray-50 dark:bg-black/20 border border-gray-100 dark:border-white/5">
+                                                        <div key={i} className="flex items-center gap-4 p-4 rounded-2xl bg-gray-50 border border-gray-100">
                                                             <img src={speaker.avatar} alt={speaker.name} className="w-12 h-12 rounded-full bg-primary/10" />
                                                             <div>
-                                                                <p className="font-bold text-text-light dark:text-white">{speaker.name}</p>
-                                                                <p className="text-xs text-text-muted-light dark:text-text-muted-dark">{speaker.role}</p>
+                                                                <p className="font-bold text-text-main">{speaker.name}</p>
+                                                                <p className="text-xs text-text-muted">{speaker.role}</p>
                                                             </div>
                                                         </div>
                                                     ))}
@@ -783,15 +796,41 @@ const EventsPage: React.FC = () => {
                                             </div>
                                         )}
 
+                                        {selectedEvent.partners && (
+                                            <div className="mb-12">
+                                                <h3 className="text-xs font-black text-primary uppercase tracking-[0.2em] mb-8">Partners</h3>
+                                                <div className="grid grid-cols-2 sm:grid-cols-4 gap-6">
+                                                    {selectedEvent.partners.map((partner, i) => (
+                                                        <div key={i} className="flex flex-col items-center justify-center p-6 rounded-2xl bg-gray-50 border border-gray-100 hover:scale-105 transition-all group">
+                                                            <img src={partner.logo} alt={partner.name} className="w-10 h-10 object-contain grayscale group-hover:grayscale-0 transition-all mb-3" />
+                                                            <p className="text-[10px] font-black uppercase tracking-widest text-text-muted text-center leading-tight">{partner.name}</p>
+                                                        </div>
+                                                    ))}
+                                                    <div className="flex flex-col items-center justify-center p-6 rounded-2xl border-2 border-dashed border-gray-200 hover:border-primary/50 transition-all group cursor-pointer bg-gray-50/50">
+                                                        <div className="w-10 h-10 rounded-full bg-primary/5 flex items-center justify-center text-primary mb-3 group-hover:scale-110 transition-transform">
+                                                            <Plus className="w-6 h-6" />
+                                                        </div>
+                                                        <p className="text-[10px] font-black uppercase tracking-widest text-primary text-center">Joining?</p>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        )}
+
                                         <div className="pt-12 border-t border-gray-100 dark:border-white/10 flex flex-col sm:flex-row items-center gap-6">
                                             <button
+                                                disabled={selectedEvent.status.trim() === 'Coming Soon'}
                                                 onClick={() => {
+                                                    if (selectedEvent.status.trim() === 'Coming Soon') return;
                                                     setShowApplyModal(selectedEvent.id);
                                                     setSelectedEventId(null);
                                                 }}
-                                                className="w-full sm:w-auto px-12 py-4 bg-primary text-white rounded-2xl font-black text-lg hover:scale-105 transition-all shadow-xl shadow-primary/20"
+                                                className={`w-full sm:w-auto px-12 py-4 rounded-2xl font-black text-lg transition-all shadow-xl ${
+                                                    selectedEvent.status.trim() === 'Coming Soon'
+                                                        ? 'bg-gray-100 text-gray-400 cursor-not-allowed shadow-none'
+                                                        : 'bg-primary text-white hover:scale-105 shadow-primary/20'
+                                                }`}
                                             >
-                                                Apply Now
+                                                {selectedEvent.status.trim() === 'Coming Soon' ? 'Applications Opening Soon' : 'Apply Now'}
                                             </button>
                                             <div className="flex gap-4">
                                                 <button className="p-4 rounded-xl border border-gray-200 dark:border-white/10 hover:bg-gray-50 dark:hover:bg-white/5 transition-all">

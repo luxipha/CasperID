@@ -1501,6 +1501,11 @@ const businessAppSchema = new mongoose.Schema({
         required: true
     }, // bcrypt hash — plaintext is never stored
     allowed_origins: [{ type: String }], // CORS allowlist
+    android_digital_assets: [{
+        package_name: { type: String, required: true },
+        sha256_fingerprints: [{ type: String }], // Array of SHA256 cert fingerprints
+        created_at: { type: Date, default: Date.now }
+    }], // Android Digital Asset Links for passkey support
     environment: {
         type: String,
         enum: ['sandbox', 'production'],
@@ -1526,6 +1531,8 @@ const businessAppSchema = new mongoose.Schema({
         layout: { type: String, enum: ['auto', 'modal', 'fullscreen'], default: 'auto' },
         platform: { type: String, enum: ['desktop', 'mobile'], default: 'desktop' },
         language: { type: String, default: 'EN' },
+        requiredTier: { type: String, enum: ['L1', 'L2', 'L3'], default: 'L1' },
+        proofs: [{ type: String }],
         updated_at: { type: Date, default: Date.now }
     },
     website_url: {

@@ -123,6 +123,9 @@ export default function LandingPage({ }: LandingPageProps) {
                 <a href="#developers" className="hover:text-slate-900 transition">
                   Business
                 </a>
+                <a onClick={() => navigate('/events')} className="hover:text-slate-900 transition cursor-pointer">
+                  Events
+                </a>
                 <a
                   href="https://www.anra.rest"
                   target="_blank"
@@ -341,6 +344,7 @@ export default function LandingPage({ }: LandingPageProps) {
             <a onClick={() => { setIsMenuOpen(false); handleNavigate('main'); }} href="#blogs" className="hover:text-indigo-600 transition">Resources</a>
             <a onClick={() => setIsMenuOpen(false)} href="#roadmap" className="hover:text-indigo-600 transition">Roadmap</a>
             <a onClick={() => setIsMenuOpen(false)} href="#developers" className="hover:text-indigo-600 transition">Business</a>
+            <a onClick={() => { setIsMenuOpen(false); navigate('/events'); }} className="hover:text-indigo-600 transition cursor-pointer">Events</a>
             <a
               href="https://www.anra.rest"
               target="_blank"

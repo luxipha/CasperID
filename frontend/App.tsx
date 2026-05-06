@@ -66,6 +66,7 @@ import AffiliatePage from './components/landing/AffiliatePage';
 // Removed CasperOS ChangelogPage import
 import AdminPage from './admin/page';
 import { CnsSuccess } from './components/CnsSuccess';
+import EventsPage from './components/landing/EventsPage';
 
 const PublicProfileContainerWrapper: React.FC = () => {
   const { slug } = useParams<{ slug: string }>();
@@ -98,7 +99,7 @@ const App: React.FC = () => {
             '/share-view', '/verification-center', '/explore', '/health',
             '/pair', '/auth', '/integrations', '/mobile', '/null', '/business',
             '/careers', '/apply-success',
-            '/affiliate', '/p', '/did', '/cns-success'
+            '/affiliate', '/p', '/did', '/cns-success', '/events'
         ];
         return sysPaths.includes(p) ||
             p.startsWith('/verify/') ||
@@ -112,7 +113,8 @@ const App: React.FC = () => {
             p.startsWith('/careers/') ||
             p.startsWith('/profile/') ||
             p.startsWith('/p/') ||
-            p.startsWith('/did/');
+            p.startsWith('/did/') ||
+            p.startsWith('/events/');
     };
 
   const location = useLocation();
@@ -132,6 +134,7 @@ const App: React.FC = () => {
     if (path === '/apply-success') return 'apply-success';
     if (path === '/affiliate') return 'affiliate';
     if (path === '/profile' || path.startsWith('/profile/')) return 'public-profile';
+    if (path === '/events' || path.startsWith('/events/')) return 'events';
     if (path === '/cns-success') return 'cns-success';
 
     // Check for Subdomain Profile (e.g. alice.casperid.com)
@@ -292,7 +295,7 @@ const App: React.FC = () => {
     if (user) {
       // Boot with user data if authenticated
       Intercom({
-        app_id: import.meta.env.VITE_INTERCOM_APP_ID || 'qh9dngzh',
+        app_id: (import.meta as any).env.VITE_INTERCOM_APP_ID || 'qh9dngzh',
         name: user.display_name || user.cns_name || undefined,
         email: user.email || undefined,
         user_id: user.wallet || undefined,
@@ -301,7 +304,7 @@ const App: React.FC = () => {
     } else {
       // Boot without user data for anonymous visitors
       Intercom({
-        app_id: import.meta.env.VITE_INTERCOM_APP_ID || 'qh9dngzh',
+        app_id: (import.meta as any).env.VITE_INTERCOM_APP_ID || 'qh9dngzh',
       });
     }
   }, [user]);
@@ -429,7 +432,7 @@ const App: React.FC = () => {
     setCurrentView('otp-verify');
   }, []);
 
-  const handleBiometricLogin = useCallback((email: string) => {
+  const handleBiometricLogin = useCallback((email?: string) => {
     if (email) {
       setOnboardingEmail(email);
       setCurrentView('handoff');
@@ -635,6 +638,8 @@ const App: React.FC = () => {
         return <ApplySuccessPage onReturnToCareers={() => navigate('/careers')} />;
       case 'affiliate':
         return <AffiliatePage />;
+      case 'events':
+        return <EventsPage />;
       case 'cns-success':
         return <CnsSuccess />;
       case 'landing':
@@ -730,7 +735,7 @@ const App: React.FC = () => {
     : currentView;
 
   // Don't show layout chrome during onboarding, public profile view, landing, admin, or credential verification
-  const isOnboarding = currentView === 'public-profile' || currentView === 'landing' || currentView === 'admin' || currentView === 'verify-credential' || currentView === 'verify-zk-claims' || currentView === 'verify-share-data' || currentView === 'auth-entry' || currentView === 'otp-verify' || currentView === 'onboarding-start' || currentView === 'onboarding-progress' || currentView === 'pairing' || currentView === 'handoff' || currentView.startsWith('business');
+  const isOnboarding = currentView === 'public-profile' || currentView === 'events' || currentView === 'landing' || currentView === 'admin' || currentView === 'verify-credential' || currentView === 'verify-zk-claims' || currentView === 'verify-share-data' || currentView === 'auth-entry' || currentView === 'otp-verify' || currentView === 'onboarding-start' || currentView === 'onboarding-progress' || currentView === 'pairing' || currentView === 'handoff' || currentView.startsWith('business');
 
   if (isLoading) {
     return <AppLoadingSplash />;
@@ -748,6 +753,7 @@ const App: React.FC = () => {
         <Route path="/careers/:id" element={<CareerDetailPage onBack={() => navigate('/careers')} onApplySuccess={(jobTitle) => navigate('/apply-success', { state: { jobTitle } })} />} />
         <Route path="/apply-success" element={<ApplySuccessPage onReturnToCareers={() => navigate('/careers')} />} />
         <Route path="/affiliate" element={<AffiliatePage />} />
+        <Route path="/events" element={<EventsPage />} />
         <Route path="/profile/:slug" element={<PublicProfileContainerWrapper />} />
         <Route path="/did/*" element={<DIDProfileWrapper />} />
         <Route path="/p/:slug" element={<PRouteRedirect />} />

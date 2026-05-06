@@ -17,6 +17,7 @@ interface AuthSelectionProps {
     onError?: (error: string) => void;
     language?: string;
     platform?: 'desktop' | 'mobile';
+    logoUrl?: string;
 }
 
 const AuthSelection: React.FC<AuthSelectionProps> = ({
@@ -24,7 +25,8 @@ const AuthSelection: React.FC<AuthSelectionProps> = ({
     onExtensionSuccess,
     onError,
     language = 'EN',
-    platform = 'desktop'
+    platform = 'desktop',
+    logoUrl
 }) => {
     const [isCheckingExtension, setIsCheckingExtension] = useState(false);
     const [extensionInstalled, setExtensionInstalled] = useState<boolean | null>(null);
@@ -148,8 +150,12 @@ const AuthSelection: React.FC<AuthSelectionProps> = ({
             <div className="text-center space-y-3">
                 <div className="relative w-24 h-24 mx-auto mb-6">
                     <div className="absolute inset-0 bg-brand-20 blur-2xl rounded-full" />
-                    <div className="relative w-full h-full glass-container flex items-center justify-center rounded-2xl border border-brand-30">
-                        <Fingerprint className="w-10 h-10 text-brand" />
+                    <div className="relative w-full h-full glass-container flex items-center justify-center rounded-2xl border border-brand-30 overflow-hidden">
+                        {logoUrl ? (
+                            <img src={logoUrl} alt="App Logo" className="w-full h-full object-cover" />
+                        ) : (
+                            <Fingerprint className="w-10 h-10 text-brand" />
+                        )}
                     </div>
                 </div>
                 <h1 className="text-2xl font-extrabold leading-tight tracking-tight text-main">{t('welcome_back', language)}</h1>

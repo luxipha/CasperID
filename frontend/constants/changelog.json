@@ -1,5 +1,75 @@
 [
   {
+    "version": "3.0.0",
+    "title": "Android Passkey Support & Multi-Tenant Architecture",
+    "date": "May 6, 2026",
+    "status": "Active Feature Release",
+    "highlight": {
+      "title": "Native Android Passkey Integration",
+      "description": "Launched Android Digital Asset Links with per-app configuration, enabling seamless passkey authentication for React Native and native Android apps.",
+      "type": "sparkles"
+    },
+    "summary": "This milestone release introduces comprehensive Android passkey support through Digital Asset Links, transforming CasperID into a truly multi-tenant platform where each business configures their own Android apps. We've also fixed critical documentation gaps around Origin header validation and expanded our documentation with complete React Native integration guides.",
+    "categories": [
+      {
+        "id": "v300-android",
+        "title": "Android Digital Asset Links",
+        "items": [
+          "Multi-Tenant Android Configuration: Each business app can now configure multiple Android packages with SHA256 fingerprints through the dashboard.",
+          "Dynamic Asset Links Endpoint: /.well-known/assetlinks.json now aggregates all active business apps' Android configurations from the database.",
+          "Business Dashboard UI: Added 'Android Configuration' section to Integration Detail page with add/remove functionality and helpful keytool commands.",
+          "Per-App Package Management: Businesses can configure debug and release certificate fingerprints independently for seamless development-to-production workflows.",
+          "Real-Time Validation: Android apps are instantly authorized for passkey operations after configuration saves."
+        ]
+      },
+      {
+        "id": "v300-backend",
+        "title": "Backend Architecture Updates",
+        "items": [
+          "Database Schema: Added android_digital_assets array to BusinessApp model with package_name and sha256_fingerprints fields.",
+          "API Enhancement: PATCH /api/business/apps/:app_id now handles android_digital_assets with validation and sanitization.",
+          "Origin Validation: Passkey finish endpoints now validate Origin header against BusinessApp.allowed_origins for security.",
+          "Aggregation Logic: Public assetlinks.json endpoint queries active apps and deduplicates package names automatically.",
+          "Removed Hardcoding: Eliminated all hardcoded environment variables for Android configuration in favor of database-driven multi-tenancy."
+        ]
+      },
+      {
+        "id": "v300-docs",
+        "title": "Documentation Overhaul",
+        "items": [
+          "React Native Integration Guide: Complete 6-step guide covering OTP auth, passkey registration, and authentication for mobile apps.",
+          "Android Setup Documentation: Step-by-step guide with keytool commands, dashboard configuration, and Google validation tools.",
+          "Origin Header Requirement: Added critical missing documentation for Origin header validation in passkey finish endpoints.",
+          "Common Mistakes Section: Documented trailing slashes, protocol mismatches, and port number issues that cause verification failures.",
+          "Mobile Integration Category: New documentation section in Business Docs with nested Android Setup guide.",
+          "Code Examples Updated: All passkey examples now include proper Origin header and reference dashboard configuration."
+        ]
+      },
+      {
+        "id": "v300-security",
+        "title": "Security & Validation",
+        "items": [
+          "SHA256 Fingerprint Normalization: Backend automatically uppercases and trims certificate fingerprints for consistency.",
+          "Package Name Validation: Filters empty package names and validates format before saving to database.",
+          "Origin Whitelist Enforcement: WebAuthn verification now strictly validates Origin header against allowed_origins per business app.",
+          "1-Hour Cache TTL: Asset links endpoint uses shorter cache duration (1hr vs 24hr) for faster configuration updates.",
+          "Cross-Origin Security: Extended existing CORS logic to support passkey operations across business apps' allowed origins."
+        ]
+      },
+      {
+        "id": "v300-ux",
+        "title": "User Experience Improvements",
+        "items": [
+          "Interactive Modal: Beautiful modal UI for adding Android apps with package name and fingerprint inputs.",
+          "Inline Commands: Keytool commands displayed directly in the add modal for easy copy-paste.",
+          "Visual Feedback: Shows fingerprint count and displays each fingerprint in monospace font for easy verification.",
+          "Delete Protection: One-click removal of Android packages with visual confirmation.",
+          "Help Text: Context-aware descriptions explaining Digital Asset Links and their importance for passkey support."
+        ]
+      }
+    ]
+  },
+  {
     "version": "2.9.0",
     "title": "Layer 3 Verification & SDK Theme Fixes",
     "date": "May 2, 2026",

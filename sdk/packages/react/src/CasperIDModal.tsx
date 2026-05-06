@@ -345,16 +345,19 @@ export const CasperIDModal: React.FC<CasperIDModalProps> = ({
     const proceedBasedOnTier = useCallback((currentTier?: string) => {
         const tier = currentTier || 'layer_0';
 
+        // Fallback to cloud-configured tier if prop is missing
+        const effectiveRequiredTier = requiredTier || appMetadata?.required_tier;
+
         // If no specific tier required, or user meets requirement, go to success
-        if (!requiredTier) {
+        if (!effectiveRequiredTier) {
             go('IdentityVerified');
             return;
         }
 
-        // Map requiredTier to layer format
-        const requiredLayer = requiredTier === 'L1' ? 'layer_1' :
-            requiredTier === 'L2' ? 'layer_2' :
-                requiredTier === 'L3' ? 'layer_3' : 'layer_1';
+        // Map effectiveRequiredTier to layer format
+        const requiredLayer = effectiveRequiredTier === 'L1' ? 'layer_1' :
+            effectiveRequiredTier === 'L2' ? 'layer_2' :
+                effectiveRequiredTier === 'L3' ? 'layer_3' : 'layer_1';
 
         // Check if user already meets the requirement
         const tierOrder = ['layer_0', 'layer_1', 'layer_2', 'layer_3'];
@@ -561,6 +564,7 @@ export const CasperIDModal: React.FC<CasperIDModalProps> = ({
                         onError={handleError}
                         language={language}
                         platform={finalPlatform}
+                        logoUrl={logoUrl || appMetadata?.logo_url}
                     />
                 );
             case 'Login':

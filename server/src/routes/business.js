@@ -198,7 +198,7 @@ router.patch('/apps/:app_id', requireAuth, async (req, res) => {
     try {
         const userId = req.user.userId || req.user.wallet;
         const { app_id } = req.params;
-        const { name, allowed_origins, environment, website_url, description, listing_status } = req.body;
+        const { name, allowed_origins, android_digital_assets, environment, website_url, description, listing_status, sdk_config } = req.body;
 
         const app = await BusinessApp.findOne({ app_id, owner_user_id: userId, active: true });
         if (!app) {
@@ -213,11 +213,35 @@ router.patch('/apps/:app_id', requireAuth, async (req, res) => {
             } else {
                 app.allowed_origins = allowed_origins;
             }
+            app.markModified('allowed_origins');
+        }
+        if (android_digital_assets !== undefined) {
+            // Validate and sanitize Android Digital Asset Links
+            if (Array.isArray(android_digital_assets)) {
+                app.android_digital_assets = android_digital_assets.map(asset => ({
+                    package_name: asset.package_name?.trim(),
+                    sha256_fingerprints: Array.isArray(asset.sha256_fingerprints)
+                        ? asset.sha256_fingerprints.map(fp => fp.trim().toUpperCase()).filter(Boolean)
+                        : [],
+                    created_at: asset.created_at || new Date()
+                })).filter(asset => asset.package_name);
+            } else {
+                app.android_digital_assets = [];
+            }
+            app.markModified('android_digital_assets');
         }
         if (environment && ['sandbox', 'production'].includes(environment)) app.environment = environment;
         if (website_url !== undefined) app.website_url = website_url.trim();
         if (description !== undefined) app.description = description.trim().slice(0, 300);
         if (listing_status && ['unlisted', 'listed'].includes(listing_status)) app.listing_status = listing_status;
+
+        // Handle SDK config updates (Tier and Proofs)
+        if (sdk_config) {
+            if (!app.sdk_config) app.sdk_config = {};
+            if (sdk_config.requiredTier) app.sdk_config.requiredTier = sdk_config.requiredTier;
+            if (sdk_config.proofs) app.sdk_config.proofs = sdk_config.proofs;
+            app.markModified('sdk_config');
+        }
 
         await app.save();
 
@@ -722,6 +746,7 @@ router.get('/app-metadata/:app_id', async (req, res) => {
                 app_id: app.app_id,
                 name: app.name,
                 logo_url: app.sdk_config?.logo_url || '',
+                required_tier: app.sdk_config?.requiredTier || 'L1',
                 website_url: app.website_url || '',
                 description: app.description || '',
                 requested_scopes: app.requested_scopes || ['verify:identity', 'read:profile', 'read:kyc_level'],
