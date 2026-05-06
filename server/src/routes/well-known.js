@@ -38,7 +38,7 @@ router.get('/jwks.json', (req, res) => {
 });
 
 /**
- * GET /.well-known/openid-configuration
+ * GET /.well-known/openid-conf
  *
  * OpenID Connect discovery document. Allows clients to auto-discover all
  * endpoint URLs, supported algorithms, and claims.
