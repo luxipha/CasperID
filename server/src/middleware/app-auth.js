@@ -203,9 +203,43 @@ const extractApp = async (req, res, next) => {
                     allowed_origins: allOrigins,
                     owner_user_id: app.owner_user_id
                 };
+                return next();
             }
         } catch (err) {
             console.error('[AppAuth] Origin lookup error (non-fatal):', err.message);
+        }
+    }
+
+    // Strategy 3: X-App-Id only (no secret) — for mobile SDK integrations
+    // Mobile apps can't safely include API secrets, so we allow app lookup by ID alone
+    // This only loads the app's origin config for WebAuthn validation, not for auth
+    if (appId && !apiSecret) {
+        try {
+            const app = await BusinessApp.findOne({ app_id: appId, active: true });
+            if (app) {
+                console.log(`[AppAuth] App-ID only match for ${appId} (mobile SDK mode)`);
+
+                BusinessApp.findOneAndUpdate(
+                    { app_id: appId },
+                    { $inc: { request_count: 1 }, $set: { last_used_at: new Date() } }
+                ).exec().catch(() => { });
+
+                // Merge allowed_origins with Android origins from digital assets
+                const androidOrigins = buildAndroidOrigins(app.android_digital_assets);
+                const allOrigins = [...(app.allowed_origins || []), ...androidOrigins];
+
+                console.log(`[AppAuth] Built Android origins for ${appId}:`, androidOrigins);
+
+                req.businessApp = {
+                    app_id: app.app_id,
+                    name: app.name,
+                    environment: app.environment,
+                    allowed_origins: allOrigins,
+                    owner_user_id: app.owner_user_id
+                };
+            }
+        } catch (err) {
+            console.error('[AppAuth] App-ID lookup error (non-fatal):', err.message);
         }
     }
 
