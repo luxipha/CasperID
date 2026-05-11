@@ -9,14 +9,26 @@
             "location": "Lagos, Nigeria / Online",
             "type": "Hackathon",
             "status": "Coming Soon",
-            "image": "https://drive.google.com/file/d/1Y39OGPaxvHl7nw_xm3QaVUZOM96tmLQZ/view?usp=sharing",
+            "image": "https://drive.google.com/file/d/1483ChF4nPDEFqOjSNHtIK86eXG6sBmdc/view?usp=sharing",
             "rewardPool": "$1,000 + $25k Credits (More TBA)",
             "attendees": 0,
             "partners": [
-                { "name": "MongoDB", "logo": "https://www.vectorlogo.zone/logos/mongodb/mongodb-icon.svg" },
-                { "name": "Google Cloud", "logo": "https://www.vectorlogo.zone/logos/google_cloud/google_cloud-icon.svg" },
-                { "name": "AWS", "logo": "https://www.vectorlogo.zone/logos/amazon_aws/amazon_aws-icon.svg" },
-                { "name": "Casper Network", "logo": "https://cryptologos.cc/logos/casper-cspr-logo.svg" }
+                {
+                    "name": "MongoDB",
+                    "logo": "https://www.vectorlogo.zone/logos/mongodb/mongodb-icon.svg"
+                },
+                {
+                    "name": "Google Cloud",
+                    "logo": "https://www.vectorlogo.zone/logos/google_cloud/google_cloud-icon.svg"
+                },
+                {
+                    "name": "AWS",
+                    "logo": "https://www.vectorlogo.zone/logos/amazon_aws/amazon_aws-icon.svg"
+                },
+                {
+                    "name": "Casper Network",
+                    "logo": "https://cryptologos.cc/logos/casper-cspr-logo.svg"
+                }
             ],
             "agenda": [
                 {
@@ -126,24 +138,25 @@
             "title": "CasperID Bug Bounty — Phase 1",
             "description": "Help us secure the future of reusable digital identity. Up to 100,000 CSPR in rewards.",
             "fullContent": "CasperID is building reusable digital identity — verify once, use everywhere. Security is foundational to that vision. We’re opening our system for Phase 1 of our bug bounty program.\n\n💰 Reward Pool\nUp to 100,000 CSPR available in rewards. Payouts depend on impact, severity, and report quality.\n\n🎯 Reward Structure\n• Critical → High-tier rewards\n• High → Mid-high rewards\n• Medium → Moderate rewards\n• Low → Small or no reward\n\n🎯 Scope\n• Authentication & session management\n• Identity verification flows\n• Data access & privacy boundaries\n• CasperID Connect & API endpoints\n\n📥 Submission\nInclude clear description, steps to reproduce, and proof (screenshots/logs).",
-            "date": "May 11 – 17, 2026",
+            "date": "May 18 – 23, 2026",
             "location": "Online / Testing Environment",
             "type": "Campaign",
             "status": "Upcoming",
-            "image": "https://drive.google.com/file/d/1TiEzVQ9Ot7KLm1x6Oj7YdGIj2NsM9B-I/view?usp=sharing",
+            "image": "https://drive.google.com/file/d/1RIpCMXFbBnQH8NaMuWoH0wDd81c5WbQL/view?usp=sharing",
+            "applyUrl": "https://t.me/+1U12CUDzk3s0Yjg1",
             "rewardPool": "100,000 CSPR Pool",
             "attendees": 0,
             "agenda": [
                 {
-                    "time": "May 11",
+                    "time": "May 18",
                     "activity": "Phase 1 Launch"
                 },
                 {
-                    "time": "May 14",
+                    "time": "May 23",
                     "activity": "Mid-Phase Security Review"
                 },
                 {
-                    "time": "May 17",
+                    "time": "May 25",
                     "activity": "Phase 1 Conclusion"
                 }
             ]
@@ -154,7 +167,7 @@
         "description": "The first major CasperID event in Nigeria. Build the future of portable identity and win from a $1,000 prize pool and $25k in cloud credits.",
         "rewardPool": "$1k + $25k Credits",
         "participants": "Coming Soon",
-        "image": "https://drive.google.com/file/d/1Y39OGPaxvHl7nw_xm3QaVUZOM96tmLQZ/view?usp=sharing"
+        "image": "https://drive.google.com/file/d/1483ChF4nPDEFqOjSNHtIK86eXG6sBmdc/view?usp=sharing"
     },
     "tasks": [
         {

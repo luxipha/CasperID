@@ -8,6 +8,7 @@ import { Calendar, MapPin, Users, ArrowRight, Filter, Search, CheckCircle2, Trop
 import { FooterMarketing } from "../FooterMarketing";
 import Logo from "../Logo";
 import { getDriveImageUrl } from '../../utils/media';
+import ScratchCard from './ScratchCard';
 
 gsap.registerPlugin(ScrollTrigger);
 
@@ -26,6 +27,7 @@ interface Event {
     agenda?: { time: string; activity: string }[];
     speakers?: { name: string; role: string; avatar: string }[];
     partners?: { name: string; logo: string }[];
+    applyUrl?: string;
 }
 
 interface CampaignData {
@@ -100,188 +102,6 @@ const CAMPAIGN: CampaignData = getCampaign();
 const TASKS: TaskData[] = getTasks();
 const INCENTIVES: Incentive[] = getIncentives();
 
-interface ScratchCardProps {
-    onComplete: (success: boolean) => void;
-    attempts: number;
-    onUseAttempt: () => void;
-}
-
-const ScratchCard: React.FC<ScratchCardProps> = ({ onComplete, attempts, onUseAttempt }) => {
-    const canvasRef = useRef<HTMLCanvasElement>(null);
-    const [isScratched, setIsScratched] = useState(false);
-    const [result, setResult] = useState<{ label: string; isWin: boolean; rarity?: string } | null>(null);
-    const [isDrawing, setIsDrawing] = useState(false);
-    const [isStarted, setIsStarted] = useState(false);
-
-    const incentives = INCENTIVES;
-
-    const initScratch = () => {
-        if (attempts <= 0) return;
-
-        setIsStarted(true);
-        setIsScratched(false);
-        onUseAttempt();
-
-        const randomIncentive = incentives[Math.floor(Math.random() * incentives.length)];
-        setResult(randomIncentive);
-
-        const canvas = canvasRef.current;
-        if (!canvas) return;
-        const ctx = canvas.getContext('2d');
-        if (!ctx) return;
-
-        ctx.globalCompositeOperation = 'source-over';
-        ctx.fillStyle = document.documentElement.classList.contains('dark') ? '#1f2937' : '#e5e7eb';
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-        // Add pattern
-        ctx.fillStyle = 'rgba(134, 82, 226, 0.1)';
-        for (let i = 0; i < 20; i++) {
-            ctx.beginPath();
-            ctx.arc(Math.random() * canvas.width, Math.random() * canvas.height, 20, 0, Math.PI * 2);
-            ctx.fill();
-        }
-
-        ctx.font = 'bold 16px Inter';
-        ctx.fillStyle = document.documentElement.classList.contains('dark') ? '#9ca3af' : '#4b5563';
-        ctx.textAlign = 'center';
-        ctx.fillText('SCRATCH TO REVEAL', canvas.width / 2, canvas.height / 2 + 6);
-    };
-
-    const scratch = (x: number, y: number) => {
-        const canvas = canvasRef.current;
-        if (!canvas || isScratched || !isStarted) return;
-        const ctx = canvas.getContext('2d');
-        if (!ctx) return;
-
-        ctx.globalCompositeOperation = 'destination-out';
-        ctx.beginPath();
-        ctx.arc(x, y, 20, 0, Math.PI * 2);
-        ctx.fill();
-
-        checkScratchPercentage();
-    };
-
-    const checkScratchPercentage = () => {
-        const canvas = canvasRef.current;
-        if (!canvas) return;
-        const ctx = canvas.getContext('2d');
-        if (!ctx) return;
-
-        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-        const pixels = imageData.data;
-        let transparentPixels = 0;
-
-        for (let i = 0; i < pixels.length; i += 4) {
-            if (pixels[i + 3] === 0) {
-                transparentPixels++;
-            }
-        }
-
-        const percentage = (transparentPixels / (canvas.width * canvas.height)) * 100;
-        if (percentage > 50 && !isScratched) {
-            setIsScratched(true);
-            if (result) {
-                onComplete(result.isWin);
-            }
-        }
-    };
-
-    const handleMouseDown = (e: React.MouseEvent | React.TouchEvent) => {
-        setIsDrawing(true);
-        handleMouseMove(e);
-    };
-
-    const handleMouseUp = () => {
-        setIsDrawing(false);
-    };
-
-    const handleMouseMove = (e: React.MouseEvent | React.TouchEvent) => {
-        if (!isDrawing || isScratched || !isStarted) return;
-        const canvas = canvasRef.current;
-        if (!canvas) return;
-        const rect = canvas.getBoundingClientRect();
-
-        let x, y;
-        if ('touches' in e) {
-            x = e.touches[0].clientX - rect.left;
-            y = e.touches[0].clientY - rect.top;
-        } else {
-            x = e.clientX - rect.left;
-            y = e.clientY - rect.top;
-        }
-
-        scratch(x, y);
-    };
-
-    return (
-        <div className="flex flex-col items-center gap-6">
-            <div className="relative w-full max-w-md aspect-[2/1] bg-gray-50 dark:bg-surface-dark rounded-2xl overflow-hidden border border-gray-200 dark:border-white/10 shadow-2xl">
-                {/* Result Layer */}
-                <div className="absolute inset-0 flex flex-col items-center justify-center p-6 text-center">
-                    {!isStarted ? (
-                        <div className="text-text-muted dark:text-text-muted-dark">
-                            <span className="material-icons text-4xl mb-2 opacity-20">redeem</span>
-                            <p className="text-sm font-bold uppercase tracking-widest">Ready to scratch</p>
-                        </div>
-                    ) : result?.isWin ? (
-                        <div className="animate-fade-scale">
-                            <p className="text-xs font-black text-primary uppercase tracking-widest mb-1">{result.rarity} Reward</p>
-                            <p className="text-2xl font-black text-text-main dark:text-white mb-4">{result.label}</p>
-                            <button className="px-6 py-2 bg-emerald-500 text-white rounded-xl font-bold text-sm hover:bg-emerald-600 transition-all">
-                                Claim Reward
-                            </button>
-                        </div>
-                    ) : (
-                        <div className="animate-fade-scale">
-                            <p className="text-xl font-black text-text-main dark:text-white">Better luck next time!</p>
-                            <p className="text-sm text-text-muted dark:text-text-muted-dark mt-1">Complete more tasks for attempts.</p>
-                        </div>
-                    )}
-                </div>
-
-                {/* Scratchable Layer */}
-                {isStarted && (
-                    <canvas
-                        ref={canvasRef}
-                        width={400}
-                        height={200}
-                        className={`absolute inset-0 w-full h-full cursor-crosshair transition-opacity duration-500 ${isScratched ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}
-                        onMouseDown={handleMouseDown}
-                        onMouseMove={handleMouseMove}
-                        onMouseUp={handleMouseUp}
-                        onMouseLeave={handleMouseUp}
-                        onTouchStart={handleMouseDown}
-                        onTouchMove={handleMouseMove}
-                        onTouchEnd={handleMouseUp}
-                    />
-                )}
-            </div>
-
-            {!isStarted && (
-                <button
-                    onClick={initScratch}
-                    disabled={attempts <= 0}
-                    className={`px-12 py-4 rounded-full font-black text-lg transition-all ${attempts > 0
-                        ? 'bg-primary text-white hover:scale-105 shadow-xl shadow-primary/20'
-                        : 'bg-gray-200 dark:bg-white/10 text-gray-400 dark:text-white/30 cursor-not-allowed'
-                        }`}
-                >
-                    {attempts > 0 ? 'Start Scratching' : 'No Attempts Left'}
-                </button>
-            )}
-
-            {isScratched && (
-                <button
-                    onClick={() => setIsStarted(false)}
-                    className="text-sm font-bold text-primary hover:underline"
-                >
-                    Scratch another?
-                </button>
-            )}
-        </div>
-    );
-};
 
 const TaskItem: React.FC<{
     title: string;
@@ -292,6 +112,7 @@ const TaskItem: React.FC<{
     unit: string;
 }> = ({ title, desc, reward, current, total, unit }) => {
     const progress = Math.min((current / total) * 100, 100);
+    const navigate = useNavigate();
 
     return (
         <div className="bg-white dark:bg-surface-dark border border-gray-100 dark:border-white/5 rounded-2xl overflow-hidden flex flex-col md:flex-row shadow-sm">
@@ -305,7 +126,10 @@ const TaskItem: React.FC<{
                         <h4 className="text-xl font-bold text-text-main dark:text-white mb-1">{title}</h4>
                         <p className="text-sm text-text-muted dark:text-text-muted-dark">{desc}</p>
                     </div>
-                    <button className="px-6 py-2 bg-primary text-white rounded-lg font-bold text-sm hover:scale-105 transition-all shadow-md shadow-primary/10">
+                    <button 
+                        onClick={() => navigate('/dashboard')}
+                        className="px-6 py-2 bg-primary text-white rounded-lg font-bold text-sm hover:scale-105 transition-all shadow-md shadow-primary/10"
+                    >
                         Go
                     </button>
                 </div>
@@ -638,7 +462,11 @@ const EventsPage: React.FC = () => {
                                                 disabled={event.status === 'Coming Soon'}
                                                 onClick={() => {
                                                     if (event.status === 'Coming Soon') return;
-                                                    setShowApplyModal(event.id);
+                                                    if (event.applyUrl) {
+                                                        window.open(event.applyUrl, '_blank');
+                                                    } else {
+                                                        setShowApplyModal(event.id);
+                                                    }
                                                 }}
                                                 className={`px-6 py-2.5 rounded-xl font-black text-xs uppercase tracking-widest transition-all ${
                                                     event.status === 'Coming Soon'
@@ -683,6 +511,7 @@ const EventsPage: React.FC = () => {
                                 attempts={attempts}
                                 onUseAttempt={() => setAttempts(prev => prev - 1)}
                                 onComplete={() => { }}
+                                incentives={INCENTIVES}
                             />
                             <div className="mt-8 flex items-center justify-between">
                                 <div>
@@ -821,7 +650,11 @@ const EventsPage: React.FC = () => {
                                                 disabled={selectedEvent.status.trim() === 'Coming Soon'}
                                                 onClick={() => {
                                                     if (selectedEvent.status.trim() === 'Coming Soon') return;
-                                                    setShowApplyModal(selectedEvent.id);
+                                                    if (selectedEvent.applyUrl) {
+                                                        window.open(selectedEvent.applyUrl, '_blank');
+                                                    } else {
+                                                        setShowApplyModal(selectedEvent.id);
+                                                    }
                                                     setSelectedEventId(null);
                                                 }}
                                                 className={`w-full sm:w-auto px-12 py-4 rounded-2xl font-black text-lg transition-all shadow-xl ${
