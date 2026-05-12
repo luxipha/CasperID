@@ -953,8 +953,7 @@ const devicePairingSchema = new mongoose.Schema({
     },
     expires_at: {
         type: Date,
-        required: true,
-        index: true
+        required: true
     },
     completed_at: Date
 });
@@ -1006,8 +1005,7 @@ const emailVerificationSchema = new mongoose.Schema({
     },
     expires_at: {
         type: Date,
-        required: true,
-        index: true
+        required: true
     },
     verified_at: Date
 });
@@ -1656,8 +1654,7 @@ const webhookLogSchema = new mongoose.Schema({
     },
     created_at: {
         type: Date,
-        default: Date.now,
-        index: true
+        default: Date.now
     }
 });
 

@@ -27,6 +27,44 @@ console.log(`[${new Date().toISOString()}]  API Base URL: ${API_BASE_URL}`);
 console.log(`[${new Date().toISOString()}]  Frontend URL: ${FRONTEND_URL}`);
 console.log(`[${new Date().toISOString()}]  Environment Keys Loaded: ${Object.keys(process.env).join(', ')}`);
 
+// ============================================
+// CORS ORIGIN CACHE (Prevents DB query per request)
+// ============================================
+let cachedBusinessOrigins = new Set();
+let lastOriginCacheRefresh = 0;
+const ORIGIN_CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+
+async function refreshBusinessOrigins() {
+    try {
+        if (mongoose.connection.readyState !== 1) {
+            return; // DB not connected yet
+        }
+        const { BusinessApp } = require('./database/models');
+        const apps = await BusinessApp.find({ active: true }, { allowed_origins: 1 }).lean();
+        const origins = new Set();
+        for (const app of apps) {
+            if (app.allowed_origins) {
+                for (const origin of app.allowed_origins) {
+                    origins.add(origin);
+                }
+            }
+        }
+        cachedBusinessOrigins = origins;
+        lastOriginCacheRefresh = Date.now();
+        console.log(`[${new Date().toISOString()}] CORS: Cached ${origins.size} business origins`);
+    } catch (err) {
+        console.warn(`[${new Date().toISOString()}] CORS: Failed to refresh origin cache:`, err.message);
+    }
+}
+
+function isBusinessOriginCached(origin) {
+    // Refresh cache if stale (but don't block - return current cache)
+    if (Date.now() - lastOriginCacheRefresh > ORIGIN_CACHE_TTL) {
+        refreshBusinessOrigins().catch(() => {}); // Fire and forget
+    }
+    return cachedBusinessOrigins.has(origin);
+}
+
 // Security Middleware
 app.use(helmet({
     contentSecurityPolicy: {
@@ -48,21 +86,21 @@ app.use(helmet({
 // MongoDB injection prevention
 app.use(mongoSanitize());
 
-// Core Middleware - Dynamic CORS with BusinessApp origin lookup
-app.use(cors({
-    origin: async function (origin, callback) {
-        // Static whitelist for core CasperID domains
-        const coreOrigins = [
-            'http://localhost:3000',
-            'http://localhost:3002',
-            'http://localhost:5173',
-            'https://casper-id.netlify.app',
-            'https://casperid.com',
-            'https://www.casperid.com',
-            FRONTEND_URL,
-            process.env.FRONTEND_URL
-        ].filter(Boolean);
+// Static whitelist for core CasperID domains
+const coreOrigins = new Set([
+    'http://localhost:3000',
+    'http://localhost:3002',
+    'http://localhost:5173',
+    'https://casper-id.netlify.app',
+    'https://casperid.com',
+    'https://www.casperid.com',
+    FRONTEND_URL,
+    process.env.FRONTEND_URL
+].filter(Boolean));
 
+// Core Middleware - Dynamic CORS with cached BusinessApp origins
+app.use(cors({
+    origin: function (origin, callback) {
         // Allow requests with no origin (mobile apps, curl, etc.)
         if (!origin) return callback(null, true);
 
@@ -72,7 +110,7 @@ app.use(cors({
         }
 
         // Check core origins first (fast path)
-        if (coreOrigins.includes(origin)) {
+        if (coreOrigins.has(origin)) {
             return callback(null, true);
         }
 
@@ -81,19 +119,9 @@ app.use(cors({
             return callback(null, true);
         }
 
-        // Dynamic check: Look up BusinessApp allowed_origins from database
-        try {
-            const { BusinessApp } = require('./database/models');
-            const businessApp = await BusinessApp.findOne({
-                allowed_origins: origin,
-                active: true
-            });
-            if (businessApp) {
-                return callback(null, true);
-            }
-        } catch (err) {
-            // Database not ready yet or query failed - don't block core functionality
-            console.warn('CORS DB lookup failed:', err.message);
+        // Check cached BusinessApp origins (NO database query)
+        if (isBusinessOriginCached(origin)) {
+            return callback(null, true);
         }
 
         // In development, allow localhost on any port
@@ -161,11 +189,53 @@ app.use('/uploads', (req, res, next) => {
     next();
 }, express.static(path.join(__dirname, '../uploads')));
 
-// MongoDB Connection
-mongoose.connect(process.env.MONGODB_URI, {
-    useNewUrlParser: true,
-    useUnifiedTopology: true
-})
+// ============================================
+// MongoDB Connection with Resilience
+// ============================================
+const MONGO_OPTIONS = {
+    serverSelectionTimeoutMS: 10000, // Fail fast if can't connect (10s instead of 30s)
+    connectTimeoutMS: 10000,
+    socketTimeoutMS: 45000,
+    maxPoolSize: 10,
+    minPoolSize: 2,
+    maxIdleTimeMS: 30000,
+    retryWrites: true,
+    retryReads: true
+};
+
+let serverStarted = false;
+
+function startServer() {
+    if (serverStarted) return;
+    serverStarted = true;
+
+    app.listen(PORT, '0.0.0.0', () => {
+        console.log(`[${new Date().toISOString()}] 🛰️  Server: Bound to port ${PORT} (0.0.0.0)`);
+        console.log(`[${new Date().toISOString()}] 📍 Environment: ${process.env.NODE_ENV || 'development'}`);
+    });
+}
+
+// MongoDB connection event handlers
+mongoose.connection.on('connected', () => {
+    console.log(`[${new Date().toISOString()}] ✅ MongoDB: Connected`);
+});
+
+mongoose.connection.on('disconnected', () => {
+    console.warn(`[${new Date().toISOString()}] ⚠️ MongoDB: Disconnected - will attempt reconnect`);
+});
+
+mongoose.connection.on('reconnected', () => {
+    console.log(`[${new Date().toISOString()}] ✅ MongoDB: Reconnected`);
+    // Refresh CORS cache on reconnect
+    refreshBusinessOrigins().catch(() => {});
+});
+
+mongoose.connection.on('error', (err) => {
+    console.error(`[${new Date().toISOString()}] ❌ MongoDB: Connection error:`, err.message);
+});
+
+// Connect to MongoDB
+mongoose.connect(process.env.MONGODB_URI, MONGO_OPTIONS)
     .then(async () => {
         console.log(`[${new Date().toISOString()}] ✅ MongoDB: Connected successfully`);
 
@@ -194,10 +264,19 @@ mongoose.connect(process.env.MONGODB_URI, {
             const { initializeEventBus } = require('./services/eventBus');
             initializeEventBus();
 
+            // Initialize CORS origin cache
+            console.log(`[${new Date().toISOString()}] 🔧 Init: Caching business origins...`);
+            await refreshBusinessOrigins();
+            // Refresh cache periodically
+            setInterval(() => refreshBusinessOrigins().catch(() => {}), ORIGIN_CACHE_TTL);
+
             console.log(`[${new Date().toISOString()}] ✨ Init: All systems ready`);
         } catch (initErr) {
             console.error(`[${new Date().toISOString()}] ⚠️ Init: Non-fatal initialization error:`, initErr);
         }
+
+        // Start server AFTER MongoDB is connected and initialized
+        startServer();
     })
     .catch((err) => {
         console.error(`[${new Date().toISOString()}] ❌ MongoDB: FATAL connection error:`, err.message);
@@ -206,15 +285,9 @@ mongoose.connect(process.env.MONGODB_URI, {
             node_version: process.version,
             platform: process.platform
         });
-        // We no longer exit here immediately to allow the server to report its 
-        // status via the /health endpoint to Cloud Run.
+        // Start server anyway for health check visibility, but it will report degraded
+        startServer();
     });
-
-// Start server IMMEDIATELY to satisfy Cloud Run health checks
-app.listen(PORT, '0.0.0.0', () => {
-    console.log(`[${new Date().toISOString()}] 🛰️  Server: Bound to port ${PORT} (0.0.0.0)`);
-    console.log(`[${new Date().toISOString()}] 📍 Environment: ${process.env.NODE_ENV || 'development'}`);
-});
 
 // Routes
 app.get('/health', (req, res) => {
