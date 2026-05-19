@@ -36,26 +36,34 @@
         "dev": "vite --port=3001",
         "build": "tsc --noEmit && vite build",
         "lint": "tsc --noEmit",
+        "test": "vitest",
+        "test:run": "vitest run",
+        "test:coverage": "vitest run --coverage",
         "prepublishOnly": "npm run build"
     },
     "peerDependencies": {
+        "framer-motion": ">=10",
         "react": ">=18",
-        "react-dom": ">=18",
-        "framer-motion": ">=10"
+        "react-dom": ">=18"
     },
     "dependencies": {
-        "lucide-react": "^0.400.0",
+        "@mediapipe/camera_utils": "^0.3.1620248257",
         "@mediapipe/face_mesh": "^0.4.1633559619",
-        "@mediapipe/camera_utils": "^0.3.1620248257"
+        "lucide-react": "^0.400.0"
     },
     "devDependencies": {
+        "@tailwindcss/vite": "^4.1.0",
+        "@testing-library/jest-dom": "^6.9.1",
+        "@testing-library/react": "^16.3.2",
+        "@testing-library/user-event": "^14.6.1",
         "@types/react": "^18",
         "@types/react-dom": "^18",
+        "@vitejs/plugin-react": "^5.0.0",
+        "jsdom": "^29.1.1",
+        "tailwindcss": "^4.1.0",
         "typescript": "~5.8.2",
         "vite": "^6.2.0",
-        "@vitejs/plugin-react": "^5.0.0",
-        "@tailwindcss/vite": "^4.1.0",
-        "tailwindcss": "^4.1.0"
+        "vitest": "^4.1.6"
     },
     "exports": {
         ".": {
