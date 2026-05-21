@@ -1,17 +1,22 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { apiService } from '../services/api';
+import { useAuth } from '../contexts/AuthContext';
 
 interface ExportDIDProps {
   onBack: () => void;
 }
 
 export const ExportDID: React.FC<ExportDIDProps> = ({ onBack }) => {
+  const { user } = useAuth();
   const [step, setStep] = useState(1);
   const [otpSent, setOtpSent] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [otpCode, setOtpCode] = useState('');
   const [verificationToken, setVerificationToken] = useState('');
+  const [passkeyAvailable, setPasskeyAvailable] = useState(false);
+  const [isAuthenticatingWithPasskey, setIsAuthenticatingWithPasskey] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
   const [modal, setModal] = useState<{ show: boolean, type: 'success' | 'error', message: string }>({
     show: false,
     type: 'success',
@@ -19,6 +24,108 @@ export const ExportDID: React.FC<ExportDIDProps> = ({ onBack }) => {
   });
   const [qrCode, setQrCode] = useState('');
   const [showQr, setShowQr] = useState(false);
+
+  // Check if browser supports WebAuthn/Passkey
+  useEffect(() => {
+    // Check if browser supports the WebAuthn API
+    if (typeof window !== 'undefined' && window.PublicKeyCredential) {
+      setPasskeyAvailable(true);
+    }
+  }, []);
+
+  const authenticateWithPasskey = async () => {
+    setIsAuthenticatingWithPasskey(true);
+    try {
+      // Initiate passkey auth
+      const initResponse = await apiService.passkeyAuthInit(user?.email);
+      if (!initResponse.success || !initResponse.options) {
+        throw new Error('Failed to initialize passkey authentication');
+      }
+
+      const challengeId = initResponse.challengeId;
+      const credentialRequestOptions = initResponse.options;
+
+      // Utility functions for base64url conversion
+      const base64urlToArrayBuffer = (base64url: string): ArrayBuffer => {
+        const padding = '='.repeat((4 - base64url.length % 4) % 4);
+        const base64 = base64url.replace(/-/g, '+').replace(/_/g, '/') + padding;
+        const binaryString = atob(base64);
+        const bytes = new Uint8Array(binaryString.length);
+        for (let i = 0; i < binaryString.length; i++) {
+          bytes[i] = binaryString.charCodeAt(i);
+        }
+        return bytes.buffer;
+      };
+
+      const arrayBufferToBase64url = (buffer: ArrayBuffer): string => {
+        const bytes = new Uint8Array(buffer);
+        let binary = '';
+        for (let i = 0; i < bytes.byteLength; i++) {
+          binary += String.fromCharCode(bytes[i]);
+        }
+        return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
+      };
+
+      const challenge = base64urlToArrayBuffer(credentialRequestOptions.challenge);
+      const publicKeyCredentialRequestOptions: CredentialRequestOptions = {
+        publicKey: {
+          ...credentialRequestOptions,
+          challenge,
+          allowCredentials: credentialRequestOptions.allowCredentials?.map((cred: any) => ({
+            ...cred,
+            id: base64urlToArrayBuffer(cred.id),
+          })),
+        },
+      };
+
+      const credential = await navigator.credentials.get(publicKeyCredentialRequestOptions) as PublicKeyCredential;
+      if (!credential) {
+        throw new Error('Passkey authentication cancelled');
+      }
+
+      const response = credential.response as AuthenticatorAssertionResponse;
+      const authenticationResponse = {
+        id: credential.id,
+        rawId: arrayBufferToBase64url(credential.rawId),
+        response: {
+          authenticatorData: arrayBufferToBase64url(response.authenticatorData),
+          clientDataJSON: arrayBufferToBase64url(response.clientDataJSON),
+          signature: arrayBufferToBase64url(response.signature),
+          userHandle: response.userHandle ? arrayBufferToBase64url(response.userHandle) : null,
+        },
+        type: credential.type,
+        clientExtensionResults: {},
+      };
+
+      // Verify authentication for export-did purpose
+      const verifyResponse = await apiService.post('/api/passkey/export-did-verify', {
+        challengeId,
+        credential: authenticationResponse,
+        purpose: 'export-did'
+      });
+
+      if (verifyResponse.success) {
+        setVerificationToken(verifyResponse.verificationToken);
+        setStep(2);
+        setModal({
+          show: true,
+          type: 'success',
+          message: 'Passkey authentication successful!'
+        });
+      } else {
+        throw new Error(verifyResponse.error || 'Failed to verify passkey');
+      }
+    } catch (error: any) {
+      console.error('Passkey authentication error:', error);
+      setModal({
+        show: true,
+        type: 'error',
+        message: error.message || 'Passkey authentication failed. Please try again.'
+      });
+    } finally {
+      setIsAuthenticatingWithPasskey(false);
+    }
+  };
 
   const sendOTP = async () => {
     setIsLoading(true);
@@ -29,7 +136,6 @@ export const ExportDID: React.FC<ExportDIDProps> = ({ onBack }) => {
 
       if (response.success) {
         setOtpSent(true);
-        // No alert needed - UI will show input box
       } else {
         setModal({
           show: true,
@@ -89,18 +195,28 @@ export const ExportDID: React.FC<ExportDIDProps> = ({ onBack }) => {
   };
 
   const downloadJSON = async () => {
+    if (!verificationToken) {
+      setModal({
+        show: true,
+        type: 'error',
+        message: 'Verification required. Please complete authentication first.'
+      });
+      return;
+    }
+
+    setIsExporting(true);
     try {
       const response = await apiService.post('/api/auth/export-did', {
         verificationToken
       });
 
-      if (response.success) {
+      if (response.success && response.exportData) {
         // Create downloadable JSON file with real date
         const now = new Date();
         const dateString = now.toISOString().split('T')[0]; // YYYY-MM-DD
         const timeString = now.toTimeString().split(' ')[0].replace(/:/g, '-'); // HH-MM-SS
 
-        const jsonString = JSON.stringify(response.data, null, 2);
+        const jsonString = JSON.stringify(response.exportData, null, 2);
         const blob = new Blob([jsonString], { type: 'application/json' });
         const url = URL.createObjectURL(blob);
 
@@ -116,7 +232,7 @@ export const ExportDID: React.FC<ExportDIDProps> = ({ onBack }) => {
         setModal({
           show: true,
           type: 'success',
-          message: 'DID exported successfully!'
+          message: 'DID exported successfully! Check your downloads folder.'
         });
       } else {
         setModal({
@@ -132,25 +248,42 @@ export const ExportDID: React.FC<ExportDIDProps> = ({ onBack }) => {
         type: 'error',
         message: error.response?.data?.error || 'Failed to export DID. Please try again.'
       });
+    } finally {
+      setIsExporting(false);
     }
   };
 
   const generateQRCode = async () => {
+    if (!verificationToken) {
+      setModal({
+        show: true,
+        type: 'error',
+        message: 'Verification required. Please complete authentication first.'
+      });
+      return;
+    }
+
+    setIsExporting(true);
     try {
       const response = await apiService.post('/api/auth/export-did', {
         verificationToken
       });
 
-      if (response.success) {
-        // Generate QR code with DID data
+      if (response.success && response.exportData) {
         const qrData = JSON.stringify({
-          did: response.data.did,
-          userId: response.data.userId,
-          exportedAt: response.data.exportedAt,
+          did: response.exportData.did,
+          userId: response.exportData.userId,
+          walletAddress: response.exportData.walletAddress,
+          exportedAt: response.exportData.exportedAt,
           warning: "SENSITIVE: Do not share or photograph this QR code!"
         });
+
         setQrCode(qrData);
         setShowQr(true);
+
+        setTimeout(() => {
+          renderQRCode(qrData);
+        }, 300);
       } else {
         setModal({
           show: true,
@@ -165,16 +298,100 @@ export const ExportDID: React.FC<ExportDIDProps> = ({ onBack }) => {
         type: 'error',
         message: error.response?.data?.error || 'Failed to generate QR code. Please try again.'
       });
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
+  const renderQRCode = (data: string) => {
+    const container = document.getElementById('qrCodeCanvas') as HTMLDivElement;
+
+    if (!container) {
+      console.error('Error: QR Code container not found');
+      setModal({
+        show: true,
+        type: 'error',
+        message: 'QR Code container not found. Please try again.'
+      });
+      return;
+    }
+
+    if (typeof (window as any).QRCode === 'undefined') {
+      const script = document.createElement('script');
+      script.src = 'https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js';
+      script.async = true;
+
+      script.onerror = () => {
+        console.error('Error: Failed to load QR code library');
+        setModal({
+          show: true,
+          type: 'error',
+          message: 'Failed to load QR code library. Please try again.'
+        });
+      };
+
+      script.onload = () => {
+        try {
+          container.innerHTML = '';
+          new (window as any).QRCode(container, {
+            text: data,
+            width: 192,
+            height: 192,
+            colorDark: '#1A1A2E',
+            colorLight: '#FFFFFF',
+            correctLevel: (window as any).QRCode.CorrectLevel.H
+          });
+        } catch (err) {
+          console.error('Error generating QR code:', err);
+          setModal({
+            show: true,
+            type: 'error',
+            message: 'Failed to generate QR code: ' + (err as Error).message
+          });
+        }
+      };
+
+      document.head.appendChild(script);
+    } else {
+      try {
+        container.innerHTML = '';
+        new (window as any).QRCode(container, {
+          text: data,
+          width: 192,
+          height: 192,
+          colorDark: '#1A1A2E',
+          colorLight: '#FFFFFF',
+          correctLevel: (window as any).QRCode.CorrectLevel.H
+        });
+      } catch (err) {
+        console.error('Error generating QR code:', err);
+        setModal({
+          show: true,
+          type: 'error',
+          message: 'Failed to generate QR code: ' + (err as Error).message
+        });
+      }
     }
   };
 
   const printRecoveryPhrase = async () => {
+    if (!verificationToken) {
+      setModal({
+        show: true,
+        type: 'error',
+        message: 'Verification required. Please complete authentication first.'
+      });
+      return;
+    }
+
+    setIsExporting(true);
+
     try {
       const response = await apiService.post('/api/auth/export-did', {
         verificationToken
       });
 
-      if (response.success) {
+      if (response.success && response.exportData) {
         // Create printable recovery document
         const printContent = `
           <!DOCTYPE html>
@@ -194,38 +411,61 @@ export const ExportDID: React.FC<ExportDIDProps> = ({ onBack }) => {
               <h1>CasperID Recovery Document</h1>
               <p>Generated on: ${new Date().toLocaleString()}</p>
             </div>
-            
+
             <div class="warning">
               <h3>⚠️ CRITICAL SECURITY WARNING</h3>
               <p>Keep this document in a secure location. Anyone with access to this information can control your digital identity.</p>
             </div>
-            
+
             <div class="data">
               <h3>DID Information:</h3>
-              <p><strong>DID:</strong> ${response.data.did}</p>
-              <p><strong>User ID:</strong> ${response.data.userId}</p>
-              <p><strong>Wallet Address:</strong> ${response.data.walletAddress}</p>
-              <p><strong>Recovery Email:</strong> ${response.data.recoveryEmail}</p>
+              <p><strong>DID:</strong> ${response.exportData.did}</p>
+              <p><strong>User ID:</strong> ${response.exportData.userId}</p>
+              <p><strong>Wallet Address:</strong> ${response.exportData.walletAddress}</p>
+              <p><strong>Recovery Email:</strong> ${response.exportData.recoveryEmail}</p>
             </div>
-            
+
             <div class="footer">
               <p>CasperID - Decentralized Identity Platform</p>
-              <p>For support, visit: https://casperid.io/support</p>
+              <p>For support, visit: https://CasperID.com/support</p>
             </div>
           </body>
           </html>
         `;
 
-        const printWindow = window.open('', '_blank');
-        printWindow?.document.write(printContent);
-        printWindow?.document.close();
-        printWindow?.print();
+        const printWindow = window.open('', '_blank', 'width=800,height=600');
 
-        setModal({
-          show: true,
-          type: 'success',
-          message: 'Recovery document prepared for printing!'
-        });
+        if (!printWindow) {
+          throw new Error('Unable to open print window. Please check your browser popup settings.');
+        }
+
+        try {
+          printWindow.document.write(printContent);
+          printWindow.document.close();
+
+          // Wait for content to load before printing
+          printWindow.onload = () => {
+            setTimeout(() => {
+              printWindow.print();
+            }, 250);
+          };
+
+          // Fallback: if onload doesn't fire, print after delay
+          setTimeout(() => {
+            if (printWindow && !printWindow.closed) {
+              printWindow.print();
+            }
+          }, 1000);
+
+          setModal({
+            show: true,
+            type: 'success',
+            message: 'Recovery document prepared for printing!'
+          });
+        } catch (printError) {
+          printWindow.close();
+          throw new Error('Failed to prepare print document. ' + (printError as Error).message);
+        }
       } else {
         setModal({
           show: true,
@@ -235,11 +475,14 @@ export const ExportDID: React.FC<ExportDIDProps> = ({ onBack }) => {
       }
     } catch (error: any) {
       console.error('Error preparing recovery document:', error);
+      const errorMsg = error?.message || error?.response?.data?.error || 'Failed to prepare recovery document. Please try again.';
       setModal({
         show: true,
         type: 'error',
-        message: error.response?.data?.error || 'Failed to prepare recovery document. Please try again.'
+        message: errorMsg
       });
+    } finally {
+      setIsExporting(false);
     }
   };
 
@@ -294,14 +537,34 @@ export const ExportDID: React.FC<ExportDIDProps> = ({ onBack }) => {
               </div>
               <div className="flex-1 flex flex-col items-center justify-center border-2 border-dashed border-gray-100 rounded-[24px] p-8 space-y-6">
                 <p className="text-[13px] text-[#626D85] font-medium leading-relaxed">
-                  Use your device's biometric sensor (FaceID, TouchID) or security key.
+                  {passkeyAvailable
+                    ? 'Use your device\'s biometric sensor (FaceID, TouchID) or security key.'
+                    : 'Passkey authentication not available on this device. Please use OTP instead.'}
                 </p>
                 <button
-                  disabled
-                  className="w-full h-14 bg-gray-300 text-gray-500 rounded-[18px] font-black text-sm flex items-center justify-center gap-3 cursor-not-allowed opacity-50"
+                  onClick={authenticateWithPasskey}
+                  disabled={!passkeyAvailable || isAuthenticatingWithPasskey || isLoading}
+                  className={`w-full h-14 rounded-[18px] font-black text-sm flex items-center justify-center gap-3 transition-all ${passkeyAvailable && !isAuthenticatingWithPasskey && !isLoading
+                    ? 'bg-primary text-white hover:bg-primary/90 active:scale-[0.98] shadow-lg shadow-primary/20'
+                    : 'bg-gray-300 text-gray-500 cursor-not-allowed opacity-50'
+                    }`}
                 >
-                  Authenticate with Device
-                  <span className="material-symbols-outlined text-[20px]">block</span>
+                  {isAuthenticatingWithPasskey ? (
+                    <>
+                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                      Authenticating...
+                    </>
+                  ) : passkeyAvailable ? (
+                    <>
+                      Authenticate with Device
+                      <span className="material-symbols-outlined text-[20px]">fingerprint</span>
+                    </>
+                  ) : (
+                    <>
+                      Not Available
+                      <span className="material-symbols-outlined text-[20px]">block</span>
+                    </>
+                  )}
                 </button>
               </div>
             </div>
@@ -456,10 +719,23 @@ export const ExportDID: React.FC<ExportDIDProps> = ({ onBack }) => {
               </div>
               <button
                 onClick={downloadJSON}
-                className="h-14 px-8 bg-primary hover:bg-primary/90 text-white rounded-[18px] font-black text-sm flex items-center gap-2 shadow-lg shadow-primary/20 transition-all active:scale-[0.98] whitespace-nowrap"
+                disabled={isExporting}
+                className={`h-14 px-8 rounded-[18px] font-black text-sm flex items-center gap-2 transition-all whitespace-nowrap ${isExporting
+                  ? 'bg-gray-300 text-gray-500 cursor-not-allowed opacity-50'
+                  : 'bg-primary hover:bg-primary/90 text-white shadow-lg shadow-primary/20 active:scale-[0.98]'
+                  }`}
               >
-                Download JSON
-                <span className="material-symbols-outlined text-[20px]">download</span>
+                {isExporting ? (
+                  <>
+                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                    Exporting...
+                  </>
+                ) : (
+                  <>
+                    Download JSON
+                    <span className="material-symbols-outlined text-[20px]">download</span>
+                  </>
+                )}
               </button>
             </div>
 
@@ -478,9 +754,13 @@ export const ExportDID: React.FC<ExportDIDProps> = ({ onBack }) => {
               </div>
               <button
                 onClick={generateQRCode}
-                className="h-14 px-8 bg-white border border-gray-200 text-[#1A1A2E] hover:bg-gray-50 rounded-[18px] font-black text-sm transition-all active:scale-[0.98] shadow-sm whitespace-nowrap"
+                disabled={isExporting}
+                className={`h-14 px-8 rounded-[18px] font-black text-sm transition-all whitespace-nowrap ${isExporting
+                  ? 'bg-gray-100 text-gray-500 cursor-not-allowed opacity-50'
+                  : 'bg-white border border-gray-200 text-[#1A1A2E] hover:bg-gray-50 active:scale-[0.98] shadow-sm'
+                  }`}
               >
-                Generate QR Code
+                {isExporting ? 'Generating...' : 'Generate QR Code'}
               </button>
             </div>
 
@@ -499,9 +779,13 @@ export const ExportDID: React.FC<ExportDIDProps> = ({ onBack }) => {
               </div>
               <button
                 onClick={printRecoveryPhrase}
-                className="h-14 px-8 bg-white border border-gray-200 text-[#1A1A2E] hover:bg-gray-50 rounded-[18px] font-black text-sm transition-all active:scale-[0.98] shadow-sm whitespace-nowrap"
+                disabled={isExporting}
+                className={`h-14 px-8 rounded-[18px] font-black text-sm transition-all whitespace-nowrap ${isExporting
+                  ? 'bg-gray-100 text-gray-500 cursor-not-allowed opacity-50'
+                  : 'bg-white border border-gray-200 text-[#1A1A2E] hover:bg-gray-50 active:scale-[0.98] shadow-sm'
+                  }`}
               >
-                Generate & Print
+                {isExporting ? 'Generating...' : 'Generate & Print'}
               </button>
             </div>
           </div>
@@ -568,11 +852,18 @@ export const ExportDID: React.FC<ExportDIDProps> = ({ onBack }) => {
             </div>
 
             <div className="flex items-center justify-center mb-6 bg-gray-50 rounded-2xl p-8">
-              <div className="bg-white p-4 rounded-lg">
-                {/* QR Code would be rendered here with a QR library */}
-                <div className="w-48 h-48 bg-gray-200 rounded-lg flex items-center justify-center">
-                  <span className="text-gray-500 font-bold">QR Code</span>
-                </div>
+              <div
+                id="qrCodeCanvas"
+                className="bg-white p-4 rounded-lg"
+                style={{
+                  display: 'flex',
+                  justifyContent: 'center',
+                  alignItems: 'center',
+                  minHeight: '200px',
+                  minWidth: '200px'
+                }}
+              >
+                <span className="text-gray-400 text-sm">Generating QR Code...</span>
               </div>
             </div>
 

@@ -1,6 +1,7 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { UserProfile, Experience, Education, Certification, Skill, Project, Award, Language, Volunteer } from '../types';
 import { apiService } from '../services/api';
+import { VerifyCredentialDrawer } from './VerifyCredentialDrawer';
 
 interface ProfileDisplayProps {
     data: {
@@ -19,6 +20,7 @@ interface ProfileDisplayProps {
 
 export default function ProfileDisplay({ data, isPublicView = true }: ProfileDisplayProps) {
     const { profile, experiences, education, certifications, skills, projects, awards, languages, volunteers } = data;
+    const [verifyDrawerOpen, setVerifyDrawerOpen] = useState(false);
 
     if (!profile) return null;
 
@@ -337,11 +339,34 @@ export default function ProfileDisplay({ data, isPublicView = true }: ProfileDis
                     </div>
                 </div>
                 <div className="relative z-10 w-full md:w-auto">
-                    <button className="w-full md:w-auto px-8 h-14 bg-white text-[#1A1A2E] rounded-2xl font-black text-sm hover:scale-[1.02] transition-transform active:scale-95 shadow-xl">
-                        Verify Authenticity
-                    </button>
+                    {profile.is_verified && profile.credential_hash ? (
+                        <button
+                            onClick={() => setVerifyDrawerOpen(true)}
+                            className="w-full md:w-auto px-8 h-14 bg-white text-[#1A1A2E] rounded-2xl font-black text-sm hover:scale-[1.02] transition-transform active:scale-95 shadow-xl flex items-center justify-center gap-2"
+                        >
+                            <span className="material-symbols-outlined text-[18px]">verified_user</span>
+                            Verify Authenticity
+                        </button>
+                    ) : (
+                        <button
+                            disabled
+                            className="w-full md:w-auto px-8 h-14 bg-white/20 text-white/50 rounded-2xl font-black text-sm cursor-not-allowed"
+                        >
+                            Not Verified
+                        </button>
+                    )}
                 </div>
             </div>
+
+            {/* Inline Verification Drawer */}
+            {profile.credential_hash && (
+                <VerifyCredentialDrawer
+                    isOpen={verifyDrawerOpen}
+                    onClose={() => setVerifyDrawerOpen(false)}
+                    credentialHash={profile.credential_hash}
+                    identifier={profile.cns_name || profile.human_id || undefined}
+                />
+            )}
         </div>
     );
 }

@@ -9,7 +9,6 @@ const {
     generateCoverLetter,
     matchJobWithProfile
 } = require('../services/gemini');
-const { getCNSInfo, checkNameAvailability, estimateClaimCost, claimName } = require('../services/cns');
 
 // Configure multer for file uploads (memory storage)
 const upload = multer({
@@ -271,97 +270,6 @@ router.post('/ai/verify-liveness-sequence', upload.fields([
         console.error('[AI] Liveness sequence verification error:', error);
         res.status(500).json({
             error: 'Failed to verify liveness sequence',
-            details: error.message
-        });
-    }
-});
-
-/**
- * GET /api/cns/info?wallet=<address>
- * Get CNS information for a wallet
- */
-router.get('/cns/info', async (req, res) => {
-    try {
-        const { wallet } = req.query;
-
-        if (!wallet) {
-            return res.status(400).json({ success: false, error: 'Wallet address is required' });
-        }
-
-        // Optionally include profile data for better name suggestions
-        const profileData = {
-            name: req.query.name,
-            email: req.query.email
-        };
-
-        const cnsInfo = await getCNSInfo(wallet, profileData);
-        res.json(cnsInfo);
-    } catch (error) {
-        console.error('[CNS] Get info error:', error);
-        res.status(500).json({
-            error: 'Failed to get CNS information',
-            details: error.message
-        });
-    }
-});
-
-/**
- * GET /api/cns/check-availability?name=<name>
- * Check if a CNS name is available
- */
-router.get('/cns/check-availability', async (req, res) => {
-    try {
-        const { name } = req.query;
-
-        if (!name) {
-            return res.status(400).json({ success: false, error: 'Name is required' });
-        }
-
-        const isAvailable = await checkNameAvailability(name);
-        const cost = isAvailable ? await estimateClaimCost(name) : null;
-
-        res.json({
-            name: `${name}.cspr`,
-            available: isAvailable,
-            cost
-        });
-    } catch (error) {
-        console.error('[CNS] Check availability error:', error);
-        res.status(500).json({
-            error: 'Failed to check name availability',
-            details: error.message
-        });
-    }
-});
-
-/**
- * POST /api/cns/claim
- * Claim a CNS name
- */
-router.post('/cns/claim', async (req, res) => {
-    try {
-        const { wallet, name } = req.body;
-
-        if (!wallet || !name) {
-            return res.status(400).json({
-                error: 'Wallet address and name are required'
-            });
-        }
-
-        // Check availability first
-        const isAvailable = await checkNameAvailability(name);
-        if (!isAvailable) {
-            return res.status(400).json({
-                error: 'Name is not available'
-            });
-        }
-
-        const result = await claimName(wallet, name);
-        res.json(result);
-    } catch (error) {
-        console.error('[CNS] Claim name error:', error);
-        res.status(500).json({
-            error: 'Failed to claim name',
             details: error.message
         });
     }

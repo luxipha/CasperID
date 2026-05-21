@@ -483,7 +483,12 @@ function showLogoutMessage(domain) {
         school_name: ['school', 'university', 'college', 'institution'],
         degree: ['degree', 'major'],
         linkedin: ['linkedin'],
+        github: ['github', 'git'],
+        twitter: ['twitter', 'x.com', 'x handle'],
         website: ['website', 'portfolio', 'url'],
+        about: ['about', 'summary', 'bio', 'personal description', 'statement'],
+        skills: ['skills', 'technologies', 'tools', 'specialties'],
+        languages: ['languages', 'spoken languages'],
         cover_letter: ['cover letter', 'coverletter', 'personal statement', 'message to hiring manager', 'cover_letter'],
     };
 
@@ -531,7 +536,11 @@ function showLogoutMessage(domain) {
     }
 
     function isFieldRelevant(input) {
-        const relevantKeys = ['first_name', 'last_name', 'full_name', 'email', 'phone_number', 'job_title', 'company_name', 'cover_letter'];
+        const relevantKeys = [
+            'first_name', 'last_name', 'full_name', 'email', 'phone_number', 
+            'job_title', 'company_name', 'cover_letter', 'about', 'skills', 
+            'languages', 'linkedin', 'github', 'twitter', 'website'
+        ];
         return relevantKeys.some(key => matchesField(input, key));
     }
 
@@ -656,8 +665,24 @@ function showLogoutMessage(domain) {
             }
             case 'linkedin':
                 return data.profile?.socials?.linkedin || data.socials?.linkedin || null;
+            case 'github':
+                return data.profile?.socials?.github || data.socials?.github || null;
+            case 'twitter':
+                return data.profile?.socials?.twitter || data.socials?.twitter || null;
             case 'website':
                 return data.profile?.website || data.website || null;
+            case 'about':
+                return data.profile?.about || data.about || null;
+            case 'skills': {
+                const skillsList = data.profile?.skills || data.skills || [];
+                if (skillsList.length === 0) return null;
+                return skillsList.map(s => s.skill_name || s.name).join(', ');
+            }
+            case 'languages': {
+                const langsList = data.profile?.languages || data.languages || [];
+                if (langsList.length === 0) return null;
+                return langsList.map(l => `${l.language_name || l.name} (${l.proficiency || ''})`).join(', ');
+            }
             case 'cover_letter':
                 return data.cover_letter || null;
             default:

@@ -1,11 +1,13 @@
 const { v4: uuidv4 } = require('uuid');
 const crypto = require('crypto');
+const QRCode = require('qrcode');
 const {
     UserAccount,
     VerificationRequestV2,
     PasskeyCredential,
     Credential,
-    UserProfile
+    UserProfile,
+    DevicePairing
 } = require('../database/models');
 const walletGenerator = require('./wallet-generator');
 const geminiService = require('./gemini');
@@ -23,7 +25,7 @@ class VerificationServiceV2 {
     }
 
     /**
-     * Start Layer 2 verification (Liveness + Optional Wallet Link)
+     * Start Layer 2 verification (Liveness + QR Pairing for cross-device flow)
      */
     async startLayer2Verification(sessionToken, options = {}) {
         try {
@@ -58,7 +60,7 @@ class VerificationServiceV2 {
             const verificationRequest = new VerificationRequestV2({
                 request_id: requestId,
                 user_id: userAccount.user_id,
-                dapp_id: appId, // Use provided appId
+                dapp_id: appId,
                 verification_tier: 'layer_2',
                 requested_fields: ['liveness_verified'],
                 purpose,
@@ -67,8 +69,50 @@ class VerificationServiceV2 {
 
             await verificationRequest.save();
 
+            // Generate QR pairing code for cross-device verification
+            // Desktop shows QR, mobile scans it to link the liveness session
+            const pairingId = uuidv4();
+            const pairingToken = crypto.randomBytes(32).toString('hex');
+            const expiresAt = new Date(Date.now() + (5 * 60 * 1000)); // 5 minute expiry
+
+            const qrPayload = {
+                version: 1,
+                type: 'casperid_liveness',
+                pairingId,
+                pairingToken,
+                requestId,
+                verificationTier: 'layer_2',
+                serverUrl: process.env.API_BASE_URL || (process.env.API_HOST ? `https://${process.env.API_HOST}` : 'https://api.casperid.com'),
+                expiresAt: expiresAt.getTime()
+            };
+
+            // Store pairing record
+            const devicePairing = new DevicePairing({
+                pairing_id: pairingId,
+                user_id: userAccount.user_id,
+                qr_code_data: JSON.stringify(qrPayload),
+                pairing_token: pairingToken,
+                expires_at: expiresAt,
+                verification_request_id: requestId,
+                verification_tier: 'layer_2'
+            });
+
+            await devicePairing.save();
+
+            // Generate QR code image
+            const qrCodeDataURL = await QRCode.toDataURL(JSON.stringify(qrPayload), {
+                width: 300,
+                margin: 2,
+                color: {
+                    dark: '#1A1A2E',
+                    light: '#FFFFFF'
+                }
+            });
+
             return {
                 requestId,
+                pairingId,
+                pairingToken,
                 verificationType: 'layer_2',
                 status: 'pending',
                 requirements: {
@@ -76,7 +120,11 @@ class VerificationServiceV2 {
                     walletLink: linkWallet
                 },
                 expiresAt: verificationRequest.expires_at,
-                nextStep: 'liveness_check'
+                qrCode: {
+                    dataUrl: qrCodeDataURL,
+                    payload: qrPayload
+                },
+                nextStep: 'scan_qr_code'
             };
 
         } catch (error) {
@@ -86,7 +134,7 @@ class VerificationServiceV2 {
     }
 
     /**
-     * Start Layer 3 verification (Full KYC + Liveness)
+     * Start Layer 3 verification (Full KYC + Liveness with QR Pairing)
      */
     async startLayer3Verification(sessionToken, options = {}) {
         try {
@@ -125,8 +173,49 @@ class VerificationServiceV2 {
 
             await verificationRequest.save();
 
+            // Generate QR pairing code for cross-device liveness verification
+            const pairingId = uuidv4();
+            const pairingToken = crypto.randomBytes(32).toString('hex');
+            const expiresAt = new Date(Date.now() + (5 * 60 * 1000)); // 5 minute expiry
+
+            const qrPayload = {
+                version: 1,
+                type: 'casperid_liveness',
+                pairingId,
+                pairingToken,
+                requestId,
+                verificationTier: 'layer_3',
+                serverUrl: process.env.API_BASE_URL || (process.env.API_HOST ? `https://${process.env.API_HOST}` : 'https://api.casperid.com'),
+                expiresAt: expiresAt.getTime()
+            };
+
+            // Store pairing record
+            const devicePairing = new DevicePairing({
+                pairing_id: pairingId,
+                user_id: userAccount.user_id,
+                qr_code_data: JSON.stringify(qrPayload),
+                pairing_token: pairingToken,
+                expires_at: expiresAt,
+                verification_request_id: requestId,
+                verification_tier: 'layer_3'
+            });
+
+            await devicePairing.save();
+
+            // Generate QR code image
+            const qrCodeDataURL = await QRCode.toDataURL(JSON.stringify(qrPayload), {
+                width: 300,
+                margin: 2,
+                color: {
+                    dark: '#1A1A2E',
+                    light: '#FFFFFF'
+                }
+            });
+
             return {
                 requestId,
+                pairingId,
+                pairingToken,
                 verificationType: 'layer_3',
                 status: 'pending',
                 verificationMethod,
@@ -136,6 +225,10 @@ class VerificationServiceV2 {
                     livenessCheck: true
                 },
                 expiresAt: verificationRequest.expires_at,
+                qrCode: {
+                    dataUrl: qrCodeDataURL,
+                    payload: qrPayload
+                },
                 nextStep: verificationMethod === 'nimc' ? 'nimc_verification' : 'document_upload'
             };
 
@@ -147,8 +240,9 @@ class VerificationServiceV2 {
 
     /**
      * Process liveness check (used in both Layer 2 and Layer 3)
+     * Supports optional pairingId for cross-device verification linking
      */
-    async processLivenessCheck(requestId, livenessData) {
+    async processLivenessCheck(requestId, livenessData, pairingId = null) {
         try {
             const {
                 videoFile,
@@ -164,6 +258,23 @@ class VerificationServiceV2 {
 
             if (!verificationRequest) {
                 throw new Error('Verification request not found or expired');
+            }
+
+            // If pairingId is provided, validate and link the pairing
+            if (pairingId) {
+                const devicePairing = await DevicePairing.findOne({
+                    pairing_id: pairingId,
+                    expires_at: { $gt: new Date() }
+                });
+
+                if (!devicePairing) {
+                    throw new Error('Invalid or expired pairing session');
+                }
+
+                // Link this verification to the pairing
+                devicePairing.verification_completed = true;
+                devicePairing.completed_at = new Date();
+                await devicePairing.save();
             }
 
             // Validate imageFrames

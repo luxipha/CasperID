@@ -12,6 +12,7 @@ interface MobileLivenessPageProps {
     progress: number;
     instruction: string;
     isApiComplete?: boolean;
+    pairingId?: string; // Optional: links to desktop QR pairing session
 }
 
 export const MobileLivenessPage: React.FC<MobileLivenessPageProps> = ({
@@ -22,7 +23,8 @@ export const MobileLivenessPage: React.FC<MobileLivenessPageProps> = ({
     step,
     progress: externalProgress,
     instruction,
-    isApiComplete
+    isApiComplete,
+    pairingId
 }) => {
     const [internalProgress, setInternalProgress] = useState(0);
 

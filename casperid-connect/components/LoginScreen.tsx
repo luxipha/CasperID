@@ -219,7 +219,7 @@ const LoginScreen: React.FC<Props> = ({ onSuccess }) => {
               </div>
               <div className="flex-1 text-left">
                 <p className="font-bold text-[#1A1A2E]">Detect Web Session</p>
-                <p className="text-xs text-[#626D85]">Sync from casperid.io if logged in</p>
+                <p className="text-xs text-[#626D85]">Sync from CasperID.com if logged in</p>
               </div>
             </div>
           </button>
@@ -241,7 +241,7 @@ const LoginScreen: React.FC<Props> = ({ onSuccess }) => {
         </div>
 
         <button
-          onClick={() => window.open('https://casperid.io', '_blank')}
+          onClick={() => window.open('https://CasperID.com', '_blank')}
           className="mt-6 text-xs font-bold text-[#626D85] hover:text-primary transition-colors underline underline-offset-4"
         >
           Don't have an account? Sign up
@@ -386,7 +386,7 @@ const LoginScreen: React.FC<Props> = ({ onSuccess }) => {
             </button>
 
             <p className="mt-4 text-center text-xs text-[#626D85]">
-              Open <a href="https://casperid.io" target="_blank" className="text-primary hover:underline">casperid.io</a> to see your code
+              Open <a href="https://CasperID.com" target="_blank" className="text-primary hover:underline">CasperID.com</a> to see your code
             </p>
           </>
         )}
@@ -407,7 +407,7 @@ const LoginScreen: React.FC<Props> = ({ onSuccess }) => {
       <div className="mb-10 text-center px-6">
         <h2 className="text-[#1A1A2E] text-2xl font-extrabold mb-2 tracking-tight">Syncing Session</h2>
         <p className="text-[#626D85] text-sm font-medium leading-relaxed">
-          Checking CasperID.io for active credentials...
+          Checking CasperID.com for active credentials...
         </p>
       </div>
 

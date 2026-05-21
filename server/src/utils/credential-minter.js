@@ -116,12 +116,6 @@ async function mintCredential(request) {
     let credential;
     if (existingCredential) {
         // This is an upgrade or re-verification - update existing credential
-        if (existingCredential.tier === request.tier) {
-            console.log(`[DEBUG] Re-verifying credential for wallet: ${request.wallet}, tier: ${request.tier} (already at this tier)`);
-        } else {
-            console.log(`[DEBUG] Upgrading credential for wallet: ${request.wallet}, from ${existingCredential.tier} to ${request.tier}`);
-        }
-
         credential = await Credential.findOneAndUpdate(
             { wallet: request.wallet, revoked: false },
             {
@@ -140,12 +134,8 @@ async function mintCredential(request) {
             },
             { new: true }
         );
-
-        console.log(`[DEBUG] Successfully updated credential for wallet: ${request.wallet}`);
     } else {
         // This is a new credential - create new record
-        console.log(`[DEBUG] Creating new credential for wallet: ${request.wallet}, tier: ${request.tier}`);
-
         credential = new Credential({
             wallet: request.wallet,
             human_id: humanId,
@@ -164,7 +154,6 @@ async function mintCredential(request) {
         });
 
         await credential.save();
-        console.log(`[DEBUG] Successfully created new credential for wallet: ${request.wallet}`);
     }
 
     // Update request status (only if request is a Mongoose document)
@@ -280,11 +269,8 @@ async function mintCredential(request) {
  * @returns {Promise<boolean>} Whether automatic minting is allowed
  */
 async function canAutoMint(wallet, tier) {
-    console.log(`[DEBUG] canAutoMint - wallet: ${wallet}, tier: ${tier}`);
-
     // Only basic tier can be auto-minted
     if (tier !== 'layer_1') {
-        console.log(`[DEBUG] canAutoMint - tier is not basic: ${tier}`);
         return false;
     }
 
@@ -295,7 +281,6 @@ async function canAutoMint(wallet, tier) {
     });
 
     if (existingCredential) {
-        console.log(`[DEBUG] canAutoMint - wallet already has credential: ${existingCredential._id}`);
         return false;
     }
 
@@ -306,11 +291,9 @@ async function canAutoMint(wallet, tier) {
     });
 
     if (existingRequest) {
-        console.log(`[DEBUG] canAutoMint - wallet already has pending request: ${existingRequest._id}`);
         return false;
     }
 
-    console.log(`[DEBUG] canAutoMint - returning true, can auto-mint`);
     return true;
 }
 

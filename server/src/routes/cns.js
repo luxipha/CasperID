@@ -8,6 +8,21 @@ const router = express.Router();
 const cnsResolver = require('../services/cns-resolver');
 const { eventBus, EVENTS } = require('../services/eventBus');
 
+// ============================================
+// WALLET SANITIZATION UTILITY
+// ============================================
+
+/**
+ * Sanitize wallet address for consistent lookups
+ * Handles case sensitivity and whitespace issues
+ * @param {string} wallet - Raw wallet address
+ * @returns {string} - Normalized wallet address (trimmed, lowercase)
+ */
+function sanitizeWallet(wallet) {
+    if (!wallet) return wallet;
+    return wallet.trim().toLowerCase();
+}
+
 // Middleware to validate session
 const validateSession = async (req, res, next) => {
     try {
@@ -125,7 +140,7 @@ router.get('/cns/check/:name', async (req, res) => {
 router.post('/cns/register', validateSession, async (req, res) => {
     try {
         const { name } = req.body;
-        const wallet = req.userAccount.wallet;
+        const wallet = sanitizeWallet(req.userAccount.wallet);
 
         if (!name) {
             return res.status(400).json({
@@ -183,7 +198,7 @@ router.post('/cns/register', validateSession, async (req, res) => {
  */
 router.get('/cns/my-names', validateSession, async (req, res) => {
     try {
-        const wallet = req.userAccount.wallet;
+        const wallet = sanitizeWallet(req.userAccount.wallet);
 
         const { UserAccount, UserProfile } = require('../database/models');
         const { walletToHuman } = require('../utils/wallet-to-human');
@@ -264,7 +279,7 @@ router.get('/cns/my-names', validateSession, async (req, res) => {
 router.post('/cns/bind-subdomain', validateSession, async (req, res) => {
     try {
         const { subdomain, contextDid } = req.body;
-        const wallet = req.userAccount.wallet;
+        const wallet = sanitizeWallet(req.userAccount.wallet);
 
         if (!subdomain || !contextDid) {
             return res.status(400).json({
@@ -320,7 +335,7 @@ router.post('/cns/bind-subdomain', validateSession, async (req, res) => {
  */
 router.get('/cns/routes', validateSession, async (req, res) => {
     try {
-        const wallet = req.userAccount.wallet;
+        const wallet = sanitizeWallet(req.userAccount.wallet);
         const { UserAccount } = require('../database/models');
         const userAccount = await UserAccount.findOne({ wallet });
 
@@ -344,7 +359,7 @@ router.get('/cns/routes', validateSession, async (req, res) => {
 router.post('/cns/route', validateSession, async (req, res) => {
     try {
         const { name, target_type, target_id, redirect_url } = req.body;
-        const wallet = req.userAccount.wallet;
+        const wallet = sanitizeWallet(req.userAccount.wallet);
 
         if (!name || !target_type) {
             return res.status(400).json({
@@ -412,7 +427,7 @@ router.post('/cns/route', validateSession, async (req, res) => {
  */
 router.post('/cns/subname', validateSession, async (req, res) => {
     try {
-        const wallet = req.userAccount.wallet;
+        const wallet = sanitizeWallet(req.userAccount.wallet);
         const { parentName, prefix, contextType } = req.body;
 
         // Validate required fields

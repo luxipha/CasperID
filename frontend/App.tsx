@@ -691,17 +691,13 @@ const App: React.FC = () => {
                   <span className="material-symbols-outlined text-xl">login</span>
                   Consent Demo
                 </button>
-                <button className="flex items-center gap-2 px-6 py-3.5 bg-black text-white font-bold text-sm rounded-2xl transition-all shadow-lg active:scale-95">
-                  <span className="material-symbols-outlined text-xl">fingerprint</span>
-                  Login with Casper
-                </button>
               </div>
             </div>
 
             {/* Core Identity Cards - Redesigned Row */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <IdentityStatusCard />
-              <ReusableKYCCard />
+              <IdentityStatusCard onNavigate={setCurrentView} />
+              <ReusableKYCCard onNavigate={setCurrentView} />
               <TrustScoreCard />
             </div>
 

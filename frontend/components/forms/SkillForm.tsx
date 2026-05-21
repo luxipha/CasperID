@@ -13,13 +13,19 @@ export const SkillForm: React.FC<SkillFormProps> = ({ initialData, onSave, onCan
         skill_name: initialData?.skill_name || initialData?.name || '',
         proficiency: initialData?.proficiency || 'Intermediate',
     });
+    const [isSubmitting, setIsSubmitting] = useState(false);
 
-    const handleSubmit = (e: React.FormEvent) => {
+    const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        console.log('🎯 SkillForm handleSubmit called with formData:', formData);
-        console.log('🎯 Calling onSave with data:', formData as Skill);
-        onSave(formData as Skill);
-        console.log('🎯 onSave called successfully');
+        setIsSubmitting(true);
+        try {
+            console.log('🎯 SkillForm handleSubmit called with formData:', formData);
+            console.log('🎯 Calling onSave with data:', formData as Skill);
+            onSave(formData as Skill);
+            console.log('🎯 onSave called successfully');
+        } finally {
+            setIsSubmitting(false);
+        }
     };
 
     return (
@@ -56,15 +62,17 @@ export const SkillForm: React.FC<SkillFormProps> = ({ initialData, onSave, onCan
                     <button
                         type="button"
                         onClick={onCancel}
-                        className="px-6 py-3 rounded-xl text-sm font-bold text-text-sub hover:bg-gray-100 transition-colors"
+                        disabled={isSubmitting}
+                        className="px-6 py-3 rounded-xl text-sm font-bold text-text-sub hover:bg-gray-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                         Cancel
                     </button>
                     <button
                         type="submit"
-                        className="px-8 py-3 bg-primary text-white rounded-xl text-sm font-bold shadow-lg shadow-primary/20 hover:bg-primary/90 active:scale-95 transition-all"
+                        disabled={isSubmitting}
+                        className="px-8 py-3 bg-primary text-white rounded-xl text-sm font-bold shadow-lg shadow-primary/20 hover:bg-primary/90 active:scale-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                        Save Skill
+                        {isSubmitting ? 'Saving...' : 'Save Skill'}
                     </button>
                 </div>
             </div>

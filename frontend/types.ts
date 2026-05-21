@@ -4,6 +4,8 @@ export interface UserProfile {
   human_id?: string;
   cns_name?: string;
   tier?: 'layer_0' | 'layer_1' | 'layer_2' | 'layer_3';
+  is_verified?: boolean;
+  credential_hash?: string;
   first_name?: string;
   last_name?: string;
   email?: string;

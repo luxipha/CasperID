@@ -49,6 +49,7 @@ export const Profile: React.FC = () => {
   const [volunteers, setVolunteers] = useState<Volunteer[]>([]);
 
   const [isLoading, setIsLoading] = useState(false);
+  const [isLoadingProfile, setIsLoadingProfile] = useState(true);
   const [atsScoreData, setAtsScoreData] = useState<{ score: number; breakdown: any; feedback: string[] } | null>(null);
 
   // UI State for Editing/Adding
@@ -111,6 +112,7 @@ export const Profile: React.FC = () => {
   useEffect(() => {
     const loadProfile = async () => {
       setIsLoading(true);
+      setIsLoadingProfile(true);
       try {
         const res = await apiService.getUserProfile();
 
@@ -132,6 +134,7 @@ export const Profile: React.FC = () => {
         // Only redirect on specific 401/403 errors, but generic catch is okay for now
       } finally {
         setIsLoading(false);
+        setIsLoadingProfile(false);
         // Trigger full data load
         refreshAllData();
       }
@@ -1777,94 +1780,113 @@ export const Profile: React.FC = () => {
                       className="size-28 rounded-full border-4 border-white bg-gray-100 overflow-hidden shadow-lg relative cursor-pointer z-10"
                       onClick={() => avatarInputRef.current?.click()}
                     >
-                      {/* Loading Ring */}
-                      {uploadingAvatar && (
-                        <div className="absolute inset-0 z-20 pointer-events-none">
-                          <svg className="w-full h-full -rotate-90">
-                            <circle
-                              className="text-primary/20"
-                              strokeWidth="8"
-                              stroke="currentColor"
-                              fill="transparent"
-                              r="48"
-                              cx="52"
-                              cy="52"
-                            />
-                            <circle
-                              className="text-primary animate-[spin_2s_linear_infinite]"
-                              strokeWidth="8"
-                              strokeDasharray="300"
-                              strokeDashoffset="150"
-                              strokeLinecap="round"
-                              stroke="currentColor"
-                              fill="transparent"
-                              r="48"
-                              cx="52"
-                              cy="52"
-                            />
-                          </svg>
-                        </div>
-                      )}
+                      {/* Skeleton Loader while profile data is loading */}
+                      {isLoadingProfile ? (
+                        <div className="w-full h-full bg-gradient-to-r from-gray-200 via-gray-100 to-gray-200 animate-pulse" />
+                      ) : (
+                        <>
+                          {/* Loading Ring */}
+                          {uploadingAvatar && (
+                            <div className="absolute inset-0 z-20 pointer-events-none">
+                              <svg className="w-full h-full -rotate-90">
+                                <circle
+                                  className="text-primary/20"
+                                  strokeWidth="8"
+                                  stroke="currentColor"
+                                  fill="transparent"
+                                  r="48"
+                                  cx="52"
+                                  cy="52"
+                                />
+                                <circle
+                                  className="text-primary animate-[spin_2s_linear_infinite]"
+                                  strokeWidth="8"
+                                  strokeDasharray="300"
+                                  strokeDashoffset="150"
+                                  strokeLinecap="round"
+                                  stroke="currentColor"
+                                  fill="transparent"
+                                  r="48"
+                                  cx="52"
+                                  cy="52"
+                                />
+                              </svg>
+                            </div>
+                          )}
 
-                      <img
-                        src={profile?.profile_image_url ?
-                          (profile.profile_image_url.startsWith('http') ? profile.profile_image_url : `${apiService['baseURL'] || 'http://localhost:3001'}${profile.profile_image_url}`)
-                          : "https://picsum.photos/id/64/200/200"}
-                        alt="Avatar"
-                        className="w-full h-full object-cover"
-                      />
-                      <div className={`absolute inset-0 bg-black/40 flex items-center justify-center transition-opacity ${uploadingAvatar ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}>
-                        {uploadingAvatar ? (
-                          <div className="flex flex-col items-center gap-1">
-                            <span className="material-symbols-outlined text-white animate-spin">refresh</span>
-                            <span className="text-[10px] text-white font-bold uppercase tracking-tighter">Uploading</span>
+                          <img
+                            src={profile?.profile_image_url ?
+                              (profile.profile_image_url.startsWith('http') ? profile.profile_image_url : `${apiService['baseURL'] || 'http://localhost:3001'}${profile.profile_image_url}`)
+                              : "https://picsum.photos/id/64/200/200"}
+                            alt="Avatar"
+                            className="w-full h-full object-cover"
+                          />
+                          <div className={`absolute inset-0 bg-black/40 flex items-center justify-center transition-opacity ${uploadingAvatar ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}>
+                            {uploadingAvatar ? (
+                              <div className="flex flex-col items-center gap-1">
+                                <span className="material-symbols-outlined text-white animate-spin">refresh</span>
+                                <span className="text-[10px] text-white font-bold uppercase tracking-tighter">Uploading</span>
+                              </div>
+                            ) : (
+                              <span className="material-symbols-outlined text-white text-3xl">photo_camera</span>
+                            )}
                           </div>
-                        ) : (
-                          <span className="material-symbols-outlined text-white text-3xl">photo_camera</span>
-                        )}
-                      </div>
+                        </>
+                      )}
                     </div>
                     <button
                       onClick={() => avatarInputRef.current?.click()}
-                      className="absolute bottom-1 right-1 size-8 rounded-full bg-primary text-white flex items-center justify-center shadow-lg border-2 border-white hover:scale-110 transition-transform"
+                      disabled={uploadingAvatar}
+                      className={`absolute bottom-1 right-1 size-8 rounded-full text-white flex items-center justify-center shadow-lg border-2 border-white transition-all ${
+                        uploadingAvatar
+                          ? 'bg-gray-400 cursor-not-allowed opacity-50'
+                          : 'bg-primary hover:scale-110'
+                      }`}
                     >
                       <span className="material-symbols-outlined text-[18px]">edit</span>
                     </button>
                   </div>
 
                   <div className="flex-1 flex flex-col md:flex-row md:items-center justify-between gap-4 w-full">
-                    <div>
-                      <h2 className="text-2xl font-black text-text-main tracking-tight">
-                        {profile?.first_name && profile?.last_name ?
-                          `${profile.first_name} ${profile.last_name}` :
-                          profile?.human_id}
-                      </h2>
-                      <div className="flex items-center gap-3 mt-1">
-                        {(() => {
-                          const getTierBadgeProps = (tier?: string) => {
-                            switch (tier) {
-                              case 'layer_3':
-                                return { label: 'Full KYC Verified', color: 'bg-green-50 text-green-600 border-green-100' };
-                              case 'layer_2':
-                                return { label: 'Liveness Verified', color: 'bg-purple-50 text-purple-600 border-purple-100' };
-                              case 'layer_1':
-                                return { label: 'Basic Verified', color: 'bg-blue-50 text-blue-600 border-blue-100' };
-                              default:
-                                return { label: 'Identity Active', color: 'bg-gray-50 text-gray-600 border-gray-100' };
-                            }
-                          };
-                          const badge = getTierBadgeProps(profile?.tier);
-                          return (
-                            <div className={`flex items-center gap-1.5 px-3 py-1 rounded-full border ${badge.color}`}>
-                              <span className="material-symbols-outlined text-[14px] icon-filled">shield</span>
-                              <span className="text-[11px] font-bold uppercase tracking-wider">
-                                {badge.label}
-                              </span>
-                            </div>
-                          );
-                        })()}
+                    {isLoadingProfile ? (
+                      <div className="space-y-3 flex-1">
+                        <div className="h-8 w-48 bg-gradient-to-r from-gray-200 via-gray-100 to-gray-200 rounded-lg animate-pulse" />
+                        <div className="h-5 w-40 bg-gradient-to-r from-gray-200 via-gray-100 to-gray-200 rounded-full animate-pulse" />
                       </div>
-                    </div>
+                    ) : (
+                      <div>
+                        <h2 className="text-2xl font-black text-text-main tracking-tight">
+                          {profile?.first_name && profile?.last_name ?
+                            `${profile.first_name} ${profile.last_name}` :
+                            profile?.human_id}
+                        </h2>
+                        <div className="flex items-center gap-3 mt-1">
+                          {(() => {
+                            const getTierBadgeProps = (tier?: string) => {
+                              switch (tier) {
+                                case 'layer_3':
+                                  return { label: 'Full KYC Verified', color: 'bg-green-50 text-green-600 border-green-100' };
+                                case 'layer_2':
+                                  return { label: 'Liveness Verified', color: 'bg-purple-50 text-purple-600 border-purple-100' };
+                                case 'layer_1':
+                                  return { label: 'Basic Verified', color: 'bg-blue-50 text-blue-600 border-blue-100' };
+                                default:
+                                  return { label: 'Identity Active', color: 'bg-gray-50 text-gray-600 border-gray-100' };
+                              }
+                            };
+                            const badge = getTierBadgeProps(profile?.tier);
+                            return (
+                              <div className={`flex items-center gap-1.5 px-3 py-1 rounded-full border ${badge.color}`}>
+                                <span className="material-symbols-outlined text-[14px] icon-filled">shield</span>
+                                <span className="text-[11px] font-bold uppercase tracking-wider">
+                                  {badge.label}
+                                </span>
+                              </div>
+                            );
+                          })()}
+                        </div>
+                      </div>
+                    )}
 
                     <div className="flex items-center gap-3 bg-gray-50 px-4 py-2 rounded-2xl border border-gray-100">
                       <span className="text-sm font-bold text-text-main">Open to Work</span>
