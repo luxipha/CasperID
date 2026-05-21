@@ -632,6 +632,47 @@ class ApiService {
   }
 
   /**
+   * Submit liveness check with frames (V2) - for cross-device QR verification flow
+   * Submits image frames along with requestId and optional pairingId
+   * @param requestId - The verification request ID
+   * @param frames - Array of image frame blobs
+   * @param pairingId - Optional pairing ID for cross-device linking (from QR scan)
+   */
+  async submitLivenessCheckV2(
+    requestId: string,
+    frames: Blob[],
+    pairingId?: string,
+    stepSequence: string[] = ['blink', 'open_mouth']
+  ): Promise<ApiResponse> {
+    try {
+      const formData = new FormData();
+      formData.append('requestId', requestId);
+
+      // Add frames as imageFrames (matching backend field name)
+      frames.forEach((blob, index) => {
+        formData.append('imageFrames', blob, `frame_${index}.jpg`);
+      });
+
+      // Add metadata
+      formData.append('metadata', JSON.stringify({ stepSequence }));
+
+      // Add pairing ID if provided
+      if (pairingId) {
+        formData.append('pairingId', pairingId);
+      }
+
+      const response = await this.client.post('/api/v2/verification/liveness', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
+      return response.data;
+    } catch (error) {
+      throw this.handleError(error);
+    }
+  }
+
+  /**
    * Verify liveness sequence using AI - handles FormData with image frames
    * Used by LivenessCheck and L3LivenessCheck components
    */

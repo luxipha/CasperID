@@ -405,7 +405,16 @@ router.post('/revoke', adminAuthWithRateLimit, async (req, res) => {
         credential.revocation_reason = reason || 'No reason provided';
         await credential.save();
 
-        // TODO: Update Casper contract to set verified = false
+        // Update Casper contract to set tier to layer_0 (unverified)
+        try {
+            const casperService = require('../services/casper');
+            await casperService.updateTier(wallet, 'layer_0');
+            console.log(`[Admin] Updated on-chain tier to layer_0 for revoked credential: ${wallet}`);
+        } catch (contractError) {
+            console.error('[Admin] Failed to update Casper contract on revocation:', contractError);
+            // Continue with revocation even if contract update fails
+            // Admin can manually fix on-chain state if needed
+        }
 
         res.json({
             message: 'Credential revoked successfully',

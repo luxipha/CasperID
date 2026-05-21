@@ -299,8 +299,8 @@ impl CidNameNFT {
         let metadata = CidNameMetadata {
             name: name.clone(),
             description: alloc::format!("CasperID Name: {}", name),
-            asset_uri: alloc::format!("https://casperid.io/resolve/{}", name),
-            token_uri: alloc::format!("https://casperid.io/api/metadata/{}", name),
+            asset_uri: alloc::format!("https://CasperID.com/resolve/{}", name),
+            token_uri: alloc::format!("https://CasperID.com/api/metadata/{}", name),
             bound_did,
             is_premium,
             registered_at: self.env().get_block_time(),

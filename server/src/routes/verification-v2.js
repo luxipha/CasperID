@@ -77,7 +77,8 @@ router.post('/layer2/start', extractApp, async (req, res) => {
 });
 
 /**
- * Submit liveness check for Layer 2
+ * Submit liveness check for Layer 2 or Layer 3
+ * Supports cross-device verification with optional pairingId
  * POST /api/v2/verification/liveness
  */
 router.post('/liveness', upload.fields([
@@ -85,7 +86,7 @@ router.post('/liveness', upload.fields([
     { name: 'imageFrames', maxCount: 30 } // Increased to handle more frames from liveness check
 ]), async (req, res) => {
     try {
-        const { requestId, metadata } = req.body;
+        const { requestId, pairingId, metadata } = req.body;
 
         if (!requestId) {
             return res.status(400).json({
@@ -115,11 +116,13 @@ router.post('/liveness', upload.fields([
             });
         }
 
-        const result = await verificationServiceV2.processLivenessCheck(requestId, livenessData);
+        // Process liveness with optional pairing context
+        const result = await verificationServiceV2.processLivenessCheck(requestId, livenessData, pairingId);
 
         res.json({
             success: true,
-            liveness: result
+            liveness: result,
+            pairingId: pairingId || null
         });
 
     } catch (error) {

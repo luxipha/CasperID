@@ -15,6 +15,7 @@ export const AwardForm: React.FC<AwardFormProps> = ({ initialData, onSave, onCan
         issue_date: initialData?.issue_date || { month: '', year: '' },
         description: initialData?.description || '',
     });
+    const [isSubmitting, setIsSubmitting] = useState(false);
 
     const months = [
         'January', 'February', 'March', 'April', 'May', 'June',
@@ -31,9 +32,14 @@ export const AwardForm: React.FC<AwardFormProps> = ({ initialData, onSave, onCan
         }));
     };
 
-    const handleSubmit = (e: React.FormEvent) => {
+    const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        onSave(formData as Award);
+        setIsSubmitting(true);
+        try {
+            onSave(formData as Award);
+        } finally {
+            setIsSubmitting(false);
+        }
     };
 
     return (
@@ -102,15 +108,17 @@ export const AwardForm: React.FC<AwardFormProps> = ({ initialData, onSave, onCan
                     <button
                         type="button"
                         onClick={onCancel}
-                        className="px-6 py-3 rounded-xl text-sm font-bold text-text-sub hover:bg-gray-100 transition-colors"
+                        disabled={isSubmitting}
+                        className="px-6 py-3 rounded-xl text-sm font-bold text-text-sub hover:bg-gray-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                         Cancel
                     </button>
                     <button
                         type="submit"
-                        className="px-8 py-3 bg-primary text-white rounded-xl text-sm font-bold shadow-lg shadow-primary/20 hover:bg-primary/90 active:scale-95 transition-all"
+                        disabled={isSubmitting}
+                        className="px-8 py-3 bg-primary text-white rounded-xl text-sm font-bold shadow-lg shadow-primary/20 hover:bg-primary/90 active:scale-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                        Save Award
+                        {isSubmitting ? 'Saving...' : 'Save Award'}
                     </button>
                 </div>
             </div>

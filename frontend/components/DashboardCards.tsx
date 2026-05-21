@@ -4,7 +4,11 @@ import { apiService } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 import { calculateGlobalTrustScore, getScoreGradient } from '../utils/trustScore';
 
-export const IdentityStatusCard: React.FC = () => {
+interface IdentityStatusCardProps {
+  onNavigate?: (view: string) => void;
+}
+
+export const IdentityStatusCard: React.FC<IdentityStatusCardProps> = ({ onNavigate }) => {
   const { user } = useAuth();
   const [layerStatus, setLayerStatus] = useState<string>('unverified');
 
@@ -53,6 +57,24 @@ export const IdentityStatusCard: React.FC = () => {
 
   const statusInfo = getStatusInfo();
 
+  const handleCtaClick = () => {
+    if (!onNavigate) return;
+    switch (layerStatus) {
+      case 'layer_3':
+        onNavigate('kyc');
+        break;
+      case 'layer_2':
+        onNavigate('kyc');
+        break;
+      case 'layer_1':
+        onNavigate('names');
+        break;
+      default:
+        onNavigate('kyc');
+        break;
+    }
+  };
+
   return (
     <section id="tour-identity-card" className="relative overflow-hidden rounded-[32px] bg-gradient-to-br from-[#8652E2] to-[#6D36D6] text-white shadow-soft p-5 md:p-7 h-full flex flex-col justify-between group">
       {/* Infinity Symbol Background Decoration */}
@@ -75,7 +97,10 @@ export const IdentityStatusCard: React.FC = () => {
           <span className="material-symbols-outlined text-[14px] md:text-[16px]">key</span>
           <span className="text-[11px] md:text-[12px] font-bold">{statusInfo.badge}</span>
         </div>
-        <button className="w-full bg-white text-primary hover:bg-white/90 py-3 md:py-3.5 rounded-2xl text-[13px] md:text-[14px] font-bold transition-all shadow-lg active:scale-[0.98]">
+        <button 
+          onClick={handleCtaClick}
+          className="w-full bg-white text-primary hover:bg-white/90 py-3 md:py-3.5 rounded-2xl text-[13px] md:text-[14px] font-bold transition-all shadow-lg active:scale-[0.98]"
+        >
           {statusInfo.cta}
         </button>
       </div>
@@ -83,7 +108,11 @@ export const IdentityStatusCard: React.FC = () => {
   );
 };
 
-export const ReusableKYCCard: React.FC = () => {
+interface ReusableKYCCardProps {
+  onNavigate?: (view: string) => void;
+}
+
+export const ReusableKYCCard: React.FC<ReusableKYCCardProps> = ({ onNavigate }) => {
   const { user } = useAuth();
   const [loading, setLoading] = useState(true);
   const [verificationData, setVerificationData] = useState<any>(null);
@@ -180,6 +209,15 @@ export const ReusableKYCCard: React.FC = () => {
   const livenessStatus = getStatusInfo('layer_2', verificationData?.credentials); // layer_2 = Liveness Check
   const currentLayerStatus = verificationData?.currentStatus?.layerStatus || 'unverified';
 
+  const handleCtaClick = () => {
+    if (!onNavigate) return;
+    if (currentLayerStatus === 'layer_3') {
+      onNavigate('credentials');
+    } else {
+      onNavigate('kyc');
+    }
+  };
+
   return (
     <div id="tour-kyc-card" className="bg-white p-7 rounded-[32px] shadow-soft h-full flex flex-col justify-between border border-gray-50">
       <div>
@@ -230,7 +268,10 @@ export const ReusableKYCCard: React.FC = () => {
         </div>
       </div>
 
-      <button className="mt-6 pt-4 border-t border-gray-50 text-[14px] font-bold text-primary flex items-center gap-2 hover:gap-3 transition-all group">
+      <button 
+        onClick={handleCtaClick}
+        className="mt-6 pt-4 border-t border-gray-50 text-[14px] font-bold text-primary flex items-center gap-2 hover:gap-3 transition-all group w-full text-left"
+      >
         {currentLayerStatus === 'layer_3' ? 'View Credentials' :
           currentLayerStatus === 'layer_2' ? 'Complete Full KYC (Layer 3)' :
             'Start Liveness Check (Layer 2)'}

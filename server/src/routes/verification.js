@@ -45,9 +45,7 @@ router.post('/request-verification', rateLimitMiddleware('verification_requests'
         }
 
         // Check if this is a basic tier request that can be auto-minted BEFORE creating the request
-        console.log(`[DEBUG] Checking canAutoMint for wallet: ${wallet}, tier: ${tier}`);
         const canMint = await canAutoMint(wallet, tier);
-        console.log(`[DEBUG] canAutoMint result: ${canMint}`);
 
         // Resolve Location and IP
         const ip = req.ip || req.connection.remoteAddress;

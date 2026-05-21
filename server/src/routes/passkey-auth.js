@@ -371,142 +371,6 @@ router.post('/device/check', async (req, res) => {
 });
 
 // ============================================
-// EMAIL VERIFICATION
-// ============================================
-
-/**
- * Verify email with code
- * POST /api/passkey/verify-email
- */
-router.post('/verify-email', passkeyRateLimit, validateEmailVerification, async (req, res) => {
-    try {
-        const { verificationId, code } = req.body;
-
-        if (!verificationId || !code) {
-            return res.status(400).json({
-                success: false,
-                error: 'Verification ID and code are required'
-            });
-        }
-
-        const verificationResult = await webauthnService.verifyEmailCode(verificationId, code);
-
-        if (!verificationResult.success) {
-            return res.status(400).json({
-                success: false,
-                error: 'Email verification failed'
-            });
-        }
-
-        // Generate wallet after email verification (Layer 1)
-        const userAccount = await UserAccount.findOne({ user_id: verificationResult.userId });
-
-        if (userAccount && userAccount.active_passkey_id) {
-            try {
-                const walletInfo = await walletGenerator.generateWalletFromPasskey(
-                    userAccount.active_passkey_id,
-                    userAccount.recovery_email,
-                    userAccount.user_salt
-                );
-
-                // Update user account with wallet info
-                await walletGenerator.updateUserAccountWithWallet(
-                    verificationResult.userId,
-                    walletInfo
-                );
-
-                res.json({
-                    success: true,
-                    message: 'Email verified and wallet created',
-                    userId: verificationResult.userId,
-                    emailVerified: true,
-                    layerStatus: 'layer_1',
-                    walletInfo: {
-                        walletAddress: walletInfo.walletAddress,
-                        humanId: walletInfo.humanId,
-                        publicKey: walletInfo.publicKey
-                    }
-                });
-
-            } catch (walletError) {
-                console.error('Wallet creation failed:', walletError);
-                res.json({
-                    success: true,
-                    message: 'Email verified but wallet creation failed',
-                    userId: verificationResult.userId,
-                    emailVerified: true,
-                    walletCreationError: walletError.message
-                });
-            }
-        } else {
-            res.json({
-                success: true,
-                message: 'Email verified',
-                userId: verificationResult.userId,
-                emailVerified: true
-            });
-        }
-
-    } catch (error) {
-        console.error('Email verification failed:', error);
-        res.status(400).json({
-            success: false,
-            error: error.message
-        });
-    }
-});
-
-/**
- * Resend email verification
- * POST /api/passkey/resend-verification
- */
-router.post('/resend-verification', async (req, res) => {
-    try {
-        const { email } = req.body;
-
-        if (!email) {
-            return res.status(400).json({
-                success: false,
-                error: 'Email is required'
-            });
-        }
-
-        // Use normalized email query for Gmail compatibility
-        const emailQuery = buildEmailQuery(email);
-        const userAccount = await UserAccount.findOne({
-            ...emailQuery,
-            email_verified: false
-        });
-
-        if (!userAccount) {
-            return res.status(400).json({
-                success: false,
-                error: 'User account not found or already verified'
-            });
-        }
-
-        const emailVerificationId = await webauthnService.initializeEmailVerification(
-            email,
-            userAccount.user_id,
-            'registration'
-        );
-
-        res.json({
-            success: true,
-            message: 'Verification email sent',
-            emailVerificationId
-        });
-
-    } catch (error) {
-        console.error('Resend verification failed:', error);
-        res.status(400).json({
-            success: false,
-            error: error.message
-        });
-    }
-});
-
-// ============================================
 // PASSKEY AUTHENTICATION
 // ============================================
 
@@ -525,6 +389,7 @@ router.post('/auth/begin', async (req, res) => {
             challengeId: result.challengeId,
             options: result.options,
             deviceType: result.deviceType,
+            transports: result.transports,
             expiresIn: result.expiresIn
         });
 
@@ -1482,96 +1347,6 @@ router.post('/analytics/account-created', async (req, res) => {
 });
 
 // ============================================
-// ACCOUNT RECOVERY
-// ============================================
-
-/**
- * Start account recovery by email
- * POST /api/passkey/recovery/begin
- */
-router.post('/recovery/begin', async (req, res) => {
-    try {
-        const { email } = req.body;
-
-        if (!email) {
-            return res.status(400).json({
-                success: false,
-                error: 'Email is required'
-            });
-        }
-
-        // Use normalized email query for Gmail compatibility
-        const userAccount = await UserAccount.findOne(buildEmailQuery(email));
-
-        if (!userAccount) {
-            // Don't reveal if account exists for security
-            return res.json({
-                success: true,
-                message: 'If an account with this email exists, recovery instructions have been sent'
-            });
-        }
-
-        const emailVerificationId = await webauthnService.initializeEmailVerification(
-            email,
-            userAccount.user_id,
-            'recovery'
-        );
-
-        res.json({
-            success: true,
-            message: 'Recovery email sent',
-            emailVerificationId
-        });
-
-    } catch (error) {
-        console.error('Recovery begin failed:', error);
-        res.status(500).json({
-            success: false,
-            error: 'Recovery process failed'
-        });
-    }
-});
-
-/**
- * Verify recovery email and allow new passkey
- * POST /api/passkey/recovery/verify
- */
-router.post('/recovery/verify', async (req, res) => {
-    try {
-        const { verificationId, code } = req.body;
-
-        const verificationResult = await webauthnService.verifyEmailCode(verificationId, code);
-
-        if (!verificationResult.success) {
-            return res.status(400).json({
-                success: false,
-                error: 'Verification failed'
-            });
-        }
-
-        // User can now register new passkey for recovery
-        const userAccount = await UserAccount.findOne({
-            user_id: verificationResult.userId
-        });
-
-        res.json({
-            success: true,
-            message: 'Email verified for recovery',
-            userId: verificationResult.userId,
-            userEmail: userAccount ? userAccount.recovery_email : null,
-            canRegisterNewPasskey: true
-        });
-
-    } catch (error) {
-        console.error('Recovery verification failed:', error);
-        res.status(400).json({
-            success: false,
-            error: error.message
-        });
-    }
-});
-
-// ============================================
 // BUSINESS SCOPED PROFILE ENDPOINT (Day 3)
 // ============================================
 
@@ -1672,6 +1447,91 @@ router.get('/me', async (req, res) => {
         if (!res.headersSent) {
             res.status(500).json({ success: false, error: 'Failed to retrieve profile' });
         }
+    }
+});
+
+/**
+ * Verify Passkey for Export DID Purpose
+ * POST /api/passkey/export-did-verify
+ * Verifies passkey authentication for export-did purpose and returns verification token
+ */
+router.post('/export-did-verify', require('../middleware/auth').requireAuth, async (req, res) => {
+    try {
+        const { challengeId, credential, purpose } = req.body;
+        const userId = req.user.userId || req.user.wallet;
+
+        if (!challengeId || !credential || purpose !== 'export-did') {
+            return res.status(400).json({
+                success: false,
+                error: 'Challenge ID, credential, and valid purpose are required'
+            });
+        }
+
+        // Get actual user_id from database
+        const userAccount = await UserAccount.findOne({
+            $or: [
+                { user_id: userId },
+                { wallet: userId }
+            ]
+        });
+
+        if (!userAccount) {
+            return res.status(404).json({
+                success: false,
+                error: 'User account not found'
+            });
+        }
+
+        // Verify passkey authentication
+        const authResult = await webauthnService.verifyAuthentication(
+            challengeId,
+            credential,
+            {}
+        );
+
+        if (!authResult.success) {
+            return res.status(400).json({
+                success: false,
+                error: 'Passkey verification failed'
+            });
+        }
+
+        // Check if the verified user matches the requesting user
+        if (authResult.userAccount.user_id !== userAccount.user_id) {
+            return res.status(403).json({
+                success: false,
+                error: 'Passkey does not match authenticated user'
+            });
+        }
+
+        // Create verification token for export-did (similar to OTP flow)
+        const verificationToken = `${userAccount.user_id}-${purpose}-${Date.now()}-verified`;
+        await EmailVerification.create({
+            verification_id: verificationToken,
+            email: userAccount.recovery_email,
+            user_id: userAccount.user_id,
+            verification_code: 'verified',
+            type: 'verification_token',
+            purpose: `${purpose}-verified`,
+            verified: true,
+            verified_at: new Date(),
+            expires_at: new Date(Date.now() + (5 * 60 * 1000)) // 5 minutes validity
+        });
+
+        res.json({
+            success: true,
+            message: 'Passkey verified successfully',
+            purpose,
+            validFor: 5 * 60 * 1000, // 5 minutes
+            verificationToken
+        });
+
+    } catch (error) {
+        console.error('Passkey export-did verification failed:', error);
+        res.status(500).json({
+            success: false,
+            error: error.message || 'Failed to verify passkey'
+        });
     }
 });
 

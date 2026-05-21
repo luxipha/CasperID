@@ -18,6 +18,7 @@ export const EducationForm: React.FC<EducationFormProps> = ({ initialData, onSav
         grade: initialData?.grade || '',
         description: initialData?.description || '',
     });
+    const [isSubmitting, setIsSubmitting] = useState(false);
 
     const months = [
         'January', 'February', 'March', 'April', 'May', 'June',
@@ -41,9 +42,14 @@ export const EducationForm: React.FC<EducationFormProps> = ({ initialData, onSav
         }));
     };
 
-    const handleSubmit = (e: React.FormEvent) => {
+    const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        onSave(formData as Education);
+        setIsSubmitting(true);
+        try {
+            onSave(formData as Education);
+        } finally {
+            setIsSubmitting(false);
+        }
     };
 
     return (
@@ -159,15 +165,17 @@ export const EducationForm: React.FC<EducationFormProps> = ({ initialData, onSav
                     <button
                         type="button"
                         onClick={onCancel}
-                        className="px-6 py-3 rounded-xl text-sm font-bold text-text-sub hover:bg-gray-100 transition-colors"
+                        disabled={isSubmitting}
+                        className="px-6 py-3 rounded-xl text-sm font-bold text-text-sub hover:bg-gray-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                         Cancel
                     </button>
                     <button
                         type="submit"
-                        className="px-8 py-3 bg-primary text-white rounded-xl text-sm font-bold shadow-lg shadow-primary/20 hover:bg-primary/90 active:scale-95 transition-all"
+                        disabled={isSubmitting}
+                        className="px-8 py-3 bg-primary text-white rounded-xl text-sm font-bold shadow-lg shadow-primary/20 hover:bg-primary/90 active:scale-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                        Save Education
+                        {isSubmitting ? 'Saving...' : 'Save Education'}
                     </button>
                 </div>
             </div>

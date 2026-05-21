@@ -4,13 +4,28 @@ const { requireAuth } = require('../middleware/auth');
 const geoip = require('geoip-lite');
 const UAParser = require('ua-parser-js');
 
+// ============================================
+// WALLET SANITIZATION UTILITY
+// ============================================
+
+/**
+ * Sanitize wallet address for consistent lookups
+ * Handles case sensitivity and whitespace issues
+ * @param {string} wallet - Raw wallet address
+ * @returns {string} - Normalized wallet address (trimmed, lowercase)
+ */
+function sanitizeWallet(wallet) {
+    if (!wallet) return wallet;
+    return wallet.trim().toLowerCase();
+}
+
 /**
  * GET /api/activity-log
  * Fetch user's activity log from multiple sources
  */
 router.get('/activity-log', requireAuth, async (req, res) => {
     try {
-        const { wallet } = req.user;
+        const wallet = sanitizeWallet(req.user.wallet);
         const { page = 1, limit = 10, type, search } = req.query;
         const skip = (page - 1) * limit;
 
@@ -304,7 +319,7 @@ router.get('/activity-log', requireAuth, async (req, res) => {
 router.get('/activity-log/:id', requireAuth, async (req, res) => {
     try {
         const { id } = req.params;
-        const { wallet } = req.user;
+        const wallet = sanitizeWallet(req.user.wallet);
 
         let activity = null;
         let source = null;

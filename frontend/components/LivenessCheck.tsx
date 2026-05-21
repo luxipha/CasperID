@@ -5,6 +5,7 @@ import { Camera } from '@mediapipe/camera_utils';
 import { LivenessSuccess } from './LivenessSuccess';
 import { VerificationProgress } from './VerificationProgress';
 import { MobileLivenessPage, MobileStep } from './MobileLiveness';
+import { DesktopLivenessQR } from './DesktopLivenessQR';
 import { generateLivenessProof, FaceLandmark } from '../services/zkProver';
 import { apiService } from '../services/api';
 
@@ -24,7 +25,21 @@ export const LivenessCheck: React.FC<LivenessCheckProps> = ({ onBack, onComplete
 
   useEffect(() => {
     const checkMobile = () => {
-      setIsMobile(window.innerWidth < 1024);
+      // Consider device a mobile if width is less than 768px (typical tablet portrait)
+      // or if it's actually a mobile device based on user agent
+      const isMobileDevice = /iPhone|iPad|iPod|Android|webOS|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+      const isMobileViewport = window.innerWidth < 768;
+      const result = isMobileDevice || isMobileViewport;
+
+      console.log('[Mobile Detection]', {
+        isMobileDevice,
+        isMobileViewport,
+        windowWidth: window.innerWidth,
+        userAgent: navigator.userAgent.substring(0, 50),
+        finalResult: result
+      });
+
+      setIsMobile(result);
     };
     checkMobile();
     window.addEventListener('resize', checkMobile);
@@ -41,6 +56,13 @@ export const LivenessCheck: React.FC<LivenessCheckProps> = ({ onBack, onComplete
   const [progress, setProgress] = useState(0);
   const [ovalColor, setOvalColor] = useState<"white" | "red" | "green">("white");
   const [isApiComplete, setIsApiComplete] = useState(false);
+
+  // QR Pairing State (for cross-device desktop-to-mobile flow)
+  const [requestId, setRequestId] = useState<string>("");
+  const [pairingId, setPairingId] = useState<string>("");
+  const [qrCodeDataUrl, setQrCodeDataUrl] = useState<string>("");
+  const [desktopQrStep, setDesktopQrStep] = useState<"loading" | "ready" | "scanning" | "success">("loading");
+  const [qrInitialized, setQrInitialized] = useState(false);
 
   const { refreshUser } = useAuth();
 
@@ -94,6 +116,45 @@ export const LivenessCheck: React.FC<LivenessCheckProps> = ({ onBack, onComplete
     setZkProgress(0);
     setChallenge("BLINK");
   };
+
+  // Initialize QR verification (desktop flow only)
+  useEffect(() => {
+    // Prevent double initialization
+    if (qrInitialized || isMobile) return;
+
+    const initializeQRVerification = async () => {
+      try {
+        console.log('[QR] Initializing QR verification...');
+        const response = await apiService.post('/api/v2/verification/layer2/start', {
+          linkWallet: false,
+          purpose: 'Layer 2 Liveness Verification'
+        });
+
+        console.log('[QR] API Response:', response);
+
+        if (response && response.verification) {
+          const { requestId: reqId, pairingId: pId, qrCode } = response.verification;
+          console.log('[QR] Received:', { reqId, pId, hasQrCode: !!qrCode });
+
+          setRequestId(reqId);
+          setPairingId(pId);
+
+          if (qrCode && qrCode.dataUrl) {
+            console.log('[QR] Setting QR code image');
+            setQrCodeDataUrl(qrCode.dataUrl);
+            setDesktopQrStep('ready');
+          }
+        }
+        setQrInitialized(true);
+      } catch (error) {
+        console.error('[QR] Failed to initialize:', error);
+        setQrInitialized(true);
+        // Fallback: still allow verification, show camera instead
+      }
+    };
+
+    initializeQRVerification();
+  }, [qrInitialized, isMobile]);
 
   useEffect(() => {
     let camera: any = null;
@@ -335,14 +396,38 @@ export const LivenessCheck: React.FC<LivenessCheckProps> = ({ onBack, onComplete
       setState("VERIFYING_AI"); // Transition to simple verifying UI
       setGuidance("Analyzing Face...");
 
-      // Use apiService which handles CSRF tokens automatically
-      const result = await apiService.verifyLivenessSequence(frames, ['blink', 'open_mouth']);
+      let result;
 
-      if (result.passed) {
+      // Use V2 endpoint if we have a requestId (cross-device QR flow)
+      if (isMobile && requestId && pairingId) {
+        console.log('[Liveness] Using V2 endpoint with pairing:', pairingId);
+        result = await apiService.submitLivenessCheckV2(
+          requestId,
+          frames,
+          pairingId,
+          ['blink', 'open_mouth']
+        );
+      } else {
+        // Fallback to old endpoint for non-paired flows
+        console.log('[Liveness] Using legacy endpoint');
+        result = await apiService.verifyLivenessSequence(frames, ['blink', 'open_mouth']);
+      }
+
+      if (result.success || result.passed) {
         setIsApiComplete(true); // Signal progress component to finish immediately
-        await refreshUser();
-        // Trigger ZK proof generation after minting succeeds
-        generateAndSubmitZkProof();
+
+        // Only refresh user and generate ZK proof if not using paired flow
+        // (Paired flow will complete on desktop side)
+        if (!pairingId) {
+          await refreshUser();
+          generateAndSubmitZkProof();
+        } else {
+          console.log('[Liveness] Paired submission complete, waiting for desktop');
+          setState("SUCCESS");
+          setTimeout(() => {
+            if (onComplete) onComplete();
+          }, 2000);
+        }
       } else {
         console.error('[Liveness] Verification failed:', result);
         setGuidance(result.error || "Verification failed. Please try again.");
@@ -529,9 +614,10 @@ export const LivenessCheck: React.FC<LivenessCheckProps> = ({ onBack, onComplete
     );
   }
 
-  // Handle Mobile Overlay
+  // Handle Mobile Overlay (Mobile user - show camera and do liveness)
   if (isMobile) {
-    // Note: VerificationProgress is shown inside state === "MINTING" usually, 
+    console.log('[Render] Showing MobileLivenessPage');
+    // Note: VerificationProgress is shown inside state === "MINTING" usually,
     // but in Layer 2 it happens during state === "VERIFYING" transition.
     return (
       <MobileLivenessPage
@@ -543,6 +629,7 @@ export const LivenessCheck: React.FC<LivenessCheckProps> = ({ onBack, onComplete
         progress={progress}
         instruction={guidance}
         isApiComplete={isApiComplete}
+        pairingId={pairingId}
       />
     )
   }
@@ -552,10 +639,14 @@ export const LivenessCheck: React.FC<LivenessCheckProps> = ({ onBack, onComplete
       {/* Page Header */}
       <div className="mb-8">
         <h1 className="text-[40px] font-black text-text-main tracking-tight leading-tight">
-          Complete Liveness Check (Layer {layer})
+          {!isMobile && qrInitialized && qrCodeDataUrl && desktopQrStep !== 'success'
+            ? 'Cross-Device Verification'
+            : `Complete Liveness Check (Layer ${layer})`}
         </h1>
         <p className="text-text-sub text-lg font-medium leading-relaxed max-w-3xl mt-2">
-          Position your face within the frame and follow the on-screen prompts to confirm you are a real human.
+          {!isMobile && qrInitialized && qrCodeDataUrl && desktopQrStep !== 'success'
+            ? 'Scan the QR code with your mobile device to complete the liveness verification.'
+            : 'Position your face within the frame and follow the on-screen prompts to confirm you are a real human.'}
         </p>
       </div>
 
@@ -608,16 +699,48 @@ export const LivenessCheck: React.FC<LivenessCheckProps> = ({ onBack, onComplete
             </div>
           ) : (
             <>
-              {/* Camera Preview Area */}
-              <div className="relative aspect-[3/4] bg-black rounded-2xl overflow-hidden shadow-2xl border-4 border-slate-800">
-                {/* Hidden Source */}
-                <video ref={videoRef} className="hidden" playsInline muted />
+              {/* QR Code Area for Desktop / Camera Area for Mobile */}
+              <div className="relative aspect-[3/4] bg-black rounded-2xl overflow-hidden shadow-2xl border-4 border-slate-800 flex items-center justify-center">
 
-                {/* Output Canvas */}
-                <canvas ref={canvasRef} className="absolute inset-0 w-full h-full object-cover" width={640} height={480} />
+                {/* Desktop QR Code Display */}
+                {!isMobile && qrInitialized && qrCodeDataUrl && desktopQrStep !== 'success' && (
+                  <div className="w-full h-full flex flex-col items-center justify-center gap-6 p-8">
+                    {/* QR Code Image */}
+                    <div className="bg-white p-4 rounded-xl">
+                      <img
+                        src={qrCodeDataUrl}
+                        alt="Verification QR Code"
+                        className="w-48 h-48 object-contain"
+                      />
+                    </div>
 
-                {/* Oval Overlay (SVG) */}
-                <svg className="absolute inset-0 w-full h-full pointer-events-none" viewBox="0 0 100 100" preserveAspectRatio="none">
+                    {/* Instructions */}
+                    <div className="text-center space-y-2">
+                      <h3 className="text-white text-lg font-bold">Scan with Your Phone</h3>
+                      <p className="text-white/70 text-sm">
+                        Open your mobile device and scan this QR code to complete liveness verification
+                      </p>
+                    </div>
+
+                    {/* Status Badge */}
+                    <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-primary/20 border border-primary/40 text-primary text-[10px] font-bold uppercase tracking-wider">
+                      <span className="size-2 rounded-full bg-primary animate-pulse"></span>
+                      Waiting for Mobile
+                    </div>
+                  </div>
+                )}
+
+                {/* Mobile Camera Feed */}
+                {(isMobile || !qrInitialized || !qrCodeDataUrl || desktopQrStep === 'success') && (
+                  <>
+                    {/* Hidden Source */}
+                    <video ref={videoRef} className="hidden" playsInline muted />
+
+                    {/* Output Canvas */}
+                    <canvas ref={canvasRef} className="absolute inset-0 w-full h-full object-cover" width={640} height={480} />
+
+                    {/* Oval Overlay (SVG) */}
+                    <svg className="absolute inset-0 w-full h-full pointer-events-none" viewBox="0 0 100 100" preserveAspectRatio="none">
                   <defs>
                     <mask id="oval-mask">
                       <rect width="100%" height="100%" fill="white" />
@@ -663,6 +786,8 @@ export const LivenessCheck: React.FC<LivenessCheckProps> = ({ onBack, onComplete
                       <p className="text-gray-300 font-medium tracking-wide">Initializing Secure Camera...</p>
                     </div>
                   </div>
+                )}
+                  </>
                 )}
 
               </div>

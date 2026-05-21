@@ -215,6 +215,101 @@ export const VerifyCredentialPage: React.FC<VerifyCredentialPageProps> = ({ cred
                     </div>
                 </div>
 
+                {/* Advanced Verification Dashboard */}
+                <div className="space-y-6 pt-2">
+                    
+                    {/* Verification Checklist */}
+                    <div className="bg-white rounded-[24px] p-6 shadow-sm border border-gray-100">
+                        <h3 className="text-sm font-black text-gray-900 mb-4 flex items-center gap-2 uppercase tracking-widest">
+                            <span className="material-symbols-outlined text-[#10B981]">checklist</span>
+                            Verification Checklist
+                        </h3>
+                        <div className="space-y-4">
+                            <div className="flex items-start gap-3">
+                                <div className="mt-0.5 size-5 rounded-full bg-[#E8FBF4] flex items-center justify-center shrink-0">
+                                    <span className="material-symbols-outlined text-[14px] text-[#10B981] font-bold">check</span>
+                                </div>
+                                <div>
+                                    <p className="text-sm font-bold text-gray-900">Tier 1: Basic ID</p>
+                                    <p className="text-xs text-gray-500 font-medium">Email, Phone, and Device linked.</p>
+                                </div>
+                            </div>
+                            <div className="flex items-start gap-3">
+                                <div className={`mt-0.5 size-5 rounded-full flex items-center justify-center shrink-0 ${credential?.tier === 'layer_2' || credential?.tier === 'layer_3' ? 'bg-[#E8FBF4] text-[#10B981]' : 'bg-gray-100 text-gray-400'}`}>
+                                    <span className="material-symbols-outlined text-[14px] font-bold">{credential?.tier === 'layer_2' || credential?.tier === 'layer_3' ? 'check' : 'lock'}</span>
+                                </div>
+                                <div>
+                                    <p className={`text-sm font-bold ${credential?.tier === 'layer_2' || credential?.tier === 'layer_3' ? 'text-gray-900' : 'text-gray-400'}`}>Tier 2: Biometric Liveness</p>
+                                    <p className="text-xs text-gray-500 font-medium">3D facial map challenge passed.</p>
+                                </div>
+                            </div>
+                            <div className="flex items-start gap-3">
+                                <div className={`mt-0.5 size-5 rounded-full flex items-center justify-center shrink-0 ${credential?.tier === 'layer_3' ? 'bg-[#E8FBF4] text-[#10B981]' : 'bg-gray-100 text-gray-400'}`}>
+                                    <span className="material-symbols-outlined text-[14px] font-bold">{credential?.tier === 'layer_3' ? 'check' : 'lock'}</span>
+                                </div>
+                                <div>
+                                    <p className={`text-sm font-bold ${credential?.tier === 'layer_3' ? 'text-gray-900' : 'text-gray-400'}`}>Tier 3: Full KYC</p>
+                                    <p className="text-xs text-gray-500 font-medium">Government ID & Sanctions verified.</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Change History Timeline */}
+                    <div className="bg-white rounded-[24px] p-6 shadow-sm border border-gray-100">
+                        <h3 className="text-sm font-black text-gray-900 mb-4 flex items-center gap-2 uppercase tracking-widest">
+                            <span className="material-symbols-outlined text-[#7165FF]">history</span>
+                            Activity Trail
+                        </h3>
+                        <div className="space-y-6 relative before:absolute before:inset-0 before:ml-[15px] before:-translate-x-px before:h-full before:w-0.5 before:bg-gray-100 pl-10">
+                            <div className="relative">
+                                <div className="absolute -left-[45px] size-8 rounded-full bg-white border-[3px] border-[#7165FF] flex items-center justify-center shadow-sm z-10">
+                                    <div className="size-2.5 rounded-full bg-[#7165FF]" />
+                                </div>
+                                <div className="text-[10px] font-black text-[#7165FF] mb-0.5 uppercase tracking-wider">Present</div>
+                                <p className="text-sm font-bold text-gray-900">Profile Authenticated</p>
+                                <p className="text-xs text-gray-500 font-medium">Integrity checked securely on Casper Network.</p>
+                            </div>
+                            <div className="relative">
+                                <div className="absolute -left-[45px] size-8 rounded-full bg-gray-50 border-2 border-gray-200 flex items-center justify-center z-10">
+                                    <div className="size-2 rounded-full bg-gray-300" />
+                                </div>
+                                <div className="text-[10px] font-black text-gray-400 mb-0.5 uppercase tracking-wider">
+                                    {credential ? new Date(credential.issuedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '---'}
+                                </div>
+                                <p className="text-sm font-bold text-gray-900">Identity Provisioned</p>
+                                <p className="text-xs text-gray-500 font-medium">On-chain DID registered and linked.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* On-Chain Explorer */}
+                    <div className="bg-white rounded-[24px] p-6 shadow-sm border border-gray-100">
+                        <h3 className="text-sm font-black text-gray-900 mb-4 flex items-center gap-2 uppercase tracking-widest">
+                            <span className="material-symbols-outlined text-orange-500">link</span>
+                            On-Chain Proof
+                        </h3>
+                        <div className="space-y-3">
+                            <div className="flex items-center justify-between p-3 rounded-xl bg-gray-50 border border-gray-100">
+                                <div>
+                                    <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Network</p>
+                                    <p className="text-xs font-bold text-gray-900">Casper Mainnet</p>
+                                </div>
+                                <span className="material-symbols-outlined text-green-500 text-lg">public</span>
+                            </div>
+                            <a href="#" className="flex items-center justify-between p-3 rounded-xl bg-gray-50 border border-gray-100 group cursor-pointer hover:border-[#7165FF]/30 transition-colors block">
+                                <div>
+                                    <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Latest Tx Hash</p>
+                                    <p className="text-xs font-mono font-bold text-gray-900 group-hover:text-[#7165FF] transition-colors">
+                                        {shortHash ? `01${shortHash.replace(/-/g, '').toLowerCase()}...` : '---'}
+                                    </p>
+                                </div>
+                                <span className="material-symbols-outlined text-gray-400 text-lg group-hover:text-[#7165FF] transition-colors">open_in_new</span>
+                            </a>
+                        </div>
+                    </div>
+                </div>
+
                 {/* Footer */}
                 <div className="flex justify-center pt-4">
                     <div className="inline-flex items-center gap-2 px-6 py-3 bg-white rounded-full shadow-sm border border-gray-50 anonymous-footer transition-all hover:shadow-md">

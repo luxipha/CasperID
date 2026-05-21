@@ -24,6 +24,21 @@ const { requireAuth } = require('../middleware/auth');
 const { eventBus, EVENTS } = require('../services/eventBus');
 
 // ============================================
+// WALLET SANITIZATION UTILITY
+// ============================================
+
+/**
+ * Sanitize wallet address for consistent lookups
+ * Handles case sensitivity and whitespace issues
+ * @param {string} wallet - Raw wallet address
+ * @returns {string} - Normalized wallet address (trimmed, lowercase)
+ */
+function sanitizeWallet(wallet) {
+    if (!wallet) return wallet;
+    return wallet.trim().toLowerCase();
+}
+
+// ============================================
 // PROFILE COMPLETENESS UTILITY
 // ============================================
 
@@ -32,6 +47,8 @@ const { eventBus, EVENTS } = require('../services/eventBus');
  * Returns a number between 0-100
  */
 async function calculateProfileCompleteness(wallet) {
+    const sanitizedWallet = sanitizeWallet(wallet);
+
     const weights = {
         // Core profile fields (50% total)
         first_name: 5,
@@ -50,7 +67,7 @@ async function calculateProfileCompleteness(wallet) {
         has_projects: 5
     };
 
-    const profile = await UserProfile.findOne({ wallet });
+    const profile = await UserProfile.findOne({ wallet: sanitizedWallet });
     if (!profile) return 0;
 
     let score = 0;
@@ -68,11 +85,11 @@ async function calculateProfileCompleteness(wallet) {
 
     // Check related data
     const [expCount, eduCount, skillCount, certCount, projCount] = await Promise.all([
-        Experience.countDocuments({ wallet }),
-        Education.countDocuments({ wallet }),
-        Skill.countDocuments({ wallet }),
-        Certification.countDocuments({ wallet }),
-        Project.countDocuments({ wallet })
+        Experience.countDocuments({ wallet: sanitizedWallet }),
+        Education.countDocuments({ wallet: sanitizedWallet }),
+        Skill.countDocuments({ wallet: sanitizedWallet }),
+        Certification.countDocuments({ wallet: sanitizedWallet }),
+        Project.countDocuments({ wallet: sanitizedWallet })
     ]);
 
     if (expCount > 0) score += weights.has_experience;
@@ -113,6 +130,7 @@ const imagekit = require('../services/imagekit');
 router.delete('/profile/:wallet/batch-clear/:category', async (req, res) => {
     try {
         const { wallet, category } = req.params;
+        const sanitizedWallet = sanitizeWallet(wallet);
 
         const models = {
             experience: Experience,
@@ -130,7 +148,7 @@ router.delete('/profile/:wallet/batch-clear/:category', async (req, res) => {
             return res.status(400).json({ success: false, error: 'Invalid category' });
         }
 
-        const deleteResult = await Model.deleteMany({ wallet });
+        const deleteResult = await Model.deleteMany({ wallet: sanitizedWallet });
         console.log(`[Clear] Removed ${deleteResult.deletedCount} items from ${category} for wallet ${wallet}`);
 
         res.json({
@@ -158,6 +176,8 @@ router.delete('/profile/:wallet/batch-clear/:category', async (req, res) => {
 router.get('/user/profile', requireAuth, async (req, res) => {
     try {
         const { wallet } = req.user;
+        const sanitizedWallet = sanitizeWallet(wallet);
+
         if (!wallet || wallet === 'pending_wallet' || wallet === 'undefined') {
             // Don't log as warning/error since this is expected for Layer 0 users
             return res.status(200).json({
@@ -167,14 +187,14 @@ router.get('/user/profile', requireAuth, async (req, res) => {
             });
         }
 
-        console.log(`GET /user/profile for ${wallet}`);
+        console.log(`GET /user/profile for ${sanitizedWallet}`);
 
         // Atomic Get-Or-Create to prevent race conditions
         let profile = await UserProfile.findOneAndUpdate(
-            { wallet },
+            { wallet: sanitizedWallet },
             {
                 $setOnInsert: {
-                    wallet: wallet,
+                    wallet: sanitizedWallet,
                     email: req.user.email,
                     created_at: new Date(),
                     updated_at: new Date()
@@ -190,7 +210,7 @@ router.get('/user/profile', requireAuth, async (req, res) => {
         // Ensure profile has human_id
         if (!profile.human_id) {
             try {
-                const result = await ensureHumanIdInProfile(wallet, { UserProfile, Credential });
+                const result = await ensureHumanIdInProfile(sanitizedWallet, { UserProfile, Credential });
                 profile = result.profile;
             } catch (error) {
                 console.error('Error ensuring human_id:', error);
@@ -212,14 +232,14 @@ router.get('/user/profile', requireAuth, async (req, res) => {
         const [
             hasExp, hasEdu, hasCert, hasSkill, hasProj, hasAward, hasLang, hasVol
         ] = await Promise.all([
-            Experience.findOne({ wallet }).select('_id').lean(),
-            Education.findOne({ wallet }).select('_id').lean(),
-            Certification.findOne({ wallet }).select('_id').lean(),
-            Skill.findOne({ wallet }).select('_id').lean(),
-            Project.findOne({ wallet }).select('_id').lean(),
-            Award.findOne({ wallet }).select('_id').lean(),
-            Language.findOne({ wallet }).select('_id').lean(),
-            Volunteer.findOne({ wallet }).select('_id').lean()
+            Experience.findOne({ wallet: sanitizedWallet }).select('_id').lean(),
+            Education.findOne({ wallet: sanitizedWallet }).select('_id').lean(),
+            Certification.findOne({ wallet: sanitizedWallet }).select('_id').lean(),
+            Skill.findOne({ wallet: sanitizedWallet }).select('_id').lean(),
+            Project.findOne({ wallet: sanitizedWallet }).select('_id').lean(),
+            Award.findOne({ wallet: sanitizedWallet }).select('_id').lean(),
+            Language.findOne({ wallet: sanitizedWallet }).select('_id').lean(),
+            Volunteer.findOne({ wallet: sanitizedWallet }).select('_id').lean()
         ]);
 
         // Merge account-level data with profile
@@ -259,8 +279,9 @@ router.get('/user/profile', requireAuth, async (req, res) => {
 router.put('/user/profile', requireAuth, async (req, res) => {
     try {
         const { wallet } = req.user;
+        const sanitizedWallet = sanitizeWallet(wallet);
         const updates = req.body;
-        console.log(`PUT /user/profile for ${wallet}`, JSON.stringify(updates, null, 2));
+        console.log(`PUT /user/profile for ${sanitizedWallet}`, JSON.stringify(updates, null, 2));
 
         // Security: Remove wallet/id from updates to avoid overwriting
         delete updates.wallet;
@@ -268,16 +289,16 @@ router.put('/user/profile', requireAuth, async (req, res) => {
         delete updates.human_id; // Prevent manual human_id updates
 
         // Get previous completeness to detect 100% milestone
-        const previousCompleteness = await calculateProfileCompleteness(wallet);
+        const previousCompleteness = await calculateProfileCompleteness(sanitizedWallet);
 
         // First ensure the profile has a human_id
         let profile;
         try {
-            const result = await ensureHumanIdInProfile(wallet, { UserProfile, Credential });
+            const result = await ensureHumanIdInProfile(sanitizedWallet, { UserProfile, Credential });
 
             // Now update with the provided data
             profile = await UserProfile.findOneAndUpdate(
-                { wallet },
+                { wallet: sanitizedWallet },
                 { $set: updates },
                 { new: true, runValidators: true }
             );
@@ -285,28 +306,28 @@ router.put('/user/profile', requireAuth, async (req, res) => {
             console.error('Error ensuring human_id:', humanIdError);
             // Fallback: update without human_id generation
             profile = await UserProfile.findOneAndUpdate(
-                { wallet },
+                { wallet: sanitizedWallet },
                 {
                     $set: updates,
-                    $setOnInsert: { wallet }
+                    $setOnInsert: { wallet: sanitizedWallet }
                 },
                 { new: true, upsert: true, runValidators: true }
             );
         }
 
         // Check if profile just reached 100% completion
-        const newCompleteness = await calculateProfileCompleteness(wallet);
+        const newCompleteness = await calculateProfileCompleteness(sanitizedWallet);
         if (previousCompleteness < 100 && newCompleteness === 100) {
-            const userAccount = await UserAccount.findOne({ wallet });
+            const userAccount = await UserAccount.findOne({ wallet: sanitizedWallet });
             if (userAccount) {
                 const name = profile.first_name ? `${profile.first_name} ${profile.last_name || ''}`.trim() : null;
-                const profileUrl = `${process.env.FRONTEND_URL || 'https://casperid.com'}/profile/${profile.human_id || wallet}`;
+                const profileUrl = `${process.env.FRONTEND_URL || 'https://casperid.com'}/profile/${profile.human_id || sanitizedWallet}`;
 
                 eventBus.emit(EVENTS.PROFILE_COMPLETED, {
                     userId: userAccount.user_id,
                     email: userAccount.recovery_email,
                     name,
-                    wallet,
+                    wallet: sanitizedWallet,
                     profileUrl
                 });
             }
@@ -369,7 +390,7 @@ router.get('/public-profile/:identifier', async (req, res) => {
             }
 
             const disclosures = contextDid.disclosures || {};
-            const wallet = ownerAccount.wallet;
+            const wallet = sanitizeWallet(ownerAccount.wallet);
 
             const fullProfile = await UserProfile.findOne({ wallet });
             if (!fullProfile) {
@@ -452,7 +473,7 @@ router.get('/public-profile/:identifier', async (req, res) => {
 
             // For context profiles, apply the persona's actual disclosures
             // (CNS resolver uses hardcoded context-type filtering — we override that here)
-            const ownerWallet = resolved.profileData?.wallet || resolved.wallet;
+            const ownerWallet = sanitizeWallet(resolved.profileData?.wallet || resolved.wallet);
             if (resolved.contextType && resolved.contextType !== 'master' && ownerWallet) {
                 const { UserAccount } = require('../database/models');
                 const ownerAccount = await UserAccount.findOne({ wallet: ownerWallet });
@@ -466,7 +487,7 @@ router.get('/public-profile/:identifier', async (req, res) => {
 
                     if (contextDid && contextDid.routing_type !== 'wallet') {
                         const disclosures = contextDid.disclosures || {};
-                        const wallet = ownerAccount.wallet;
+                        const wallet = sanitizeWallet(ownerAccount.wallet);
 
                         const fullProfile = await UserProfile.findOne({ wallet });
                         if (!fullProfile) {
@@ -518,9 +539,10 @@ router.get('/public-profile/:identifier', async (req, res) => {
 
         // ─── Standard Master Profile Resolution ───────────────────────────
         // Find by wallet OR human_id
+        const sanitizedIdentifier = sanitizeWallet(trimmedIdentifier);
         profile = await UserProfile.findOne({
             $or: [
-                { wallet: trimmedIdentifier },
+                { wallet: sanitizedIdentifier },
                 { human_id: trimmedIdentifier }
             ]
         });
@@ -529,7 +551,7 @@ router.get('/public-profile/:identifier', async (req, res) => {
         if (!profile) {
             const credential = await Credential.findOne({
                 $or: [
-                    { wallet: trimmedIdentifier },
+                    { wallet: sanitizedIdentifier },
                     { human_id: trimmedIdentifier }
                 ],
                 revoked: false
@@ -537,7 +559,8 @@ router.get('/public-profile/:identifier', async (req, res) => {
 
             if (credential) {
                 // Found verified user, try to get their profile
-                profile = await UserProfile.findOne({ wallet: credential.wallet });
+                const credentialWallet = sanitizeWallet(credential.wallet);
+                profile = await UserProfile.findOne({ wallet: credentialWallet });
             }
         }
 
@@ -550,7 +573,8 @@ router.get('/public-profile/:identifier', async (req, res) => {
 
         // Ensure profile has human_id for SEO-friendly URLs
         try {
-            const result = await ensureHumanIdInProfile(profile.wallet, { UserProfile, Credential });
+            const profileWallet = sanitizeWallet(profile.wallet);
+            const result = await ensureHumanIdInProfile(profileWallet, { UserProfile, Credential });
             profile = result.profile;
             console.log(`Ensured human_id for public profile: ${result.humanId}`);
         } catch (error) {
@@ -559,7 +583,7 @@ router.get('/public-profile/:identifier', async (req, res) => {
         }
 
         // Fetch related public-safe sections and verification status using the same wallet
-        const wallet = profile.wallet;
+        const wallet = sanitizeWallet(profile.wallet);
         const [
             experiences,
             education,
@@ -610,6 +634,7 @@ router.get('/public-profile/:identifier', async (req, res) => {
             // Verification status fields
             is_verified: !!credential,
             verification_tier: credential ? credential.tier : null,
+            credential_hash: credential ? credential.credential_hash : null,
             last_verification_date: credential ? new Date(credential.last_kyc_at * 1000).toISOString() : null,
             experiences,
             education,
@@ -665,13 +690,13 @@ router.get('/public-profile/:identifier', async (req, res) => {
 router.get('/profile/:wallet', async (req, res) => {
     try {
         const { wallet } = req.params;
-        console.log(`GET /profile/${wallet}`);
+        const sanitizedWallet = sanitizeWallet(wallet);
+        console.log(`GET /profile/${sanitizedWallet}`);
 
-        const trimmedWallet = wallet.trim();
         let profile = await UserProfile.findOne({
             $or: [
-                { wallet: trimmedWallet },
-                { human_id: trimmedWallet }
+                { wallet: sanitizedWallet },
+                { human_id: wallet.trim() }
             ]
         });
         console.log(`Found profile:`, !!profile);
@@ -683,7 +708,7 @@ router.get('/profile/:wallet', async (req, res) => {
         // Ensure profile has human_id
         if (!profile.human_id) {
             try {
-                const result = await ensureHumanIdInProfile(trimmedWallet, { UserProfile, Credential });
+                const result = await ensureHumanIdInProfile(sanitizedWallet, { UserProfile, Credential });
                 profile = result.profile;
                 console.log(`Generated human_id for profile: ${result.humanId}`);
             } catch (error) {
@@ -706,9 +731,10 @@ router.get('/profile/:wallet', async (req, res) => {
 router.put('/profile/:wallet', async (req, res) => {
     try {
         const { wallet } = req.params;
+        const sanitizedWallet = sanitizeWallet(wallet);
         const updates = req.body;
 
-        console.log(`Updating profile for ${wallet}`, updates);
+        console.log(`Updating profile for ${sanitizedWallet}`, updates);
 
         // Security: Remove wallet/id from updates to avoid overwriting
         delete updates.wallet;
@@ -716,17 +742,17 @@ router.put('/profile/:wallet', async (req, res) => {
         delete updates.human_id; // Prevent manual human_id updates
 
         // Get previous completeness to detect 100% milestone
-        const previousCompleteness = await calculateProfileCompleteness(wallet);
+        const previousCompleteness = await calculateProfileCompleteness(sanitizedWallet);
 
         // First ensure the profile has a human_id
         let profile;
         try {
-            const result = await ensureHumanIdInProfile(wallet, { UserProfile, Credential });
+            const result = await ensureHumanIdInProfile(sanitizedWallet, { UserProfile, Credential });
             console.log(`Ensured human_id: ${result.humanId}`);
 
             // Now update with the provided data
             profile = await UserProfile.findOneAndUpdate(
-                { wallet },
+                { wallet: sanitizedWallet },
                 { $set: updates },
                 { new: true, runValidators: true }
             );
@@ -734,28 +760,28 @@ router.put('/profile/:wallet', async (req, res) => {
             console.error('Error ensuring human_id:', humanIdError);
             // Fallback: update without human_id generation
             profile = await UserProfile.findOneAndUpdate(
-                { wallet },
+                { wallet: sanitizedWallet },
                 {
                     $set: updates,
-                    $setOnInsert: { wallet }
+                    $setOnInsert: { wallet: sanitizedWallet }
                 },
                 { new: true, upsert: true, runValidators: true }
             );
         }
 
         // Check if profile just reached 100% completion
-        const newCompleteness = await calculateProfileCompleteness(wallet);
+        const newCompleteness = await calculateProfileCompleteness(sanitizedWallet);
         if (previousCompleteness < 100 && newCompleteness === 100) {
-            const userAccount = await UserAccount.findOne({ wallet });
+            const userAccount = await UserAccount.findOne({ wallet: sanitizedWallet });
             if (userAccount) {
                 const name = profile.first_name ? `${profile.first_name} ${profile.last_name || ''}`.trim() : null;
-                const profileUrl = `${process.env.FRONTEND_URL || 'https://casperid.com'}/profile/${profile.human_id || wallet}`;
+                const profileUrl = `${process.env.FRONTEND_URL || 'https://casperid.com'}/profile/${profile.human_id || sanitizedWallet}`;
 
                 eventBus.emit(EVENTS.PROFILE_COMPLETED, {
                     userId: userAccount.user_id,
                     email: userAccount.recovery_email,
                     name,
-                    wallet,
+                    wallet: sanitizedWallet,
                     profileUrl
                 });
             }
@@ -818,21 +844,31 @@ router.get('/random-banner', async (req, res) => {
  * POST /api/profile/:wallet/upload-avatar
  * Upload profile picture to ImageKit
  */
-router.post('/profile/:wallet/upload-avatar', upload.single('avatar'), async (req, res) => {
+router.post('/profile/:wallet/upload-avatar', requireAuth, upload.single('avatar'), async (req, res) => {
     try {
         if (!req.file) {
             return res.status(400).json({ success: false, error: 'No file uploaded' });
         }
 
         const { wallet } = req.params;
+        const sanitizedWallet = sanitizeWallet(wallet);
 
-        console.log(`[Upload] ImageKit upload start for ${wallet}`);
+        console.log(`[Upload] ImageKit upload start for ${sanitizedWallet}`);
         console.log(`[Upload] Buffer length: ${req.file.buffer ? req.file.buffer.length : 'UNDEFINED'}`);
+
+        // Check if ImageKit is configured
+        if (!process.env.IMAGEKIT_PUBLIC_KEY || !process.env.IMAGEKIT_PRIVATE_KEY || !process.env.IMAGEKIT_URL_ENDPOINT) {
+            console.error('[Upload] ImageKit credentials not configured');
+            return res.status(500).json({
+                success: false,
+                error: 'Image upload service not properly configured. Please contact support.'
+            });
+        }
 
         // Upload to ImageKit
         const uploadResponse = await imagekit.files.upload({
             file: req.file.buffer.toString('base64'), // Send as base64 string
-            fileName: `avatar-${wallet}-${Date.now()}`, // required
+            fileName: `avatar-${sanitizedWallet}-${Date.now()}`, // required
             folder: '/avatars',
             useUniqueFileName: true
         });
@@ -840,7 +876,7 @@ router.post('/profile/:wallet/upload-avatar', upload.single('avatar'), async (re
         const imageUrl = uploadResponse.url;
 
         const profile = await UserProfile.findOneAndUpdate(
-            { wallet },
+            { wallet: sanitizedWallet },
             { $set: { profile_image_url: imageUrl } },
             { new: true, upsert: true }
         );
@@ -853,7 +889,16 @@ router.post('/profile/:wallet/upload-avatar', upload.single('avatar'), async (re
         });
     } catch (error) {
         console.error('Upload avatar error:', error);
-        res.status(500).json({ success: false, error: error.message || 'Failed to upload image' });
+
+        // Provide more specific error messages
+        let errorMessage = 'Failed to upload image';
+        if (error.message?.includes('401') || error.message?.includes('Unauthorized')) {
+            errorMessage = 'ImageKit authentication failed. Please check configuration.';
+        } else if (error.message?.includes('ECONNREFUSED') || error.message?.includes('ETIMEDOUT')) {
+            errorMessage = 'Connection error. Please try again later.';
+        }
+
+        res.status(500).json({ success: false, error: errorMessage });
     }
 });
 
@@ -868,7 +913,8 @@ router.post('/profile/:wallet/upload-avatar', upload.single('avatar'), async (re
 router.get('/profile/:wallet/experience', async (req, res) => {
     try {
         const { wallet } = req.params;
-        const experiences = await Experience.find({ wallet }).sort({ display_order: 1, created_at: -1 });
+        const sanitizedWallet = sanitizeWallet(wallet);
+        const experiences = await Experience.find({ wallet: sanitizedWallet }).sort({ display_order: 1, created_at: -1 });
         res.json(experiences);
     } catch (error) {
         console.error('Get experiences error:', error);
@@ -883,7 +929,23 @@ router.get('/profile/:wallet/experience', async (req, res) => {
 router.post('/profile/:wallet/experience', async (req, res) => {
     try {
         const { wallet } = req.params;
-        const experienceData = { ...req.body, wallet };
+        const sanitizedWallet = sanitizeWallet(wallet);
+        const experienceData = { ...req.body, wallet: sanitizedWallet };
+
+        // Check for duplicates: same wallet, company, job title, and date range
+        const existingExperience = await Experience.findOne({
+            wallet: sanitizedWallet,
+            company_name: experienceData.company_name,
+            job_title: experienceData.job_title,
+            start_date: experienceData.start_date,
+            end_date: experienceData.end_date,
+            createdAt: { $gte: new Date(Date.now() - 5000) }
+        });
+
+        if (existingExperience) {
+            console.log(`[Experience] Duplicate detected for wallet ${wallet}, returning existing record`);
+            return res.status(201).json(existingExperience);
+        }
 
         const experience = new Experience(experienceData);
         await experience.save();
@@ -902,7 +964,8 @@ router.post('/profile/:wallet/experience', async (req, res) => {
 router.put('/profile/:wallet/experience/:id', async (req, res) => {
     try {
         const { wallet, id } = req.params;
-        console.log(`PUT /experience/${id} for wallet ${wallet}`);
+        const sanitizedWallet = sanitizeWallet(wallet);
+        console.log(`PUT /experience/${id} for wallet ${sanitizedWallet}`);
         console.log('Update payload:', JSON.stringify(req.body, null, 2));
 
         const updates = { ...req.body };
@@ -910,7 +973,7 @@ router.put('/profile/:wallet/experience/:id', async (req, res) => {
         delete updates.wallet;
 
         const experience = await Experience.findOneAndUpdate(
-            { _id: id, wallet },
+            { _id: id, wallet: sanitizedWallet },
             { $set: updates },
             { new: true, runValidators: true }
         );
@@ -933,8 +996,9 @@ router.put('/profile/:wallet/experience/:id', async (req, res) => {
 router.delete('/profile/:wallet/experience/:id', async (req, res) => {
     try {
         const { wallet, id } = req.params;
+        const sanitizedWallet = sanitizeWallet(wallet);
 
-        const experience = await Experience.findOneAndDelete({ _id: id, wallet });
+        const experience = await Experience.findOneAndDelete({ _id: id, wallet: sanitizedWallet });
 
         if (!experience) {
             return res.status(404).json({ success: false, error: 'Experience not found' });
@@ -954,7 +1018,8 @@ router.delete('/profile/:wallet/experience/:id', async (req, res) => {
 router.get('/profile/:wallet/education', async (req, res) => {
     try {
         const { wallet } = req.params;
-        const education = await Education.find({ wallet }).sort({ display_order: 1, created_at: -1 });
+        const sanitizedWallet = sanitizeWallet(wallet);
+        const education = await Education.find({ wallet: sanitizedWallet }).sort({ display_order: 1, created_at: -1 });
         res.json(education);
     } catch (error) {
         console.error('Get education error:', error);
@@ -965,7 +1030,25 @@ router.get('/profile/:wallet/education', async (req, res) => {
 router.post('/profile/:wallet/education', async (req, res) => {
     try {
         const { wallet } = req.params;
-        const educationData = { ...req.body, wallet };
+        const sanitizedWallet = sanitizeWallet(wallet);
+        const educationData = { ...req.body, wallet: sanitizedWallet };
+
+        // Check for duplicates: same wallet, school_name, degree, and date range
+        // This prevents duplicate submissions from rapid clicks or network retries
+        const existingEducation = await Education.findOne({
+            wallet: sanitizedWallet,
+            school_name: educationData.school_name,
+            degree: educationData.degree,
+            start_date: educationData.start_date,
+            end_date: educationData.end_date,
+            // Check if created within last 5 seconds to catch rapid double-clicks
+            createdAt: { $gte: new Date(Date.now() - 5000) }
+        });
+
+        if (existingEducation) {
+            console.log(`[Education] Duplicate detected for wallet ${wallet}, returning existing record`);
+            return res.status(201).json(existingEducation);
+        }
 
         const education = new Education(educationData);
         await education.save();
@@ -980,13 +1063,14 @@ router.post('/profile/:wallet/education', async (req, res) => {
 router.put('/profile/:wallet/education/:id', async (req, res) => {
     try {
         const { wallet, id } = req.params;
-        console.log(`PUT /education/${id} for wallet ${wallet}`);
+        const sanitizedWallet = sanitizeWallet(wallet);
+        console.log(`PUT /education/${id} for wallet ${sanitizedWallet}`);
         const updates = { ...req.body };
         delete updates._id;
         delete updates.wallet;
 
         const education = await Education.findOneAndUpdate(
-            { _id: id, wallet },
+            { _id: id, wallet: sanitizedWallet },
             { $set: updates },
             { new: true, runValidators: true }
         );
@@ -1005,8 +1089,9 @@ router.put('/profile/:wallet/education/:id', async (req, res) => {
 router.delete('/profile/:wallet/education/:id', async (req, res) => {
     try {
         const { wallet, id } = req.params;
+        const sanitizedWallet = sanitizeWallet(wallet);
 
-        const education = await Education.findOneAndDelete({ _id: id, wallet });
+        const education = await Education.findOneAndDelete({ _id: id, wallet: sanitizedWallet });
 
         if (!education) {
             return res.status(404).json({ success: false, error: 'Education not found' });
@@ -1026,7 +1111,8 @@ router.delete('/profile/:wallet/education/:id', async (req, res) => {
 router.get('/profile/:wallet/certifications', async (req, res) => {
     try {
         const { wallet } = req.params;
-        const certifications = await Certification.find({ wallet }).sort({ display_order: 1, created_at: -1 });
+        const sanitizedWallet = sanitizeWallet(wallet);
+        const certifications = await Certification.find({ wallet: sanitizedWallet }).sort({ display_order: 1, created_at: -1 });
         res.json(certifications);
     } catch (error) {
         console.error('Get certifications error:', error);
@@ -1037,7 +1123,22 @@ router.get('/profile/:wallet/certifications', async (req, res) => {
 router.post('/profile/:wallet/certifications', async (req, res) => {
     try {
         const { wallet } = req.params;
-        const certData = { ...req.body, wallet };
+        const sanitizedWallet = sanitizeWallet(wallet);
+        const certData = { ...req.body, wallet: sanitizedWallet };
+
+        // Check for duplicates: same wallet, name, organization, and date
+        const existingCert = await Certification.findOne({
+            wallet: sanitizedWallet,
+            name: certData.name,
+            issuing_organization: certData.issuing_organization,
+            issue_date: certData.issue_date,
+            createdAt: { $gte: new Date(Date.now() - 5000) }
+        });
+
+        if (existingCert) {
+            console.log(`[Certification] Duplicate detected for wallet ${wallet}, returning existing record`);
+            return res.status(201).json(existingCert);
+        }
 
         const certification = new Certification(certData);
         await certification.save();
@@ -1052,6 +1153,7 @@ router.post('/profile/:wallet/certifications', async (req, res) => {
 router.put('/profile/:wallet/certifications/:id', async (req, res) => {
     try {
         const { wallet, id } = req.params;
+        const sanitizedWallet = sanitizeWallet(wallet);
 
         const updates = { ...req.body };
         delete updates._id;
@@ -1059,7 +1161,7 @@ router.put('/profile/:wallet/certifications/:id', async (req, res) => {
         delete updates.wallet;
 
         const certification = await Certification.findOneAndUpdate(
-            { _id: id, wallet },
+            { _id: id, wallet: sanitizedWallet },
             { $set: updates },
             { new: true, runValidators: true }
         );
@@ -1078,8 +1180,9 @@ router.put('/profile/:wallet/certifications/:id', async (req, res) => {
 router.delete('/profile/:wallet/certifications/:id', async (req, res) => {
     try {
         const { wallet, id } = req.params;
+        const sanitizedWallet = sanitizeWallet(wallet);
 
-        const certification = await Certification.findOneAndDelete({ _id: id, wallet });
+        const certification = await Certification.findOneAndDelete({ _id: id, wallet: sanitizedWallet });
 
         if (!certification) {
             return res.status(404).json({ success: false, error: 'Certification not found' });
@@ -1099,7 +1202,8 @@ router.delete('/profile/:wallet/certifications/:id', async (req, res) => {
 router.get('/profile/:wallet/skills', async (req, res) => {
     try {
         const { wallet } = req.params;
-        const skills = await Skill.find({ wallet }).sort({ is_top_skill: -1, display_order: 1 });
+        const sanitizedWallet = sanitizeWallet(wallet);
+        const skills = await Skill.find({ wallet: sanitizedWallet }).sort({ is_top_skill: -1, display_order: 1 });
         res.json(skills);
     } catch (error) {
         console.error('Get skills error:', error);
@@ -1114,7 +1218,21 @@ router.post('/profile/:wallet/skills', async (req, res) => {
         console.log('📦 Request body:', req.body);
 
         const { wallet } = req.params;
-        const skillData = { ...req.body, wallet };
+        const sanitizedWallet = sanitizeWallet(wallet);
+        const skillData = { ...req.body, wallet: sanitizedWallet };
+
+        // Check for duplicates: same wallet, skill name, and proficiency
+        const existingSkill = await Skill.findOne({
+            wallet: sanitizedWallet,
+            skill_name: skillData.skill_name || skillData.name,
+            proficiency: skillData.proficiency,
+            createdAt: { $gte: new Date(Date.now() - 5000) }
+        });
+
+        if (existingSkill) {
+            console.log(`[Skill] Duplicate detected for wallet ${wallet}, returning existing record`);
+            return res.status(201).json(existingSkill);
+        }
 
         console.log('💾 Final skill data to save:', skillData);
 
@@ -1140,12 +1258,13 @@ router.post('/profile/:wallet/skills', async (req, res) => {
 router.put('/profile/:wallet/skills/:id', async (req, res) => {
     try {
         const { wallet, id } = req.params;
+        const sanitizedWallet = sanitizeWallet(wallet);
         const updates = { ...req.body };
         delete updates._id;
         delete updates.wallet;
 
         const skill = await Skill.findOneAndUpdate(
-            { _id: id, wallet },
+            { _id: id, wallet: sanitizedWallet },
             { $set: updates },
             { new: true, runValidators: true }
         );
@@ -1164,8 +1283,9 @@ router.put('/profile/:wallet/skills/:id', async (req, res) => {
 router.delete('/profile/:wallet/skills/:id', async (req, res) => {
     try {
         const { wallet, id } = req.params;
+        const sanitizedWallet = sanitizeWallet(wallet);
 
-        const skill = await Skill.findOneAndDelete({ _id: id, wallet });
+        const skill = await Skill.findOneAndDelete({ _id: id, wallet: sanitizedWallet });
 
         if (!skill) {
             return res.status(404).json({ success: false, error: 'Skill not found' });
@@ -1186,7 +1306,8 @@ router.delete('/profile/:wallet/skills/:id', async (req, res) => {
 router.get('/profile/:wallet/projects', async (req, res) => {
     try {
         const { wallet } = req.params;
-        const projects = await Project.find({ wallet }).sort({ display_order: 1, created_at: -1 });
+        const sanitizedWallet = sanitizeWallet(wallet);
+        const projects = await Project.find({ wallet: sanitizedWallet }).sort({ display_order: 1, created_at: -1 });
         res.json(projects);
     } catch (error) {
         console.error('Get projects error:', error);
@@ -1197,7 +1318,22 @@ router.get('/profile/:wallet/projects', async (req, res) => {
 router.post('/profile/:wallet/projects', async (req, res) => {
     try {
         const { wallet } = req.params;
-        const projectData = { ...req.body, wallet };
+        const sanitizedWallet = sanitizeWallet(wallet);
+        const projectData = { ...req.body, wallet: sanitizedWallet };
+
+        // Check for duplicates: same wallet, project name, and date range
+        const existingProject = await Project.findOne({
+            wallet: sanitizedWallet,
+            project_name: projectData.project_name,
+            start_date: projectData.start_date,
+            end_date: projectData.end_date,
+            createdAt: { $gte: new Date(Date.now() - 5000) }
+        });
+
+        if (existingProject) {
+            console.log(`[Project] Duplicate detected for wallet ${wallet}, returning existing record`);
+            return res.status(201).json(existingProject);
+        }
 
         const project = new Project(projectData);
         await project.save();
@@ -1212,12 +1348,13 @@ router.post('/profile/:wallet/projects', async (req, res) => {
 router.put('/profile/:wallet/projects/:id', async (req, res) => {
     try {
         const { wallet, id } = req.params;
+        const sanitizedWallet = sanitizeWallet(wallet);
         const updates = { ...req.body };
         delete updates._id;
         delete updates.wallet;
 
         const project = await Project.findOneAndUpdate(
-            { _id: id, wallet },
+            { _id: id, wallet: sanitizedWallet },
             { $set: updates },
             { new: true, runValidators: true }
         );
@@ -1236,8 +1373,9 @@ router.put('/profile/:wallet/projects/:id', async (req, res) => {
 router.delete('/profile/:wallet/projects/:id', async (req, res) => {
     try {
         const { wallet, id } = req.params;
+        const sanitizedWallet = sanitizeWallet(wallet);
 
-        const project = await Project.findOneAndDelete({ _id: id, wallet });
+        const project = await Project.findOneAndDelete({ _id: id, wallet: sanitizedWallet });
 
         if (!project) {
             return res.status(404).json({ success: false, error: 'Project not found' });
@@ -1257,7 +1395,8 @@ router.delete('/profile/:wallet/projects/:id', async (req, res) => {
 router.get('/profile/:wallet/awards', async (req, res) => {
     try {
         const { wallet } = req.params;
-        const awards = await Award.find({ wallet }).sort({ display_order: 1, created_at: -1 });
+        const sanitizedWallet = sanitizeWallet(wallet);
+        const awards = await Award.find({ wallet: sanitizedWallet }).sort({ display_order: 1, created_at: -1 });
         res.json(awards);
     } catch (error) {
         console.error('Get awards error:', error);
@@ -1268,7 +1407,22 @@ router.get('/profile/:wallet/awards', async (req, res) => {
 router.post('/profile/:wallet/awards', async (req, res) => {
     try {
         const { wallet } = req.params;
-        const awardData = { ...req.body, wallet };
+        const sanitizedWallet = sanitizeWallet(wallet);
+        const awardData = { ...req.body, wallet: sanitizedWallet };
+
+        // Check for duplicates: same wallet, title, organization, and date
+        const existingAward = await Award.findOne({
+            wallet: sanitizedWallet,
+            title: awardData.title,
+            issuing_organization: awardData.issuing_organization,
+            issue_date: awardData.issue_date,
+            createdAt: { $gte: new Date(Date.now() - 5000) }
+        });
+
+        if (existingAward) {
+            console.log(`[Award] Duplicate detected for wallet ${wallet}, returning existing record`);
+            return res.status(201).json(existingAward);
+        }
 
         const award = new Award(awardData);
         await award.save();
@@ -1283,12 +1437,13 @@ router.post('/profile/:wallet/awards', async (req, res) => {
 router.put('/profile/:wallet/awards/:id', async (req, res) => {
     try {
         const { wallet, id } = req.params;
+        const sanitizedWallet = sanitizeWallet(wallet);
         const updates = { ...req.body };
         delete updates._id;
         delete updates.wallet;
 
         const award = await Award.findOneAndUpdate(
-            { _id: id, wallet },
+            { _id: id, wallet: sanitizedWallet },
             { $set: updates },
             { new: true, runValidators: true }
         );
@@ -1307,8 +1462,9 @@ router.put('/profile/:wallet/awards/:id', async (req, res) => {
 router.delete('/profile/:wallet/awards/:id', async (req, res) => {
     try {
         const { wallet, id } = req.params;
+        const sanitizedWallet = sanitizeWallet(wallet);
 
-        const award = await Award.findOneAndDelete({ _id: id, wallet });
+        const award = await Award.findOneAndDelete({ _id: id, wallet: sanitizedWallet });
 
         if (!award) {
             return res.status(404).json({ success: false, error: 'Award not found' });
@@ -1328,7 +1484,8 @@ router.delete('/profile/:wallet/awards/:id', async (req, res) => {
 router.get('/profile/:wallet/languages', async (req, res) => {
     try {
         const { wallet } = req.params;
-        const languages = await Language.find({ wallet }).sort({ display_order: 1 });
+        const sanitizedWallet = sanitizeWallet(wallet);
+        const languages = await Language.find({ wallet: sanitizedWallet }).sort({ display_order: 1 });
         res.json(languages);
     } catch (error) {
         console.error('Get languages error:', error);
@@ -1339,7 +1496,21 @@ router.get('/profile/:wallet/languages', async (req, res) => {
 router.post('/profile/:wallet/languages', async (req, res) => {
     try {
         const { wallet } = req.params;
-        const languageData = { ...req.body, wallet };
+        const sanitizedWallet = sanitizeWallet(wallet);
+        const languageData = { ...req.body, wallet: sanitizedWallet };
+
+        // Check for duplicates: same wallet, language name, and proficiency
+        const existingLanguage = await Language.findOne({
+            wallet: sanitizedWallet,
+            language_name: languageData.language_name,
+            proficiency: languageData.proficiency,
+            createdAt: { $gte: new Date(Date.now() - 5000) }
+        });
+
+        if (existingLanguage) {
+            console.log(`[Language] Duplicate detected for wallet ${wallet}, returning existing record`);
+            return res.status(201).json(existingLanguage);
+        }
 
         const language = new Language(languageData);
         await language.save();
@@ -1354,12 +1525,13 @@ router.post('/profile/:wallet/languages', async (req, res) => {
 router.put('/profile/:wallet/languages/:id', async (req, res) => {
     try {
         const { wallet, id } = req.params;
+        const sanitizedWallet = sanitizeWallet(wallet);
         const updates = { ...req.body };
         delete updates._id;
         delete updates.wallet;
 
         const language = await Language.findOneAndUpdate(
-            { _id: id, wallet },
+            { _id: id, wallet: sanitizedWallet },
             { $set: updates },
             { new: true, runValidators: true }
         );
@@ -1378,8 +1550,9 @@ router.put('/profile/:wallet/languages/:id', async (req, res) => {
 router.delete('/profile/:wallet/languages/:id', async (req, res) => {
     try {
         const { wallet, id } = req.params;
+        const sanitizedWallet = sanitizeWallet(wallet);
 
-        const language = await Language.findOneAndDelete({ _id: id, wallet });
+        const language = await Language.findOneAndDelete({ _id: id, wallet: sanitizedWallet });
 
         if (!language) {
             return res.status(404).json({ success: false, error: 'Language not found' });
@@ -1399,7 +1572,8 @@ router.delete('/profile/:wallet/languages/:id', async (req, res) => {
 router.get('/profile/:wallet/volunteer', async (req, res) => {
     try {
         const { wallet } = req.params;
-        const volunteer = await Volunteer.find({ wallet }).sort({ display_order: 1, created_at: -1 });
+        const sanitizedWallet = sanitizeWallet(wallet);
+        const volunteer = await Volunteer.find({ wallet: sanitizedWallet }).sort({ display_order: 1, created_at: -1 });
         res.json(volunteer);
     } catch (error) {
         console.error('Get volunteer error:', error);
@@ -1410,7 +1584,23 @@ router.get('/profile/:wallet/volunteer', async (req, res) => {
 router.post('/profile/:wallet/volunteer', async (req, res) => {
     try {
         const { wallet } = req.params;
-        const volunteerData = { ...req.body, wallet };
+        const sanitizedWallet = sanitizeWallet(wallet);
+        const volunteerData = { ...req.body, wallet: sanitizedWallet };
+
+        // Check for duplicates: same wallet, organization, role, and date range
+        const existingVolunteer = await Volunteer.findOne({
+            wallet: sanitizedWallet,
+            organization: volunteerData.organization,
+            role: volunteerData.role,
+            start_date: volunteerData.start_date,
+            end_date: volunteerData.end_date,
+            createdAt: { $gte: new Date(Date.now() - 5000) }
+        });
+
+        if (existingVolunteer) {
+            console.log(`[Volunteer] Duplicate detected for wallet ${wallet}, returning existing record`);
+            return res.status(201).json(existingVolunteer);
+        }
 
         const volunteer = new Volunteer(volunteerData);
         await volunteer.save();
@@ -1425,12 +1615,13 @@ router.post('/profile/:wallet/volunteer', async (req, res) => {
 router.put('/profile/:wallet/volunteer/:id', async (req, res) => {
     try {
         const { wallet, id } = req.params;
+        const sanitizedWallet = sanitizeWallet(wallet);
         const updates = { ...req.body };
         delete updates._id;
         delete updates.wallet;
 
         const volunteer = await Volunteer.findOneAndUpdate(
-            { _id: id, wallet },
+            { _id: id, wallet: sanitizedWallet },
             { $set: updates },
             { new: true, runValidators: true }
         );
@@ -1449,8 +1640,9 @@ router.put('/profile/:wallet/volunteer/:id', async (req, res) => {
 router.delete('/profile/:wallet/volunteer/:id', async (req, res) => {
     try {
         const { wallet, id } = req.params;
+        const sanitizedWallet = sanitizeWallet(wallet);
 
-        const volunteer = await Volunteer.findOneAndDelete({ _id: id, wallet });
+        const volunteer = await Volunteer.findOneAndDelete({ _id: id, wallet: sanitizedWallet });
 
         if (!volunteer) {
             return res.status(404).json({ success: false, error: 'Volunteer experience not found' });
@@ -1474,6 +1666,8 @@ router.delete('/profile/:wallet/volunteer/:id', async (req, res) => {
 router.get('/profile/human-id/:walletAddress', async (req, res) => {
     try {
         const { walletAddress } = req.params;
+        const sanitizedWallet = sanitizeWallet(walletAddress);
+
         if (!walletAddress || walletAddress === 'pending_wallet' || walletAddress === 'undefined') {
             return res.status(200).json({
                 success: false,
@@ -1482,9 +1676,9 @@ router.get('/profile/human-id/:walletAddress', async (req, res) => {
             });
         }
 
-        console.log(`GET /human-id/${walletAddress}`);
+        console.log(`GET /human-id/${sanitizedWallet}`);
 
-        const humanId = await getHumanIdForWallet(walletAddress, { UserProfile, Credential });
+        const humanId = await getHumanIdForWallet(sanitizedWallet, { UserProfile, Credential });
 
         res.json({
             success: true,

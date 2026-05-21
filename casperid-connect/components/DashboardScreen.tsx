@@ -111,6 +111,73 @@ const WalletTab: React.FC<TabProps> = ({ onShare, userData }) => (
       </div>
     </div>
 
+    {/* Synced Resume & CV Highlights */}
+    {userData?.profile && (
+      <div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm space-y-4">
+        <div className="flex items-center justify-between border-b border-dashed border-gray-100 pb-2">
+          <span className="text-[11px] font-extrabold text-[#626D85] uppercase tracking-wider">Synced Profile Highlights</span>
+          <span className="inline-flex px-2 py-0.5 rounded-full text-[9px] font-extrabold bg-purple-50 text-[#8652E2] border border-purple-100">
+            Active CV
+          </span>
+        </div>
+
+        {/* Experience Highlight */}
+        {userData.profile.experiences && userData.profile.experiences.length > 0 && (
+          <div className="space-y-1">
+            <span className="text-[9px] font-extrabold text-gray-400 uppercase tracking-widest block">Latest Experience</span>
+            <div className="text-xs font-bold text-[#1A1A2E]">{userData.profile.experiences[0].job_title}</div>
+            <div className="text-[11px] text-[#626D85] font-medium">{userData.profile.experiences[0].company_name}</div>
+          </div>
+        )}
+
+        {/* Education Highlight */}
+        {userData.profile.education && userData.profile.education.length > 0 && (
+          <div className="space-y-1">
+            <span className="text-[9px] font-extrabold text-gray-400 uppercase tracking-widest block">Latest Education</span>
+            <div className="text-xs font-bold text-[#1A1A2E]">{userData.profile.education[0].degree}</div>
+            <div className="text-[11px] text-[#626D85] font-medium">
+              {userData.profile.education[0].school_name || userData.profile.education[0].school}
+            </div>
+          </div>
+        )}
+
+        {/* Skills Highlight */}
+        {userData.profile.skills && userData.profile.skills.length > 0 && (
+          <div className="space-y-1.5">
+            <span className="text-[9px] font-extrabold text-gray-400 uppercase tracking-widest block">Skills Summary</span>
+            <div className="flex flex-wrap gap-1.5">
+              {userData.profile.skills.slice(0, 4).map((skill: any, idx: number) => (
+                <span key={idx} className="px-2 py-0.5 bg-gray-50 border border-gray-100 rounded-md text-[9px] font-bold text-[#1A1A2E]">
+                  {skill.skill_name || skill.name}
+                </span>
+              ))}
+              {userData.profile.skills.length > 4 && (
+                <span className="px-1.5 py-0.5 bg-gray-50 rounded-md text-[9px] font-extrabold text-gray-400">
+                  +{userData.profile.skills.length - 4} more
+                </span>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Counts / Other sections */}
+        <div className="grid grid-cols-3 gap-2 pt-2 border-t border-gray-50 text-center">
+          <div className="bg-[#FBFBFF] rounded-lg p-1.5 border border-gray-50">
+            <span className="block text-[9px] font-extrabold text-gray-400 uppercase tracking-widest">Projects</span>
+            <span className="text-xs font-extrabold text-[#1A1A2E]">{userData.profile.projects?.length || 0}</span>
+          </div>
+          <div className="bg-[#FBFBFF] rounded-lg p-1.5 border border-gray-50">
+            <span className="block text-[9px] font-extrabold text-gray-400 uppercase tracking-widest">Certs</span>
+            <span className="text-xs font-extrabold text-[#1A1A2E]">{userData.profile.certifications?.length || 0}</span>
+          </div>
+          <div className="bg-[#FBFBFF] rounded-lg p-1.5 border border-gray-50">
+            <span className="block text-[9px] font-extrabold text-gray-400 uppercase tracking-widest">Langs</span>
+            <span className="text-xs font-extrabold text-[#1A1A2E]">{userData.profile.languages?.length || 0}</span>
+          </div>
+        </div>
+      </div>
+    )}
+
 
 
     {/* Share Button */}

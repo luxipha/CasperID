@@ -24,8 +24,8 @@ const projectId = import.meta.env.VITE_WALLETCONNECT_PROJECT_ID || 'YOUR_PROJECT
 const metadata = {
     name: 'CasperID',
     description: 'Decentralized Identity Verification on Casper',
-    url: typeof window !== 'undefined' ? window.location.origin : 'https://casperid.io',
-    icons: ['https://casperid.io/logo.png']
+    url: typeof window !== 'undefined' ? window.location.origin : 'https://CasperID.com',
+    icons: ['https://CasperID.com/logo.png']
 };
 
 // Supported chains

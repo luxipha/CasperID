@@ -16,6 +16,7 @@ export const ProjectForm: React.FC<ProjectFormProps> = ({ initialData, onSave, o
         start_date: initialData?.start_date || { month: '', year: '' },
         end_date: initialData?.end_date || { month: '', year: '' },
     });
+    const [isSubmitting, setIsSubmitting] = useState(false);
 
     const months = [
         'January', 'February', 'March', 'April', 'May', 'June',
@@ -39,9 +40,14 @@ export const ProjectForm: React.FC<ProjectFormProps> = ({ initialData, onSave, o
         }));
     };
 
-    const handleSubmit = (e: React.FormEvent) => {
+    const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        onSave(formData as Project);
+        setIsSubmitting(true);
+        try {
+            onSave(formData as Project);
+        } finally {
+            setIsSubmitting(false);
+        }
     };
 
     return (
@@ -132,15 +138,17 @@ export const ProjectForm: React.FC<ProjectFormProps> = ({ initialData, onSave, o
                     <button
                         type="button"
                         onClick={onCancel}
-                        className="px-6 py-3 rounded-xl text-sm font-bold text-text-sub hover:bg-gray-100 transition-colors"
+                        disabled={isSubmitting}
+                        className="px-6 py-3 rounded-xl text-sm font-bold text-text-sub hover:bg-gray-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                         Cancel
                     </button>
                     <button
                         type="submit"
-                        className="px-8 py-3 bg-primary text-white rounded-xl text-sm font-bold shadow-lg shadow-primary/20 hover:bg-primary/90 active:scale-95 transition-all"
+                        disabled={isSubmitting}
+                        className="px-8 py-3 bg-primary text-white rounded-xl text-sm font-bold shadow-lg shadow-primary/20 hover:bg-primary/90 active:scale-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                        Save Project
+                        {isSubmitting ? 'Saving...' : 'Save Project'}
                     </button>
                 </div>
             </div>

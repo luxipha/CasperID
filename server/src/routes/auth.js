@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const { v4: uuidv4 } = require('uuid');
-const { UserAccount, LoginSession, UserProfile, Credential, EmailVerification, DeviceSession } = require('../database/models');
+const { UserAccount, LoginSession, UserProfile, Credential, EmailVerification, DeviceSession, PasskeyCredential } = require('../database/models');
 const { generateToken } = require('../utils/jwt-manager');
 const emailService = require('../services/emailService');
 const { normalizeEmail, buildEmailQuery } = require('../utils/email-normalizer');
@@ -729,8 +729,15 @@ router.post('/export-did', require('../middleware/auth').requireAuth, async (req
             });
         }
 
-        // Get user profile
-        const userProfile = await UserProfile.findOne({ user_id: userAccount.user_id });
+        // Get user profile (query by wallet, not user_id)
+        const userProfile = await UserProfile.findOne({ wallet: userAccount.wallet });
+
+        // Get user credentials (passkeys)
+        const userCredentials = await PasskeyCredential.find({
+            user_id: userAccount.user_id,
+            revoked: false
+        });
+
         // Create DID document export
         const didExport = {
             did: userAccount.did || `did:casper:${userAccount.user_id}`,
@@ -741,15 +748,32 @@ router.post('/export-did', require('../middleware/auth').requireAuth, async (req
                 firstName: userProfile.first_name,
                 lastName: userProfile.last_name,
                 displayName: userProfile.display_name,
-                verificationLevel: userProfile.verification_level
+                headline: userProfile.headline,
+                about: userProfile.about,
+                verificationLevel: userProfile.verification_level,
+                verificationStatus: {
+                    emailVerified: userAccount.email_verified,
+                    kycCompleted: !!userAccount.kyc_completed_at,
+                    livenessCompleted: !!userAccount.liveness_completed_at
+                }
             } : null,
-            credentials: [], // TODO: Add actual credentials
+            credentials: userCredentials.map(cred => ({
+                credentialId: cred.credential_id,
+                deviceType: cred.device_type,
+                transports: cred.transports,
+                createdAt: cred.created_at,
+                lastUsedAt: cred.last_used_at,
+                isPrimary: cred.is_primary
+            })),
             exportedAt: new Date().toISOString(),
             exportedBy: userAccount.user_id
         };
 
-        // Clear the verification after use (one-time use)
-        await EmailVerification.deleteOne({ verification_id: verificationToken });
+        // NOTE: Do NOT delete the verification token here!
+        // The token is valid for 5 minutes and should allow multiple exports
+        // (JSON download, QR code, Print recovery document)
+        // The token will expire automatically after 5 minutes due to MongoDB TTL index
+        // await EmailVerification.deleteOne({ verification_id: verificationToken });
 
         // Generate export file name
         const filename = `casperid-export-${userAccount.user_id}-${Date.now()}.json`;

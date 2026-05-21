@@ -23,7 +23,11 @@ export const L3LivenessCheck: React.FC<L3LivenessCheckProps> = ({ onComplete }) 
 
     useEffect(() => {
         const checkMobile = () => {
-            setIsMobile(window.innerWidth < 1024);
+            // Consider device a mobile if width is less than 768px or if it's actually a mobile device
+            const isMobileDevice = /iPhone|iPad|iPod|Android|webOS|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+            const isMobileViewport = window.innerWidth < 768;
+            const result = isMobileDevice || isMobileViewport;
+            setIsMobile(result);
         };
         checkMobile();
         window.addEventListener('resize', checkMobile);
@@ -38,6 +42,13 @@ export const L3LivenessCheck: React.FC<L3LivenessCheckProps> = ({ onComplete }) 
     const [challenge, setChallenge] = useState<ChallengeType>("BLINK");
     const [progress, setProgress] = useState(0);
     const [ovalColor, setOvalColor] = useState<"white" | "red" | "green">("white");
+
+    // QR Pairing State (for cross-device desktop-to-mobile flow)
+    const [requestId, setRequestId] = useState<string>("");
+    const [pairingId, setPairingId] = useState<string>("");
+    const [qrCodeDataUrl, setQrCodeDataUrl] = useState<string>("");
+    const [desktopQrStep, setDesktopQrStep] = useState<"loading" | "ready" | "scanning" | "success">("loading");
+    const [qrInitialized, setQrInitialized] = useState(false);
 
     const { refreshUser } = useAuth();
 
@@ -79,6 +90,45 @@ export const L3LivenessCheck: React.FC<L3LivenessCheckProps> = ({ onComplete }) 
         setProgress(0);
         setChallenge("BLINK");
     };
+
+    // Initialize QR verification for Layer 3 (desktop flow only)
+    useEffect(() => {
+        // Prevent double initialization
+        if (qrInitialized || isMobile) return;
+
+        const initializeQRVerification = async () => {
+            try {
+                console.log('[L3 QR] Initializing Layer 3 QR verification...');
+                const response = await apiService.post('/api/v2/verification/layer3/start', {
+                    verificationMethod: 'document_upload',
+                    purpose: 'Layer 3 Liveness Verification'
+                });
+
+                console.log('[L3 QR] API Response:', response);
+
+                if (response && response.verification) {
+                    const { requestId: reqId, pairingId: pId, qrCode } = response.verification;
+                    console.log('[L3 QR] Received:', { reqId, pId, hasQrCode: !!qrCode });
+
+                    setRequestId(reqId);
+                    setPairingId(pId);
+
+                    if (qrCode && qrCode.dataUrl) {
+                        console.log('[L3 QR] Setting QR code image');
+                        setQrCodeDataUrl(qrCode.dataUrl);
+                        setDesktopQrStep('ready');
+                    }
+                }
+                setQrInitialized(true);
+            } catch (error) {
+                console.error('[L3 QR] Failed to initialize:', error);
+                setQrInitialized(true);
+                // Fallback: still allow verification, show camera instead
+            }
+        };
+
+        initializeQRVerification();
+    }, [qrInitialized, isMobile]);
 
     useEffect(() => {
         let camera: any = null;
@@ -363,6 +413,7 @@ export const L3LivenessCheck: React.FC<L3LivenessCheckProps> = ({ onComplete }) 
                 progress={progress}
                 instruction={guidance}
                 isApiComplete={state === "SUCCESS"}
+                pairingId={pairingId}
             />
         );
     }
@@ -372,21 +423,57 @@ export const L3LivenessCheck: React.FC<L3LivenessCheckProps> = ({ onComplete }) 
             {/* Page Header */}
             <div className="mb-10">
                 <h1 className="text-[40px] font-black text-text-main tracking-tight leading-tight">
-                    Liveness Verification
+                    {!isMobile && qrInitialized && qrCodeDataUrl && desktopQrStep !== 'success'
+                        ? 'Cross-Device Verification'
+                        : 'Liveness Verification'}
                 </h1>
                 <p className="text-text-sub text-lg font-medium leading-relaxed max-w-3xl mt-2">
-                    Position your face within the frame and follow the on-screen prompts to confirm you are a real human.
+                    {!isMobile && qrInitialized && qrCodeDataUrl && desktopQrStep !== 'success'
+                        ? 'Scan the QR code with your mobile device to complete the liveness verification.'
+                        : 'Position your face within the frame and follow the on-screen prompts to confirm you are a real human.'}
                 </p>
             </div>
 
             {/* Main Grid */}
             <div className="grid grid-cols-1 lg:grid-cols-[1fr_340px] gap-10 items-start">
 
-                {/* Left: Camera */}
+                {/* Left: Camera or QR Code */}
                 <div className="bg-white rounded-[40px] border border-gray-100 shadow-soft p-8 md:p-12 space-y-10">
-                    <div className="relative aspect-[3/4] bg-black rounded-2xl overflow-hidden shadow-2xl border-4 border-slate-800">
-                        <video ref={videoRef} className="hidden" playsInline muted />
-                        <canvas ref={canvasRef} className="absolute inset-0 w-full h-full object-cover" width={640} height={480} />
+                    <div className="relative aspect-[3/4] bg-black rounded-2xl overflow-hidden shadow-2xl border-4 border-slate-800 flex items-center justify-center">
+
+                        {/* Desktop QR Code Display */}
+                        {!isMobile && qrInitialized && qrCodeDataUrl && desktopQrStep !== 'success' && (
+                            <div className="w-full h-full flex flex-col items-center justify-center gap-6 p-8">
+                                {/* QR Code Image */}
+                                <div className="bg-white p-4 rounded-xl">
+                                    <img
+                                        src={qrCodeDataUrl}
+                                        alt="Verification QR Code"
+                                        className="w-48 h-48 object-contain"
+                                    />
+                                </div>
+
+                                {/* Instructions */}
+                                <div className="text-center space-y-2">
+                                    <h3 className="text-white text-lg font-bold">Scan with Your Phone</h3>
+                                    <p className="text-white/70 text-sm">
+                                        Open your mobile device and scan this QR code to complete liveness verification
+                                    </p>
+                                </div>
+
+                                {/* Status Badge */}
+                                <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-primary/20 border border-primary/40 text-primary text-[10px] font-bold uppercase tracking-wider">
+                                    <span className="size-2 rounded-full bg-primary animate-pulse"></span>
+                                    Waiting for Mobile
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Mobile Camera Feed */}
+                        {(isMobile || !qrInitialized || !qrCodeDataUrl || desktopQrStep === 'success') && (
+                            <>
+                                <video ref={videoRef} className="hidden" playsInline muted />
+                                <canvas ref={canvasRef} className="absolute inset-0 w-full h-full object-cover" width={640} height={480} />
 
                         <svg className="absolute inset-0 w-full h-full pointer-events-none" viewBox="0 0 100 100" preserveAspectRatio="none">
                             <defs>
@@ -439,6 +526,8 @@ export const L3LivenessCheck: React.FC<L3LivenessCheckProps> = ({ onComplete }) 
                                     <h2 className="text-2xl font-bold text-white">Verified!</h2>
                                 </div>
                             </div>
+                        )}
+                            </>
                         )}
                     </div>
 
