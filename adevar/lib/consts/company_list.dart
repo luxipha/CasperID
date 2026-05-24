@@ -1,0 +1,28 @@
+class CompanyList {
+  static List<String> companyList = [
+    'Conghe co.Ltd',
+    'Conghe co.Ltd',
+    'Conghe co.Ltd',
+    'Conghe co.Ltd',
+    'Conghe co.Ltd',
+    'Conghe co.Ltd',
+    'Conghe co.Ltd',
+    'Conghe co.Ltd',
+    'Conghe co.Ltd',
+    'Conghe co.Ltd',
+    'Conghe co.Ltd',
+    'Conghe co.Ltd',
+    'Conghe co.Ltd',
+    'Conghe co.Ltd',
+    'Conghe co.Ltd',
+    'Conghe co.Ltd',
+    'Conghe co.Ltd',
+    'Conghe co.Ltd',
+    'Conghe co.Ltd',
+    'Conghe co.Ltd',
+    'Conghe co.Ltd',
+    'Conghe co.Ltd',
+    'Conghe co.Ltd',
+    'Conghe co.Ltd',
+  ];
+}
