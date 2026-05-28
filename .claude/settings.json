@@ -1,0 +1,13 @@
+{
+  "mcpServers": {
+    "casperid-memory": {
+      "command": "npx",
+      "args": ["tsx", "/Users/abisoye/Projects/mcp-server/src/index.ts"],
+      "env": {
+        "GEMINI_API_KEY": "${GEMINI_API_KEY}",
+        "MEMORY_PATH": "/Users/abisoye/.casperid/memory",
+        "SERVER_NAME": "casperid-memory"
+      }
+    }
+  }
+}

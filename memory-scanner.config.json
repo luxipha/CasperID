@@ -1,0 +1,20 @@
+{
+  "projects": [
+    { "directory": "frontend", "projectName": "frontend" },
+    { "directory": "server", "projectName": "server" },
+    { "directory": "sdk", "projectName": "sdk" },
+    { "directory": "extension-refined", "projectName": "extension" },
+    { "directory": "casperid-connect", "projectName": "casperid-connect" },
+    { "directory": "casperdrop", "projectName": "casperdrop" },
+    { "directory": "adevar", "projectName": "adevar" },
+    { "directory": "contracts", "projectName": "contracts" },
+    { "directory": "casperid_zk", "projectName": "casperid-zk" },
+    { "directory": "scripts", "projectName": "scripts" },
+    { "directory": "utils", "projectName": "utils" },
+    { "directory": "circuits", "projectName": "circuits" },
+    { "directory": "casper_ref", "projectName": "casper-ref" }
+  ],
+  "indexTitle": "casperId Project Index",
+  "indexTags": ["casperid", "project", "index"],
+  "excludeDirs": ["node_modules", "dist", ".git", "build", "coverage", ".next"]
+}

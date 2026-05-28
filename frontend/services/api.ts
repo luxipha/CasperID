@@ -611,11 +611,7 @@ class ApiService {
       formData.append('document', file);
       formData.append('document_type', documentType);
 
-      const response = await this.client.post('/api/v2/verification/upload-document', formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
-      });
+      const response = await this.client.post('/api/v2/verification/upload-document', formData);
       return response.data;
     } catch (error) {
       throw this.handleError(error);
@@ -661,11 +657,7 @@ class ApiService {
         formData.append('pairingId', pairingId);
       }
 
-      const response = await this.client.post('/api/v2/verification/liveness', formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
-      });
+      const response = await this.client.post('/api/v2/verification/liveness', formData);
       return response.data;
     } catch (error) {
       throw this.handleError(error);
@@ -685,11 +677,7 @@ class ApiService {
       formData.append('totalFrames', frames.length.toString());
       formData.append('stepSequence', JSON.stringify(stepSequence));
 
-      const response = await this.client.post('/api/ai/verify-liveness-sequence', formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
-      });
+      const response = await this.client.post('/api/ai/verify-liveness-sequence', formData);
       return response.data;
     } catch (error) {
       throw this.handleError(error);
@@ -869,11 +857,8 @@ class ApiService {
       const formData = new FormData();
       formData.append('avatar', file);
 
-      const response = await this.client.post(`/api/profile/${targetWallet}/upload-avatar`, formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
-      });
+      // Don't set Content-Type manually — axios needs to set it with the boundary
+      const response = await this.client.post(`/api/profile/${targetWallet}/upload-avatar`, formData);
       return response.data;
     } catch (error) {
       throw this.handleError(error);
@@ -1247,9 +1232,6 @@ class ApiService {
       formData.append('resume', file);
 
       const response = await this.client.post('/api/ai/parse-resume', formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
         timeout: 60000, // 60 seconds for AI processing
       });
       return response.data;
@@ -1431,12 +1413,7 @@ class ApiService {
 
       const response = await this.client.post(
         '/api/v2/verification/layer3/documents/upload',
-        formData,
-        {
-          headers: {
-            'Content-Type': 'multipart/form-data',
-          },
-        }
+        formData
       );
 
       return response.data;
@@ -1969,11 +1946,7 @@ class ApiService {
       const formData = new FormData();
       formData.append('logo', file);
 
-      const response = await this.client.post(`/api/business/apps/${appId}/logo`, formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
-      });
+      const response = await this.client.post(`/api/business/apps/${appId}/logo`, formData);
       return response.data;
     } catch (error) {
       throw this.handleError(error);
@@ -1993,4 +1966,4 @@ class ApiService {
 // Export singleton instance
 export const apiService = new ApiService();
 export const apiClient = apiService; // Alias for compatibility with admin dashboard
-export default apiService;
+export default apiService;ault apiService;apiService;apiService;

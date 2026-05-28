@@ -175,7 +175,9 @@ app.use((req, res, next) => {
         req.path.startsWith('/api/passkey') ||
         req.path.startsWith('/api/v2/verification') ||
         req.path.startsWith('/api/casperid') ||
-        req.path.startsWith('/api/ai')
+        req.path.startsWith('/api/ai') ||
+        // Profile upload uses requireAuth (session cookie), CSRF is redundant
+        req.path.includes('/upload-avatar')
     ) {
         return next();
     }
