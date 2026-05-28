@@ -1966,4 +1966,4 @@ class ApiService {
 // Export singleton instance
 export const apiService = new ApiService();
 export const apiClient = apiService; // Alias for compatibility with admin dashboard
-export default apiService;ault apiService;apiService;apiService;
+export default apiService;
