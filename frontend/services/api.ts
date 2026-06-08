@@ -1823,6 +1823,19 @@ class ApiService {
     }
   }
 
+  /**
+   * Check payment status and trigger .cid minting if payment completed.
+   * Polled by CnsSuccess after user returns from payment provider checkout.
+   */
+  async getPaymentStatus(reference: string): Promise<ApiResponse> {
+    try {
+      const response = await this.client.get(`/api/payment/status/${encodeURIComponent(reference)}`);
+      return response.data;
+    } catch (error) {
+      throw this.handleError(error);
+    }
+  }
+
   async createSubName(parentName: string, prefix: string, contextType: string): Promise<ApiResponse> {
     try {
       const response = await this.client.post('/api/cns/subname', {

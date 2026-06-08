@@ -52,9 +52,11 @@ class WebAuthnService {
     /**
      * Generate registration options for new passkey creation
      */
-    async generateRegistrationOptions(userEmail, userName = null, isEmailVerified = false) {
+    async generateRegistrationOptions(userEmail, userName = null, isEmailVerified = false, rpId = null) {
         try {
             const userId = uuidv4();
+            // Use provided rpId (from Origin header) or fall back to default
+            const effectiveRpId = rpId || this.rpID;
             // Normalize email for consistent storage (handles Gmail dot-stripping)
             const normalizedUserEmail = normalizeEmail(userEmail);
             const userDisplayName = userName || normalizedUserEmail.split('@')[0];
@@ -72,7 +74,7 @@ class WebAuthnService {
 
             const options = await generateRegistrationOptions({
                 rpName: this.rpName,
-                rpID: this.rpID,
+                rpID: effectiveRpId,
                 userID: Buffer.from(userId),
                 userName: userEmail,
                 userDisplayName: userDisplayName,
@@ -97,6 +99,7 @@ class WebAuthnService {
                 challenge: options.challenge,
                 userEmail: userEmail.trim().toLowerCase(),  // Original email (just lowercased)
                 isEmailVerified,
+                rpId: effectiveRpId,  // Store for verification
                 timestamp: Date.now(),
             });
 
@@ -133,13 +136,15 @@ class WebAuthnService {
             const expectedOrigins = overrideOrigins && overrideOrigins.length > 0
                 ? [...this.origins, ...overrideOrigins]
                 : this.origins;
+            // Use the rpId that was stored during generateRegistrationOptions
+            const expectedRPID = storedChallenge.rpId || this.rpID;
 
             // Verify the registration
             const verification = await verifyRegistrationResponse({
                 response: registrationResponse,
                 expectedChallenge: storedChallenge.challenge,
                 expectedOrigin: expectedOrigins,
-                expectedRPID: this.rpID,
+                expectedRPID: expectedRPID,
                 requireUserVerification: true,
             });
 
@@ -277,8 +282,10 @@ class WebAuthnService {
     /**
      * Generate authentication options for passkey login
      */
-    async generateAuthenticationOptions(userIdentifier = null) {
+    async generateAuthenticationOptions(userIdentifier = null, rpId = null) {
         try {
+            // Use provided rpId (from Origin header) or fall back to default
+            const effectiveRpId = rpId || this.rpID;
             let allowCredentials = [];
             let deviceTypeHint = 'desktop';
             let passkeyTransports = [];
@@ -314,7 +321,7 @@ class WebAuthnService {
                 timeout: this.timeout,
                 allowCredentials: finalAllowCredentials,
                 userVerification: 'preferred',
-                rpID: this.rpID,
+                rpID: effectiveRpId,
             });
 
             // Store challenge temporarily
@@ -322,6 +329,7 @@ class WebAuthnService {
             this.challengeStorage.set(challengeId, {
                 challenge: options.challenge,
                 userIdentifier,
+                rpId: effectiveRpId,  // Store for verification
                 timestamp: Date.now(),
             });
 
@@ -527,11 +535,13 @@ class WebAuthnService {
             const expectedOrigins = overrideOrigins && overrideOrigins.length > 0
                 ? [...this.origins, ...overrideOrigins]
                 : this.origins;
+            // Use the rpId that was stored during generateAuthenticationOptions
+            const expectedRPID = storedChallenge.rpId || this.rpID;
 
             console.log('🔍 About to call verifyAuthenticationResponse with:');
             console.log('   expectedChallenge:', storedChallenge.challenge);
             console.log('   expectedOrigins:', expectedOrigins);
-            console.log('   expectedRPID:', this.rpID);
+            console.log('   expectedRPID:', expectedRPID);
             console.log('   authenticator:', {
                 credentialID: authenticatorObj.credentialID,
                 credentialPublicKey: authenticatorObj.credentialPublicKey,
@@ -546,7 +556,7 @@ class WebAuthnService {
                     response: convertedResponse,
                     expectedChallenge: storedChallenge.challenge,
                     expectedOrigin: expectedOrigins,
-                    expectedRPID: this.rpID,
+                    expectedRPID: expectedRPID,
                     credential: {
                         id: authenticatorObj.credentialID,
                         publicKey: authenticatorObj.credentialPublicKey,

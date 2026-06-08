@@ -731,7 +731,7 @@ const App: React.FC = () => {
     : currentView;
 
   // Don't show layout chrome during onboarding, public profile view, landing, admin, or credential verification
-  const isOnboarding = currentView === 'public-profile' || currentView === 'events' || currentView === 'landing' || currentView === 'admin' || currentView === 'verify-credential' || currentView === 'verify-zk-claims' || currentView === 'verify-share-data' || currentView === 'auth-entry' || currentView === 'otp-verify' || currentView === 'onboarding-start' || currentView === 'onboarding-progress' || currentView === 'pairing' || currentView === 'handoff' || currentView.startsWith('business');
+  const isOnboarding = currentView === 'public-profile' || currentView === 'events' || currentView === 'landing' || currentView === 'admin' || currentView === 'verify-credential' || currentView === 'verify-zk-claims' || currentView === 'verify-share-data' || currentView === 'auth-entry' || currentView === 'otp-verify' || currentView === 'onboarding-start' || currentView === 'onboarding-progress' || currentView === 'pairing' || currentView === 'handoff' || currentView === 'cns-success' || currentView.startsWith('business');
 
   if (isLoading) {
     return <AppLoadingSplash />;
@@ -750,6 +750,7 @@ const App: React.FC = () => {
         <Route path="/apply-success" element={<ApplySuccessPage onReturnToCareers={() => navigate('/careers')} />} />
         <Route path="/affiliate" element={<AffiliatePage />} />
         <Route path="/events" element={<EventsPage />} />
+        <Route path="/cns-success" element={<CnsSuccess />} />
         <Route path="/profile/:slug" element={<PublicProfileContainerWrapper />} />
         <Route path="/did/*" element={<DIDProfileWrapper />} />
         <Route path="/p/:slug" element={<PRouteRedirect />} />

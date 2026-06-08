@@ -68,68 +68,53 @@ router.post('/revenuecat/webhook', async (req, res) => {
                 return res.status(400).json({ error: 'Missing user data' });
             }
 
-            // Idempotency: Check if this payment was already handled
-            const existing = await Payment.findOne({
-                reference: transactionId,
-                provider: 'revenuecat'
-            });
-
-            if (existing) {
-                console.log(`[Payment] Duplicate webhook detected for Revenuecat Tx ${transactionId}`);
-                return res.json({ received: true, status: 'already_processed' });
-            }
-
             // Calculate price based on years
             const price = pricing[years] || 3;
 
-            // Create payment record
-            await Payment.create({
-                reference: transactionId,
-                type: 'fiat',
-                provider: 'revenuecat',
-                amount: price,
-                currency: 'USD',
-                status: 'completed',
-                metadata: {
-                    domainName: domainName,
-                    years: years,
-                    userId: user.user_id
+            if (paymentRecord) {
+                // Update the original pending record to completed (preserving rc_ref_xxx reference)
+                const alreadyCompleted = paymentRecord.status === 'completed';
+                if (alreadyCompleted) {
+                    console.log(`[Payment] Duplicate webhook detected for Revenuecat Tx ${transactionId}, payment already completed`);
+                    return res.json({ received: true, status: 'already_processed' });
                 }
-            });
-
-            console.log(`[Payment] Valid RevenueCat Fiat Purchase! Minting ${domainName}.cid for ${user.user_id}`);
-
-            // Mint CID!
-            const wallet = user.wallet;
-            try {
-                await cnsResolver.registerPremiumName(wallet, domainName);
-                console.log(`[Payment] Successfully registered ${domainName}.cid for wallet ${wallet}`);
-
-                // Emit payment completed event (subscribers handle email, activity)
-                eventBus.emit(EVENTS.PAYMENT_COMPLETED, {
-                    userId: user.user_id,
-                    email: user.recovery_email || user.email,
-                    wallet: wallet,
+                paymentRecord.status = 'completed';
+                paymentRecord.orderId = transactionId;
+                paymentRecord.completed_at = new Date();
+                await paymentRecord.save();
+                console.log(`[Payment] Updated pending payment ${paymentRecord.reference} to completed for RevenueCat tx ${transactionId}`);
+            } else {
+                // Fallback: create a new record (no matching pending record found)
+                await Payment.create({
+                    reference: transactionId,
+                    type: 'fiat',
+                    provider: 'revenuecat',
                     amount: price,
                     currency: 'USD',
-                    items: `${domainName}.cid Domain Registration (${years} year${years > 1 ? 's' : ''})`,
-                    transactionId: transactionId,
-                    provider: 'revenuecat'
+                    status: 'completed',
+                    metadata: {
+                        domainName: domainName,
+                        years: years,
+                        userId: user.user_id
+                    }
                 });
-
-                // Also emit CNS registered event
-                eventBus.emit(EVENTS.CNS_REGISTERED, {
-                    userId: user.user_id,
-                    email: user.recovery_email || user.email,
-                    wallet: wallet,
-                    domainName: domainName,
-                    years: years,
-                    transactionId: transactionId
-                });
-            } catch (mintingErr) {
-                console.error(`[Payment] CRITICAL: Payment succeeded but minting failed!`, mintingErr);
-                // The payment is recorded, an admin can manually retry minting later
             }
+
+            const wallet = user.wallet;
+
+            console.log(`[Payment] Valid RevenueCat Fiat Purchase! Payment recorded for ${domainName}.cid for ${wallet}. Minting deferred to polling/status endpoint.`);
+
+            // Emit payment completed event (subscribers handle email, activity)
+            eventBus.emit(EVENTS.PAYMENT_COMPLETED, {
+                userId: user.user_id,
+                email: user.recovery_email || user.email,
+                wallet: wallet,
+                amount: price,
+                currency: 'USD',
+                items: `${domainName}.cid Domain Registration (${years} year${years > 1 ? 's' : ''})`,
+                transactionId: transactionId,
+                provider: 'revenuecat'
+            });
         }
 
         res.json({ received: true });
@@ -158,6 +143,10 @@ router.post('/revenuecat/create', async (req, res) => {
 
         const reference = `rc_ref_${crypto.randomBytes(8).toString('hex')}`;
 
+        // Construct redirect URL so the user returns to the app after payment
+        const origin = req.headers.origin || `${req.protocol}://${req.get('host')}`;
+        const redirectUrl = `${origin}/cns-success?reference=${reference}`;
+
         await Payment.create({
             reference: reference,
             type: 'fiat',
@@ -184,6 +173,7 @@ router.post('/revenuecat/create', async (req, res) => {
         res.json({
             success: true,
             checkoutUrl: purchaseLink,
+            redirectUrl, // Frontend uses this to know where to navigate on return
             orderId: reference
         });
 
@@ -215,6 +205,10 @@ router.post('/boomfi/create', async (req, res) => {
         // Create a unique reference for tracking
         const reference = `bf_ref_${crypto.randomBytes(8).toString('hex')}`;
 
+        // Construct redirect URL so the user returns to the app after payment
+        const origin = req.headers.origin || `${req.protocol}://${req.get('host')}`;
+        const boomfiRedirectUrl = `${origin}/cns-success?reference=${reference}`;
+
         // Create Boomfi payment via Merchant API
         const boomfiPayload = {
             name: `${domainName}.cid Registration`,
@@ -222,6 +216,7 @@ router.post('/boomfi/create', async (req, res) => {
             currency: 'USD',
             reference: reference,
             description: `CasperID domain: ${domainName}.cid for ${years} year(s)`,
+            redirect_url: boomfiRedirectUrl,
             metadata: {
                 ext_ref: reference,
                 domain_name: domainName,
@@ -296,6 +291,7 @@ router.post('/boomfi/create', async (req, res) => {
         res.json({
             success: true,
             checkoutUrl: checkoutUrl,
+            redirectUrl: boomfiRedirectUrl, // Frontend uses this to know where to navigate on return
             orderId: reference
         });
 
@@ -373,44 +369,29 @@ router.post('/boomfi/webhook', express.raw({ type: 'application/json' }), async 
                 const metadata = payment.metadata;
 
                 if (metadata && metadata.domainName) {
-                    try {
-                        // Find the user to get their wallet
-                        const user = await UserAccount.findOne({ user_id: metadata.userId });
-                        const walletAddress = user ? user.wallet : metadata.wallet;
+                    // Find the user to get their wallet
+                    const user = await UserAccount.findOne({ user_id: metadata.userId });
+                    const walletAddress = user ? user.wallet : metadata.wallet;
 
-                        if (walletAddress) {
-                            await cnsResolver.registerPremiumName(walletAddress, metadata.domainName);
-                            console.log(`[Payment] Boomfi payment success! Minted ${metadata.domainName}.cid for ${walletAddress}`);
+                    if (walletAddress) {
+                        console.log(`[Payment] Boomfi payment success! Payment recorded for ${metadata.domainName}.cid for ${walletAddress}. Minting deferred to polling/status endpoint.`);
 
-                            // Emit payment completed event (subscribers handle email, activity)
-                            const userEmail = user?.recovery_email || user?.email || metadata.userEmail;
-                            const years = metadata.years || 1;
+                        // Emit payment completed event (subscribers handle email, activity)
+                        const userEmail = user?.recovery_email || user?.email || metadata.userEmail;
+                        const years = metadata.years || 1;
 
-                            eventBus.emit(EVENTS.PAYMENT_COMPLETED, {
-                                userId: user?.user_id || metadata.userId,
-                                email: userEmail,
-                                wallet: walletAddress,
-                                amount: payment.amount,
-                                currency: payment.currency || 'USD',
-                                items: `${metadata.domainName}.cid Domain Registration (${years} year${years > 1 ? 's' : ''})`,
-                                transactionId: paymentId,
-                                provider: 'boomfi'
-                            });
-
-                            // Also emit CNS registered event
-                            eventBus.emit(EVENTS.CNS_REGISTERED, {
-                                userId: user?.user_id || metadata.userId,
-                                email: userEmail,
-                                wallet: walletAddress,
-                                domainName: metadata.domainName,
-                                years: years,
-                                transactionId: paymentId
-                            });
-                        } else {
-                            console.error('[Payment] No wallet found for Boomfi payment', externalRef);
-                        }
-                    } catch (e) {
-                        console.error(`[Payment] CRITICAL: Boomfi payment succeeded but minting failed!`, e);
+                        eventBus.emit(EVENTS.PAYMENT_COMPLETED, {
+                            userId: user?.user_id || metadata.userId,
+                            email: userEmail,
+                            wallet: walletAddress,
+                            amount: payment.amount,
+                            currency: payment.currency || 'USD',
+                            items: `${metadata.domainName}.cid Domain Registration (${years} year${years > 1 ? 's' : ''})`,
+                            transactionId: paymentId,
+                            provider: 'boomfi'
+                        });
+                    } else {
+                        console.error('[Payment] No wallet found for Boomfi payment', externalRef);
                     }
                 }
             } else {
@@ -432,6 +413,101 @@ router.post('/boomfi/webhook', express.raw({ type: 'application/json' }), async 
     } catch (error) {
         console.error('[Payment] Boomfi Webhook Error:', error);
         res.status(500).json({ error: 'Internal server error processing crypto webhook' });
+    }
+});
+
+// GET /api/payment/status/:reference
+// Checks payment status and triggers .cid minting if payment is completed.
+// This is polled by the frontend after the user returns from the payment provider.
+router.get('/status/:reference', async (req, res) => {
+    try {
+        const { reference } = req.params;
+
+        const payment = await Payment.findOne({ reference });
+
+        if (!payment) {
+            return res.json({ success: false, status: 'not_found', error: 'Payment not found' });
+        }
+
+        // Payment is still pending — frontend should keep polling
+        if (payment.status === 'pending' || payment.status === 'confirming') {
+            return res.json({ success: true, status: payment.status });
+        }
+
+        // Payment failed
+        if (payment.status === 'failed' || payment.status === 'expired') {
+            return res.json({ success: true, status: payment.status });
+        }
+
+        // Payment completed — check if name has been minted yet
+        if (payment.status === 'completed') {
+            const metadata = payment.metadata || {};
+            const domainName = metadata.domainName;
+
+            if (!domainName) {
+                return res.json({ success: true, status: 'completed', minted: false, error: 'Missing domain name in payment record' });
+            }
+
+            // Check if already minted by looking up the user's account
+            const user = await UserAccount.findOne({ user_id: metadata.userId });
+
+            if (!user) {
+                return res.json({ success: true, status: 'completed', minted: false, error: 'User not found' });
+            }
+
+            // Idempotency: if user already has a cns_name, minting was already done
+            if (user.cns_name) {
+                console.log(`[Payment] Status: name ${domainName}.cid already minted for ${user.wallet}, skipping`);
+                return res.json({
+                    success: true,
+                    status: 'completed',
+                    minted: true,
+                    name: `${domainName}.cid`,
+                    txHash: user.onchain_name_tx || null,
+                    alreadyMinted: true
+                });
+            }
+
+            // Mint it now — this is the trigger point
+            try {
+                const result = await cnsResolver.registerPremiumName(user.wallet, domainName);
+
+                console.log(`[Payment] Status: minted ${domainName}.cid for wallet ${user.wallet} via status poll`);
+
+                // Emit CNS registered event
+                const years = metadata.years || 1;
+                eventBus.emit(EVENTS.CNS_REGISTERED, {
+                    userId: user.user_id,
+                    email: user.recovery_email || user.email,
+                    wallet: user.wallet,
+                    domainName: domainName,
+                    years: years,
+                    transactionId: payment.reference
+                });
+
+                return res.json({
+                    success: true,
+                    status: 'completed',
+                    minted: true,
+                    name: `${domainName}.cid`,
+                    txHash: result.txHash || null,
+                    alreadyMinted: false
+                });
+            } catch (mintError) {
+                console.error(`[Payment] Status: minting failed for ${domainName}.cid:`, mintError.message);
+                return res.json({
+                    success: true,
+                    status: 'completed',
+                    minted: false,
+                    error: mintError.message
+                });
+            }
+        }
+
+        return res.json({ success: true, status: payment.status });
+    } catch (error) {
+        console.error('[Payment] Status Error:', error);
+        res.status(500).json({ success: false, error: 'Failed to check payment status' });
     }
 });
 
