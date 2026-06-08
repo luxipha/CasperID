@@ -1,139 +1,100 @@
 PODS:
-  - device_info_plus (0.0.1):
-    - Flutter
-  - device_information (0.0.1):
-    - Flutter
   - Flutter (1.0.0)
-  - flutter_keyboard_visibility (0.0.1):
+  - flutter_secure_storage (6.0.0):
     - Flutter
-  - flutter_native_timezone (0.0.1):
+  - GoogleDataTransport (10.1.0):
+    - nanopb (~> 3.30910.0)
+    - PromisesObjC (~> 2.4)
+  - GoogleMLKit/BarcodeScanning (7.0.0):
+    - GoogleMLKit/MLKitCore
+    - MLKitBarcodeScanning (~> 6.0.0)
+  - GoogleMLKit/MLKitCore (7.0.0):
+    - MLKitCommon (~> 12.0.0)
+  - GoogleToolboxForMac/Defines (4.2.1)
+  - GoogleToolboxForMac/Logger (4.2.1):
+    - GoogleToolboxForMac/Defines (= 4.2.1)
+  - "GoogleToolboxForMac/NSData+zlib (4.2.1)":
+    - GoogleToolboxForMac/Defines (= 4.2.1)
+  - GoogleUtilities/Environment (8.1.0):
+    - GoogleUtilities/Privacy
+  - GoogleUtilities/Logger (8.1.0):
+    - GoogleUtilities/Environment
+    - GoogleUtilities/Privacy
+  - GoogleUtilities/Privacy (8.1.0)
+  - GoogleUtilities/UserDefaults (8.1.0):
+    - GoogleUtilities/Logger
+    - GoogleUtilities/Privacy
+  - GTMSessionFetcher/Core (3.5.0)
+  - MLImage (1.0.0-beta6)
+  - MLKitBarcodeScanning (6.0.0):
+    - MLKitCommon (~> 12.0)
+    - MLKitVision (~> 8.0)
+  - MLKitCommon (12.0.0):
+    - GoogleDataTransport (~> 10.0)
+    - GoogleToolboxForMac/Logger (< 5.0, >= 4.2.1)
+    - "GoogleToolboxForMac/NSData+zlib (< 5.0, >= 4.2.1)"
+    - GoogleUtilities/Logger (~> 8.0)
+    - GoogleUtilities/UserDefaults (~> 8.0)
+    - GTMSessionFetcher/Core (< 4.0, >= 3.3.2)
+  - MLKitVision (8.0.0):
+    - GoogleToolboxForMac/Logger (< 5.0, >= 4.2.1)
+    - "GoogleToolboxForMac/NSData+zlib (< 5.0, >= 4.2.1)"
+    - GTMSessionFetcher/Core (< 4.0, >= 3.3.2)
+    - MLImage (= 1.0.0-beta6)
+    - MLKitCommon (~> 12.0)
+  - mobile_scanner (6.0.2):
     - Flutter
-  - fluttertoast (0.0.2):
-    - Flutter
-    - Toast
-  - image_crop (0.0.1):
-    - Flutter
-  - image_cropper (0.0.4):
-    - Flutter
-    - TOCropViewController (~> 2.6.1)
-  - image_gallery_saver (1.5.0):
-    - Flutter
-  - image_picker_ios (0.0.1):
-    - Flutter
-  - MTBBarcodeScanner (5.0.11)
-  - path_provider_ios (0.0.1):
-    - Flutter
-  - permission_handler_apple (9.0.4):
-    - Flutter
-  - qr_code_scanner (0.2.0):
-    - Flutter
-    - MTBBarcodeScanner
-  - share (0.0.1):
-    - Flutter
-  - share_plus (0.0.1):
-    - Flutter
-  - shared_preferences_ios (0.0.1):
-    - Flutter
-  - social_share (0.0.1):
-    - Flutter
-  - Toast (4.0.0)
-  - TOCropViewController (2.6.1)
-  - url_launcher_ios (0.0.1):
-    - Flutter
-  - vibration (1.7.4-nullsafety.0):
-    - Flutter
+    - GoogleMLKit/BarcodeScanning (~> 7.0.0)
+  - nanopb (3.30910.0):
+    - nanopb/decode (= 3.30910.0)
+    - nanopb/encode (= 3.30910.0)
+  - nanopb/decode (3.30910.0)
+  - nanopb/encode (3.30910.0)
+  - PromisesObjC (2.4.0)
 
 DEPENDENCIES:
-  - device_info_plus (from `.symlinks/plugins/device_info_plus/ios`)
-  - device_information (from `.symlinks/plugins/device_information/ios`)
   - Flutter (from `Flutter`)
-  - flutter_keyboard_visibility (from `.symlinks/plugins/flutter_keyboard_visibility/ios`)
-  - flutter_native_timezone (from `.symlinks/plugins/flutter_native_timezone/ios`)
-  - fluttertoast (from `.symlinks/plugins/fluttertoast/ios`)
-  - image_crop (from `.symlinks/plugins/image_crop/ios`)
-  - image_cropper (from `.symlinks/plugins/image_cropper/ios`)
-  - image_gallery_saver (from `.symlinks/plugins/image_gallery_saver/ios`)
-  - image_picker_ios (from `.symlinks/plugins/image_picker_ios/ios`)
-  - path_provider_ios (from `.symlinks/plugins/path_provider_ios/ios`)
-  - permission_handler_apple (from `.symlinks/plugins/permission_handler_apple/ios`)
-  - qr_code_scanner (from `.symlinks/plugins/qr_code_scanner/ios`)
-  - share (from `.symlinks/plugins/share/ios`)
-  - share_plus (from `.symlinks/plugins/share_plus/ios`)
-  - shared_preferences_ios (from `.symlinks/plugins/shared_preferences_ios/ios`)
-  - social_share (from `.symlinks/plugins/social_share/ios`)
-  - url_launcher_ios (from `.symlinks/plugins/url_launcher_ios/ios`)
-  - vibration (from `.symlinks/plugins/vibration/ios`)
+  - flutter_secure_storage (from `.symlinks/plugins/flutter_secure_storage/ios`)
+  - mobile_scanner (from `.symlinks/plugins/mobile_scanner/ios`)
 
 SPEC REPOS:
   trunk:
-    - MTBBarcodeScanner
-    - Toast
-    - TOCropViewController
+    - GoogleDataTransport
+    - GoogleMLKit
+    - GoogleToolboxForMac
+    - GoogleUtilities
+    - GTMSessionFetcher
+    - MLImage
+    - MLKitBarcodeScanning
+    - MLKitCommon
+    - MLKitVision
+    - nanopb
+    - PromisesObjC
 
 EXTERNAL SOURCES:
-  device_info_plus:
-    :path: ".symlinks/plugins/device_info_plus/ios"
-  device_information:
-    :path: ".symlinks/plugins/device_information/ios"
   Flutter:
     :path: Flutter
-  flutter_keyboard_visibility:
-    :path: ".symlinks/plugins/flutter_keyboard_visibility/ios"
-  flutter_native_timezone:
-    :path: ".symlinks/plugins/flutter_native_timezone/ios"
-  fluttertoast:
-    :path: ".symlinks/plugins/fluttertoast/ios"
-  image_crop:
-    :path: ".symlinks/plugins/image_crop/ios"
-  image_cropper:
-    :path: ".symlinks/plugins/image_cropper/ios"
-  image_gallery_saver:
-    :path: ".symlinks/plugins/image_gallery_saver/ios"
-  image_picker_ios:
-    :path: ".symlinks/plugins/image_picker_ios/ios"
-  path_provider_ios:
-    :path: ".symlinks/plugins/path_provider_ios/ios"
-  permission_handler_apple:
-    :path: ".symlinks/plugins/permission_handler_apple/ios"
-  qr_code_scanner:
-    :path: ".symlinks/plugins/qr_code_scanner/ios"
-  share:
-    :path: ".symlinks/plugins/share/ios"
-  share_plus:
-    :path: ".symlinks/plugins/share_plus/ios"
-  shared_preferences_ios:
-    :path: ".symlinks/plugins/shared_preferences_ios/ios"
-  social_share:
-    :path: ".symlinks/plugins/social_share/ios"
-  url_launcher_ios:
-    :path: ".symlinks/plugins/url_launcher_ios/ios"
-  vibration:
-    :path: ".symlinks/plugins/vibration/ios"
+  flutter_secure_storage:
+    :path: ".symlinks/plugins/flutter_secure_storage/ios"
+  mobile_scanner:
+    :path: ".symlinks/plugins/mobile_scanner/ios"
 
 SPEC CHECKSUMS:
-  device_info_plus: e5c5da33f982a436e103237c0c85f9031142abed
-  device_information: d652f6dcea86bdc5300ffd495486de1d5047bf4f
-  Flutter: 50d75fe2f02b26cc09d224853bb45737f8b3214a
-  flutter_keyboard_visibility: 0339d06371254c3eb25eeb90ba8d17dca8f9c069
-  flutter_native_timezone: 5f05b2de06c9776b4cc70e1839f03de178394d22
-  fluttertoast: 16fbe6039d06a763f3533670197d01fc73459037
-  image_crop: e0a67085d3ebf3cf46ca46d61c53a082507b0bc3
-  image_cropper: 60c2789d1f1a78c873235d4319ca0c34a69f2d98
-  image_gallery_saver: 259eab68fb271cfd57d599904f7acdc7832e7ef2
-  image_picker_ios: b786a5dcf033a8336a657191401bfdf12017dabb
-  MTBBarcodeScanner: f453b33c4b7dfe545d8c6484ed744d55671788cb
-  path_provider_ios: 14f3d2fd28c4fdb42f44e0f751d12861c43cee02
-  permission_handler_apple: 44366e37eaf29454a1e7b1b7d736c2cceaeb17ce
-  qr_code_scanner: bb67d64904c3b9658ada8c402e8b4d406d5d796e
-  share: 0b2c3e82132f5888bccca3351c504d0003b3b410
-  share_plus: 056a1e8ac890df3e33cb503afffaf1e9b4fbae68
-  shared_preferences_ios: 548a61f8053b9b8a49ac19c1ffbc8b92c50d68ad
-  social_share: 702a5e3842addd22db515aa9e1e00a4b80a0296d
-  Toast: 91b396c56ee72a5790816f40d3a94dd357abc196
-  TOCropViewController: edfd4f25713d56905ad1e0b9f5be3fbe0f59c863
-  url_launcher_ios: 839c58cdb4279282219f5e248c3321761ff3c4de
-  vibration: 1ec279c4a1a7a646627b54039d812334b3f1114a
+  Flutter: cabc95a1d2626b1b06e7179b784ebcf0c0cde467
+  flutter_secure_storage: 1ed9476fba7e7a782b22888f956cce43e2c62f13
+  GoogleDataTransport: aae35b7ea0c09004c3797d53c8c41f66f219d6a7
+  GoogleMLKit: eff9e23ec1d90ea4157a1ee2e32a4f610c5b3318
+  GoogleToolboxForMac: d1a2cbf009c453f4d6ded37c105e2f67a32206d8
+  GoogleUtilities: 00c88b9a86066ef77f0da2fab05f65d7768ed8e1
+  GTMSessionFetcher: 5aea5ba6bd522a239e236100971f10cb71b96ab6
+  MLImage: 0ad1c5f50edd027672d8b26b0fee78a8b4a0fc56
+  MLKitBarcodeScanning: 0a3064da0a7f49ac24ceb3cb46a5bc67496facd2
+  MLKitCommon: 07c2c33ae5640e5380beaaa6e4b9c249a205542d
+  MLKitVision: 45e79d68845a2de77e2dd4d7f07947f0ed157b0e
+  mobile_scanner: af8f71879eaba2bbcb4d86c6a462c3c0e7f23036
+  nanopb: fad817b59e0457d11a5dfbde799381cd727c1275
+  PromisesObjC: f5707f49cb48b9636751c5b2e7d227e43fba9f47
 
-PODFILE CHECKSUM: fe0e1ee7f3d1f7d00b11b474b62dd62134535aea
+PODFILE CHECKSUM: 9580a49fa2c095d51100c20f258df867100b916b
 
-COCOAPODS: 1.11.3
+COCOAPODS: 1.16.2
