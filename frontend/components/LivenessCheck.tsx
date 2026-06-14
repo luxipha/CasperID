@@ -13,38 +13,29 @@ interface LivenessCheckProps {
   onBack?: () => void;
   onComplete?: () => void;
   layer?: number;
+  pairingPayload?: {
+    requestId: string;
+    pairingId: string;
+    pairingToken: string;
+  };
 }
 
 type VerificationState = "INITIALIZING" | "POSITIONING" | "CHALLENGE" | "VERIFYING_AI" | "MINTING" | "ZK_PROVING" | "ZK_SUBMITTING" | "SUCCESS" | "COMPLETED" | "SYBIL_REJECTED";
 type ChallengeType = "BLINK" | "OPEN_MOUTH";
+const MIN_SUBMISSION_FRAMES = 14;
+const FRAME_CAPTURE_TIMEOUT_MS = 10000;
 
 const euclideanDist = (p1: any, p2: any) => Math.sqrt(Math.pow(p1.x - p2.x, 2) + Math.pow(p1.y - p2.y, 2));
 
-export const LivenessCheck: React.FC<LivenessCheckProps> = ({ onBack, onComplete, layer = 2 }) => {
-  const [isMobile, setIsMobile] = useState(false);
+const detectMobileDevice = () => {
+  const userAgentData = (navigator as Navigator & { userAgentData?: { mobile?: boolean } }).userAgentData;
+  const isIPadOS = navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1;
+  return userAgentData?.mobile === true || isIPadOS ||
+    /iPhone|iPad|iPod|Android|webOS|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+};
 
-  useEffect(() => {
-    const checkMobile = () => {
-      // Consider device a mobile if width is less than 768px (typical tablet portrait)
-      // or if it's actually a mobile device based on user agent
-      const isMobileDevice = /iPhone|iPad|iPod|Android|webOS|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-      const isMobileViewport = window.innerWidth < 768;
-      const result = isMobileDevice || isMobileViewport;
-
-      console.log('[Mobile Detection]', {
-        isMobileDevice,
-        isMobileViewport,
-        windowWidth: window.innerWidth,
-        userAgent: navigator.userAgent.substring(0, 50),
-        finalResult: result
-      });
-
-      setIsMobile(result);
-    };
-    checkMobile();
-    window.addEventListener('resize', checkMobile);
-    return () => window.removeEventListener('resize', checkMobile);
-  }, []);
+export const LivenessCheck: React.FC<LivenessCheckProps> = ({ onBack, onComplete, layer = 2, pairingPayload }) => {
+  const [isMobile] = useState(detectMobileDevice);
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -58,9 +49,11 @@ export const LivenessCheck: React.FC<LivenessCheckProps> = ({ onBack, onComplete
   const [isApiComplete, setIsApiComplete] = useState(false);
 
   // QR Pairing State (for cross-device desktop-to-mobile flow)
-  const [requestId, setRequestId] = useState<string>("");
-  const [pairingId, setPairingId] = useState<string>("");
+  const [requestId, setRequestId] = useState<string>(pairingPayload?.requestId || "");
+  const [pairingId, setPairingId] = useState<string>(pairingPayload?.pairingId || "");
+  const [pairingToken] = useState<string>(pairingPayload?.pairingToken || "");
   const [qrCodeDataUrl, setQrCodeDataUrl] = useState<string>("");
+  const [qrError, setQrError] = useState<string>("");
   const [desktopQrStep, setDesktopQrStep] = useState<"loading" | "ready" | "scanning" | "success">("loading");
   const [qrInitialized, setQrInitialized] = useState(false);
 
@@ -72,6 +65,8 @@ export const LivenessCheck: React.FC<LivenessCheckProps> = ({ onBack, onComplete
   const capturedLandmarks = useRef<FaceLandmark[] | null>(null);
   const blinkTimestamps = useRef<number[]>([]);
   const maxMouthOpen = useRef(0);
+  const mouthCaptureStartedAt = useRef<number | null>(null);
+  const lastCaptureLogAt = useRef(0);
 
   // Logic refs
   const logicState = useRef({
@@ -112,15 +107,17 @@ export const LivenessCheck: React.FC<LivenessCheckProps> = ({ onBack, onComplete
     capturedLandmarks.current = null;
     blinkTimestamps.current = [];
     maxMouthOpen.current = 0;
+    mouthCaptureStartedAt.current = null;
+    lastCaptureLogAt.current = 0;
     setProgress(0);
     setZkProgress(0);
     setChallenge("BLINK");
   };
 
-  // Initialize QR verification (desktop flow only)
+  // Start V2 verification on every device. Desktop additionally displays its QR handoff.
   useEffect(() => {
     // Prevent double initialization
-    if (qrInitialized || isMobile) return;
+    if (qrInitialized || pairingPayload) return;
 
     const initializeQRVerification = async () => {
       try {
@@ -137,9 +134,9 @@ export const LivenessCheck: React.FC<LivenessCheckProps> = ({ onBack, onComplete
           console.log('[QR] Received:', { reqId, pId, hasQrCode: !!qrCode });
 
           setRequestId(reqId);
-          setPairingId(pId);
+          if (!isMobile) setPairingId(pId);
 
-          if (qrCode && qrCode.dataUrl) {
+          if (!isMobile && qrCode && qrCode.dataUrl) {
             console.log('[QR] Setting QR code image');
             setQrCodeDataUrl(qrCode.dataUrl);
             setDesktopQrStep('ready');
@@ -148,8 +145,8 @@ export const LivenessCheck: React.FC<LivenessCheckProps> = ({ onBack, onComplete
         setQrInitialized(true);
       } catch (error) {
         console.error('[QR] Failed to initialize:', error);
+        setQrError(error instanceof Error ? error.message : 'Unable to create mobile handoff.');
         setQrInitialized(true);
-        // Fallback: still allow verification, show camera instead
       }
     };
 
@@ -157,9 +154,34 @@ export const LivenessCheck: React.FC<LivenessCheckProps> = ({ onBack, onComplete
   }, [qrInitialized, isMobile]);
 
   useEffect(() => {
+    if (isMobile || !requestId || desktopQrStep === 'success') return;
+    const poll = window.setInterval(async () => {
+      try {
+        const result = await apiService.get(`/api/v2/verification/${requestId}/status`);
+        if (result.verification?.status === 'completed') {
+          window.clearInterval(poll);
+          setDesktopQrStep('success');
+          await refreshUser();
+          onComplete?.();
+        } else if (result.verification?.status === 'in_progress') {
+          setDesktopQrStep('scanning');
+        }
+      } catch {
+        // Keep polling until the pairing expires or the user cancels.
+      }
+    }, 1500);
+    return () => window.clearInterval(poll);
+  }, [desktopQrStep, isMobile, onComplete, refreshUser, requestId]);
+
+  useEffect(() => {
     let camera: any = null;
     let faceMesh: any = null;
     let isActive = true;
+
+    // Hosted verification is phone-first. Desktop only displays and polls the QR handoff.
+    if (!isMobile) {
+      return;
+    }
 
     // Stop everything if we're in minting, ZK, or completed state
     if (state === "MINTING" || state === "ZK_PROVING" || state === "ZK_SUBMITTING" || state === "SUCCESS") {
@@ -249,6 +271,10 @@ export const LivenessCheck: React.FC<LivenessCheckProps> = ({ onBack, onComplete
           if (ratio < 0.16) { // Closed
             if (!st.isBlinking) {
               st.isBlinking = true;
+              // Preserve evidence of the closed-eye moment, not only the open-eye frame after it.
+              if (canvasRef.current && st.frames.length < 30) {
+                captureFrame(canvasRef.current, st);
+              }
             }
           } else { // Open
             if (st.isBlinking) {
@@ -267,6 +293,11 @@ export const LivenessCheck: React.FC<LivenessCheckProps> = ({ onBack, onComplete
                 setGuidance("Now, OPEN your mouth");
                 setProgress(0);
                 st.lastFrameTime = now; // Reset timer for next phase
+                mouthCaptureStartedAt.current = now;
+                console.info('[Liveness Capture] Blink challenge completed', {
+                  blinkCount: st.blinkCount,
+                  frameCount: st.frames.length,
+                });
               }
             }
           }
@@ -302,17 +333,46 @@ export const LivenessCheck: React.FC<LivenessCheckProps> = ({ onBack, onComplete
           setProgress(mouthProgress);
 
           if (mouthRatio > 0.13) {
-            if (st.frames.length < 20) {
-              setGuidance("Keep mouth open...");
+            if (now - lastCaptureLogAt.current >= 1000) {
+              lastCaptureLogAt.current = now;
+              console.info('[Liveness Capture] Collecting open-mouth evidence', {
+                frameCount: st.frames.length,
+                requiredFrames: MIN_SUBMISSION_FRAMES,
+                mouthRatio: Number(mouthRatio.toFixed(3)),
+                isCapturing: st.isCapturing,
+              });
+            }
+
+            if (st.frames.length < MIN_SUBMISSION_FRAMES) {
+              const elapsed = now - (mouthCaptureStartedAt.current || now);
+              if (elapsed >= FRAME_CAPTURE_TIMEOUT_MS) {
+                console.error('[Liveness Capture] Frame collection stalled', {
+                  frameCount: st.frames.length,
+                  requiredFrames: MIN_SUBMISSION_FRAMES,
+                  elapsedMs: elapsed,
+                });
+                setGuidance(`Camera capture stalled at ${st.frames.length}/${MIN_SUBMISSION_FRAMES}. Close your mouth and try again.`);
+                mouthCaptureStartedAt.current = now;
+              } else {
+                setGuidance(`Keep mouth open... ${st.frames.length}/${MIN_SUBMISSION_FRAMES}`);
+              }
               return;
             }
 
             if (!st.isSubmitting) {
               st.isSubmitting = true;
+              console.info('[Liveness Capture] Evidence ready; preparing submission', {
+                frameCount: st.frames.length,
+                blinkCount: st.blinkCount,
+                maxMouthOpen: Number(maxMouthOpen.current.toFixed(3)),
+              });
 
               // Capture PEAK frame
               if (canvasRef.current) {
                 captureFrame(canvasRef.current, st, true).then(() => {
+                  console.info('[Liveness Capture] Peak frame captured; submitting', {
+                    frameCount: st.frames.length,
+                  });
                   submitLiveness([...st.frames]);
                 });
               } else {
@@ -395,16 +455,26 @@ export const LivenessCheck: React.FC<LivenessCheckProps> = ({ onBack, onComplete
     try {
       setState("VERIFYING_AI"); // Transition to simple verifying UI
       setGuidance("Analyzing Face...");
+      const submissionStartedAt = performance.now();
+      const totalBytes = frames.reduce((sum, frame) => sum + frame.size, 0);
+      console.info('[Liveness] Submission started', {
+        requestId,
+        pairingId: pairingId || undefined,
+        frameCount: frames.length,
+        totalBytes,
+        totalMegabytes: Number((totalBytes / 1024 / 1024).toFixed(2)),
+      });
 
       let result;
 
-      // Use V2 endpoint if we have a requestId (cross-device QR flow)
-      if (isMobile && requestId && pairingId) {
-        console.log('[Liveness] Using V2 endpoint with pairing:', pairingId);
+      // V2 accepts the authenticated owner directly or a scoped cross-device pairing token.
+      if (requestId) {
+        console.log('[Liveness] Using V2 endpoint', pairingId ? `with pairing ${pairingId}` : 'with owner session');
         result = await apiService.submitLivenessCheckV2(
           requestId,
           frames,
-          pairingId,
+          pairingId || undefined,
+          pairingToken || undefined,
           ['blink', 'open_mouth']
         );
       } else {
@@ -414,28 +484,35 @@ export const LivenessCheck: React.FC<LivenessCheckProps> = ({ onBack, onComplete
       }
 
       if (result.success || result.passed) {
+        console.info('[Liveness] Submission completed', {
+          requestId,
+          durationMs: Math.round(performance.now() - submissionStartedAt),
+          score: result.liveness?.score ?? result.score,
+        });
         setIsApiComplete(true); // Signal progress component to finish immediately
 
-        // Only refresh user and generate ZK proof if not using paired flow
-        // (Paired flow will complete on desktop side)
-        if (!pairingId) {
+        if (requestId) {
           await refreshUser();
-          generateAndSubmitZkProof();
-        } else {
-          console.log('[Liveness] Paired submission complete, waiting for desktop');
           setState("SUCCESS");
-          setTimeout(() => {
-            if (onComplete) onComplete();
-          }, 2000);
+          setTimeout(() => onComplete?.(), 1500);
+        } else {
+          generateAndSubmitZkProof();
         }
       } else {
         console.error('[Liveness] Verification failed:', result);
-        setGuidance(result.error || "Verification failed. Please try again.");
+        const failure = result.liveness?.error || result.error || "Verification failed. Please try again.";
+        const score = result.liveness?.score ?? result.score;
+        setGuidance(score !== undefined ? `${failure} (${Math.round(score * 100)}%). Try again.` : failure);
         resetLivenessState();
         setState("POSITIONING");
         setIsApiComplete(false);
       }
     } catch (error: any) {
+      console.error('[Liveness] Submission request failed', {
+        requestId,
+        pairingId: pairingId || undefined,
+        message: error?.message,
+      });
       if (error.message?.includes('503') || error.details?.includes('503') || error.message?.includes('high demand')) {
         setGuidance("Our Neural engine is busy. retry again later.");
       } else {
@@ -639,12 +716,12 @@ export const LivenessCheck: React.FC<LivenessCheckProps> = ({ onBack, onComplete
       {/* Page Header */}
       <div className="mb-8">
         <h1 className="text-[40px] font-black text-text-main tracking-tight leading-tight">
-          {!isMobile && qrInitialized && qrCodeDataUrl && desktopQrStep !== 'success'
+          {!isMobile
             ? 'Cross-Device Verification'
             : `Complete Liveness Check (Layer ${layer})`}
         </h1>
         <p className="text-text-sub text-lg font-medium leading-relaxed max-w-3xl mt-2">
-          {!isMobile && qrInitialized && qrCodeDataUrl && desktopQrStep !== 'success'
+          {!isMobile
             ? 'Scan the QR code with your mobile device to complete the liveness verification.'
             : 'Position your face within the frame and follow the on-screen prompts to confirm you are a real human.'}
         </p>
@@ -703,35 +780,50 @@ export const LivenessCheck: React.FC<LivenessCheckProps> = ({ onBack, onComplete
               <div className="relative aspect-[3/4] bg-black rounded-2xl overflow-hidden shadow-2xl border-4 border-slate-800 flex items-center justify-center">
 
                 {/* Desktop QR Code Display */}
-                {!isMobile && qrInitialized && qrCodeDataUrl && desktopQrStep !== 'success' && (
+                {!isMobile && (
                   <div className="w-full h-full flex flex-col items-center justify-center gap-6 p-8">
-                    {/* QR Code Image */}
-                    <div className="bg-white p-4 rounded-xl">
-                      <img
-                        src={qrCodeDataUrl}
-                        alt="Verification QR Code"
-                        className="w-48 h-48 object-contain"
-                      />
-                    </div>
+                    {qrCodeDataUrl ? (
+                      <div className="bg-white p-4 rounded-xl">
+                        <img
+                          src={qrCodeDataUrl}
+                          alt="Verification QR Code"
+                          className="w-48 h-48 object-contain"
+                        />
+                      </div>
+                    ) : qrError ? (
+                      <div className="max-w-sm rounded-2xl border border-red-400/30 bg-red-500/10 p-5 text-center text-red-200">
+                        <span className="material-symbols-outlined mb-2 text-3xl">error</span>
+                        <p className="text-sm font-bold">{qrError}</p>
+                      </div>
+                    ) : (
+                      <div className="flex flex-col items-center gap-4 text-white/70">
+                        <div className="size-12 rounded-full border-4 border-primary/30 border-t-primary animate-spin" />
+                        <p className="text-sm font-bold">Creating mobile handoff...</p>
+                      </div>
+                    )}
 
                     {/* Instructions */}
                     <div className="text-center space-y-2">
                       <h3 className="text-white text-lg font-bold">Scan with Your Phone</h3>
                       <p className="text-white/70 text-sm">
-                        Open your mobile device and scan this QR code to complete liveness verification
+                        {qrError
+                          ? 'Return and try again after checking the account frontend URL configuration.'
+                          : 'Open your mobile device and scan this QR code to complete liveness verification'}
                       </p>
                     </div>
 
                     {/* Status Badge */}
-                    <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-primary/20 border border-primary/40 text-primary text-[10px] font-bold uppercase tracking-wider">
-                      <span className="size-2 rounded-full bg-primary animate-pulse"></span>
-                      Waiting for Mobile
-                    </div>
+                    {!qrError && (
+                      <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-primary/20 border border-primary/40 text-primary text-[10px] font-bold uppercase tracking-wider">
+                        <span className="size-2 rounded-full bg-primary animate-pulse"></span>
+                        {desktopQrStep === 'scanning' ? 'Verification in progress' : 'Waiting for Mobile'}
+                      </div>
+                    )}
                   </div>
                 )}
 
                 {/* Mobile Camera Feed */}
-                {(isMobile || !qrInitialized || !qrCodeDataUrl || desktopQrStep === 'success') && (
+                {isMobile && (
                   <>
                     {/* Hidden Source */}
                     <video ref={videoRef} className="hidden" playsInline muted />

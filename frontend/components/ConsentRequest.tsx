@@ -3,12 +3,29 @@ import React from 'react';
 
 interface ConsentRequestProps {
   appName: string;
-  appLogo: string;
+  appLogo?: string;
+  requestedScopes?: string[];
   onApprove: () => void;
   onDeny: () => void;
 }
 
-export const ConsentRequest: React.FC<ConsentRequestProps> = ({ appName, appLogo, onApprove, onDeny }) => {
+const scopeDetails: Record<string, { title: string; description: string; icon: string }> = {
+  'verify:identity': { title: 'Identity verification status', description: 'Whether your CasperID identity is verified', icon: 'verified' },
+  'verify:liveness': { title: 'Liveness verification', description: 'Whether you completed a liveness check', icon: 'face' },
+  'verify:kyc': { title: 'KYC verification status', description: 'Your verification level, not your identity documents', icon: 'shield' },
+  'read:profile': { title: 'Basic profile', description: 'Your CasperID display name', icon: 'badge' },
+  'read:kyc_level': { title: 'Verification level', description: 'Your current CasperID tier', icon: 'workspace_premium' },
+  'read:email': { title: 'Email address', description: 'Your verified account email', icon: 'mail' },
+  'read:wallet': { title: 'Wallet address', description: 'Your public Casper wallet address', icon: 'account_balance_wallet' },
+};
+
+export const ConsentRequest: React.FC<ConsentRequestProps> = ({
+  appName,
+  appLogo,
+  requestedScopes = ['verify:identity', 'read:profile', 'read:kyc_level'],
+  onApprove,
+  onDeny
+}) => {
   return (
     <div className="w-full max-w-[600px] mx-auto animate-in zoom-in-95 fade-in duration-500 py-8">
       <div className="bg-white rounded-[44px] border border-gray-100 shadow-[0_40px_80px_-20px_rgba(0,0,0,0.15)] overflow-hidden">
@@ -17,13 +34,13 @@ export const ConsentRequest: React.FC<ConsentRequestProps> = ({ appName, appLogo
         <div className="p-10 text-center border-b border-gray-50 bg-gray-50/30">
           <div className="flex items-center justify-center gap-6 mb-6">
             <div className="size-20 rounded-3xl bg-white shadow-xl flex items-center justify-center border border-gray-100 overflow-hidden p-3">
-              <img src={appLogo} className="w-full h-full object-contain" alt={appName} />
+              {appLogo ? <img src={appLogo} className="w-full h-full object-contain" alt={appName} /> : <span className="material-symbols-outlined text-primary text-4xl">apps</span>}
             </div>
             <div className="size-8 text-text-sub">
               <span className="material-symbols-outlined text-[32px]">sync_alt</span>
             </div>
             <div className="size-20 rounded-[22px] bg-primary text-white shadow-xl flex items-center justify-center transform rotate-12">
-              <img src="/logos/logo.svg" alt="CasperID" className="w-10 h-10 -rotate-12 invert brightness-0" />
+              <img src="/logos/logo.png" alt="CasperID" className="w-10 h-10 -rotate-12 object-contain" />
             </div>
           </div>
           <h2 className="text-2xl font-black text-text-main tracking-tight">
@@ -39,47 +56,23 @@ export const ConsentRequest: React.FC<ConsentRequestProps> = ({ appName, appLogo
           <p className="text-[11px] font-black text-text-sub uppercase tracking-widest opacity-60">Requested Permissions</p>
 
           <div className="space-y-3">
-            <div className="flex items-center justify-between p-5 rounded-2xl bg-white border border-gray-100 shadow-sm group hover:border-primary/20 transition-all">
-              <div className="flex items-center gap-4">
-                <div className="size-11 rounded-xl bg-primary/5 flex items-center justify-center text-primary">
-                  <span className="material-symbols-outlined text-[24px]">verified</span>
+            {requestedScopes.map((scope) => {
+              const detail = scopeDetails[scope] || { title: scope, description: 'Requested application permission', icon: 'key' };
+              return (
+                <div key={scope} className="flex items-center justify-between p-5 rounded-2xl bg-white border border-gray-100 shadow-sm group hover:border-primary/20 transition-all">
+                  <div className="flex items-center gap-4">
+                    <div className="size-11 rounded-xl bg-primary/5 flex items-center justify-center text-primary">
+                      <span className="material-symbols-outlined text-[24px]">{detail.icon}</span>
+                    </div>
+                    <div>
+                      <h4 className="text-[15px] font-bold text-text-main">{detail.title}</h4>
+                      <p className="text-[11px] text-text-sub font-medium">{detail.description}</p>
+                    </div>
+                  </div>
+                  <span className="material-symbols-outlined text-primary">check_circle</span>
                 </div>
-                <div>
-                  <h4 className="text-[15px] font-bold text-text-main">KYC Verification Status</h4>
-                  <p className="text-[11px] text-green-600 font-bold flex items-center gap-1">
-                    <span className="material-symbols-outlined text-[14px]">lock</span>
-                    ZK-Proof: Only 'Yes/No' will be shared
-                  </p>
-                </div>
-              </div>
-              <span className="material-symbols-outlined text-primary">check_circle</span>
-            </div>
-
-            <div className="flex items-center justify-between p-5 rounded-2xl bg-white border border-gray-100 shadow-sm group hover:border-primary/20 transition-all">
-              <div className="flex items-center gap-4">
-                <div className="size-11 rounded-xl bg-blue-50 flex items-center justify-center text-blue-500">
-                  <span className="material-symbols-outlined text-[24px]">account_balance_wallet</span>
-                </div>
-                <div>
-                  <h4 className="text-[15px] font-bold text-text-main">Wallet Address</h4>
-                  <p className="text-[11px] text-text-sub font-medium">Public key for Casper Mainnet</p>
-                </div>
-              </div>
-              <span className="material-symbols-outlined text-primary">check_circle</span>
-            </div>
-
-            <div className="flex items-center justify-between p-5 rounded-2xl bg-white border border-gray-100 shadow-sm group hover:border-primary/20 transition-all">
-              <div className="flex items-center gap-4">
-                <div className="size-11 rounded-xl bg-orange-50 flex items-center justify-center text-orange-500">
-                  <span className="material-symbols-outlined text-[24px]">badge</span>
-                </div>
-                <div>
-                  <h4 className="text-[15px] font-bold text-text-main">Display Name</h4>
-                  <p className="text-[11px] text-text-sub font-medium">Raw data from profile</p>
-                </div>
-              </div>
-              <span className="material-symbols-outlined text-primary">check_circle</span>
-            </div>
+              );
+            })}
           </div>
 
           <div className="bg-blue-50/50 border border-blue-100 rounded-2xl p-5 flex gap-4">

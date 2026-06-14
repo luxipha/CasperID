@@ -7,6 +7,7 @@ interface BusinessApp {
   name: string;
   environment: 'sandbox' | 'production';
   allowed_origins: string[];
+  redirect_uris: string[];
   request_count: number;
   last_used_at: string | null;
   created_at: string;
@@ -24,6 +25,7 @@ const APIManagement: React.FC = () => {
   const [isNewAppModalOpen, setIsNewAppModalOpen] = useState(false);
   const [newAppName, setNewAppName] = useState('');
   const [newAppOrigins, setNewAppOrigins] = useState('');
+  const [newAppRedirectUris, setNewAppRedirectUris] = useState('');
   const [newAppEnv, setNewAppEnv] = useState<'sandbox' | 'production'>('sandbox');
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
   const [copied, setCopied] = useState<string | null>(null);
@@ -73,9 +75,11 @@ const APIManagement: React.FC = () => {
     setIsCreating(true);
     try {
       const origins = newAppOrigins.split(',').map(s => s.trim()).filter(Boolean);
+      const redirectUris = newAppRedirectUris.split(',').map(s => s.trim()).filter(Boolean);
       const data = await apiService.createBusinessApp({
         name: newAppName,
         allowed_origins: origins,
+        redirect_uris: redirectUris,
         environment: newAppEnv
       });
       if (!data.success) throw new Error(data.error);
@@ -84,6 +88,7 @@ const APIManagement: React.FC = () => {
       setIsNewAppModalOpen(false);
       setNewAppName('');
       setNewAppOrigins('');
+      setNewAppRedirectUris('');
       await loadApps();
     } catch (e: any) {
       showToast(e.message || 'Failed to create app', 'error');
@@ -179,10 +184,21 @@ const APIManagement: React.FC = () => {
               </div>
               <div>
                 <label className="text-xs font-bold text-text-sub uppercase tracking-wider block mb-1.5">Allowed Origins <span className="font-normal normal-case">(comma-separated)</span></label>
+                <p className="mb-1.5 text-[11px] text-text-sub">Browser origins permitted to start SDK authorization, without paths.</p>
                 <input
                   value={newAppOrigins}
                   onChange={e => setNewAppOrigins(e.target.value)}
                   placeholder="https://myapp.com, http://localhost:3000"
+                  className="w-full p-3 bg-background-light rounded-xl border border-border-muted text-sm text-text-main focus:outline-none focus:border-primary"
+                />
+              </div>
+              <div>
+                <label className="text-xs font-bold text-text-sub uppercase tracking-wider block mb-1.5">Redirect URIs <span className="font-normal normal-case">(exact, comma-separated)</span></label>
+                <p className="mb-1.5 text-[11px] text-text-sub">Exact OAuth callbacks, including paths such as /auth/callback.</p>
+                <input
+                  value={newAppRedirectUris}
+                  onChange={e => setNewAppRedirectUris(e.target.value)}
+                  placeholder="http://localhost:3005/auth/callback"
                   className="w-full p-3 bg-background-light rounded-xl border border-border-muted text-sm text-text-main focus:outline-none focus:border-primary"
                 />
               </div>
@@ -331,6 +347,7 @@ const APIManagement: React.FC = () => {
                   {/* API Secret (masked — user must rotate to see new one) */}
                   <div className="flex flex-col gap-1.5">
                     <label className="text-xs font-bold text-text-sub uppercase tracking-wider">API Secret</label>
+                    <p className="text-[11px] text-text-sub">Backend-only credential used to exchange OAuth authorization codes. Never expose it in frontend code.</p>
                     <div className="flex items-center gap-2 p-3 bg-background-light rounded-lg border border-border-muted">
                       <code className="text-sm text-text-main flex-1 font-mono">
                         {'•'.repeat(42)}
@@ -348,6 +365,18 @@ const APIManagement: React.FC = () => {
                           <span key={i} className="px-3 py-1 bg-background-light border border-border-muted rounded-full text-xs font-mono text-text-main">{o}</span>
                         ))
                         : <span className="text-sm text-text-sub">All origins allowed (not recommended for production)</span>
+                      }
+                    </div>
+                  </div>
+
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-xs font-bold text-text-sub uppercase tracking-wider">OAuth Redirect URIs</label>
+                    <div className="flex flex-wrap gap-2">
+                      {selectedApp.redirect_uris?.length > 0
+                        ? selectedApp.redirect_uris.map((uri, i) => (
+                          <span key={i} className="px-3 py-1 bg-background-light border border-border-muted rounded-full text-xs font-mono text-text-main">{uri}</span>
+                        ))
+                        : <span className="text-sm text-text-sub">No hosted authorization callbacks configured</span>
                       }
                     </div>
                   </div>

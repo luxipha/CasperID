@@ -22,6 +22,8 @@ const { getJWKS } = require('../utils/rsa-key-manager');
 const { BusinessApp } = require('../database/models');
 
 const BASE_URL = process.env.FRONTEND_URL || 'https://casperid.com';
+const ACCOUNT_URL = process.env.ACCOUNT_FRONTEND_URL || BASE_URL;
+const API_URL = process.env.API_BASE_URL || 'https://apis.casperid.com';
 
 /**
  * GET /.well-known/jwks.json
@@ -50,8 +52,8 @@ router.get('/openid-configuration', (req, res) => {
     res.set({ 'Cache-Control': 'public, max-age=3600' });
     res.json({
         issuer,
-        authorization_endpoint: `${BASE_URL}/authorize`,
-        token_endpoint: `${issuer}/api/passkey/authenticate`,
+        authorization_endpoint: `${ACCOUNT_URL}/authorize`,
+        token_endpoint: `${API_URL}/api/oauth/token`,
         userinfo_endpoint: `${issuer}/api/passkey/me`,
         jwks_uri: `${issuer}/.well-known/jwks.json`,
         registration_endpoint: `${issuer}/api/business/apps`,

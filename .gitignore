@@ -69,6 +69,7 @@ secrets/
 
 # Specific docs to ignore
 *.md
+!server/docs/webauthn-rpid-migration.md
 roadmap.md
 /server/*.md
 

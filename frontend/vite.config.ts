@@ -35,7 +35,7 @@ export default defineConfig(({ mode }) => {
       allowedHosts: true, // Allow ngrok and other tunnels
       headers: {
         'ngrok-skip-browser-warning': 'true',
-        'Cross-Origin-Opener-Policy': 'same-origin',
+        'Cross-Origin-Opener-Policy': 'same-origin-allow-popups',
         'Cross-Origin-Embedder-Policy': 'credentialless',
       },
       proxy: {

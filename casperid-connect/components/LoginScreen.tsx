@@ -8,7 +8,7 @@ interface Props {
 
 type LoginMode = 'select' | 'session' | 'otp-cid' | 'otp-verify';
 
-const API_BASE_URL = 'http://localhost:3001'; // Point to local server in development
+const API_BASE_URL = 'https://1d84-42-114-170-11.ngrok-free.app'; // Point to local server in development
 
 const LoginScreen: React.FC<Props> = ({ onSuccess }) => {
   const [mode, setMode] = useState<LoginMode>('otp-cid');

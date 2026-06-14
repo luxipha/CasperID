@@ -39,6 +39,21 @@ const upload = multer({
 // ============================================
 
 /**
+ * Acknowledge that the scoped QR pairing link was opened on the phone.
+ * This lets the initiating desktop show that the handoff succeeded.
+ */
+router.post('/pairing/acknowledge', async (req, res) => {
+    try {
+        const { requestId, pairingId, pairingToken } = req.body;
+        const result = await verificationServiceV2.acknowledgeLivenessPairing(requestId, pairingId, pairingToken);
+        res.json({ success: true, pairing: result });
+    } catch (error) {
+        console.error('Liveness pairing acknowledgement failed:', error);
+        res.status(400).json({ success: false, error: error.message });
+    }
+});
+
+/**
  * Start Layer 2 verification
  * POST /api/v2/verification/layer2/start
  */
@@ -86,7 +101,7 @@ router.post('/liveness', upload.fields([
     { name: 'imageFrames', maxCount: 30 } // Increased to handle more frames from liveness check
 ]), async (req, res) => {
     try {
-        const { requestId, pairingId, metadata } = req.body;
+        const { requestId, pairingId, pairingToken, metadata } = req.body;
 
         if (!requestId) {
             return res.status(400).json({
@@ -95,11 +110,36 @@ router.post('/liveness', upload.fields([
             });
         }
 
+        const files = req.files || {};
+        let parsedMetadata = {};
+        if (metadata) {
+            try {
+                parsedMetadata = JSON.parse(metadata);
+            } catch (parseError) {
+                return res.status(400).json({
+                    success: false,
+                    error: 'Invalid liveness metadata payload'
+                });
+            }
+        }
+
         const livenessData = {
-            videoFile: req.files['videoFile'] ? req.files['videoFile'][0] : null,
-            imageFrames: req.files['imageFrames'] || [],
-            metadata: metadata ? JSON.parse(metadata) : {}
+            videoFile: files.videoFile ? files.videoFile[0] : null,
+            imageFrames: files.imageFrames || [],
+            metadata: parsedMetadata
         };
+        const totalBytes = livenessData.imageFrames.reduce(
+            (sum, frame) => sum + (frame.size || frame.buffer?.length || 0),
+            0
+        );
+        console.info('[Liveness Route] Submission received', {
+            requestId,
+            pairingId: pairingId || undefined,
+            contentType: req.headers['content-type'],
+            fileFields: Object.keys(files),
+            frameCount: livenessData.imageFrames.length,
+            totalBytes
+        });
 
         // Validate that we have frames
         if (!livenessData.imageFrames || livenessData.imageFrames.length === 0) {
@@ -116,11 +156,24 @@ router.post('/liveness', upload.fields([
             });
         }
 
-        // Process liveness with optional pairing context
-        const result = await verificationServiceV2.processLivenessCheck(requestId, livenessData, pairingId);
+        const sessionToken = req.cookies.casperid_session ||
+            req.headers.authorization?.replace('Bearer ', '');
 
-        res.json({
-            success: true,
+        // Process liveness only for the authenticated owner or a scoped QR pairing token.
+        const result = await verificationServiceV2.processLivenessCheck(requestId, livenessData, {
+            pairingId,
+            pairingToken,
+            userSessionToken: sessionToken
+        });
+        console.info('[Liveness Route] Submission finished', {
+            requestId,
+            success: result.success !== false,
+            score: result.score,
+            status: result.status
+        });
+
+        res.status(result.success === false ? 422 : 200).json({
+            success: result.success !== false,
             liveness: result,
             pairingId: pairingId || null
         });
@@ -534,6 +587,10 @@ router.get('/:requestId/status', async (req, res) => {
         const { requestId } = req.params;
         const sessionToken = req.cookies.casperid_session ||
             req.headers.authorization?.replace('Bearer ', '');
+
+        if (!sessionToken) {
+            return res.status(401).json({ success: false, error: 'Authentication required' });
+        }
 
         const result = await verificationServiceV2.getVerificationStatus(requestId, sessionToken);
 

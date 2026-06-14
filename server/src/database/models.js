@@ -824,6 +824,10 @@ const passkeyCredentialSchema = new mongoose.Schema({
         unique: true,
         index: true
     },
+    rp_id: {
+        type: String,
+        index: true
+    },
     credential_public_key: {
         type: Buffer,
         required: true
@@ -937,9 +941,17 @@ const devicePairingSchema = new mongoose.Schema({
         type: String,
         required: true
     },
+    verification_request_id: {
+        type: String,
+        index: true
+    },
+    verification_tier: {
+        type: String,
+        enum: ['layer_2', 'layer_3']
+    },
     status: {
         type: String,
-        enum: ['pending', 'completed', 'expired', 'cancelled'],
+        enum: ['pending', 'processing', 'completed', 'expired', 'cancelled'],
         default: 'pending'
     },
     target_device_info: {
@@ -1499,6 +1511,7 @@ const businessAppSchema = new mongoose.Schema({
         required: true
     }, // bcrypt hash — plaintext is never stored
     allowed_origins: [{ type: String }], // CORS allowlist
+    redirect_uris: [{ type: String }], // Exact hosted-authorization callback URLs
     android_digital_assets: [{
         package_name: { type: String, required: true },
         sha256_fingerprints: [{ type: String }], // Array of SHA256 cert fingerprints
@@ -1567,6 +1580,71 @@ businessAppSchema.pre('save', function (next) {
     this.updated_at = Date.now();
     next();
 });
+
+const authorizationCodeSchema = new mongoose.Schema({
+    code_hash: {
+        type: String,
+        required: true,
+        unique: true,
+        index: true
+    },
+    app_id: {
+        type: String,
+        required: true,
+        index: true
+    },
+    user_id: {
+        type: String,
+        required: true,
+        index: true
+    },
+    redirect_uri: {
+        type: String,
+        required: true
+    },
+    code_challenge: {
+        type: String,
+        required: true
+    },
+    code_challenge_method: {
+        type: String,
+        enum: ['S256'],
+        default: 'S256'
+    },
+    granted_tier: {
+        type: String,
+        enum: ['layer_0', 'layer_1', 'layer_2', 'layer_3'],
+        required: true
+    },
+    required_tier: {
+        type: String,
+        enum: ['layer_1', 'layer_2', 'layer_3'],
+        required: true
+    },
+    requested_scopes: [{ type: String }],
+    authorization_status: {
+        type: String,
+        enum: ['complete', 'provisional'],
+        default: 'complete'
+    },
+    verification_status: {
+        type: String,
+        enum: ['approved', 'pending'],
+        default: 'approved'
+    },
+    consumed_at: Date,
+    expires_at: {
+        type: Date,
+        required: true,
+        index: true
+    },
+    created_at: {
+        type: Date,
+        default: Date.now
+    }
+});
+
+authorizationCodeSchema.index({ expires_at: 1 }, { expireAfterSeconds: 0 });
 
 const webhookSubscriptionSchema = new mongoose.Schema({
     app_id: {
@@ -1766,6 +1844,7 @@ const paymentSchema = new mongoose.Schema({
 paymentSchema.index({ expires_at: 1 }, { expireAfterSeconds: 0 });
 
 const Payment = mongoose.model('Payment', paymentSchema);
+const AuthorizationCode = mongoose.model('AuthorizationCode', authorizationCodeSchema);
 
 module.exports = {
     // Payments
@@ -1815,6 +1894,7 @@ module.exports = {
 
     // Business Platform (Identity-as-a-Service)
     BusinessApp,
+    AuthorizationCode,
     WebhookSubscription,
     WebhookLog,
     Quest

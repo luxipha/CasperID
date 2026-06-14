@@ -14,6 +14,7 @@ interface BusinessApp {
   name: string;
   environment: 'sandbox' | 'production';
   allowed_origins: string[];
+  redirect_uris: string[];
   android_digital_assets?: AndroidDigitalAsset[];
   active: boolean;
   request_count: number;
@@ -46,13 +47,14 @@ const IntegrationDetail: React.FC = () => {
   const [website, setWebsite] = useState('');
   const [environment, setEnvironment] = useState<'sandbox' | 'production'>('sandbox');
   const [listingStatus, setListingStatus] = useState<'listed' | 'unlisted'>('unlisted');
-  const [tier, setTier] = useState('L2');
+  const [tier, setTier] = useState('L1');
   const [proofs, setProofs] = useState<string[]>(['liveness', 'email']);
   const [logoUrl, setLogoUrl] = useState('');
   const logoInputRef = React.useRef<HTMLInputElement>(null);
 
-  // Redirect Configuration state
+  // Hosted authorization callback state
   const [allowedOrigins, setAllowedOrigins] = useState<string[]>([]);
+  const [redirectUris, setRedirectUris] = useState<string[]>([]);
   const [showOriginModal, setShowOriginModal] = useState(false);
   const [newOrigin, setNewOrigin] = useState('');
 
@@ -75,10 +77,11 @@ const IntegrationDetail: React.FC = () => {
           setWebsite(a.website_url || '');
           setEnvironment(a.environment || 'sandbox');
           setListingStatus(a.listing_status || 'unlisted');
-          setTier(a.sdk_config?.requiredTier || 'L2');
+          setTier(a.sdk_config?.requiredTier || 'L1');
           setProofs(a.sdk_config?.proofs || ['liveness', 'email']);
           setLogoUrl(a.sdk_config?.logo_url || '');
           setAllowedOrigins(a.allowed_origins || []);
+          setRedirectUris(a.redirect_uris || []);
           setAndroidAssets(a.android_digital_assets || []);
         } else {
           setError('App not found');
@@ -103,6 +106,7 @@ const IntegrationDetail: React.FC = () => {
         environment,
         listing_status: listingStatus,
         allowed_origins: allowedOrigins,
+        redirect_uris: redirectUris,
         android_digital_assets: androidAssets,
         sdk_config: {
           requiredTier: tier,
@@ -164,25 +168,25 @@ const IntegrationDetail: React.FC = () => {
       return;
     }
 
-    // Basic URL validation
+    // Redirect URIs must be exact URLs; wildcards are never valid callbacks.
     try {
-      if (newOrigin !== '*') {
-        new URL(newOrigin.includes('://') ? newOrigin : `https://${newOrigin}`);
-      }
-    } catch (e) {
-      setToastMessage('Invalid URL format');
+      const redirectUri = new URL(newOrigin);
+      const isLocalhost = redirectUri.hostname === 'localhost' && redirectUri.protocol === 'http:';
+      if (redirectUri.protocol !== 'https:' && !isLocalhost) throw new Error('Invalid protocol');
+    } catch {
+      setToastMessage('Use an HTTPS callback URL, or HTTP localhost for development');
       setShowToast(true);
       setTimeout(() => setShowToast(false), 3000);
       return;
     }
 
-    setAllowedOrigins(prev => [...prev, newOrigin.trim()]);
+    setRedirectUris(prev => [...prev, newOrigin.trim()]);
     setNewOrigin('');
     setShowOriginModal(false);
   };
 
   const handleRemoveOrigin = (index: number) => {
-    setAllowedOrigins(prev => prev.filter((_, i) => i !== index));
+    setRedirectUris(prev => prev.filter((_, i) => i !== index));
   };
 
   const handleAddAndroidAsset = () => {
@@ -373,7 +377,7 @@ const IntegrationDetail: React.FC = () => {
 
           <div className="bg-white rounded-xl border border-border-muted shadow-sm overflow-hidden">
             <div className="px-6 py-4 border-b border-border-muted bg-background-light/30 flex justify-between items-center">
-              <h3 className="font-bold text-text-main">Redirect Configuration</h3>
+              <h3 className="font-bold text-text-main">OAuth Redirect URIs</h3>
               <button 
                 onClick={() => setShowOriginModal(true)}
                 className="text-primary text-xs font-bold flex items-center gap-1 hover:underline"
@@ -382,9 +386,9 @@ const IntegrationDetail: React.FC = () => {
               </button>
             </div>
             <div className="p-6 flex flex-col gap-4">
-              <p className="text-xs text-text-muted">Users will only be redirected back to these specific URLs after a successful authentication.</p>
+              <p className="text-xs text-text-muted">Exact callback URLs allowed after hosted authorization. Include the callback path, for example /auth/callback.</p>
               <div className="flex flex-col gap-2">
-                {allowedOrigins.map((url, i) => (
+                {redirectUris.map((url, i) => (
                   <div key={i} className="flex items-center gap-2">
                     <input className="flex-1 rounded-lg border-border-muted bg-background-light/30 text-sm p-3 text-text-main" readOnly value={url} />
                     <button 
@@ -395,8 +399,8 @@ const IntegrationDetail: React.FC = () => {
                     </button>
                   </div>
                 ))}
-                {allowedOrigins.length === 0 && (
-                  <p className="text-xs text-text-muted italic">No restricted origins configured.</p>
+                {redirectUris.length === 0 && (
+                  <p className="text-xs text-text-muted italic">No redirect URIs configured.</p>
                 )}
               </div>
             </div>
@@ -512,7 +516,7 @@ const IntegrationDetail: React.FC = () => {
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full overflow-hidden">
             <div className="px-6 py-4 border-b border-border-muted bg-background-light/30 flex justify-between items-center">
-              <h3 className="font-bold text-text-main">Add Redirect URL</h3>
+              <h3 className="font-bold text-text-main">Add OAuth Redirect URI</h3>
               <button
                 onClick={() => {
                   setShowOriginModal(false);
@@ -525,17 +529,17 @@ const IntegrationDetail: React.FC = () => {
             </div>
             <div className="p-6 flex flex-col gap-4">
               <div className="flex flex-col gap-2">
-                <label className="text-sm font-bold text-text-main">URL / Origin</label>
+                <label className="text-sm font-bold text-text-main">Exact Callback URL</label>
                 <input
                   type="text"
                   autoFocus
                   value={newOrigin}
                   onChange={(e) => setNewOrigin(e.target.value)}
-                  placeholder="https://myapp.com or http://localhost:3000"
+                  placeholder="https://myapp.com/auth/callback"
                   className="rounded-lg border border-border-muted bg-background-light/30 text-sm p-3 text-text-main focus:outline-none focus:ring-2 focus:ring-primary"
                   onKeyDown={(e) => e.key === 'Enter' && handleAddOrigin()}
                 />
-                <p className="text-xs text-text-muted">Enter the exact origin (including protocol and port) that users will be redirected to.</p>
+                <p className="text-xs text-text-muted">Enter the complete redirect URI, including protocol, host, optional port, and callback path.</p>
               </div>
 
               <div className="flex gap-3 mt-2">

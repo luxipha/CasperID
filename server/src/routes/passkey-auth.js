@@ -67,11 +67,10 @@ router.post('/register/begin', passkeyRateLimit, extractViewer, validatePasskeyR
             });
         }
 
-        // Derive rpId from Origin header for web clients (Android native apps won't have one)
-        const webOrigin = req.headers.origin;
-        const rpId = webOrigin ? new URL(webOrigin).hostname : null;
-
-        const result = await webauthnService.generateRegistrationOptions(email, name, isEmailVerified, rpId);
+        // WebAuthn credentials are always scoped to CasperID's configured RP ID.
+        // Affiliate origins must use the hosted CasperID authorization flow.
+        webauthnService.assertOriginCanUseRpID(req.headers.origin);
+        const result = await webauthnService.generateRegistrationOptions(email, name, isEmailVerified);
 
         // If cross-device registration, generate QR code
         let qrCode = null;
@@ -386,12 +385,9 @@ router.post('/auth/begin', async (req, res) => {
     try {
         const { email } = req.body;
 
-        // Derive rpId from Origin header for web clients
-        // Android native apps won't send a web Origin header, so they keep the default
-        const webOrigin = req.headers.origin;
-        const rpId = webOrigin ? new URL(webOrigin).hostname : null;
-
-        const result = await webauthnService.generateAuthenticationOptions(email, rpId);
+        // WebAuthn credentials are always scoped to CasperID's configured RP ID.
+        webauthnService.assertOriginCanUseRpID(req.headers.origin);
+        const result = await webauthnService.generateAuthenticationOptions(email);
 
         res.json({
             success: true,

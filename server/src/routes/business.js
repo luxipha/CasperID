@@ -38,6 +38,33 @@ function generateKey(prefix) {
     return `${prefix}_${crypto.randomBytes(24).toString('base64url')}`;
 }
 
+function normalizeRedirectUris(value) {
+    const values = typeof value === 'string' ? value.split(',') : value;
+    if (!Array.isArray(values)) {
+        const error = new Error('redirect_uris must be an array or comma-separated string');
+        error.status = 400;
+        throw error;
+    }
+
+    return [...new Set(values.map(uri => uri.trim()).filter(Boolean).map(uri => {
+        let parsed;
+        try {
+            parsed = new URL(uri);
+        } catch {
+            const error = new Error('Redirect URIs must be valid absolute URLs');
+            error.status = 400;
+            throw error;
+        }
+        const isLocalhost = parsed.hostname === 'localhost' && parsed.protocol === 'http:';
+        if (parsed.protocol !== 'https:' && !isLocalhost) {
+            const error = new Error('Redirect URIs must use HTTPS, except localhost development URLs');
+            error.status = 400;
+            throw error;
+        }
+        return parsed.toString();
+    }))];
+}
+
 // ============================================
 // APP REGISTRATION & KEY MANAGEMENT
 // ============================================
@@ -46,18 +73,26 @@ function generateKey(prefix) {
  * Register a new business app
  * POST /api/business/apps
  * Auth: requireAuth (user must be logged in)
- * Body: { name, allowed_origins, environment }
+ * Body: { name, allowed_origins, redirect_uris, environment }
  * Returns: { app_id, api_secret } — api_secret shown ONCE, never retrievable again
  */
 router.post('/apps', requireAuth, rateLimitMiddleware('business_api_key_create'), async (req, res) => {
     try {
-        let { name, allowed_origins = [], environment = 'sandbox', website_url = '', description = '' } = req.body;
+        let {
+            name,
+            allowed_origins = [],
+            redirect_uris = [],
+            environment = 'sandbox',
+            website_url = '',
+            description = ''
+        } = req.body;
         const userId = req.user.userId || req.user.wallet;
 
         // Handle comma-separated string from dashboard
         if (typeof allowed_origins === 'string') {
             allowed_origins = allowed_origins.split(',').map(o => o.trim()).filter(Boolean);
         }
+        redirect_uris = normalizeRedirectUris(redirect_uris);
 
         if (!name || name.trim().length < 2) {
             return res.status(400).json({ success: false, error: 'App name must be at least 2 characters' });
@@ -79,6 +114,7 @@ router.post('/apps', requireAuth, rateLimitMiddleware('business_api_key_create')
             owner_user_id: userId,
             api_secret_hash,
             allowed_origins,
+            redirect_uris,
             environment,
             website_url: (website_url || '').trim(),
             description: (description || '').trim().slice(0, 300)
@@ -95,6 +131,7 @@ router.post('/apps', requireAuth, rateLimitMiddleware('business_api_key_create')
                     name: newApp.name,
                     environment: newApp.environment,
                     allowed_origins: newApp.allowed_origins,
+                    redirect_uris: newApp.redirect_uris,
                     created_at: newApp.created_at
                 },
                 api_secret // plaintext shown ONLY here, one time
@@ -103,7 +140,10 @@ router.post('/apps', requireAuth, rateLimitMiddleware('business_api_key_create')
     } catch (error) {
         console.error('[Business] App creation failed:', error);
         if (!res.headersSent) {
-            res.status(500).json({ success: false, error: 'Failed to create app' });
+            res.status(error.status || 500).json({
+                success: false,
+                error: error.status ? error.message : 'Failed to create app'
+            });
         }
     }
 });
@@ -198,7 +238,17 @@ router.patch('/apps/:app_id', requireAuth, async (req, res) => {
     try {
         const userId = req.user.userId || req.user.wallet;
         const { app_id } = req.params;
-        const { name, allowed_origins, android_digital_assets, environment, website_url, description, listing_status, sdk_config } = req.body;
+        const {
+            name,
+            allowed_origins,
+            redirect_uris,
+            android_digital_assets,
+            environment,
+            website_url,
+            description,
+            listing_status,
+            sdk_config
+        } = req.body;
 
         const app = await BusinessApp.findOne({ app_id, owner_user_id: userId, active: true });
         if (!app) {
@@ -214,6 +264,10 @@ router.patch('/apps/:app_id', requireAuth, async (req, res) => {
                 app.allowed_origins = allowed_origins;
             }
             app.markModified('allowed_origins');
+        }
+        if (redirect_uris !== undefined) {
+            app.redirect_uris = normalizeRedirectUris(redirect_uris);
+            app.markModified('redirect_uris');
         }
         if (android_digital_assets !== undefined) {
             // Validate and sanitize Android Digital Asset Links
@@ -269,7 +323,10 @@ router.patch('/apps/:app_id', requireAuth, async (req, res) => {
         return res.json({ success: true, app: updated });
     } catch (error) {
         console.error('[Business] Update app failed:', error);
-        res.status(500).json({ success: false, error: 'Failed to update app' });
+        res.status(error.status || 500).json({
+            success: false,
+            error: error.status ? error.message : 'Failed to update app'
+        });
     }
 });
 
@@ -622,7 +679,7 @@ router.patch('/apps/:app_id/sdk-config', requireAuth, async (req, res) => {
     try {
         const userId = req.user.userId || req.user.wallet;
         const { app_id } = req.params;
-        const { primary_color, border_radius, font_family, logo_url, mode, layout, platform, language } = req.body;
+        const { primary_color, border_radius, font_family, logo_url, mode, language } = req.body;
 
         const app = await BusinessApp.findOne({ app_id, owner_user_id: userId, active: true });
         if (!app) {
@@ -635,8 +692,6 @@ router.patch('/apps/:app_id/sdk-config', requireAuth, async (req, res) => {
         if (font_family !== undefined) app.sdk_config.font_family = font_family;
         if (logo_url !== undefined) app.sdk_config.logo_url = logo_url;
         if (mode !== undefined) app.sdk_config.mode = mode;
-        if (layout !== undefined) app.sdk_config.layout = layout;
-        if (platform !== undefined) app.sdk_config.platform = platform;
         if (language !== undefined) app.sdk_config.language = language;
         app.sdk_config.updated_at = new Date();
 
@@ -772,8 +827,7 @@ router.get('/app-metadata/:app_id', async (req, res) => {
                     primaryColor: app.sdk_config?.primary_color || '#8651e1',
                     borderRadius: app.sdk_config?.border_radius || '12',
                     fontFamily: app.sdk_config?.font_family || 'Inter',
-                    layout: app.sdk_config?.layout || 'auto',
-                    platform: app.sdk_config?.platform || 'desktop'
+                    mode: app.sdk_config?.mode || 'light'
                 }
             }
         });

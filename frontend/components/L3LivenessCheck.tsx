@@ -9,6 +9,11 @@ const euclideanDist = (p1: any, p2: any) => Math.sqrt(Math.pow(p1.x - p2.x, 2) +
 
 interface L3LivenessCheckProps {
     onComplete?: () => void;
+    pairingPayload?: {
+        requestId: string;
+        pairingId: string;
+        pairingToken: string;
+    };
 }
 
 type VerificationState = "INITIALIZING" | "POSITIONING" | "CHALLENGE" | "VERIFYING" | "SUCCESS";
@@ -18,7 +23,7 @@ type ChallengeType = "BLINK" | "OPEN_MOUTH";
  * L3LivenessCheck - Liveness component for Layer 3 flow with sidebar
  * NO minting - just verifies liveness and stores result for admin review
  */
-export const L3LivenessCheck: React.FC<L3LivenessCheckProps> = ({ onComplete }) => {
+export const L3LivenessCheck: React.FC<L3LivenessCheckProps> = ({ onComplete, pairingPayload }) => {
     const [isMobile, setIsMobile] = useState(false);
 
     useEffect(() => {
@@ -44,8 +49,9 @@ export const L3LivenessCheck: React.FC<L3LivenessCheckProps> = ({ onComplete }) 
     const [ovalColor, setOvalColor] = useState<"white" | "red" | "green">("white");
 
     // QR Pairing State (for cross-device desktop-to-mobile flow)
-    const [requestId, setRequestId] = useState<string>("");
-    const [pairingId, setPairingId] = useState<string>("");
+    const [requestId, setRequestId] = useState<string>(pairingPayload?.requestId || "");
+    const [pairingId, setPairingId] = useState<string>(pairingPayload?.pairingId || "");
+    const [pairingToken] = useState<string>(pairingPayload?.pairingToken || "");
     const [qrCodeDataUrl, setQrCodeDataUrl] = useState<string>("");
     const [desktopQrStep, setDesktopQrStep] = useState<"loading" | "ready" | "scanning" | "success">("loading");
     const [qrInitialized, setQrInitialized] = useState(false);
@@ -129,6 +135,25 @@ export const L3LivenessCheck: React.FC<L3LivenessCheckProps> = ({ onComplete }) 
 
         initializeQRVerification();
     }, [qrInitialized, isMobile]);
+
+    useEffect(() => {
+        if (isMobile || !requestId || desktopQrStep === 'success') return;
+        const poll = window.setInterval(async () => {
+            try {
+                const result = await apiService.get(`/api/v2/verification/${requestId}/status`);
+                if (result.verification?.progress?.livenessCompleted) {
+                    window.clearInterval(poll);
+                    setDesktopQrStep('success');
+                    onComplete?.();
+                } else if (result.verification?.status === 'in_progress') {
+                    setDesktopQrStep('scanning');
+                }
+            } catch {
+                // Keep polling until the pairing expires or the user cancels.
+            }
+        }, 1500);
+        return () => window.clearInterval(poll);
+    }, [desktopQrStep, isMobile, onComplete, requestId]);
 
     useEffect(() => {
         let camera: any = null;
@@ -365,10 +390,11 @@ export const L3LivenessCheck: React.FC<L3LivenessCheckProps> = ({ onComplete }) 
             setState("VERIFYING");
             setGuidance("Verifying liveness...");
 
-            // Use apiService which handles CSRF tokens automatically
-            const result = await apiService.verifyLivenessSequence(frames, ['blink', 'open_mouth']);
+            const result = requestId && pairingId
+                ? await apiService.submitLivenessCheckV2(requestId, frames, pairingId, pairingToken, ['blink', 'open_mouth'])
+                : await apiService.verifyLivenessSequence(frames, ['blink', 'open_mouth']);
 
-            if (result.passed) {
+            if (result.success || result.passed) {
                 // Layer 3 doesn't change user status, so no need to refresh
                 // Call onComplete immediately to prevent App.tsx from routing to dashboard
                 setState("SUCCESS");

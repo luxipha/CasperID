@@ -21,6 +21,7 @@ const getRenderUrl = (host, fallback) => {
 
 const API_BASE_URL = process.env.API_BASE_URL || getRenderUrl(process.env.RENDER_EXTERNAL_HOSTNAME || process.env.API_HOST, `http://localhost:${PORT}`);
 const FRONTEND_URL = process.env.FRONTEND_URL || getRenderUrl(process.env.FRONTEND_HOST, 'http://localhost:3000');
+const ACCOUNT_FRONTEND_URL = process.env.ACCOUNT_FRONTEND_URL || FRONTEND_URL;
 
 console.log(`[${new Date().toISOString()}]  Bootstrap: Target port is ${PORT}`);
 console.log(`[${new Date().toISOString()}]  API Base URL: ${API_BASE_URL}`);
@@ -95,6 +96,7 @@ const coreOrigins = new Set([
     'https://casperid.com',
     'https://www.casperid.com',
     FRONTEND_URL,
+    ACCOUNT_FRONTEND_URL,
     process.env.FRONTEND_URL
 ].filter(Boolean));
 
@@ -171,6 +173,7 @@ app.use((req, res, next) => {
         req.path.startsWith('/api/payment/revenuecat/webhook') ||
         req.path.startsWith('/api/payment/boomfi/webhook') ||
         req.path.startsWith('/api/business') ||
+        req.path === '/api/oauth/token' ||
         req.path.startsWith('/api/auth') ||
         req.path.startsWith('/api/passkey') ||
         req.path.startsWith('/api/v2/verification') ||
@@ -346,6 +349,7 @@ app.use('/api/payment', require('./routes/payment')); // Premium CID Payments (R
 app.use('/api/coupon', require('./routes/coupon')); // Coupon validation and claiming
 app.use('/api/pending-session', require('./routes/pending-session')); // Mobile Passkey Handoff
 app.use('/api/business', require('./routes/business')); // Business Platform (Identity-as-a-Service)
+app.use('/api/oauth', require('./routes/oauth')); // Hosted authorization code flow
 app.use('/.well-known', require('./routes/well-known')); // JWKS + OpenID Connect Discovery
 app.use('/api/careers', require('./routes/careers')); // Career applications
 app.use('/api/affiliates', require('./routes/affiliates')); // Affiliate applications

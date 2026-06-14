@@ -11,12 +11,13 @@ export const OnboardingProgress: React.FC<OnboardingProgressProps> = ({ email, o
   const [progress, setProgress] = useState(0);
   const [step, setStep] = useState(0); // 0: Verifying, 1: Wallet, 2: DID+Security
   const [walletGenerated, setWalletGenerated] = useState(false);
+  const [walletReady, setWalletReady] = useState(false);
   const [didMinted, setDidMinted] = useState(false);
+  const [setupError, setSetupError] = useState('');
   const { refreshUser } = useAuth();
 
-  // Use a ref to track wallet readiness across the interval closure
-  const walletReadyRef = React.useRef(false);
   const hasCompletedRef = React.useRef(false);
+  const setupCompleteRef = React.useRef(false);
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -25,7 +26,8 @@ export const OnboardingProgress: React.FC<OnboardingProgressProps> = ({ email, o
           clearInterval(interval);
           return 100;
         }
-        return Math.min(prev + 1.2, 100);
+        // Keep each setup stage visible even when local APIs complete immediately.
+        return Math.min(prev + 0.5, setupCompleteRef.current ? 100 : 98);
       });
     }, 50);
 
@@ -39,27 +41,28 @@ export const OnboardingProgress: React.FC<OnboardingProgressProps> = ({ email, o
     else setStep(2);
 
     // 1. Trigger wallet generation at 35%
-    if (progress >= 35 && !walletGenerated) {
+    if (progress >= 35 && !walletGenerated && !setupError) {
       setWalletGenerated(true);
       generateWallet();
     }
 
     // 2. Trigger DID minting at 75% (requires wallet)
-    if (progress >= 75 && walletReadyRef.current && !didMinted) {
+    if (progress >= 75 && walletReady && !didMinted && !setupError) {
       setDidMinted(true);
       setupSecurityAndMintDID();
     }
 
     // 3. Completion at 100%
-    if (progress >= 100 && !hasCompletedRef.current) {
+    if (progress >= 100 && setupCompleteRef.current && !hasCompletedRef.current) {
       hasCompletedRef.current = true;
       onComplete();
     }
-  }, [progress, walletGenerated, didMinted, onComplete]);
+  }, [progress, walletGenerated, walletReady, didMinted, onComplete, setupError]);
 
 
   const generateWallet = async () => {
     try {
+      setSetupError('');
       // Import API service dynamically to avoid circular dependencies
       const { apiService } = await import('../services/api');
 
@@ -68,19 +71,20 @@ export const OnboardingProgress: React.FC<OnboardingProgressProps> = ({ email, o
 
       if (walletResponse.success) {
         setWalletGenerated(true);
-        walletReadyRef.current = true; // Signal that DID minting can now proceed
+        // State is required here so DID minting is triggered even after progress reaches 98%.
+        setWalletReady(true);
 
         // Refresh user data to get the new wallet address
         await refreshUser();
 
       } else {
-        console.error('❌ Wallet generation failed:', walletResponse.error);
-        // Continue with the animation even if wallet generation fails
-        // We can retry later in the dashboard
+        throw new Error(walletResponse.error || 'Wallet generation failed');
       }
     } catch (error) {
       console.error('❌ Wallet generation error:', error);
-      // Continue with the animation even if there's an error
+      setWalletReady(false);
+      setWalletGenerated(false);
+      setSetupError(error instanceof Error ? error.message : 'Wallet generation failed');
     }
   };
 
@@ -92,9 +96,7 @@ export const OnboardingProgress: React.FC<OnboardingProgressProps> = ({ email, o
       // Step 1: Mint DID on Casper blockchain
       const didResponse = await apiService.mintDID();
 
-      if (didResponse.success) {
-        // DID minted
-      }
+      if (!didResponse.success) throw new Error(didResponse.error || 'DID minting failed');
 
       // Step 2: Generate backup recovery keys
       const backupResponse = await apiService.generateBackupKeys();
@@ -126,11 +128,13 @@ export const OnboardingProgress: React.FC<OnboardingProgressProps> = ({ email, o
 
       // Final refresh to get updated user data
       await refreshUser();
+      setupCompleteRef.current = true;
+      setProgress(100);
 
     } catch (error) {
       console.error('❌ DID minting and security setup error:', error);
-      // Continue with the animation even if there's an error
-      // These operations can be retried later
+      setDidMinted(false);
+      setSetupError(error instanceof Error ? error.message : 'Secure profile setup failed');
     }
   };
 
@@ -218,6 +222,29 @@ export const OnboardingProgress: React.FC<OnboardingProgressProps> = ({ email, o
             </div>
           ))}
         </div>
+
+        {setupError && (
+          <div className="mt-6 w-full rounded-2xl border border-red-200 bg-red-50 p-5 text-left">
+            <p className="text-sm font-black text-red-800">Profile setup did not complete</p>
+            <p className="mt-1 text-xs font-semibold text-red-700">{setupError}</p>
+            <button
+              onClick={() => {
+                setSetupError('');
+                if (!walletReady) {
+                  setWalletGenerated(false);
+                  setWalletReady(false);
+                  setProgress(34);
+                } else {
+                  setDidMinted(false);
+                  setProgress(74);
+                }
+              }}
+              className="mt-4 rounded-xl bg-primary px-4 py-2 text-xs font-black text-white"
+            >
+              Retry setup
+            </button>
+          </div>
+        )}
 
         {/* Notice Footer */}
         <div className="mt-12 w-full">

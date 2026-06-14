@@ -1,6 +1,5 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
 import { Monitor, Smartphone } from 'lucide-react';
 import SDKPreview from '../components/SDKPreview';
 
@@ -43,8 +42,7 @@ const SDKDesign: React.FC = () => {
     const [logoUrl, setLogoUrl] = useState('');
     const [isDark, setIsDark] = useState(false);
     const [language, setLanguage] = useState('EN');
-    const [layout, setLayout] = useState<'auto' | 'modal' | 'fullscreen'>('auto');
-    const [platform, setPlatform] = useState<'desktop' | 'mobile'>('desktop');
+    const [previewDevice, setPreviewDevice] = useState<'desktop' | 'mobile'>('desktop');
     const [showError, setShowError] = useState(false);
 
     // Load apps list on mount
@@ -83,8 +81,6 @@ const SDKDesign: React.FC = () => {
                     if (cfg.font_family) setFontFamily(cfg.font_family);
                     if (cfg.logo_url) setLogoUrl(cfg.logo_url);
                     if (cfg.mode) setIsDark(cfg.mode === 'dark');
-                    if (cfg.layout) setLayout(cfg.layout);
-                    if (cfg.platform) setPlatform(cfg.platform);
                     if (cfg.language) setLanguage(cfg.language);
                 }
             })
@@ -104,8 +100,6 @@ const SDKDesign: React.FC = () => {
                     font_family: fontFamily,
                     logo_url: logoUrl,
                     mode: isDark ? 'dark' : 'light',
-                    layout,
-                    platform,
                     language
                 })
             });
@@ -119,26 +113,27 @@ const SDKDesign: React.FC = () => {
         }
     };
 
-    const configCode = `{
-  "apiKey": "YOUR_API_KEY",
-  "theme": {
-    "primaryColor": "${primaryColor}",
-    "borderRadius": "${borderRadius}px",
-    "fontFamily": "${fontFamily}",
-    "mode": "${isDark ? 'dark' : 'light'}"
-  },
-  "layout": "${layout}",
-  "platform": "${platform}",
-  "logo": "${logoUrl}",
-  "language": "${language}"
-} `;
+    const configCode = `import { CasperIDButton, useHostedAuthorizationCallback } from '@casperid/react';
+
+useHostedAuthorizationCallback(handleSuccess, handleError);
+
+<CasperIDButton
+  clientId="${selectedAppId || 'YOUR_CLIENT_ID'}"
+  redirectUri={\`\${window.location.origin}/auth/callback\`}
+  mode="auto"
+  timeoutMs={30 * 60 * 1000}
+  onSuccess={handleSuccess}
+  onError={handleError}
+>
+  Continue with CasperID
+</CasperIDButton>`;
 
     return (
         <div className="flex flex-col gap-8 max-w-7xl mx-auto">
             <div className="flex items-start justify-between gap-4">
                 <div className="flex flex-col gap-1">
-                    <h2 className="text-text-main text-3xl font-black tracking-tight">SDK Design Playground</h2>
-                    <p className="text-text-muted">Customize the look and feel of your CasperID verification flow.</p>
+                    <h2 className="text-text-main text-3xl font-black tracking-tight">Hosted Flow Design Studio</h2>
+                    <p className="text-text-muted">Brand the secure authorization flow hosted on account.casperid.com.</p>
                 </div>
                 {/* App Selector */}
                 <div className="flex items-center gap-3 shrink-0">
@@ -225,40 +220,6 @@ const SDKDesign: React.FC = () => {
                                 </div>
                             </div>
 
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <div className="space-y-2">
-                                    <label className="text-sm font-bold text-text-main">Layout Mode</label>
-                                    <select
-                                        value={layout}
-                                        onChange={(e) => setLayout(e.target.value as any)}
-                                        className="w-full rounded-lg border border-border-muted bg-background-light p-2.5 text-sm"
-                                    >
-                                        <option value="auto">Auto (Responsive)</option>
-                                        <option value="modal">Strict Modal (Pop-up)</option>
-                                        <option value="fullscreen">Strict Fullscreen</option>
-                                    </select>
-                                </div>
-                                <div className="space-y-2">
-                                    <label className="text-sm font-bold text-text-main">Target Platform</label>
-                                    <div className="flex bg-background-light rounded-xl p-1 border border-border-muted max-w-[200px]">
-                                        <button
-                                            onClick={() => setPlatform('desktop')}
-                                            className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-xs font-bold transition-all ${platform === 'desktop' ? 'bg-white shadow-sm text-primary' : 'text-text-muted hover:text-text-main'}`}
-                                        >
-                                            <Monitor className="w-4 h-4" />
-                                            Desktop
-                                        </button>
-                                        <button
-                                            onClick={() => setPlatform('mobile')}
-                                            className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-xs font-bold transition-all ${platform === 'mobile' ? 'bg-white shadow-sm text-primary' : 'text-text-muted hover:text-text-main'}`}
-                                        >
-                                            <Smartphone className="w-4 h-4" />
-                                            Mobile
-                                        </button>
-                                    </div>
-                                </div>
-                            </div>
-
                             <div className="space-y-2">
                                 <label className="text-sm font-bold text-text-main">Font Family</label>
                                 <select
@@ -303,7 +264,7 @@ const SDKDesign: React.FC = () => {
 
                     <div className="bg-white rounded-2xl border border-border-muted p-6 shadow-sm space-y-4">
                         <div className="flex items-center justify-between">
-                            <h3 className="text-lg font-bold text-text-main">Initialization Code</h3>
+                            <h3 className="text-lg font-bold text-text-main">Hosted Integration</h3>
                             <button
                                 onClick={() => navigator.clipboard.writeText(configCode)}
                                 className="text-primary text-xs font-bold hover:underline flex items-center gap-1"
@@ -323,8 +284,12 @@ const SDKDesign: React.FC = () => {
                     <div className="flex items-center gap-2 self-start">
                         <div className={`w-2 h-2 rounded-full ${isLoadingConfig ? 'bg-amber-500' : 'bg-green-500'} animate-pulse`} />
                         <span className="text-xs font-bold text-text-muted uppercase tracking-widest">
-                            {isLoadingConfig ? 'Loading Config...' : 'Live SDK Preview'}
+                            {isLoadingConfig ? 'Loading Config...' : 'Hosted Authorization Preview'}
                         </span>
+                        <div className="ml-auto flex rounded-xl border border-border-muted bg-white p-1">
+                            <button onClick={() => setPreviewDevice('desktop')} className={`rounded-lg p-2 ${previewDevice === 'desktop' ? 'bg-primary text-white' : 'text-text-muted'}`} aria-label="Desktop preview"><Monitor className="w-4 h-4" /></button>
+                            <button onClick={() => setPreviewDevice('mobile')} className={`rounded-lg p-2 ${previewDevice === 'mobile' ? 'bg-primary text-white' : 'text-text-muted'}`} aria-label="Mobile preview"><Smartphone className="w-4 h-4" /></button>
+                        </div>
                     </div>
 
                     {isLoadingConfig ? (
@@ -336,7 +301,7 @@ const SDKDesign: React.FC = () => {
                     ) : (
                         /* SDK Preview Component */
                         <div
-                            className="w-full max-w-md h-full rounded-3xl overflow-hidden shadow-2xl border"
+                            className={`${previewDevice === 'mobile' ? 'w-[360px]' : 'w-full max-w-md'} h-full rounded-3xl overflow-hidden shadow-2xl border`}
                             style={{
                                 borderColor: isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)',
                             }}
@@ -347,7 +312,8 @@ const SDKDesign: React.FC = () => {
                                 fontFamily={fontFamily}
                                 isDark={isDark}
                                 logoUrl={logoUrl}
-                                platform={platform}
+                                appName={apps.find(app => app.app_id === selectedAppId)?.name}
+                                platform={previewDevice}
                                 language={language}
                             />
                         </div>
@@ -359,4 +325,3 @@ const SDKDesign: React.FC = () => {
 };
 
 export default SDKDesign;
-

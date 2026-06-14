@@ -116,7 +116,7 @@ export const AuthEntry: React.FC<AuthEntryProps> = ({
                 <span className="material-symbols-outlined text-2xl">sync_alt</span>
               </div>
               <div className="size-16 rounded-2xl bg-primary shadow-lg flex items-center justify-center transform rotate-6 transition-transform hover:rotate-0">
-                <Logo showName={false} className="scale-[1.5] invert brightness-0" />
+                <Logo href={null} showName={false} variant="png" className="scale-[1.2]" />
               </div>
             </div>
           ) : (

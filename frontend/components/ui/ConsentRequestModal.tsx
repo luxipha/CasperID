@@ -85,7 +85,7 @@ export const ConsentRequestModal: React.FC<ConsentRequestModalProps> = ({
                                 <span className="material-symbols-outlined text-[32px]">sync_alt</span>
                             </div>
                             <div className="size-20 rounded-[22px] bg-primary text-white shadow-xl flex items-center justify-center transform rotate-12">
-                                <img src="/logos/logo.svg" alt="CasperID" className="w-10 h-10 -rotate-12 invert brightness-0" />
+                                <img src="/logos/logo.png" alt="CasperID" className="w-10 h-10 -rotate-12 object-contain" />
                             </div>
                         </div>
                         <h2 className="text-2xl font-black text-text-main tracking-tight">

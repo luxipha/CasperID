@@ -13,6 +13,7 @@ export default function App() {
           <Routes>
             <Route path="/" element={<LandingPage />} />
             <Route path="/dashboard" element={<DashboardPortal />} />
+            <Route path="/auth/callback" element={<DashboardPortal />} />
           </Routes>
         </main>
         <Footer />

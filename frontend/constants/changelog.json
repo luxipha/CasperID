@@ -1,5 +1,105 @@
 [
   {
+    "version": "4.0.0",
+    "title": "Hosted Authorization & Lightweight SDK v2",
+    "date": "June 14 2026",
+    "status": "Major Release",
+    "highlight": {
+      "title": "Hosted Authorization Launch",
+      "description": "Moved all authentication, onboarding, passkey, and verification to account.casperid.com/authorize with a lightweight OAuth/PKCE SDK.",
+      "type": "sparkles"
+    },
+    "summary": "This major release relocates all authentication, onboarding, and verification flows to a centralized hosted authorization endpoint at account.casperid.com/authorize. The React SDK v2 has been rebuilt as a lightweight OAuth/PKCE client — removing the embedded CasperIDModal and all heavy browser verification dependencies. Backend authorization enforcement is now authoritative, with provisional L3 access support for users with pending KYC. The SDK v2 public API consists of authorizeWithCasperID, useHostedAuthorizationCallback, and a CasperIDButton component supporting popup and redirect transport modes.",
+    "categories": [
+      {
+        "id": "v400-backend",
+        "title": "Secure OAuth Backend",
+        "items": [
+          "Extended GET /api/oauth/authorize/validate to return app name, logo, required_tier, requested_scopes, and redirect URI validation.",
+          "Updated POST /api/oauth/authorize/complete to enforce the app's required tier against the authenticated user's actual tier.",
+          "Require valid authenticated CasperID session and completed L1 onboarding before authorization code issuance.",
+          "Bound snapshot to each authorization code: granted tier, required tier, scopes, authorization status, verification status.",
+          "Reject direct authorization attempts when user does not satisfy the required tier."
+        ]
+      },
+      {
+        "id": "v400-l3",
+        "title": "L3 Pending Contract",
+        "items": [
+          "Approved L3 users receive normal authorization results with authorization_status: complete.",
+          "Users with genuine pending L3 request and at least L2 receive provisional 24-hour business tokens.",
+          "Provisional tokens include tier, required_tier, authorization_status: provisional, verification_status: pending, and scopes.",
+          "Users without a pending L3 request cannot receive provisional L3 access."
+        ]
+      },
+      {
+        "id": "v400-flow",
+        "title": "Hosted Account Flow",
+        "items": [
+          "Refactored HostedAuthorize.tsx as the controller for the full hosted authorization journey.",
+          "Extracted reusable account-side workflows: signup/OTP, passkey/L1 onboarding, L2 liveness, L3 document verification.",
+          "Adapted onboarding so failures prevent authorization with retryable errors.",
+          "Adapted KYC workflows to expose terminal results: completed, pending, cancelled, failed.",
+          "Display consent using the app's actual requested scopes; denial returns OAuth access_denied with original state.",
+          "Support both popup layouts and full-page mobile redirect layouts."
+        ]
+      },
+      {
+        "id": "v400-sdk",
+        "title": "Lightweight React SDK v2",
+        "items": [
+          "Published SDK v2 as a lightweight OAuth/PKCE client with public API: authorizeWithCasperID(), consumeHostedAuthorizationCallback(), useHostedAuthorizationCallback(), CasperIDButton.",
+          "CasperIDButton supports auto, popup, and redirect transport modes.",
+          "Removed CasperIDModal, embedded signup/KYC screens, modal-only APIs, and heavy browser verification dependencies.",
+          "Callback consumption is idempotent under React Strict Mode with origin, state, and PKCE transaction validation.",
+          "Popup closure treated as cancellation only after confirming no valid callback was received."
+        ]
+      },
+      {
+        "id": "v400-casperdrop",
+        "title": "Casperdrop Reference Integration",
+        "items": [
+          "Upgraded Casperdrop to SDK v2 using CasperIDButton for authorization start.",
+          "Maintained /auth/callback as the registered redirect URI.",
+          "Displays actual authorization state: complete, provisional L3 pending, denied, cancelled, failed.",
+          "Successful authorization closes popup and updates main Casperdrop page."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "3.0.1",
+    "title": "Brevo SMTP Migration & Email Provider Fix",
+    "date": "June 1, 2026",
+    "status": "Maintenance Update",
+    "highlight": {
+      "title": "Brevo Email Provider Migration",
+      "description": "Migrated from custom SMTP (mail.ile.africa) to Brevo for reliable transactional email delivery.",
+      "type": "sparkles"
+    },
+    "summary": "This update migrates the SMTP email provider to Brevo for improved deliverability and maintainability. Fixed an issue where the email sender address was using the SMTP login instead of the configured EMAIL_FROM, ensuring all emails now correctly send from no-reply@casperid.com. All 7 email types (OTP, welcome, verification, profile views, payments, security alerts) tested and verified.",
+    "categories": [
+      {
+        "id": "v301-email",
+        "title": "Email Provider Migration",
+        "items": [
+          "Migrated SMTP provider from mail.ile.africa to Brevo (smtp-relay.brevo.com) for production-ready email delivery.",
+          "All 7 email types (OTP, welcome, verification success, profile viewed, profile completed, payment confirmation, security alert) verified via Brevo SMTP.",
+          "OTP emails now reliably sent through Brevo SMTP with full delivery confirmation."
+        ]
+      },
+      {
+        "id": "v301-fix",
+        "title": "Fixes",
+        "items": [
+          "Fixed email sender address: All email methods now use EMAIL_FROM env var instead of SMTP_USER, ensuring emails send from the correct sender (no-reply@casperid.com).",
+          "Updated SmtpProvider default fallback to no-reply@casperid.com for consistency.",
+          "Applied fix across all 7 email methods: welcome, verification, profile viewed, profile completed, payment confirmation, security alert, and OTP."
+        ]
+      }
+    ]
+  },
+  {
     "version": "3.0.0",
     "title": "Android Passkey Support & Multi-Tenant Architecture",
     "date": "May 6, 2026",

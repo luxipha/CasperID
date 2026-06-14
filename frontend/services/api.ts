@@ -84,6 +84,12 @@ class ApiService {
     // No need to manually add Authorization header - cookies are sent automatically
     this.client.interceptors.request.use(
       async (config) => {
+        // Let the browser generate multipart/form-data with its required boundary.
+        // A forced JSON content type causes Blob/File parts to be dropped.
+        if (config.data instanceof FormData) {
+          delete config.headers['Content-Type'];
+        }
+
         // For state-changing requests, ensure CSRF token is loaded
         const method = config.method?.toUpperCase();
         if (['POST', 'PUT', 'DELETE', 'PATCH'].includes(method || '')) {
@@ -638,6 +644,7 @@ class ApiService {
     requestId: string,
     frames: Blob[],
     pairingId?: string,
+    pairingToken?: string,
     stepSequence: string[] = ['blink', 'open_mouth']
   ): Promise<ApiResponse> {
     try {
@@ -656,10 +663,35 @@ class ApiService {
       if (pairingId) {
         formData.append('pairingId', pairingId);
       }
+      if (pairingToken) {
+        formData.append('pairingToken', pairingToken);
+      }
 
-      const response = await this.client.post('/api/v2/verification/liveness', formData);
+      const appendedFrameCount = formData.getAll('imageFrames').length;
+      if (appendedFrameCount !== frames.length || appendedFrameCount === 0) {
+        throw new Error(`Unable to prepare liveness frames for upload (${appendedFrameCount}/${frames.length}).`);
+      }
+
+      console.info('[Liveness Upload] Multipart request prepared', {
+        requestId,
+        pairingId,
+        frameCount: appendedFrameCount,
+        firstFrameType: frames[0]?.type || 'unknown',
+        firstFrameBytes: frames[0]?.size || 0,
+      });
+
+      const response = await this.client.post('/api/v2/verification/liveness', formData, {
+        headers: {
+          'Content-Type': undefined,
+        },
+      });
       return response.data;
-    } catch (error) {
+    } catch (error: any) {
+      // Preserve structured liveness rejection details so the capture UI can
+      // show the score/reason and allow a retry without treating it as a transport failure.
+      if (error.response?.data?.liveness) {
+        return error.response.data;
+      }
       throw this.handleError(error);
     }
   }
@@ -1871,7 +1903,7 @@ class ApiService {
     }
   }
 
-  async createBusinessApp(data: { name: string; allowed_origins: string[]; environment: string }): Promise<ApiResponse> {
+  async createBusinessApp(data: { name: string; allowed_origins: string[]; redirect_uris?: string[]; environment: string }): Promise<ApiResponse> {
     try {
       const response = await this.client.post('/api/business/apps', data);
       return response.data;
@@ -1969,6 +2001,45 @@ class ApiService {
   async getAppMetadata(appId: string): Promise<ApiResponse> {
     try {
       const response = await this.client.get(`/api/business/app-metadata/${appId}`);
+      return response.data;
+    } catch (error) {
+      throw this.handleError(error);
+    }
+  }
+
+  async validateOAuthAuthorization(clientId: string, redirectUri: string): Promise<ApiResponse> {
+    try {
+      const response = await this.client.get('/api/oauth/authorize/validate', {
+        params: {
+          client_id: clientId,
+          redirect_uri: redirectUri,
+        },
+      });
+      return response.data;
+    } catch (error) {
+      throw this.handleError(error);
+    }
+  }
+
+  async getOAuthAuthorizationStatus(clientId: string): Promise<ApiResponse> {
+    try {
+      const response = await this.client.get('/api/oauth/authorize/status', {
+        params: { client_id: clientId },
+      });
+      return response.data;
+    } catch (error) {
+      throw this.handleError(error);
+    }
+  }
+
+  async completeOAuthAuthorization(data: {
+    client_id: string;
+    redirect_uri: string;
+    code_challenge: string;
+    code_challenge_method: 'S256';
+  }): Promise<ApiResponse> {
+    try {
+      const response = await this.client.post('/api/oauth/authorize/complete', data);
       return response.data;
     } catch (error) {
       throw this.handleError(error);

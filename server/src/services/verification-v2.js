@@ -24,6 +24,47 @@ class VerificationServiceV2 {
         this.LIVENESS_THRESHOLD = 0.8; // Minimum score for liveness verification
     }
 
+    getAccountFrontendUrl() {
+        return (process.env.ACCOUNT_FRONTEND_URL || process.env.FRONTEND_URL || 'https://account.casperid.com')
+            .replace(/\/$/, '');
+    }
+
+    async acknowledgeLivenessPairing(requestId, pairingId, pairingToken) {
+        if (!requestId || !pairingId || !pairingToken) {
+            throw new Error('Request ID, pairing ID, and pairing token are required');
+        }
+
+        const pairing = await DevicePairing.findOne({
+            pairing_id: pairingId,
+            pairing_token: pairingToken,
+            verification_request_id: requestId,
+            status: 'pending',
+            expires_at: { $gt: new Date() }
+        });
+
+        if (!pairing) {
+            throw new Error('Invalid or expired pairing session');
+        }
+
+        const verificationRequest = await VerificationRequestV2.findOne({
+            request_id: requestId,
+            user_id: pairing.user_id,
+            status: { $in: ['pending', 'in_progress'] }
+        });
+
+        if (!verificationRequest) {
+            throw new Error('Verification request not found or expired');
+        }
+
+        if (verificationRequest.status === 'pending') {
+            verificationRequest.status = 'in_progress';
+            await verificationRequest.save();
+        }
+
+        console.info('[Liveness] Phone handoff acknowledged', { requestId, pairingId });
+        return { requestId, pairingId, status: 'scanning' };
+    }
+
     /**
      * Start Layer 2 verification (Liveness + QR Pairing for cross-device flow)
      */
@@ -85,6 +126,7 @@ class VerificationServiceV2 {
                 serverUrl: process.env.API_BASE_URL || (process.env.API_HOST ? `https://${process.env.API_HOST}` : 'https://api.casperid.com'),
                 expiresAt: expiresAt.getTime()
             };
+            const mobileLivenessUrl = `${this.getAccountFrontendUrl()}/liveness?data=${encodeURIComponent(JSON.stringify(qrPayload))}`;
 
             // Store pairing record
             const devicePairing = new DevicePairing({
@@ -100,7 +142,7 @@ class VerificationServiceV2 {
             await devicePairing.save();
 
             // Generate QR code image
-            const qrCodeDataURL = await QRCode.toDataURL(JSON.stringify(qrPayload), {
+            const qrCodeDataURL = await QRCode.toDataURL(mobileLivenessUrl, {
                 width: 300,
                 margin: 2,
                 color: {
@@ -122,7 +164,8 @@ class VerificationServiceV2 {
                 expiresAt: verificationRequest.expires_at,
                 qrCode: {
                     dataUrl: qrCodeDataURL,
-                    payload: qrPayload
+                    payload: qrPayload,
+                    mobileUrl: mobileLivenessUrl
                 },
                 nextStep: 'scan_qr_code'
             };
@@ -188,6 +231,7 @@ class VerificationServiceV2 {
                 serverUrl: process.env.API_BASE_URL || (process.env.API_HOST ? `https://${process.env.API_HOST}` : 'https://api.casperid.com'),
                 expiresAt: expiresAt.getTime()
             };
+            const mobileLivenessUrl = `${this.getAccountFrontendUrl()}/liveness?data=${encodeURIComponent(JSON.stringify(qrPayload))}`;
 
             // Store pairing record
             const devicePairing = new DevicePairing({
@@ -203,7 +247,7 @@ class VerificationServiceV2 {
             await devicePairing.save();
 
             // Generate QR code image
-            const qrCodeDataURL = await QRCode.toDataURL(JSON.stringify(qrPayload), {
+            const qrCodeDataURL = await QRCode.toDataURL(mobileLivenessUrl, {
                 width: 300,
                 margin: 2,
                 color: {
@@ -227,7 +271,8 @@ class VerificationServiceV2 {
                 expiresAt: verificationRequest.expires_at,
                 qrCode: {
                     dataUrl: qrCodeDataURL,
-                    payload: qrPayload
+                    payload: qrPayload,
+                    mobileUrl: mobileLivenessUrl
                 },
                 nextStep: verificationMethod === 'nimc' ? 'nimc_verification' : 'document_upload'
             };
@@ -240,15 +285,19 @@ class VerificationServiceV2 {
 
     /**
      * Process liveness check (used in both Layer 2 and Layer 3)
-     * Supports optional pairingId for cross-device verification linking
+    * Supports optional pairingId for cross-device verification linking
      */
-    async processLivenessCheck(requestId, livenessData, pairingId = null) {
+    async processLivenessCheck(requestId, livenessData, authorization = {}) {
+        let authorizedPairing = null;
+        const processingStartedAt = Date.now();
         try {
             const {
                 videoFile,
                 imageFrames,
                 metadata = {}
             } = livenessData;
+
+            const { pairingId = null, pairingToken = null, userSessionToken = null } = authorization;
 
             // Find verification request
             const verificationRequest = await VerificationRequestV2.findOne({
@@ -260,21 +309,36 @@ class VerificationServiceV2 {
                 throw new Error('Verification request not found or expired');
             }
 
-            // If pairingId is provided, validate and link the pairing
-            if (pairingId) {
-                const devicePairing = await DevicePairing.findOne({
-                    pairing_id: pairingId,
-                    expires_at: { $gt: new Date() }
-                });
+            let isAuthorized = false;
+            if (userSessionToken) {
+                const sessionData = await this.validateUserSession(userSessionToken);
+                isAuthorized = sessionData?.userAccount?.user_id === verificationRequest.user_id;
+            }
 
-                if (!devicePairing) {
+            // Cross-device submissions must prove possession of the token embedded in the QR payload.
+            if (pairingId) {
+                authorizedPairing = await DevicePairing.findOneAndUpdate(
+                    {
+                        pairing_id: pairingId,
+                        pairing_token: pairingToken,
+                        verification_request_id: requestId,
+                        user_id: verificationRequest.user_id,
+                        status: 'pending',
+                        expires_at: { $gt: new Date() }
+                    },
+                    { $set: { status: 'processing' } },
+                    { new: true }
+                );
+
+                if (!authorizedPairing) {
                     throw new Error('Invalid or expired pairing session');
                 }
 
-                // Link this verification to the pairing
-                devicePairing.verification_completed = true;
-                devicePairing.completed_at = new Date();
-                await devicePairing.save();
+                isAuthorized = true;
+            }
+
+            if (!isAuthorized) {
+                throw new Error('Not authorized to submit this verification request');
             }
 
             // Validate imageFrames
@@ -288,10 +352,20 @@ class VerificationServiceV2 {
 
             // Convert imageFrames (multer file objects) to buffers
             const frameBuffers = imageFrames.map(frame => frame.buffer);
+            const totalBytes = imageFrames.reduce((sum, frame) => sum + (frame.size || frame.buffer?.length || 0), 0);
+            const isLayer3 = verificationRequest.verification_tier === 'layer_3';
+            console.info('[Liveness] Processing started', {
+                requestId,
+                tier: verificationRequest.verification_tier,
+                pairingId: pairingId || undefined,
+                frameCount: imageFrames.length,
+                totalBytes,
+            });
 
-            // Upload liveness frames to ImageKit for admin review
+            // Layer 2 is auto-decided and does not need slow admin-review uploads.
             let livenessFrameUrls = [];
-            try {
+            if (isLayer3) try {
+                const uploadStartedAt = Date.now();
                 const imagekit = require('./imagekit');
 
                 const uploadPromises = imageFrames.map((frame, i) => {
@@ -304,6 +378,11 @@ class VerificationServiceV2 {
                 });
 
                 livenessFrameUrls = await Promise.all(uploadPromises);
+                console.info('[Liveness] Review frame upload completed', {
+                    requestId,
+                    frameCount: livenessFrameUrls.length,
+                    durationMs: Date.now() - uploadStartedAt,
+                });
             } catch (uploadError) {
                 console.error('[Liveness] ImageKit upload failed:', uploadError.message);
                 // Continue without frames - admin won't see them but verification can proceed
@@ -316,9 +395,17 @@ class VerificationServiceV2 {
             let livenessScore;
             let livenessAnalysis;
             try {
+                const aiStartedAt = Date.now();
                 livenessAnalysis = await geminiService.verifyLivenessSequence(frameBuffers, stepSequence);
                 // Convert confidence (0-100) to score (0-1)
                 livenessScore = livenessAnalysis.confidence / 100;
+                console.info('[Liveness] AI analysis completed', {
+                    requestId,
+                    durationMs: Date.now() - aiStartedAt,
+                    passed: livenessAnalysis.passed,
+                    confidence: livenessAnalysis.confidence,
+                    validationChecks: livenessAnalysis.validationChecks,
+                });
             } catch (aiError) {
                 console.error('Liveness AI analysis failed:', aiError);
                 // Fallback to basic checks if AI fails
@@ -332,8 +419,6 @@ class VerificationServiceV2 {
 
             // For Layer 2: AI makes the decision (auto-approve/reject)
             // For Layer 3: AI provides analysis for admin review (never auto-reject)
-            const isLayer3 = verificationRequest.verification_tier === 'layer_3';
-
             let livenessVerified;
             if (isLayer3) {
                 // Layer 3: Always accept for admin review, store AI analysis
@@ -358,21 +443,40 @@ class VerificationServiceV2 {
 
             // Only fail if Layer 2 and AI rejected
             if (!isLayer3 && !livenessVerified) {
-                verificationRequest.status = 'failed';
+                // Keep the scoped pairing and request active so the user can retry before expiry.
+                verificationRequest.status = 'pending';
                 verificationRequest.error_message = `Liveness verification failed. Score: ${livenessScore}`;
                 await verificationRequest.save();
+                if (authorizedPairing) {
+                    authorizedPairing.status = 'pending';
+                    await authorizedPairing.save();
+                }
 
                 return {
                     success: false,
                     error: 'Liveness verification failed',
                     score: livenessScore,
-                    threshold: this.LIVENESS_THRESHOLD
+                    threshold: this.LIVENESS_THRESHOLD,
+                    reasoning: livenessAnalysis.reasoning,
+                    validationChecks: livenessAnalysis.validationChecks
                 };
+            }
+
+            if (authorizedPairing) {
+                authorizedPairing.status = 'completed';
+                authorizedPairing.completed_at = new Date();
+                await authorizedPairing.save();
             }
 
             // If this is Layer 2 and only liveness is required, complete verification
             if (verificationRequest.verification_tier === 'layer_2') {
-                return await this.completeLayer2Verification(requestId);
+                const result = await this.completeLayer2Verification(requestId);
+                console.info('[Liveness] Layer 2 processing completed', {
+                    requestId,
+                    durationMs: Date.now() - processingStartedAt,
+                    score: livenessScore,
+                });
+                return result;
             }
 
             // For Layer 3, liveness is one step - proceed to next step (admin will review)
@@ -389,6 +493,12 @@ class VerificationServiceV2 {
             };
 
         } catch (error) {
+            if (authorizedPairing?.status === 'processing') {
+                authorizedPairing.status = 'pending';
+                await authorizedPairing.save().catch((pairingError) => {
+                    console.error('Failed to release liveness pairing after error:', pairingError);
+                });
+            }
             console.error('Liveness check processing failed:', error);
             throw new Error(`Liveness check failed: ${error.message}`);
         }
@@ -496,6 +606,7 @@ class VerificationServiceV2 {
             await verificationRequest.save();
 
             userAccount.updated_at = new Date();
+            userAccount.tier = 'layer_2';
             await userAccount.save();
 
             // Emit L2 verification completed event (subscribers handle email, webhook, activity)
@@ -680,17 +791,19 @@ class VerificationServiceV2 {
      */
     async getVerificationStatus(requestId, userSessionToken = null) {
         try {
-            let query = { request_id: requestId };
-
-            // If user session provided, ensure they own the request
-            if (userSessionToken) {
-                const sessionData = await this.validateUserSession(userSessionToken);
-                if (sessionData) {
-                    query.user_id = sessionData.userAccount.user_id;
-                }
+            if (!userSessionToken) {
+                throw new Error('Authentication required');
             }
 
-            const verificationRequest = await VerificationRequestV2.findOne(query);
+            const sessionData = await this.validateUserSession(userSessionToken);
+            if (!sessionData) {
+                throw new Error('Invalid or expired session');
+            }
+
+            const verificationRequest = await VerificationRequestV2.findOne({
+                request_id: requestId,
+                user_id: sessionData.userAccount.user_id
+            });
 
             if (!verificationRequest) {
                 throw new Error('Verification request not found');
