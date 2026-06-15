@@ -21,7 +21,6 @@ const ActivityHeatmap: React.FC<ActivityHeatmapProps> = ({
   const generateData = () => {
     const grid = [];
     const today = new Date();
-    // Start from the most recent Sunday
     const startDate = new Date(today);
     startDate.setDate(today.getDate() - (weeks * 7) + 1);
 
@@ -48,8 +47,32 @@ const ActivityHeatmap: React.FC<ActivityHeatmapProps> = ({
   };
 
   const data = generateData();
-  const months = ['Sep', 'Oct', 'Nov', 'Dec', 'Jan', 'Feb', 'Mar'];
   const dayLabels = ['Mon', 'Wed', 'Fri'];
+
+  const monthLabels = (() => {
+    const today = new Date();
+    const startDate = new Date(today);
+    startDate.setDate(today.getDate() - (weeks * 7) + 1);
+
+    const labels: Array<{ label: string; weekIndex: number }> = [];
+    let lastMonth = -1;
+
+    for (let w = 0; w < weeks; w++) {
+      const date = new Date(startDate);
+      date.setDate(startDate.getDate() + (w * 7));
+      const month = date.getMonth();
+
+      if (month !== lastMonth) {
+        labels.push({
+          label: date.toLocaleString('en-US', { month: 'short' }),
+          weekIndex: w,
+        });
+        lastMonth = month;
+      }
+    }
+
+    return labels;
+  })();
 
   const getColor = (level: number) => {
     switch(level) {
@@ -77,8 +100,16 @@ const ActivityHeatmap: React.FC<ActivityHeatmapProps> = ({
           
           <div className="flex-1">
             {/* Month Labels */}
-            <div className="flex justify-between mb-2 px-2 text-[10px] text-text-muted font-bold">
-              {months.map(month => <span key={month}>{month}</span>)}
+            <div className="relative mb-2 h-4 px-2 text-[10px] text-text-muted font-bold">
+              {monthLabels.map(month => (
+                <span
+                  key={`${month.label}-${month.weekIndex}`}
+                  className="absolute"
+                  style={{ left: `${(month.weekIndex / weeks) * 100}%` }}
+                >
+                  {month.label}
+                </span>
+              ))}
             </div>
             
             {/* Grid */}

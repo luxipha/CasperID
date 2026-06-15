@@ -1,15 +1,26 @@
 import React, { useState, useEffect } from 'react';
-import { Activity, Users, Box, ArrowUpRight, ArrowRight, Zap, CheckCircle2 } from 'lucide-react';
+import { Activity, Box, ArrowUpRight, ArrowRight, Zap, CheckCircle2, Clock3, AlertCircle } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { apiService } from '../../services/api';
 import ActivityHeatmap from '../components/ActivityHeatmap';
 
+interface RecentActivityItem {
+  request_id: string;
+  app_id: string;
+  app_name: string;
+  verification_tier: string;
+  status: 'pending' | 'in_progress' | 'completed' | 'failed' | 'cancelled' | 'rejected';
+  created_at: string;
+}
+
 const Overview: React.FC = () => {
   const [stats, setStats] = useState({
     total_requests: 0,
+    total_verifications: 0,
     active_apps: 0,
     total_apps: 0,
-    activity: [] as { date: string, count: number }[]
+    activity: [] as { date: string, count: number }[],
+    recent_activity: [] as RecentActivityItem[]
   });
   const [loading, setLoading] = useState(true);
 
@@ -29,6 +40,45 @@ const Overview: React.FC = () => {
     loadStats();
   }, []);
 
+  const formatRelativeTime = (value: string) => {
+    const timestamp = new Date(value).getTime();
+    const diffMs = Date.now() - timestamp;
+    const diffMinutes = Math.max(1, Math.floor(diffMs / 60000));
+
+    if (diffMinutes < 60) return `${diffMinutes}m ago`;
+    const diffHours = Math.floor(diffMinutes / 60);
+    if (diffHours < 24) return `${diffHours}h ago`;
+    const diffDays = Math.floor(diffHours / 24);
+    return `${diffDays}d ago`;
+  };
+
+  const getActivityMeta = (item: RecentActivityItem) => {
+    if (item.status === 'completed') {
+      return {
+        title: 'Verification Completed',
+        detail: `${item.app_name} • ${item.verification_tier.replace('_', ' ')} • ${formatRelativeTime(item.created_at)}`,
+        icon: <CheckCircle2 size={18} />,
+        iconClass: 'bg-green-100 text-green-600'
+      };
+    }
+
+    if (item.status === 'pending' || item.status === 'in_progress') {
+      return {
+        title: 'Verification In Progress',
+        detail: `${item.app_name} • ${item.verification_tier.replace('_', ' ')} • ${formatRelativeTime(item.created_at)}`,
+        icon: <Clock3 size={18} />,
+        iconClass: 'bg-amber-100 text-amber-600'
+      };
+    }
+
+    return {
+      title: 'Verification Issue',
+      detail: `${item.app_name} • ${item.verification_tier.replace('_', ' ')} • ${formatRelativeTime(item.created_at)}`,
+      icon: <AlertCircle size={18} />,
+      iconClass: 'bg-red-100 text-red-600'
+    };
+  };
+
   return (
     <div className="flex flex-col gap-8 max-w-7xl mx-auto w-full relative">
       <div className="flex flex-col gap-1">
@@ -47,7 +97,7 @@ const Overview: React.FC = () => {
         {[
           {
             label: 'Total Verifications',
-            value: loading ? '...' : stats.total_requests.toLocaleString(),
+            value: loading ? '...' : stats.total_verifications.toLocaleString(),
             change: '+12%',
             icon: <Activity size={20} className="text-primary" />,
             bg: 'bg-primary/5 border-primary/20'
@@ -95,26 +145,27 @@ const Overview: React.FC = () => {
             </div>
 
             <div className="flex flex-col gap-4">
-              {/* Only show placeholder if no requests ever made */}
-              {stats.total_requests === 0 && !loading ? (
+              {stats.recent_activity.length === 0 && !loading ? (
                 <div className="text-center py-8 text-text-muted text-sm">
-                  No activity yet. Make your first API call!
+                  No verification activity yet.
                 </div>
               ) : (
-                [1, 2, 3].map((_, i) => (
-                  <div key={i} className="flex items-center justify-between p-3 hover:bg-background-light/50 rounded-xl transition-colors group cursor-pointer">
+                stats.recent_activity.slice(0, 3).map((item) => {
+                  const meta = getActivityMeta(item);
+                  return (
+                  <div key={item.request_id} className="flex items-center justify-between p-3 hover:bg-background-light/50 rounded-xl transition-colors group cursor-pointer">
                     <div className="flex items-center gap-4">
-                      <div className="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center text-green-600 shadow-sm group-hover:scale-105 transition-transform">
-                        <CheckCircle2 size={18} />
+                      <div className={`w-10 h-10 rounded-full flex items-center justify-center shadow-sm group-hover:scale-105 transition-transform ${meta.iconClass}`}>
+                        {meta.icon}
                       </div>
                       <div>
-                        <p className="text-sm font-bold text-text-main">Verification Successful</p>
-                        <p className="text-xs text-text-muted">User verified via Passkey • 2m ago</p>
+                        <p className="text-sm font-bold text-text-main">{meta.title}</p>
+                        <p className="text-xs text-text-muted">{meta.detail}</p>
                       </div>
                     </div>
-                    <span className="text-xs font-mono text-text-muted bg-background-light px-2 py-1 rounded">req_{Math.random().toString(36).substr(2, 6)}</span>
+                    <span className="text-xs font-mono text-text-muted bg-background-light px-2 py-1 rounded">{item.request_id}</span>
                   </div>
-                ))
+                )})
               )}
             </div>
           </div>

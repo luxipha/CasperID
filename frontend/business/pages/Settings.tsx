@@ -1,32 +1,51 @@
 
 import React, { useState, useEffect } from 'react';
 import { apiService } from '../../services/api';
+import { useAuth } from '../../contexts/AuthContext';
 
-interface UserProfile {
+interface SettingsProfile {
   email?: string;
   display_name?: string;
   wallet?: string;
 }
 
 const Settings: React.FC = () => {
+  const { user } = useAuth();
   const [showProfileToast, setShowProfileToast] = useState(false);
-  const [profile, setProfile] = useState<UserProfile | null>(null);
+  const [profile, setProfile] = useState<SettingsProfile | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    const fallbackProfile: SettingsProfile | null = user ? {
+      email: user.email,
+      display_name: user.display_name || user.cns_name || user.email?.split('@')[0] || '',
+      wallet: user.wallet,
+    } : null;
+
+    if (fallbackProfile) {
+      setProfile(fallbackProfile);
+    }
+
     const fetchProfile = async () => {
       try {
         const data = await apiService.getUserProfile();
-        setProfile(data);
+        const profileData = data as typeof data & { display_name?: string };
+
+        setProfile({
+          email: data?.email || fallbackProfile?.email || '',
+          display_name: profileData.display_name || fallbackProfile?.display_name || '',
+          wallet: data?.wallet || fallbackProfile?.wallet,
+        });
       } catch (err) {
         console.error('Failed to load profile:', err);
+        setProfile(fallbackProfile);
       } finally {
         setLoading(false);
       }
     };
 
     fetchProfile();
-  }, []);
+  }, [user]);
 
   const handleSaveProfile = () => {
     // Note: Organization profile saving is not yet implemented in backend
@@ -58,7 +77,6 @@ const Settings: React.FC = () => {
                 <span className="material-symbols-outlined text-primary">corporate_fare</span>
                 <h3 className="text-lg font-bold text-text-main">Organization Profile</h3>
               </div>
-              <span className="text-xs text-amber-600 font-bold px-2 py-1 bg-amber-50 rounded">Coming Soon</span>
             </div>
 
             {loading ? (
@@ -88,7 +106,7 @@ const Settings: React.FC = () => {
 
                 <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg mt-2">
                   <p className="text-xs text-amber-700">
-                    <span className="font-bold">Note:</span> Organization profile management is coming soon. For now, your account profile is shown.
+                    <span className="font-bold">Note:</span> Your account profile is shown here. Organization profile management is not yet connected to backend.
                   </p>
                 </div>
 
@@ -97,20 +115,19 @@ const Settings: React.FC = () => {
                   disabled
                   className="mt-4 w-full py-2.5 bg-gray-200 text-gray-500 font-bold rounded-xl cursor-not-allowed"
                 >
-                  Save Profile (Coming Soon)
+                  Save Profile
                 </button>
               </div>
             )}
           </div>
         </div>
 
-        {/* Team Management - Coming Soon */}
+        {/* Team Management */}
         <div className="lg:col-span-2 flex flex-col gap-4">
           <div className="flex items-center justify-between px-2">
             <div className="flex flex-col">
               <div className="flex items-center gap-2">
                 <h3 className="text-xl font-bold text-text-main">Team Management</h3>
-                <span className="text-xs text-amber-600 font-bold px-2 py-1 bg-amber-50 rounded">Coming Soon</span>
               </div>
               <p className="text-sm text-text-muted">Manage your team members and their access levels.</p>
             </div>
@@ -128,7 +145,7 @@ const Settings: React.FC = () => {
               <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-primary/10 flex items-center justify-center">
                 <span className="material-symbols-outlined text-primary text-3xl">groups</span>
               </div>
-              <h4 className="text-lg font-bold text-text-main mb-2">Team Collaboration Coming Soon</h4>
+              <h4 className="text-lg font-bold text-text-main mb-2">Team Collaboration</h4>
               <p className="text-text-muted text-sm max-w-md mx-auto mb-6">
                 Invite team members, assign roles, and collaborate on your integrations. This feature is currently under development.
               </p>
@@ -162,7 +179,6 @@ const Settings: React.FC = () => {
             <span className="material-symbols-outlined text-primary">security</span>
             <h3 className="text-lg font-bold text-text-main">Security Settings</h3>
           </div>
-          <span className="text-xs text-amber-600 font-bold px-2 py-1 bg-amber-50 rounded">Coming Soon</span>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

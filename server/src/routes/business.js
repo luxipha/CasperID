@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const crypto = require('crypto');
 const bcrypt = require('bcrypt');
-const { BusinessApp, WebhookSubscription, WebhookLog } = require('../database/models');
+const { BusinessApp, WebhookSubscription, WebhookLog, VerificationRequestV2 } = require('../database/models');
 const { requireAuth } = require('../middleware/auth');
 const { rateLimitMiddleware } = require('../utils/rate-limiter');
 const { dispatchEvent, sendTestWebhook } = require('../utils/webhook-dispatcher');
@@ -750,7 +750,10 @@ router.post('/apps/:app_id/logo', requireAuth, upload.single('logo'), async (req
 // GET /api/business/stats - Get aggregated usage stats
 router.get('/stats', requireAuth, async (req, res) => {
     try {
-        const apps = await BusinessApp.find({ owner_user_id: req.user.userId });
+        const apps = await BusinessApp.find({ owner_user_id: req.user.userId, active: true })
+            .select('app_id name active request_count');
+        const appIds = apps.map(app => app.app_id);
+        const appNameMap = new Map(apps.map(app => [app.app_id, app.name]));
 
         let totalRequests = 0;
         let activeApps = 0;
@@ -760,24 +763,60 @@ router.get('/stats', requireAuth, async (req, res) => {
             if (app.active) activeApps++;
         });
 
-        // Activity aggregation for heatmap (last 180 days)
+        // Verification aggregation for heatmap (last 180 days)
         const sixMonthsAgo = new Date();
         sixMonthsAgo.setDate(sixMonthsAgo.getDate() - 180);
-        
-        const activityData = await WebhookLog.aggregate([
+
+        const [activityData, verificationTotals, recentActivity] = await Promise.all([
+            VerificationRequestV2.aggregate([
+                {
+                    $match: {
+                        dapp_id: { $in: appIds },
+                        created_at: { $gte: sixMonthsAgo }
+                    }
+                },
+                {
+                    $group: {
+                        _id: { $dateToString: { format: "%Y-%m-%d", date: "$created_at" } },
+                        count: { $sum: 1 }
+                    }
+                },
+                { $sort: { "_id": 1 } }
+            ]),
+            VerificationRequestV2.aggregate([
+                {
+                    $match: {
+                        dapp_id: { $in: appIds }
+                    }
+                },
+                {
+                    $group: {
+                        _id: '$dapp_id',
+                        count: { $sum: 1 }
+                    }
+                }
+            ]),
             {
                 $match: {
-                    app_id: { $in: apps.map(app => app.app_id) },
-                    created_at: { $gte: sixMonthsAgo }
+                    dapp_id: { $in: appIds }
                 }
             },
             {
-                $group: {
-                    _id: { $dateToString: { format: "%Y-%m-%d", date: "$created_at" } },
-                    count: { $sum: 1 }
-                }
+                $sort: { created_at: -1 }
             },
-            { $sort: { "_id": 1 } }
+            {
+                $limit: 10
+            },
+            {
+                $project: {
+                    _id: 0,
+                    request_id: 1,
+                    dapp_id: 1,
+                    verification_tier: 1,
+                    status: 1,
+                    created_at: 1
+                }
+            }
         ]);
 
         const activity = activityData.map(item => ({
@@ -785,13 +824,34 @@ router.get('/stats', requireAuth, async (req, res) => {
             count: item.count
         }));
 
+        const totalVerifications = verificationTotals.reduce((sum, item) => sum + item.count, 0);
+        const topApps = apps
+            .map(app => ({
+                name: app.name,
+                value: app.request_count || 0
+            }))
+            .sort((a, b) => b.value - a.value)
+            .slice(0, 5);
+
+        const normalizedRecentActivity = recentActivity.map(item => ({
+            request_id: item.request_id,
+            app_id: item.dapp_id,
+            app_name: appNameMap.get(item.dapp_id) || item.dapp_id,
+            verification_tier: item.verification_tier,
+            status: item.status,
+            created_at: item.created_at
+        }));
+
         res.json({
             success: true,
             stats: {
                 total_requests: totalRequests,
+                total_verifications: totalVerifications,
                 active_apps: activeApps,
                 total_apps: apps.length,
-                activity
+                activity,
+                top_apps: topApps,
+                recent_activity: normalizedRecentActivity
             }
         });
     } catch (error) {
