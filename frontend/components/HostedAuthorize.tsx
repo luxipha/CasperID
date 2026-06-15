@@ -196,7 +196,9 @@ const HostedAuthorize: React.FC = () => {
       await refreshUser();
       const result = await apiService.getOAuthAuthorizationStatus(clientId);
       setCurrentTier(result.current_tier || 'layer_0');
-      if (result.eligible) {
+      if (result.onboarding_required) {
+        setFlowStep('onboarding');
+      } else if (result.eligible) {
         setAuthorizationStatus(result.authorization_status || 'complete');
         setFlowStep('consent');
       } else if (result.current_tier === 'layer_0') {
@@ -204,7 +206,7 @@ const HostedAuthorize: React.FC = () => {
       } else if (result.required_tier === 'layer_2') {
         setFlowStep('upgrade_l2_prompt');
       } else if (result.required_tier === 'layer_3') {
-        setFlowStep(result.current_tier === 'layer_1' ? 'upgrade_l2_prompt' : 'upgrade_l3_prompt');
+        setFlowStep('upgrade_l3_prompt');
       } else {
         setFlowStep('onboarding');
       }
@@ -470,36 +472,30 @@ const HostedAuthorize: React.FC = () => {
       )}
 
       {flowStep === 'upgrade_l3' && (
-        <div className="min-h-screen bg-[#F8F9FF] p-4 md:p-8">
-          <div className="max-w-7xl mx-auto">
-            <div className="mb-5 flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-primary/10 bg-white p-5">
-              <div>
-                <p className="text-xs font-black uppercase tracking-widest text-primary">Authorization requirement</p>
-                <h1 className="text-xl font-black text-text-main">{app?.name} requires Layer 3 verification</h1>
-                <p className="text-sm text-text-sub">Complete or submit KYC below, then check your authorization status.</p>
-              </div>
-              <button onClick={checkEligibility} className="rounded-xl bg-primary px-5 py-3 text-sm font-black text-white">
-                Check status
-              </button>
-            </div>
-            <KYCHome />
-          </div>
+        <div className="min-h-screen bg-[#F8F9FF] px-4 py-6 sm:px-6 md:p-8">
+          <KYCHome
+            initialStep="layer3_method"
+            onExit={() => returnError('access_denied', 'The required Layer 3 verification was not completed.')}
+            onLayer3Submitted={checkEligibility}
+          />
         </div>
       )}
 
       {flowStep === 'consent' && app && (
-        <div className="min-h-screen bg-[#F8F9FF] p-6">
+        <div className="min-h-screen bg-[#F8F9FF] px-4 py-5 sm:px-6 sm:py-6">
           {authorizationStatus === 'provisional' && (
-            <div className="mx-auto mb-4 max-w-[600px] rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm font-semibold text-amber-900">
-              Your Layer 3 review is pending. {app.name} will receive a 24-hour provisional authorization showing your actual {tierLabels[currentTier]} status.
+            <div className="mx-auto mb-4 max-w-[600px] rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 md:p-4 text-sm font-semibold leading-relaxed text-amber-900">
+              Your Layer 3 review is pending. You can continue to {app.name} now while CasperID completes the review. Your current status remains {tierLabels[currentTier]} until final approval.
             </div>
           )}
           <ConsentRequest
             appName={app.name}
             appLogo={app.logo_url}
             requestedScopes={app.requested_scopes}
+            approveLabel={`Continue to ${app.name}`}
+            denyLabel="Cancel"
             onApprove={completeAuthorization}
-            onDeny={() => returnError('access_denied', 'The user denied this authorization request.')}
+            onDeny={() => returnError('access_denied', 'The user canceled this authorization request.')}
           />
         </div>
       )}

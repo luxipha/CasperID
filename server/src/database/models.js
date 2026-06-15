@@ -754,6 +754,13 @@ const userAccountSchema = new mongoose.Schema({
         created_at: Date,
         revoked: { type: Boolean, default: false }
     }],
+    onboarding_completed: {
+        type: Boolean,
+        default: false
+    },
+    onboarding_completed_at: {
+        type: Date
+    },
     // Verification tier (single source of truth)
     tier: {
         type: String,

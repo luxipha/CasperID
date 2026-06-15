@@ -72,6 +72,11 @@ jobs:
             WEBAUTHN_RP_ID=${{ secrets.WEBAUTHN_RP_ID }}
             WEBAUTHN_RP_NAME=${{ secrets.WEBAUTHN_RP_NAME }}
             WEBAUTHN_ORIGIN=${{ secrets.WEBAUTHN_ORIGIN }}
+            SMTP_HOST=${{ secrets.SMTP_HOST }}
+            SMTP_PORT=${{ secrets.SMTP_PORT }}
+            SMTP_USER=${{ secrets.SMTP_USER }}
+            SMTP_PASS=${{ secrets.SMTP_PASS }}
+            EMAIL_FROM=${{ secrets.EMAIL_FROM }}
             SUPPORT_EMAIL=${{ secrets.SUPPORT_EMAIL }}
             SUPPORT_EMAIL_PASSWORD=${{ secrets.SUPPORT_EMAIL_PASSWORD }}
             SUPPORT_EMAIL_HOST=${{ secrets.SUPPORT_EMAIL_HOST }}

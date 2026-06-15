@@ -17,17 +17,17 @@ export const KYCDocumentSelection: React.FC<KYCDocumentSelectionProps> = ({ onBa
   ];
 
   return (
-    <div className="w-full max-w-7xl mx-auto animate-in fade-in slide-in-from-bottom-4 duration-700 pb-20">
+    <div className="w-full max-w-7xl mx-auto animate-in fade-in slide-in-from-bottom-4 duration-700 pb-10 md:pb-20">
       {/* Page Content Layout */}
-      <div className="grid grid-cols-1 lg:grid-cols-[1fr_340px] gap-10 items-start">
+      <div className="grid grid-cols-1 lg:grid-cols-[1fr_340px] gap-6 lg:gap-10 items-start">
         
         {/* Left: Document Selection Area */}
-        <div className="space-y-10">
+        <div className="space-y-6 md:space-y-10">
           <div className="space-y-2">
-            <h1 className="text-[40px] font-black text-text-main tracking-tight leading-tight">
+            <h1 className="text-[30px] md:text-[40px] font-black text-text-main tracking-tight leading-tight">
               Select Your Document Type
             </h1>
-            <p className="text-text-sub text-lg font-medium leading-relaxed max-w-2xl">
+            <p className="text-text-sub text-base md:text-lg font-medium leading-relaxed max-w-2xl">
               Please select the type of government identification document you will be uploading to proceed.
             </p>
           </div>
@@ -37,13 +37,13 @@ export const KYCDocumentSelection: React.FC<KYCDocumentSelectionProps> = ({ onBa
               <button 
                 key={doc.id}
                 onClick={() => setSelected(doc.id)}
-                className={`w-full text-left bg-white rounded-[24px] border p-6 flex items-center gap-6 transition-all active:scale-[0.99] group ${
+                className={`w-full text-left bg-white rounded-[20px] md:rounded-[24px] border p-4 md:p-6 flex items-center gap-4 md:gap-6 transition-all active:scale-[0.99] group ${
                   selected === doc.id 
                     ? 'border-primary shadow-glow ring-1 ring-primary/20' 
                     : 'border-gray-100 shadow-soft hover:border-gray-200 hover:shadow-md'
                 }`}
               >
-                <div className={`size-14 rounded-full flex items-center justify-center transition-colors shrink-0 ${
+                <div className={`size-12 md:size-14 rounded-full flex items-center justify-center transition-colors shrink-0 ${
                   selected === doc.id ? 'bg-primary/10 text-primary' : 'bg-gray-50 text-text-sub'
                 }`}>
                   <span className="material-symbols-outlined text-[28px]">{doc.icon}</span>
@@ -63,7 +63,7 @@ export const KYCDocumentSelection: React.FC<KYCDocumentSelectionProps> = ({ onBa
             <button 
               disabled={!selected}
               onClick={() => selected && onNext(selected)}
-              className="w-full h-16 bg-primary text-white rounded-[22px] font-black text-base flex items-center justify-center gap-3 shadow-xl shadow-primary/30 hover:shadow-primary/40 transition-all active:scale-[0.98] disabled:opacity-50 disabled:shadow-none"
+              className="w-full h-14 md:h-16 bg-primary text-white rounded-[18px] md:rounded-[22px] font-black text-base flex items-center justify-center gap-3 shadow-xl shadow-primary/30 hover:shadow-primary/40 transition-all active:scale-[0.98] disabled:opacity-50 disabled:shadow-none"
             >
               Next
               <span className="material-symbols-outlined text-xl">arrow_forward</span>
@@ -72,7 +72,7 @@ export const KYCDocumentSelection: React.FC<KYCDocumentSelectionProps> = ({ onBa
         </div>
 
         {/* Right: Verification Steps Sidebar */}
-        <aside className="space-y-6">
+        <aside className="hidden lg:block space-y-6">
           <div className="bg-white rounded-[32px] border border-gray-100 shadow-soft overflow-hidden p-8 space-y-8">
             <h2 className="text-[11px] font-black text-text-sub uppercase tracking-[0.2em] mb-4">Verification Steps</h2>
             
@@ -143,7 +143,7 @@ export const KYCDocumentSelection: React.FC<KYCDocumentSelectionProps> = ({ onBa
       </div>
 
       {/* Footer Exit Link */}
-      <div className="mt-12 flex justify-center">
+      <div className="mt-8 md:mt-12 flex justify-center">
         <button 
           onClick={onCancel}
           className="flex items-center gap-2 text-text-sub hover:text-alerts transition-all font-bold text-sm"

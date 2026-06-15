@@ -461,8 +461,8 @@ function parseDocumentText(text, documentType, ocrConfidence = 0) {
 
 /**
  * Submit Layer 3 verification request for admin review
- * Finds the pending VerificationRequestV2 created by /layer3/start and
- * enriches it with the OCR-extracted document data.
+ * Submits the exact draft created by /layer3/start and enriches it with the
+ * OCR-extracted document data.
  * POST /api/v2/verification/layer3/submit
  */
 router.post('/layer3/submit', async (req, res) => {
@@ -501,6 +501,8 @@ router.post('/layer3/submit', async (req, res) => {
         }
 
         const {
+            request_id,
+            requestId,
             document_data,
             upload_id,
             front_image_url,
@@ -514,11 +516,20 @@ router.post('/layer3/submit', async (req, res) => {
             return res.status(400).json({ success: false, error: 'Missing required fields: document_data and upload_id' });
         }
 
-        // Find the pending VerificationRequestV2 opened by /layer3/start
+        const targetRequestId = request_id || requestId;
+        if (!targetRequestId) {
+            return res.status(400).json({ success: false, error: 'request_id is required' });
+        }
+
+        // Submit the exact draft opened by /layer3/start. Never select an
+        // arbitrary pending request for the user.
         const pendingRequest = await VerificationRequestV2.findOne({
+            request_id: targetRequestId,
             user_id: fullUserAccount.user_id,
             verification_tier: 'layer_3',
-            status: { $in: ['pending', 'in_progress'] }
+            status: { $in: ['pending', 'in_progress'] },
+            'verification_data.submitted_at': { $in: [null, ''] },
+            expires_at: { $gt: new Date() }
         });
 
         if (!pendingRequest) {
@@ -636,21 +647,32 @@ router.delete('/:requestId', async (req, res) => {
             });
         }
 
-        const { VerificationRequestV2 } = require('../database/models');
+        const { VerificationRequestV2, DevicePairing } = require('../database/models');
         const verificationRequest = await VerificationRequestV2.findOne({
             request_id: requestId,
-            user_id: sessionData.userAccount.user_id
+            user_id: sessionData.userAccount.user_id,
+            status: { $in: ['pending', 'in_progress'] },
+            $or: [
+                { verification_tier: { $ne: 'layer_3' } },
+                { 'verification_data.submitted_at': { $in: [null, ''] } }
+            ]
         });
 
         if (!verificationRequest) {
             return res.status(404).json({
                 success: false,
-                error: 'Verification request not found'
+                error: 'Active verification draft not found'
             });
         }
 
         verificationRequest.status = 'cancelled';
         await verificationRequest.save();
+        await DevicePairing.updateMany({
+            verification_request_id: requestId,
+            status: { $in: ['pending', 'processing'] }
+        }, {
+            $set: { status: 'cancelled' }
+        });
 
         res.json({
             success: true,

@@ -8,25 +8,25 @@ interface KYCLayer3MethodProps {
 
 export const KYCLayer3Method: React.FC<KYCLayer3MethodProps> = ({ onBack, onSelectMethod }) => {
   return (
-    <div className="w-full max-w-7xl mx-auto animate-in fade-in slide-in-from-bottom-4 duration-700 pb-20">
+    <div className="w-full max-w-7xl mx-auto animate-in fade-in slide-in-from-bottom-4 duration-700 pb-10 md:pb-20">
       {/* Page Content Layout */}
-      <div className="grid grid-cols-1 lg:grid-cols-[1fr_340px] gap-10 items-start">
+      <div className="grid grid-cols-1 lg:grid-cols-[1fr_340px] gap-6 lg:gap-10 items-start">
 
         {/* Left: Selection Area */}
-        <div className="space-y-8">
+        <div className="space-y-6 md:space-y-8">
           <div className="space-y-2">
-            <h1 className="text-[40px] font-black text-text-main tracking-tight leading-tight">
+            <h1 className="text-[32px] md:text-[40px] font-black text-text-main tracking-tight leading-tight">
               Choose Verification Method
             </h1>
-            <p className="text-text-sub text-lg font-medium leading-relaxed max-w-2xl">
+            <p className="text-text-sub text-base md:text-lg font-medium leading-relaxed max-w-2xl">
               Select how you would like to complete your identity verification.
             </p>
           </div>
 
-          <div className="space-y-6">
+          <div className="flex flex-col gap-4 md:gap-6">
             {/* NIMC Card - DISABLED */}
             <div
-              className="w-full text-left bg-white rounded-[32px] border border-gray-100 shadow-soft p-8 flex items-center gap-6 opacity-50 cursor-not-allowed relative overflow-hidden"
+              className="order-2 md:order-1 w-full text-left bg-white rounded-[24px] md:rounded-[32px] border border-gray-100 shadow-soft p-5 pt-16 sm:p-8 flex flex-col sm:flex-row sm:items-center gap-4 sm:gap-6 opacity-50 cursor-not-allowed relative overflow-hidden"
             >
               {/* Coming Soon Badge */}
               <div className="absolute top-4 right-4 px-3 py-1.5 rounded-full bg-amber-50 text-amber-700 text-[10px] font-black uppercase tracking-widest border border-amber-200 flex items-center gap-1.5">
@@ -34,14 +34,14 @@ export const KYCLayer3Method: React.FC<KYCLayer3MethodProps> = ({ onBack, onSele
                 Coming Soon
               </div>
 
-              <div className="size-16 rounded-2xl bg-indigo-50 flex items-center justify-center text-primary shrink-0">
+              <div className="size-14 md:size-16 rounded-2xl bg-indigo-50 flex items-center justify-center text-primary shrink-0">
                 <span className="material-symbols-outlined text-[32px]">badge</span>
               </div>
               <div className="flex-1">
                 <div className="flex items-center justify-between mb-1">
-                  <h3 className="text-xl font-black text-text-main">NIMC Verification</h3>
+                  <h3 className="text-lg md:text-xl font-black text-text-main">NIMC Verification</h3>
                 </div>
-                <p className="text-text-sub text-base font-medium leading-relaxed max-w-xl">
+                <p className="text-text-sub text-sm md:text-base font-medium leading-relaxed max-w-xl">
                   Verify using your National Identity Management Commission number via QR Code (Mobile) or OTP (Desktop).
                 </p>
               </div>
@@ -51,24 +51,24 @@ export const KYCLayer3Method: React.FC<KYCLayer3MethodProps> = ({ onBack, onSele
             {/* Upload ID Card */}
             <button
               onClick={() => onSelectMethod('upload')}
-              className="w-full text-left bg-white rounded-[32px] border border-gray-100 shadow-soft p-8 flex flex-col gap-6 group hover:border-primary/40 hover:shadow-glow transition-all active:scale-[0.99]"
+              className="order-1 md:order-2 w-full text-left bg-white rounded-[24px] md:rounded-[32px] border border-gray-100 shadow-soft p-5 md:p-8 flex flex-col gap-5 md:gap-6 group hover:border-primary/40 hover:shadow-glow transition-all active:scale-[0.99]"
             >
-              <div className="flex items-center gap-6">
-                <div className="size-16 rounded-2xl bg-green-50 flex items-center justify-center text-green-600 shrink-0 group-hover:scale-105 transition-transform">
+              <div className="flex flex-col sm:flex-row sm:items-center gap-4 sm:gap-6">
+                <div className="size-14 md:size-16 rounded-2xl bg-green-50 flex items-center justify-center text-green-600 shrink-0 group-hover:scale-105 transition-transform">
                   <span className="material-symbols-outlined text-[32px]">upload_file</span>
                 </div>
                 <div className="flex-1">
                   <div className="flex items-center justify-between mb-1">
-                    <h3 className="text-xl font-black text-text-main">Upload Government ID</h3>
+                    <h3 className="text-lg md:text-xl font-black text-text-main">Upload Government ID</h3>
                   </div>
-                  <p className="text-text-sub text-base font-medium leading-relaxed max-w-xl">
+                  <p className="text-text-sub text-sm md:text-base font-medium leading-relaxed max-w-xl">
                     Upload a photo of your Passport, Driver's License, or National ID card.
                   </p>
                 </div>
-                <span className="material-symbols-outlined text-text-sub group-hover:text-primary transition-colors ml-4">chevron_right</span>
+                <span className="material-symbols-outlined hidden sm:block text-text-sub group-hover:text-primary transition-colors ml-4">chevron_right</span>
               </div>
 
-              <div className="flex flex-wrap gap-2 pl-20">
+              <div className="flex flex-wrap gap-2 sm:pl-20">
                 {['Passport', "Driver's License", 'ID Card'].map(tag => (
                   <span key={tag} className="px-4 py-2 rounded-xl bg-gray-50 border border-gray-100 text-[11px] font-black text-text-sub uppercase tracking-widest">
                     {tag}
@@ -80,7 +80,7 @@ export const KYCLayer3Method: React.FC<KYCLayer3MethodProps> = ({ onBack, onSele
         </div>
 
         {/* Right: Verification Steps Sidebar */}
-        <aside className="space-y-6">
+        <aside className="hidden lg:block space-y-6">
           <div className="bg-white rounded-[32px] border border-gray-100 shadow-soft overflow-hidden p-8 space-y-8">
             <h2 className="text-[11px] font-black text-text-sub uppercase tracking-[0.2em] mb-4">Verification Steps</h2>
 
@@ -149,7 +149,7 @@ export const KYCLayer3Method: React.FC<KYCLayer3MethodProps> = ({ onBack, onSele
       </div>
 
       {/* Footer Exit Link */}
-      <div className="mt-12 flex justify-center">
+      <div className="mt-8 md:mt-12 flex justify-center">
         <button
           onClick={onBack}
           className="flex items-center gap-2 text-text-sub hover:text-alerts transition-all font-bold text-sm"

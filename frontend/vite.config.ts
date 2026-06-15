@@ -32,9 +32,8 @@ export default defineConfig(({ mode }) => {
     server: {
       port: 3000,
       host: '0.0.0.0',
-      allowedHosts: true, // Allow ngrok and other tunnels
+      allowedHosts: true, // Allow Dev Tunnels and other proxies
       headers: {
-        'ngrok-skip-browser-warning': 'true',
         'Cross-Origin-Opener-Policy': 'same-origin-allow-popups',
         'Cross-Origin-Embedder-Policy': 'credentialless',
       },
@@ -42,13 +41,22 @@ export default defineConfig(({ mode }) => {
         // Proxy API calls to local backend during development
         '/api': {
           target: env.VITE_LOCAL_BACKEND_URL || 'http://127.0.0.1:3001',
-          changeOrigin: true,
+          changeOrigin: false,
           secure: false,
+          configure: (proxy) => {
+            proxy.on('proxyReq', (proxyReq, req) => {
+              // WebAuthn validates the browser origin, so preserve the public
+              // Dev Tunnel origin when forwarding requests to localhost.
+              if (req.headers.origin) {
+                proxyReq.setHeader('origin', req.headers.origin);
+              }
+            });
+          },
         },
         // Proxy well-known endpoints (JWKS, OpenID Connect discovery)
         '/.well-known': {
           target: env.VITE_API_URL || 'http://localhost:3001',
-          changeOrigin: true,
+          changeOrigin: false,
           secure: false,
         },
       },

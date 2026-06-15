@@ -202,19 +202,51 @@ class VerificationServiceV2 {
                 throw new Error('Email verification (Layer 1) must be completed before starting Layer 3');
             }
 
-            // Create verification request
-            const requestId = uuidv4();
-            const verificationRequest = new VerificationRequestV2({
-                request_id: requestId,
+            const submittedRequest = await VerificationRequestV2.findOne({
                 user_id: userAccount.user_id,
-                dapp_id: appId,
                 verification_tier: 'layer_3',
-                requested_fields: ['identity_verified', 'liveness_verified'],
-                purpose,
-                status: 'pending'
-            });
+                status: { $in: ['pending', 'in_progress'] },
+                'verification_data.submitted_at': { $exists: true, $nin: [null, ''] },
+                expires_at: { $gt: new Date() }
+            }).sort({ created_at: -1 });
 
-            await verificationRequest.save();
+            if (submittedRequest) {
+                throw new Error('Layer 3 verification is already submitted and under review');
+            }
+
+            // Reuse an unfinished draft so reopening the flow does not create
+            // duplicate Layer 3 requests. A draft is not under review until
+            // /layer3/submit records verification_data.submitted_at.
+            let verificationRequest = await VerificationRequestV2.findOne({
+                user_id: userAccount.user_id,
+                verification_tier: 'layer_3',
+                status: { $in: ['pending', 'in_progress'] },
+                'verification_data.submitted_at': { $in: [null, ''] },
+                expires_at: { $gt: new Date() }
+            }).sort({ created_at: -1 });
+
+            if (!verificationRequest) {
+                verificationRequest = new VerificationRequestV2({
+                    request_id: uuidv4(),
+                    user_id: userAccount.user_id,
+                    dapp_id: appId,
+                    verification_tier: 'layer_3',
+                    requested_fields: ['identity_verified', 'liveness_verified'],
+                    purpose,
+                    status: 'pending'
+                });
+                await verificationRequest.save();
+            }
+
+            const requestId = verificationRequest.request_id;
+
+            // Only the newest scoped QR handoff should remain usable.
+            await DevicePairing.updateMany({
+                verification_request_id: requestId,
+                status: { $in: ['pending', 'processing'] }
+            }, {
+                $set: { status: 'cancelled' }
+            });
 
             // Generate QR pairing code for cross-device liveness verification
             const pairingId = uuidv4();

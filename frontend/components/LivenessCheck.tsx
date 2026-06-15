@@ -22,7 +22,7 @@ interface LivenessCheckProps {
 
 type VerificationState = "INITIALIZING" | "POSITIONING" | "CHALLENGE" | "VERIFYING_AI" | "MINTING" | "ZK_PROVING" | "ZK_SUBMITTING" | "SUCCESS" | "COMPLETED" | "SYBIL_REJECTED";
 type ChallengeType = "BLINK" | "OPEN_MOUTH";
-const MIN_SUBMISSION_FRAMES = 14;
+const MIN_SUBMISSION_FRAMES = 10;
 const FRAME_CAPTURE_TIMEOUT_MS = 10000;
 
 const euclideanDist = (p1: any, p2: any) => Math.sqrt(Math.pow(p1.x - p2.x, 2) + Math.pow(p1.y - p2.y, 2));
@@ -328,9 +328,8 @@ export const LivenessCheck: React.FC<LivenessCheckProps> = ({ onBack, onComplete
             captureFrame(canvasRef.current, st);
           }
 
-          // Progress based on ratio (approx 0.05 to 0.15 range)
-          const mouthProgress = Math.min(100, Math.max(0, (mouthRatio - 0.05) / 0.1 * 100));
-          setProgress(mouthProgress);
+          // Once the mouth challenge begins, progress represents captured evidence.
+          setProgress(Math.min(100, (st.frames.length / MIN_SUBMISSION_FRAMES) * 100));
 
           if (mouthRatio > 0.13) {
             if (now - lastCaptureLogAt.current >= 1000) {
@@ -351,10 +350,11 @@ export const LivenessCheck: React.FC<LivenessCheckProps> = ({ onBack, onComplete
                   requiredFrames: MIN_SUBMISSION_FRAMES,
                   elapsedMs: elapsed,
                 });
-                setGuidance(`Camera capture stalled at ${st.frames.length}/${MIN_SUBMISSION_FRAMES}. Close your mouth and try again.`);
+                setGuidance("Camera capture stalled. Close your mouth and try again.");
                 mouthCaptureStartedAt.current = now;
               } else {
-                setGuidance(`Keep mouth open... ${st.frames.length}/${MIN_SUBMISSION_FRAMES}`);
+                setGuidance("Keep your mouth open...");
+                setProgress(Math.min(100, (st.frames.length / MIN_SUBMISSION_FRAMES) * 100));
               }
               return;
             }
@@ -621,7 +621,7 @@ export const LivenessCheck: React.FC<LivenessCheckProps> = ({ onBack, onComplete
   const getMobileStep = (): MobileStep => {
     if (state === "SUCCESS") return "success";
     if (state === "SYBIL_REJECTED") return "position"; // Will be caught by early return above
-    if (state === "MINTING" || state === "ZK_PROVING" || state === "ZK_SUBMITTING") return "processing";
+    if (state === "VERIFYING_AI" || state === "MINTING" || state === "ZK_PROVING" || state === "ZK_SUBMITTING") return "processing";
     if (state === "CHALLENGE" && challenge === "OPEN_MOUTH") return "smile";
     if (state === "CHALLENGE" && challenge === "BLINK") return "blink";
     return "position";
@@ -711,6 +711,8 @@ export const LivenessCheck: React.FC<LivenessCheckProps> = ({ onBack, onComplete
     )
   }
 
+  const showDesktopQr = !isMobile;
+
   return (
     <div className="w-full max-w-7xl mx-auto animate-in fade-in slide-in-from-bottom-4 duration-700 pb-20">
       {/* Page Header */}
@@ -731,7 +733,7 @@ export const LivenessCheck: React.FC<LivenessCheckProps> = ({ onBack, onComplete
       <div className="grid grid-cols-1 lg:grid-cols-[1fr_340px] gap-10 items-start">
 
         {/* Left: Main Verification Area */}
-        <div className={`bg-white rounded-[40px] border border-gray-100 shadow-soft p-8 md:p-12 space-y-10 min-h-[600px] ${(state === 'MINTING' || state === 'ZK_PROVING' || state === 'ZK_SUBMITTING') ? 'flex items-center justify-center' : ''}`}>
+        <div className={`bg-white rounded-[40px] border border-gray-100 shadow-soft p-8 md:p-12 space-y-8 ${showDesktopQr ? 'lg:min-h-0' : 'min-h-[600px]'} ${(state === 'MINTING' || state === 'ZK_PROVING' || state === 'ZK_SUBMITTING') ? 'flex items-center justify-center' : ''}`}>
 
           {state === "VERIFYING_AI" ? (
             <div className="w-full flex-1 flex flex-col items-center justify-center gap-6 animate-in zoom-in-50 duration-500">
@@ -777,10 +779,10 @@ export const LivenessCheck: React.FC<LivenessCheckProps> = ({ onBack, onComplete
           ) : (
             <>
               {/* QR Code Area for Desktop / Camera Area for Mobile */}
-              <div className="relative aspect-[3/4] bg-black rounded-2xl overflow-hidden shadow-2xl border-4 border-slate-800 flex items-center justify-center">
+              <div className={`relative bg-black rounded-2xl overflow-hidden shadow-2xl border-4 border-slate-800 flex items-center justify-center ${showDesktopQr ? 'min-h-[420px] md:min-h-[460px] w-full max-w-3xl mx-auto' : 'aspect-[3/4]'}`}>
 
                 {/* Desktop QR Code Display */}
-                {!isMobile && (
+                {showDesktopQr && (
                   <div className="w-full h-full flex flex-col items-center justify-center gap-6 p-8">
                     {qrCodeDataUrl ? (
                       <div className="bg-white p-4 rounded-xl">
@@ -885,7 +887,7 @@ export const LivenessCheck: React.FC<LivenessCheckProps> = ({ onBack, onComplete
               </div>
 
               {/* Action Row */}
-              <div className="flex flex-col md:flex-row md:items-center justify-between gap-10">
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
                 <div className="space-y-1">
                   <h3 className="text-xl font-black text-text-main">Ready to scan?</h3>
                   <p className="text-text-sub text-base font-medium">

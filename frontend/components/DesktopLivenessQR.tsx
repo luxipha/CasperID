@@ -128,14 +128,13 @@ export const DesktopLivenessQR: React.FC<DesktopLivenessQRProps> = ({
 
                     {/* Progress Bar */}
                     {step === 'scanning' && (
-                        <div className="space-y-2">
+                        <div>
                             <div className="w-full h-1 bg-white/10 rounded-full overflow-hidden">
                                 <div
                                     className="h-full bg-gradient-to-r from-primary via-secondary to-primary rounded-full transition-all duration-500"
                                     style={{ width: `${displayProgress}%` }}
                                 />
                             </div>
-                            <span className="text-xs text-white/50 font-medium">{Math.floor(displayProgress)}%</span>
                         </div>
                     )}
 

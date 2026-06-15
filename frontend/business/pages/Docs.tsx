@@ -412,7 +412,12 @@ const uploadResponse = await fetch('https://apis.casperid.com/api/v2/verificatio
   body: formData
 });
 
-const { extracted_data } = await uploadResponse.json();
+const {
+  extracted_data,
+  upload_id,
+  front_image_url,
+  back_image_url
+} = await uploadResponse.json();
 
 // Step 3: Complete liveness check 
 // (See Layer 2 Verification for implementation details)
@@ -426,9 +431,12 @@ const submitResponse = await fetch('https://apis.casperid.com/api/v2/verificatio
     'Authorization': \`Bearer \${sessionToken}\`
   },
   body: JSON.stringify({
-    requestId: requestId,
-    extractedData: extracted_data,
-    documentType: 'passport'
+    request_id: requestId,
+    document_data: extracted_data,
+    upload_id,
+    front_image_url,
+    back_image_url,
+    liveness_verified: true
   })
 });
 

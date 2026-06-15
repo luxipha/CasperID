@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { apiService } from '../services/api';
 import { LivenessCheck } from './LivenessCheck';
-import { L3LivenessCheck } from './L3LivenessCheck';
+import { L3LivenessCheck, type Layer3VerificationSession } from './L3LivenessCheck';
 import { LivenessSuccess } from './LivenessSuccess';
 import { KYCLayer3Method } from './KYCLayer3Method';
 import { KYCNIMCSelection } from './KYCNIMCSelection';
@@ -21,7 +21,6 @@ import { KYCNIMCMobileQR } from './KYCNIMCMobileQR';
 import { IdentityStatusCard, ReusableKYCCard, TrustScoreCard } from './DashboardCards';
 import { ConnectedPlatforms } from './ConnectedPlatforms';
 import { ReusableTools } from './ReusableTools';
-import { HumanFirstIdentity } from './HumanFirstIdentity';
 import { RecentActivity } from './RecentActivity';
 
 type ViewState =
@@ -42,10 +41,19 @@ type ViewState =
   | 'layer3_submission_received'
   | 'layer3_full_success';
 
-export const KYCHome: React.FC = () => {
-  const [activeStep, setActiveStep] = useState<ViewState>('dashboard');
+interface KYCHomeProps {
+  initialStep?: ViewState;
+  onExit?: () => void;
+  onLayer3Submitted?: () => void;
+}
+
+export const KYCHome: React.FC<KYCHomeProps> = ({
+  initialStep = 'dashboard',
+  onExit,
+  onLayer3Submitted,
+}) => {
+  const [activeStep, setActiveStep] = useState<ViewState>(initialStep);
   const [selectedDocType, setSelectedDocType] = useState<string>('passport');
-  const [isSubmittingToReview, setIsSubmittingToReview] = useState(false);
   const [kycSubmitted, setKycSubmitted] = useState(false);
   const [layer3Status, setLayer3Status] = useState<'none' | 'pending' | 'approved'>('none');
   const [extractedData, setExtractedData] = useState<any>(null);
@@ -53,6 +61,8 @@ export const KYCHome: React.FC = () => {
   const [frontImageUrl, setFrontImageUrl] = useState<string>('');
   const [backImageUrl, setBackImageUrl] = useState<string>('');
   const [isLayer3Flow, setIsLayer3Flow] = useState<boolean>(false); // Track if we're in Layer 3 flow
+  const [layer3Session, setLayer3Session] = useState<Layer3VerificationSession | null>(null);
+  const [layer3Method, setLayer3Method] = useState<'document_upload' | 'nimc'>('document_upload');
   const { user } = useAuth();
 
   // Check for pending Layer 3 verification on mount
@@ -86,6 +96,52 @@ export const KYCHome: React.FC = () => {
 
   // Helper for dashboard navigation back
   const goToDashboard = () => setActiveStep('dashboard');
+  const exitFlow = () => {
+    if (onExit) {
+      onExit();
+      return;
+    }
+    goToDashboard();
+  };
+  const cancelLayer3Draft = async () => {
+    const requestId = layer3Session?.requestId;
+    setLayer3Session(null);
+    setIsLayer3Flow(false);
+    if (requestId && !kycSubmitted) {
+      try {
+        await apiService.delete(`/api/v2/verification/${requestId}`);
+      } catch (error) {
+        console.error('[Layer3] Failed to cancel draft verification:', error);
+      }
+    }
+    exitFlow();
+  };
+  const startOrRefreshLayer3Session = async (method: 'document_upload' | 'nimc') => {
+    const response = await apiService.startLayer3Verification(method);
+    const verification = response.verification;
+    if (!verification?.requestId || !verification?.pairingId || !verification?.pairingToken) {
+      throw new Error('The server did not return a complete Layer 3 verification session.');
+    }
+
+    const session = {
+      requestId: verification.requestId,
+      pairingId: verification.pairingId,
+      pairingToken: verification.pairingToken,
+      qrCodeDataUrl: verification.qrCode?.dataUrl,
+    };
+    setLayer3Session(session);
+    return session;
+  };
+  const beginLayer3Liveness = async () => {
+    try {
+      await startOrRefreshLayer3Session(layer3Method);
+      setIsLayer3Flow(true);
+      setActiveStep('liveness');
+    } catch (error) {
+      console.error('[Layer3] Failed to refresh liveness handoff:', error);
+      alert(error instanceof Error ? error.message : 'Failed to start liveness verification. Please try again.');
+    }
+  };
 
   // Map layer status to display names
   const getVerificationLevel = (layerStatus: string) => {
@@ -148,13 +204,11 @@ export const KYCHome: React.FC = () => {
   };
 
   if (activeStep === 'liveness') {
-    // Use the tracked flow state instead of user status
-    const livenessLayer = isLayer3Flow ? 3 : 2;
-
     // Layer 3 uses stripped-down component (no sidebar/header)
     if (isLayer3Flow) {
       return (
         <L3LivenessCheck
+          verificationSession={layer3Session || undefined}
           onComplete={() => {
             setActiveStep('layer3_review_submit');
           }}
@@ -186,14 +240,13 @@ export const KYCHome: React.FC = () => {
   if (activeStep === 'layer3_method') {
     return (
       <KYCLayer3Method
-        onBack={goToDashboard}
+        onBack={cancelLayer3Draft}
         onSelectMethod={async (m) => {
           try {
             // Start Layer 3 verification session BEFORE proceeding
-            const response = await apiService.startLayer3Verification(
-              m === 'nimc' ? 'nimc' : 'document_upload'
-            );
-            console.log('[Layer3] Verification session started:', response);
+            const method = m === 'nimc' ? 'nimc' : 'document_upload';
+            setLayer3Method(method);
+            await startOrRefreshLayer3Session(method);
 
             if (m === 'nimc') {
               setActiveStep('layer3_nimc_selection');
@@ -213,7 +266,7 @@ export const KYCHome: React.FC = () => {
     return (
       <KYCNIMCSelection
         onBack={() => setActiveStep('layer3_method')}
-        onCancel={goToDashboard}
+        onCancel={cancelLayer3Draft}
         onSelectMode={(mode) => {
           if (mode === 'desktop') {
             setActiveStep('layer3_nimc_number');
@@ -229,7 +282,7 @@ export const KYCHome: React.FC = () => {
     return (
       <KYCNIMCMobileQR
         onBack={() => setActiveStep('layer3_nimc_selection')}
-        onCancel={goToDashboard}
+        onCancel={cancelLayer3Draft}
         onScanned={() => setActiveStep('layer3_processing')}
       />
     );
@@ -239,7 +292,7 @@ export const KYCHome: React.FC = () => {
     return (
       <KYCNIMCNumberEntry
         onBack={() => setActiveStep('layer3_nimc_selection')}
-        onCancel={goToDashboard}
+        onCancel={cancelLayer3Draft}
         onNext={(num) => {
           setActiveStep('layer3_nimc_otp');
         }}
@@ -251,7 +304,7 @@ export const KYCHome: React.FC = () => {
     return (
       <KYCNIMCOTP
         onBack={() => setActiveStep('layer3_nimc_number')}
-        onCancel={goToDashboard}
+        onCancel={cancelLayer3Draft}
         onVerify={(otp) => {
           setActiveStep('layer3_processing');
         }}
@@ -272,8 +325,8 @@ export const KYCHome: React.FC = () => {
   if (activeStep === 'layer3_nimc_success') {
     return (
       <KYCNIMCSuccess
-        onProceed={() => setActiveStep('liveness')}
-        onCancel={goToDashboard}
+        onProceed={beginLayer3Liveness}
+        onCancel={cancelLayer3Draft}
       />
     );
   }
@@ -281,15 +334,17 @@ export const KYCHome: React.FC = () => {
   if (activeStep === 'layer3_review_submit') {
     return (
       <KYCReviewSubmit
+        requestId={layer3Session?.requestId || ''}
         documentData={extractedData}
         uploadId={uploadId}
         frontImageUrl={frontImageUrl}
         backImageUrl={backImageUrl}
         livenessVerified={true} // We know liveness is verified if we reached this step
         onBack={() => setActiveStep('liveness')}
-        onCancel={goToDashboard}
+        onCancel={cancelLayer3Draft}
         onSubmit={() => {
-          setIsSubmittingToReview(true);
+          setKycSubmitted(true);
+          setLayer3Status('pending');
           setActiveStep('layer3_submission_received');
         }}
       />
@@ -299,9 +354,14 @@ export const KYCHome: React.FC = () => {
   if (activeStep === 'layer3_submission_received') {
     return (
       <KYCSubmissionReceived
+        actionLabel={onLayer3Submitted ? 'Continue authorization' : undefined}
         onDashboard={() => {
           setKycSubmitted(true);
-          goToDashboard();
+          if (onLayer3Submitted) {
+            onLayer3Submitted();
+          } else {
+            goToDashboard();
+          }
         }}
       />
     );
@@ -322,7 +382,7 @@ export const KYCHome: React.FC = () => {
     return (
       <KYCDocumentSelection
         onBack={() => setActiveStep('layer3_method')}
-        onCancel={goToDashboard}
+        onCancel={cancelLayer3Draft}
         onNext={(type) => {
           setSelectedDocType(type);
           setActiveStep('layer3_doc_upload');
@@ -336,7 +396,7 @@ export const KYCHome: React.FC = () => {
       <KYCDocumentUpload
         docType={selectedDocType}
         onBack={() => setActiveStep('layer3_doc_selection')}
-        onCancel={goToDashboard}
+        onCancel={cancelLayer3Draft}
         onNext={async (frontFile, backFile) => {
           try {
 
@@ -376,7 +436,6 @@ export const KYCHome: React.FC = () => {
             setUploadId('fallback_' + Date.now());
             // Move to manual entry but PRESERVE any image URLs we might have
             setActiveStep('layer3_manual_entry');
-            setExtractionStatus('manual');
             // DO NOT setFrontImageUrl('') or setBackImageUrl('') here
             // If the OCR failed, we still want the admin to see the images!
           }
@@ -393,10 +452,9 @@ export const KYCHome: React.FC = () => {
         onBack={() => setActiveStep('layer3_doc_upload')}
         onNext={(confirmedData) => {
           setExtractedData(confirmedData);
-          setIsLayer3Flow(true); // Mark as Layer 3 flow
-          setActiveStep('liveness');
+          beginLayer3Liveness();
         }}
-        onCancel={goToDashboard}
+        onCancel={cancelLayer3Draft}
       />
     );
   }

@@ -31,9 +31,28 @@ function sanitizedTheme(app) {
     };
 }
 
+function hasProvisionedAccount(user) {
+    return typeof user?.wallet === 'string' &&
+        user.wallet.length > 0 &&
+        user.wallet !== 'pending_wallet' &&
+        user.wallet !== 'undefined';
+}
+
 async function assessAuthorizationEligibility(app, user) {
     const grantedTier = user.tier || 'layer_0';
     const requiredTier = normalizeRequiredTier(app.sdk_config?.requiredTier);
+    const onboardingRequired = !hasProvisionedAccount(user);
+
+    if (onboardingRequired) {
+        return {
+            eligible: false,
+            grantedTier,
+            requiredTier,
+            authorizationStatus: null,
+            verificationStatus: null,
+            onboardingRequired: true
+        };
+    }
 
     if ((TIER_NUMERIC[grantedTier] ?? 0) >= TIER_NUMERIC[requiredTier]) {
         return {
@@ -41,16 +60,21 @@ async function assessAuthorizationEligibility(app, user) {
             grantedTier,
             requiredTier,
             authorizationStatus: 'complete',
-            verificationStatus: 'approved'
+            verificationStatus: 'approved',
+            onboardingRequired: false
         };
     }
 
+    // A submitted Layer 3 request is a terminal state for hosted authorization,
+    // even when the user entered Layer 3 directly from Layer 1. Preserve the
+    // user's real tier while admin review is pending.
     const pendingLayer3 = requiredTier === TIER_LEVELS.LAYER_3 &&
-        (TIER_NUMERIC[grantedTier] ?? 0) >= TIER_NUMERIC[TIER_LEVELS.LAYER_2]
+        (TIER_NUMERIC[grantedTier] ?? 0) >= TIER_NUMERIC[TIER_LEVELS.LAYER_1]
         ? await VerificationRequestV2.findOne({
             user_id: user.user_id,
             verification_tier: 'layer_3',
             status: { $in: ['pending', 'in_progress'] },
+            'verification_data.submitted_at': { $exists: true, $nin: [null, ''] },
             expires_at: { $gt: new Date() }
         })
         : null;
@@ -60,7 +84,8 @@ async function assessAuthorizationEligibility(app, user) {
         grantedTier,
         requiredTier,
         authorizationStatus: pendingLayer3 ? 'provisional' : null,
-        verificationStatus: pendingLayer3 ? 'pending' : null
+        verificationStatus: pendingLayer3 ? 'pending' : null,
+        onboardingRequired: false
     };
 }
 
@@ -150,7 +175,8 @@ router.get('/authorize/status', requireAuth, async (req, res) => {
             current_tier: assessment.grantedTier,
             required_tier: assessment.requiredTier,
             authorization_status: assessment.authorizationStatus,
-            verification_status: assessment.verificationStatus
+            verification_status: assessment.verificationStatus,
+            onboarding_required: assessment.onboardingRequired
         });
     } catch (error) {
         console.error('[OAuth] Authorization status failed:', error);
@@ -194,10 +220,13 @@ router.post('/authorize/complete', requireAuth, async (req, res) => {
         if (!assessment.eligible) {
             return res.status(403).json({
                 success: false,
-                error: 'Required verification tier has not been completed',
-                code: 'verification_required',
+                error: assessment.onboardingRequired
+                    ? 'Account setup must complete before authorization can continue'
+                    : 'Required verification tier has not been completed',
+                code: assessment.onboardingRequired ? 'onboarding_required' : 'verification_required',
                 current_tier: assessment.grantedTier,
-                required_tier: assessment.requiredTier
+                required_tier: assessment.requiredTier,
+                onboarding_required: assessment.onboardingRequired
             });
         }
 

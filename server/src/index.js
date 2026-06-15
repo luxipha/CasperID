@@ -74,8 +74,8 @@ app.use(helmet({
             styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
             scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'", "https://*.intercom.io", "https://*.walletconnect.org", "https://*.walletconnect.com"],
             imgSrc: ["'self'", "data:", "https:", "blob:"],
-            connectSrc: ["'self'", "https:", "wss:", "https://*.onrender.com", "http://localhost:*"],
-            frameSrc: ["'self'", "https://*.walletconnect.org", "https://*.walletconnect.com", "https://*.intercom.io"],
+            connectSrc: ["'self'", "https:", "wss:", "https://*.onrender.com", "http://localhost:*", "https://*.devtunnels.ms"],
+            frameSrc: ["'self'", "https://*.walletconnect.org", "https://*.walletconnect.com", "https://*.intercom.io", "https://*.devtunnels.ms"],
             fontSrc: ["'self'", "https://fonts.gstatic.com"],
             objectSrc: ["'none'"],
         },
@@ -107,7 +107,7 @@ app.use(cors({
         if (!origin) return callback(null, true);
 
         // Allow chrome-extension URLs or ngrok URLs for development
-        if (origin.startsWith('chrome-extension://') || origin.includes('ngrok') || origin.includes('ngrok-free.app')) {
+        if (origin.startsWith('chrome-extension://') || origin.includes('ngrok') || origin.includes('ngrok-free.app') || origin.includes('.devtunnels.ms')) {
             return callback(null, true);
         }
 

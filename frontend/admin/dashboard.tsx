@@ -4,8 +4,9 @@ import { Button } from '../components/ui/button';
 import { Card } from '../components/ui/card';
 import { Input } from '../components/ui/input';
 import { Badge } from '../components/ui/badge';
-import { Loader2, CheckCircle, XCircle, Clock } from 'lucide-react';
+import { ArrowRight, CheckCircle, Clock, Eye, EyeOff, KeyRound, Loader2, ShieldCheck, XCircle } from 'lucide-react';
 import RequestDetailsModal from './components/request-detail-modal';
+import Logo from '../components/Logo';
 
 interface VerificationRequest {
     id: string;
@@ -46,11 +47,13 @@ export default function AdminDashboard() {
     const [filter, setFilter] = useState<'all' | 'pending' | 'approved' | 'rejected'>('pending');
     const [rejectingRequest, setRejectingRequest] = useState<VerificationRequest | null>(null);
     const [rejectionReason, setRejectionReason] = useState('');
+    const [showPassword, setShowPassword] = useState(false);
 
     const handleLogin = async () => {
         if (username && password) {
             try {
                 setLoading(true);
+                setError('');
                 const { token } = await apiClient.loginAdmin(username, password);
                 setToken(token);
                 setIsAuthenticated(true);
@@ -68,7 +71,7 @@ export default function AdminDashboard() {
         setError('');
 
         try {
-            const statusFilter = filter === 'all' ? undefined : filter;
+            const statusFilter = filter;
             const data = await apiClient.getVerificationRequests(authToken, statusFilter);
             setRequests(data.requests || []);
         } catch (err: any) {
@@ -121,36 +124,153 @@ export default function AdminDashboard() {
 
     if (!isAuthenticated) {
         return (
-            <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
-                <Card className="p-8 max-w-md w-full bg-white/10 backdrop-blur-lg border-white/20">
-                    <div className="text-center space-y-4">
-                        <h2 className="text-2xl font-bold text-white">Admin Login</h2>
-                        <p className="text-gray-300">
-                            Enter admin credentials to access the verification console.
-                        </p>
-                        <Input
-                            type="text"
-                            value={username}
-                            onChange={(e) => setUsername(e.target.value)}
-                            placeholder="Username"
-                            className="bg-slate-700 border-slate-600 text-white placeholder:text-gray-500 mb-3"
-                        />
-                        <Input
-                            type="password"
-                            value={password}
-                            onChange={(e) => setPassword(e.target.value)}
-                            placeholder="Admin password"
-                            onKeyDown={(e) => e.key === 'Enter' && handleLogin()}
-                            className="bg-slate-700 border-slate-600 text-white placeholder:text-gray-500"
-                        />
-                        <Button
-                            onClick={handleLogin}
-                            className="w-full bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700"
-                        >
-                            Login
-                        </Button>
+            <div className="relative min-h-screen overflow-hidden bg-[#F8F9FF] px-5 py-10 text-text-main">
+                <div className="pointer-events-none absolute inset-0 opacity-[0.035] bg-[radial-gradient(#8652E2_1.5px,transparent_1.5px)] [background-size:32px_32px]" />
+                <div className="pointer-events-none absolute -left-40 top-1/4 size-[520px] rounded-full bg-primary/10 blur-[100px]" />
+                <div className="pointer-events-none absolute -right-48 bottom-0 size-[520px] rounded-full bg-cyan-200/30 blur-[110px]" />
+
+                <main className="relative z-10 mx-auto flex min-h-[calc(100vh-5rem)] w-full max-w-6xl items-center">
+                    <div className="grid w-full overflow-hidden rounded-[40px] border border-white bg-white shadow-[0_48px_120px_-36px_rgba(76,44,135,0.28)] lg:grid-cols-[1.08fr_0.92fr]">
+                        <section className="relative hidden min-h-[650px] overflow-hidden bg-[#171129] p-12 text-white lg:flex lg:flex-col lg:justify-between">
+                            <div className="absolute inset-0 opacity-40 bg-[radial-gradient(circle_at_20%_10%,#8652E2_0,transparent_42%),radial-gradient(circle_at_80%_85%,#6DE8EC33_0,transparent_38%)]" />
+                            <div className="absolute -right-24 top-28 size-72 rounded-full border border-white/10" />
+                            <div className="absolute -right-8 top-44 size-44 rounded-full border border-white/10" />
+
+                            <div className="relative flex items-center gap-3">
+                                <div className="flex size-11 items-center justify-center rounded-2xl bg-white/10 ring-1 ring-white/10">
+                                    <Logo showName={false} href={null} className="scale-125" />
+                                </div>
+                                <div>
+                                    <p className="text-sm font-extrabold tracking-tight">CasperID</p>
+                                    <p className="text-[9px] font-bold uppercase tracking-[0.28em] text-white/40">Operations</p>
+                                </div>
+                            </div>
+
+                            <div className="relative max-w-md">
+                                <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1.5">
+                                    <ShieldCheck className="size-4 text-[#6DE8EC]" />
+                                    <span className="text-[10px] font-extrabold uppercase tracking-[0.22em] text-white/60">Restricted workspace</span>
+                                </div>
+                                <h1 className="text-5xl font-black leading-[1.05] tracking-[-0.05em]">
+                                    Review identity with confidence.
+                                </h1>
+                                <p className="mt-5 max-w-sm text-sm font-medium leading-7 text-white/50">
+                                    Secure access to verification decisions, credential issuance, and identity operations.
+                                </p>
+                            </div>
+
+                            <div className="relative grid grid-cols-3 gap-3">
+                                {[
+                                    ['Encrypted', 'Credentials'],
+                                    ['8 hour', 'Sessions'],
+                                    ['Monitored', 'Access'],
+                                ].map(([value, label]) => (
+                                    <div key={label} className="rounded-2xl border border-white/10 bg-white/5 p-4 backdrop-blur-sm">
+                                        <p className="text-sm font-extrabold">{value}</p>
+                                        <p className="mt-1 text-[9px] font-bold uppercase tracking-widest text-white/35">{label}</p>
+                                    </div>
+                                ))}
+                            </div>
+                        </section>
+
+                        <section className="flex min-h-[650px] items-center px-6 py-12 sm:px-12 lg:px-16">
+                            <div className="mx-auto w-full max-w-md">
+                                <div className="mb-10 flex items-center gap-3 lg:hidden">
+                                    <div className="flex size-11 items-center justify-center rounded-2xl bg-primary shadow-lg shadow-primary/20">
+                                        <Logo showName={false} href={null} className="scale-125" />
+                                    </div>
+                                    <div>
+                                        <p className="font-black">CasperID</p>
+                                        <p className="text-[9px] font-bold uppercase tracking-[0.25em] text-text-sub/50">Operations</p>
+                                    </div>
+                                </div>
+
+                                <div className="mb-9">
+                                    <div className="mb-5 flex size-14 items-center justify-center rounded-2xl bg-primary/10 text-primary">
+                                        <KeyRound className="size-6" />
+                                    </div>
+                                    <p className="mb-2 text-[10px] font-black uppercase tracking-[0.28em] text-primary">Admin access</p>
+                                    <h2 className="text-3xl font-black tracking-tight text-text-main">Welcome back</h2>
+                                    <p className="mt-3 text-sm font-medium leading-6 text-text-sub">
+                                        Sign in with your operations account to continue.
+                                    </p>
+                                </div>
+
+                                <form
+                                    className="space-y-5"
+                                    onSubmit={(event) => {
+                                        event.preventDefault();
+                                        handleLogin();
+                                    }}
+                                >
+                                    <label className="block space-y-2">
+                                        <span className="ml-1 text-[10px] font-black uppercase tracking-[0.18em] text-text-sub/60">Username</span>
+                                        <Input
+                                            autoComplete="username"
+                                            type="text"
+                                            value={username}
+                                            onChange={(event) => setUsername(event.target.value)}
+                                            placeholder="admin"
+                                            className="h-14 rounded-2xl border-gray-100 bg-gray-50 px-5 font-bold text-text-main placeholder:text-text-sub/30 focus:bg-white"
+                                        />
+                                    </label>
+
+                                    <label className="block space-y-2">
+                                        <span className="ml-1 text-[10px] font-black uppercase tracking-[0.18em] text-text-sub/60">Password</span>
+                                        <div className="relative">
+                                            <Input
+                                                autoComplete="current-password"
+                                                autoFocus
+                                                type={showPassword ? 'text' : 'password'}
+                                                value={password}
+                                                onChange={(event) => setPassword(event.target.value)}
+                                                placeholder="Enter your admin password"
+                                                className="h-14 rounded-2xl border-gray-100 bg-gray-50 px-5 pr-14 font-bold text-text-main placeholder:text-text-sub/30 focus:bg-white"
+                                            />
+                                            <button
+                                                type="button"
+                                                onClick={() => setShowPassword((visible) => !visible)}
+                                                className="absolute inset-y-0 right-4 flex items-center text-text-sub/35 transition-colors hover:text-primary"
+                                                aria-label={showPassword ? 'Hide password' : 'Show password'}
+                                            >
+                                                {showPassword ? <EyeOff className="size-5" /> : <Eye className="size-5" />}
+                                            </button>
+                                        </div>
+                                    </label>
+
+                                    {error && (
+                                        <div className="rounded-2xl border border-red-100 bg-red-50 px-4 py-3 text-sm font-bold text-red-700" role="alert">
+                                            {error}
+                                        </div>
+                                    )}
+
+                                    <Button
+                                        type="submit"
+                                        disabled={loading || !username || !password}
+                                        className="h-14 w-full rounded-2xl bg-primary text-base font-black text-white shadow-xl shadow-primary/25 transition-all hover:bg-primary/90 active:scale-[0.99]"
+                                    >
+                                        {loading ? (
+                                            <>
+                                                <Loader2 className="size-5 animate-spin" />
+                                                Verifying access
+                                            </>
+                                        ) : (
+                                            <>
+                                                Enter operations
+                                                <ArrowRight className="size-5" />
+                                            </>
+                                        )}
+                                    </Button>
+                                </form>
+
+                                <div className="mt-8 flex items-center justify-center gap-2 text-[10px] font-bold uppercase tracking-[0.16em] text-text-sub/35">
+                                    <ShieldCheck className="size-4" />
+                                    Protected admin session
+                                </div>
+                            </div>
+                        </section>
                     </div>
-                </Card>
+                </main>
             </div>
         );
     }

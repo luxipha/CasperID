@@ -6,6 +6,13 @@ describe('originCanUseRpId', () => {
         expect(originCanUseRpId('https://account.casperid.com', 'casperid.com')).toBe(true);
     });
 
+    test('allows an exact HTTPS VS Code Dev Tunnel origin', () => {
+        expect(originCanUseRpId(
+            'https://ns9kxqqz-3000.asse.devtunnels.ms',
+            'ns9kxqqz-3000.asse.devtunnels.ms'
+        )).toBe(true);
+    });
+
     test('rejects unrelated and lookalike domains', () => {
         expect(originCanUseRpId('https://affiliate.anra.rest', 'casperid.com')).toBe(false);
         expect(originCanUseRpId('https://casperid.com.evil.test', 'casperid.com')).toBe(false);

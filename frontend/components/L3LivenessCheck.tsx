@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useAuth } from '../contexts/AuthContext';
 import { FaceMesh } from '@mediapipe/face_mesh';
 import { Camera } from '@mediapipe/camera_utils';
 import { MobileLivenessPage, MobileStep } from './MobileLiveness';
@@ -9,6 +8,7 @@ const euclideanDist = (p1: any, p2: any) => Math.sqrt(Math.pow(p1.x - p2.x, 2) +
 
 interface L3LivenessCheckProps {
     onComplete?: () => void;
+    verificationSession?: Layer3VerificationSession;
     pairingPayload?: {
         requestId: string;
         pairingId: string;
@@ -16,14 +16,22 @@ interface L3LivenessCheckProps {
     };
 }
 
+export interface Layer3VerificationSession {
+    requestId: string;
+    pairingId: string;
+    pairingToken: string;
+    qrCodeDataUrl?: string;
+}
+
 type VerificationState = "INITIALIZING" | "POSITIONING" | "CHALLENGE" | "VERIFYING" | "SUCCESS";
 type ChallengeType = "BLINK" | "OPEN_MOUTH";
+const MIN_SUBMISSION_FRAMES = 10;
 
 /**
  * L3LivenessCheck - Liveness component for Layer 3 flow with sidebar
  * NO minting - just verifies liveness and stores result for admin review
  */
-export const L3LivenessCheck: React.FC<L3LivenessCheckProps> = ({ onComplete, pairingPayload }) => {
+export const L3LivenessCheck: React.FC<L3LivenessCheckProps> = ({ onComplete, verificationSession, pairingPayload }) => {
     const [isMobile, setIsMobile] = useState(false);
 
     useEffect(() => {
@@ -49,14 +57,15 @@ export const L3LivenessCheck: React.FC<L3LivenessCheckProps> = ({ onComplete, pa
     const [ovalColor, setOvalColor] = useState<"white" | "red" | "green">("white");
 
     // QR Pairing State (for cross-device desktop-to-mobile flow)
-    const [requestId, setRequestId] = useState<string>(pairingPayload?.requestId || "");
-    const [pairingId, setPairingId] = useState<string>(pairingPayload?.pairingId || "");
-    const [pairingToken] = useState<string>(pairingPayload?.pairingToken || "");
-    const [qrCodeDataUrl, setQrCodeDataUrl] = useState<string>("");
-    const [desktopQrStep, setDesktopQrStep] = useState<"loading" | "ready" | "scanning" | "success">("loading");
-    const [qrInitialized, setQrInitialized] = useState(false);
-
-    const { refreshUser } = useAuth();
+    const session = verificationSession || pairingPayload;
+    const [requestId] = useState<string>(session?.requestId || "");
+    const [pairingId] = useState<string>(session?.pairingId || "");
+    const [pairingToken] = useState<string>(session?.pairingToken || "");
+    const [qrCodeDataUrl] = useState<string>(verificationSession?.qrCodeDataUrl || "");
+    const [desktopQrStep, setDesktopQrStep] = useState<"loading" | "ready" | "scanning" | "success">(
+        verificationSession?.qrCodeDataUrl ? "ready" : "loading"
+    );
+    const qrInitialized = !!session;
 
     const logicState = useRef({
         positionTimer: 0,
@@ -97,45 +106,6 @@ export const L3LivenessCheck: React.FC<L3LivenessCheckProps> = ({ onComplete, pa
         setChallenge("BLINK");
     };
 
-    // Initialize QR verification for Layer 3 (desktop flow only)
-    useEffect(() => {
-        // Prevent double initialization
-        if (qrInitialized || isMobile) return;
-
-        const initializeQRVerification = async () => {
-            try {
-                console.log('[L3 QR] Initializing Layer 3 QR verification...');
-                const response = await apiService.post('/api/v2/verification/layer3/start', {
-                    verificationMethod: 'document_upload',
-                    purpose: 'Layer 3 Liveness Verification'
-                });
-
-                console.log('[L3 QR] API Response:', response);
-
-                if (response && response.verification) {
-                    const { requestId: reqId, pairingId: pId, qrCode } = response.verification;
-                    console.log('[L3 QR] Received:', { reqId, pId, hasQrCode: !!qrCode });
-
-                    setRequestId(reqId);
-                    setPairingId(pId);
-
-                    if (qrCode && qrCode.dataUrl) {
-                        console.log('[L3 QR] Setting QR code image');
-                        setQrCodeDataUrl(qrCode.dataUrl);
-                        setDesktopQrStep('ready');
-                    }
-                }
-                setQrInitialized(true);
-            } catch (error) {
-                console.error('[L3 QR] Failed to initialize:', error);
-                setQrInitialized(true);
-                // Fallback: still allow verification, show camera instead
-            }
-        };
-
-        initializeQRVerification();
-    }, [qrInitialized, isMobile]);
-
     useEffect(() => {
         if (isMobile || !requestId || desktopQrStep === 'success') return;
         const poll = window.setInterval(async () => {
@@ -159,6 +129,12 @@ export const L3LivenessCheck: React.FC<L3LivenessCheckProps> = ({ onComplete, pa
         let camera: any = null;
         let faceMesh: any = null;
         let isActive = true;
+
+        // Desktop Layer 3 verification is phone-first. Do not request the
+        // desktop camera while a scoped mobile handoff is active.
+        if (!isMobile && qrCodeDataUrl) {
+            return;
+        }
 
         if (state === "VERIFYING" || state === "SUCCESS") {
             return;
@@ -290,14 +266,14 @@ export const L3LivenessCheck: React.FC<L3LivenessCheckProps> = ({ onComplete, pa
                         });
                     }
 
-                    // Update progress based on mouth opening (threshold ~0.15 for wide open)
-                    const openProgress = Math.min((mouthOpenRatio / 0.15) * 100, 100);
-                    setProgress(openProgress);
+                    // Once the mouth challenge begins, progress represents captured evidence.
+                    setProgress(Math.min(100, (st.frames.length / MIN_SUBMISSION_FRAMES) * 100));
 
                     // Mouth is considered "wide open" when ratio > 0.12
                     if (mouthOpenRatio > 0.12) {
-                        if (st.frames.length < 15) {
+                        if (st.frames.length < MIN_SUBMISSION_FRAMES) {
                             setGuidance("Hold it open...");
+                            setProgress(Math.min(100, (st.frames.length / MIN_SUBMISSION_FRAMES) * 100));
                             return;
                         }
 
@@ -375,12 +351,12 @@ export const L3LivenessCheck: React.FC<L3LivenessCheckProps> = ({ onComplete, pa
             if (camera) camera.stop();
             if (faceMesh) faceMesh.close();
         };
-    }, [state, challenge, isMobile]);
+    }, [state, challenge, isMobile, qrCodeDataUrl]);
 
     const submitLiveness = async (frames: Blob[]) => {
         if (state === "VERIFYING") return;
 
-        if (frames.length < 10) {
+        if (frames.length < MIN_SUBMISSION_FRAMES) {
             setGuidance("Not enough frames captured. Please try again.");
             setState("POSITIONING");
             return;
@@ -390,9 +366,16 @@ export const L3LivenessCheck: React.FC<L3LivenessCheckProps> = ({ onComplete, pa
             setState("VERIFYING");
             setGuidance("Verifying liveness...");
 
-            const result = requestId && pairingId
-                ? await apiService.submitLivenessCheckV2(requestId, frames, pairingId, pairingToken, ['blink', 'open_mouth'])
-                : await apiService.verifyLivenessSequence(frames, ['blink', 'open_mouth']);
+            if (!requestId || !pairingId || !pairingToken) {
+                throw new Error('Layer 3 verification session is missing. Restart the Layer 3 flow.');
+            }
+            const result = await apiService.submitLivenessCheckV2(
+                requestId,
+                frames,
+                pairingId,
+                pairingToken,
+                ['blink', 'open_mouth']
+            );
 
             if (result.success || result.passed) {
                 // Layer 3 doesn't change user status, so no need to refresh
@@ -444,17 +427,19 @@ export const L3LivenessCheck: React.FC<L3LivenessCheckProps> = ({ onComplete, pa
         );
     }
 
+    const showDesktopQr = !isMobile && qrInitialized && qrCodeDataUrl && desktopQrStep !== 'success';
+
     return (
         <div className="w-full max-w-7xl mx-auto animate-in fade-in slide-in-from-bottom-4 duration-700 pb-20">
             {/* Page Header */}
             <div className="mb-10">
                 <h1 className="text-[40px] font-black text-text-main tracking-tight leading-tight">
-                    {!isMobile && qrInitialized && qrCodeDataUrl && desktopQrStep !== 'success'
+                    {showDesktopQr
                         ? 'Cross-Device Verification'
                         : 'Liveness Verification'}
                 </h1>
                 <p className="text-text-sub text-lg font-medium leading-relaxed max-w-3xl mt-2">
-                    {!isMobile && qrInitialized && qrCodeDataUrl && desktopQrStep !== 'success'
+                    {showDesktopQr
                         ? 'Scan the QR code with your mobile device to complete the liveness verification.'
                         : 'Position your face within the frame and follow the on-screen prompts to confirm you are a real human.'}
                 </p>
@@ -464,11 +449,11 @@ export const L3LivenessCheck: React.FC<L3LivenessCheckProps> = ({ onComplete, pa
             <div className="grid grid-cols-1 lg:grid-cols-[1fr_340px] gap-10 items-start">
 
                 {/* Left: Camera or QR Code */}
-                <div className="bg-white rounded-[40px] border border-gray-100 shadow-soft p-8 md:p-12 space-y-10">
-                    <div className="relative aspect-[3/4] bg-black rounded-2xl overflow-hidden shadow-2xl border-4 border-slate-800 flex items-center justify-center">
+                <div className={`bg-white rounded-[40px] border border-gray-100 shadow-soft p-8 md:p-12 space-y-8 ${showDesktopQr ? 'lg:min-h-0' : ''}`}>
+                    <div className={`relative bg-black rounded-2xl overflow-hidden shadow-2xl border-4 border-slate-800 flex items-center justify-center ${showDesktopQr ? 'min-h-[420px] md:min-h-[460px] w-full max-w-3xl mx-auto' : 'aspect-[3/4]'}`}>
 
                         {/* Desktop QR Code Display */}
-                        {!isMobile && qrInitialized && qrCodeDataUrl && desktopQrStep !== 'success' && (
+                        {showDesktopQr && (
                             <div className="w-full h-full flex flex-col items-center justify-center gap-6 p-8">
                                 {/* QR Code Image */}
                                 <div className="bg-white p-4 rounded-xl">
@@ -557,7 +542,7 @@ export const L3LivenessCheck: React.FC<L3LivenessCheckProps> = ({ onComplete, pa
                         )}
                     </div>
 
-                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-10">
+                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
                         <div className="space-y-1">
                             <h3 className="text-xl font-black text-text-main">Ready to scan?</h3>
                             <p className="text-text-sub text-base font-medium">Ensure good lighting. Blink 3 times, then open your mouth wide.</p>

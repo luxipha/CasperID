@@ -713,7 +713,6 @@ const App: React.FC = () => {
               </div>
               <div className="flex flex-col gap-8">
                 <ReusableTools />
-                <HumanFirstIdentity onNavigate={setCurrentView} />
               </div>
             </div>
 

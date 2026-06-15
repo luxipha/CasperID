@@ -200,13 +200,18 @@ export const MobileLivenessPage: React.FC<MobileLivenessPageProps> = ({
                                     {step === 'success' ? (
                                         <span className="material-symbols-outlined text-4xl text-green-500 animate-in zoom-in duration-500">check</span>
                                     ) : (
-                                        <>
-                                            <span className="font-black text-3xl leading-none">{Math.floor(displayProgress)}%</span>
-                                            <span className="text-[8px] font-black uppercase tracking-widest text-white/40 mt-1">Analyzing</span>
-                                        </>
+                                        <span className="material-symbols-outlined text-4xl text-primary animate-pulse">person_search</span>
                                     )}
                                 </div>
                             </div>
+                            {step !== 'success' && (
+                                <div className="w-full max-w-[240px] h-1.5 mb-7 rounded-full overflow-hidden bg-white/10">
+                                    <div
+                                        className="h-full rounded-full bg-gradient-to-r from-primary via-secondary to-primary transition-all duration-300"
+                                        style={{ width: `${displayProgress}%` }}
+                                    />
+                                </div>
+                            )}
                             <h3 className="text-2xl font-black mb-2 tracking-tight">
                                 {step === 'success' ? 'Identity Verified' : 'Verifying Identity'}
                             </h3>

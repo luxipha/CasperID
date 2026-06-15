@@ -26,12 +26,12 @@ class ApiService {
   private csrfTokenPromise: Promise<void> | null = null;
 
   constructor() {
-    // In development, we use the VITE_API_URL (usually localhost:3001).
-    // On mobile via ngrok, we must use relative paths to go through the proxy.
-    const isLocalhost = typeof window !== 'undefined' &&
-      (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+    // In Vite dev server, use relative paths so Vite's proxy handles /api requests
+    // This avoids CORS issues with dev tunnels entirely
+    // In production (Vite build), use VITE_API_URL for the real backend
+    const isDev = import.meta.env.DEV;
 
-    this.baseURL = (import.meta as any).env.VITE_API_URL || (isLocalhost ? 'http://localhost:3001' : '');
+    this.baseURL = isDev ? '' : ((import.meta as any).env.VITE_API_URL || '');
 
     this.client = axios.create({
       baseURL: this.baseURL,
@@ -39,7 +39,6 @@ class ApiService {
       withCredentials: true,
       headers: {
         'Content-Type': 'application/json',
-        'ngrok-skip-browser-warning': 'true', // Bypass ngrok warning page for API calls
       },
     });
 
@@ -1458,6 +1457,7 @@ class ApiService {
    * Submit Layer 3 verification request for admin review
    */
   public async submitLayer3Verification(data: {
+    request_id: string;
     document_data: {
       document_type: string;
       document_number: string;
@@ -1649,7 +1649,9 @@ class ApiService {
 
   async getVerificationRequests(token: string, status?: string): Promise<{ requests: any[] }> {
     try {
-      const url = status ? `/api/admin/verification-requests?status=${status}` : '/api/admin/verification-requests';
+      const url = status !== undefined
+        ? `/api/admin/verification-requests?status=${status}`
+        : '/api/admin/verification-requests';
       const response = await this.client.get(url, {
         headers: { Authorization: `Bearer ${token}` }
       });

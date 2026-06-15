@@ -58,9 +58,41 @@ class WebAuthnService {
     assertOriginCanUseRpID(origin) {
         if (!origin) return;
 
-        if (!originCanUseRpId(origin, this.rpID)) {
-            throw new Error(`WebAuthn must be completed on a ${this.rpID} origin`);
+        if (originCanUseRpId(origin, this.rpID)) return;
+
+        // VS Code Dev Tunnels can rewrite the browser Origin header to the
+        // local forwarded address before Vite proxies the request. Allow that
+        // development-only transport detail when the configured WebAuthn
+        // origin itself is valid for the RP ID. Verification still checks the
+        // browser-signed clientDataJSON origin against this.origins.
+        let receivedHostname = '';
+        try {
+            receivedHostname = new URL(origin).hostname;
+        } catch {
+            // The mismatch error below handles malformed origins.
         }
+        const isLocalDevelopmentProxy =
+            process.env.NODE_ENV !== 'production' &&
+            (receivedHostname === 'localhost' || receivedHostname === '127.0.0.1') &&
+            this.origins.some(configuredOrigin => originCanUseRpId(configuredOrigin, this.rpID));
+
+        if (isLocalDevelopmentProxy) {
+            console.warn('[WebAuthn] Accepting localhost Origin rewritten by development proxy:', {
+                receivedOrigin: origin,
+                expectedRpId: this.rpID,
+                allowedOrigins: this.origins,
+            });
+            return;
+        }
+
+        console.warn('[WebAuthn] RP origin mismatch:', {
+            receivedOrigin: origin,
+            expectedRpId: this.rpID,
+            allowedOrigins: this.origins,
+        });
+        throw new Error(
+            `WebAuthn must be completed on a ${this.rpID} origin; received ${origin}`
+        );
     }
 
     /**
