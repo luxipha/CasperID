@@ -55,8 +55,10 @@ const IntegrationDetail: React.FC = () => {
   // Hosted authorization callback state
   const [allowedOrigins, setAllowedOrigins] = useState<string[]>([]);
   const [redirectUris, setRedirectUris] = useState<string[]>([]);
-  const [showOriginModal, setShowOriginModal] = useState(false);
-  const [newOrigin, setNewOrigin] = useState('');
+  const [showAllowedOriginModal, setShowAllowedOriginModal] = useState(false);
+  const [newAllowedOrigin, setNewAllowedOrigin] = useState('');
+  const [showRedirectUriModal, setShowRedirectUriModal] = useState(false);
+  const [newRedirectUri, setNewRedirectUri] = useState('');
 
   // Android Digital Asset Links state
   const [androidAssets, setAndroidAssets] = useState<AndroidDigitalAsset[]>([]);
@@ -160,17 +162,55 @@ const IntegrationDetail: React.FC = () => {
     }
   };
 
-  const handleAddOrigin = () => {
-    if (!newOrigin.trim()) {
+  const handleAddAllowedOrigin = () => {
+    if (!newAllowedOrigin.trim()) {
       setToastMessage('URL is required');
       setShowToast(true);
       setTimeout(() => setShowToast(false), 3000);
       return;
     }
 
-    // Redirect URIs must be exact URLs; wildcards are never valid callbacks.
     try {
-      const redirectUri = new URL(newOrigin);
+      const originUrl = new URL(newAllowedOrigin);
+      const isLocalhost = originUrl.hostname === 'localhost' && originUrl.protocol === 'http:';
+      if (originUrl.protocol !== 'https:' && !isLocalhost) throw new Error('Invalid protocol');
+      if (originUrl.pathname !== '/' || originUrl.search || originUrl.hash) {
+        throw new Error('Origin must not include a path');
+      }
+    } catch {
+      setToastMessage('Use an HTTPS origin without a path, or HTTP localhost for development');
+      setShowToast(true);
+      setTimeout(() => setShowToast(false), 3000);
+      return;
+    }
+
+    const normalizedOrigin = new URL(newAllowedOrigin).origin;
+    if (allowedOrigins.includes(normalizedOrigin)) {
+      setToastMessage('Origin already added');
+      setShowToast(true);
+      setTimeout(() => setShowToast(false), 3000);
+      return;
+    }
+
+    setAllowedOrigins(prev => [...prev, normalizedOrigin]);
+    setNewAllowedOrigin('');
+    setShowAllowedOriginModal(false);
+  };
+
+  const handleRemoveAllowedOrigin = (index: number) => {
+    setAllowedOrigins(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const handleAddRedirectUri = () => {
+    if (!newRedirectUri.trim()) {
+      setToastMessage('URL is required');
+      setShowToast(true);
+      setTimeout(() => setShowToast(false), 3000);
+      return;
+    }
+
+    try {
+      const redirectUri = new URL(newRedirectUri);
       const isLocalhost = redirectUri.hostname === 'localhost' && redirectUri.protocol === 'http:';
       if (redirectUri.protocol !== 'https:' && !isLocalhost) throw new Error('Invalid protocol');
     } catch {
@@ -180,12 +220,20 @@ const IntegrationDetail: React.FC = () => {
       return;
     }
 
-    setRedirectUris(prev => [...prev, newOrigin.trim()]);
-    setNewOrigin('');
-    setShowOriginModal(false);
+    const normalizedRedirectUri = new URL(newRedirectUri).toString();
+    if (redirectUris.includes(normalizedRedirectUri)) {
+      setToastMessage('Redirect URI already added');
+      setShowToast(true);
+      setTimeout(() => setShowToast(false), 3000);
+      return;
+    }
+
+    setRedirectUris(prev => [...prev, normalizedRedirectUri]);
+    setNewRedirectUri('');
+    setShowRedirectUriModal(false);
   };
 
-  const handleRemoveOrigin = (index: number) => {
+  const handleRemoveRedirectUri = (index: number) => {
     setRedirectUris(prev => prev.filter((_, i) => i !== index));
   };
 
@@ -377,9 +425,40 @@ const IntegrationDetail: React.FC = () => {
 
           <div className="bg-white rounded-xl border border-border-muted shadow-sm overflow-hidden">
             <div className="px-6 py-4 border-b border-border-muted bg-background-light/30 flex justify-between items-center">
+              <h3 className="font-bold text-text-main">Allowed Origins</h3>
+              <button
+                onClick={() => setShowAllowedOriginModal(true)}
+                className="text-primary text-xs font-bold flex items-center gap-1 hover:underline"
+              >
+                <span className="material-symbols-outlined !text-sm">add</span> Add Origin
+              </button>
+            </div>
+            <div className="p-6 flex flex-col gap-4">
+              <p className="text-xs text-text-muted">Browser origins allowed to start CasperID hosted authorization. Do not include paths.</p>
+              <div className="flex flex-col gap-2">
+                {allowedOrigins.map((origin, i) => (
+                  <div key={i} className="flex items-center gap-2">
+                    <input className="flex-1 rounded-lg border-border-muted bg-background-light/30 text-sm p-3 text-text-main" readOnly value={origin} />
+                    <button
+                      onClick={() => handleRemoveAllowedOrigin(i)}
+                      className="p-2 text-text-muted hover:text-red-500 transition-colors"
+                    >
+                      <span className="material-symbols-outlined !text-xl">delete</span>
+                    </button>
+                  </div>
+                ))}
+                {allowedOrigins.length === 0 && (
+                  <p className="text-xs text-text-muted italic">No allowed origins configured.</p>
+                )}
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-white rounded-xl border border-border-muted shadow-sm overflow-hidden">
+            <div className="px-6 py-4 border-b border-border-muted bg-background-light/30 flex justify-between items-center">
               <h3 className="font-bold text-text-main">OAuth Redirect URIs</h3>
               <button 
-                onClick={() => setShowOriginModal(true)}
+                onClick={() => setShowRedirectUriModal(true)}
                 className="text-primary text-xs font-bold flex items-center gap-1 hover:underline"
               >
                 <span className="material-symbols-outlined !text-sm">add</span> Add URL
@@ -392,7 +471,7 @@ const IntegrationDetail: React.FC = () => {
                   <div key={i} className="flex items-center gap-2">
                     <input className="flex-1 rounded-lg border-border-muted bg-background-light/30 text-sm p-3 text-text-main" readOnly value={url} />
                     <button 
-                      onClick={() => handleRemoveOrigin(i)}
+                      onClick={() => handleRemoveRedirectUri(i)}
                       className="p-2 text-text-muted hover:text-red-500 transition-colors"
                     >
                       <span className="material-symbols-outlined !text-xl">delete</span>
@@ -511,16 +590,69 @@ const IntegrationDetail: React.FC = () => {
         </div>
       </div>
 
+      {/* Allowed Origin Modal */}
+      {showAllowedOriginModal && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full overflow-hidden">
+            <div className="px-6 py-4 border-b border-border-muted bg-background-light/30 flex justify-between items-center">
+              <h3 className="font-bold text-text-main">Add Allowed Origin</h3>
+              <button
+                onClick={() => {
+                  setShowAllowedOriginModal(false);
+                  setNewAllowedOrigin('');
+                }}
+                className="text-text-muted hover:text-text-main transition-colors"
+              >
+                <span className="material-symbols-outlined">close</span>
+              </button>
+            </div>
+            <div className="p-6 flex flex-col gap-4">
+              <div className="flex flex-col gap-2">
+                <label className="text-sm font-bold text-text-main">Browser Origin</label>
+                <input
+                  type="text"
+                  autoFocus
+                  value={newAllowedOrigin}
+                  onChange={(e) => setNewAllowedOrigin(e.target.value)}
+                  placeholder="https://myapp.com"
+                  className="rounded-lg border border-border-muted bg-background-light/30 text-sm p-3 text-text-main focus:outline-none focus:ring-2 focus:ring-primary"
+                  onKeyDown={(e) => e.key === 'Enter' && handleAddAllowedOrigin()}
+                />
+                <p className="text-xs text-text-muted">Enter only the origin, such as `https://myapp.com` or `http://localhost:3000`.</p>
+              </div>
+
+              <div className="flex gap-3 mt-2">
+                <button
+                  onClick={() => {
+                    setShowAllowedOriginModal(false);
+                    setNewAllowedOrigin('');
+                  }}
+                  className="flex-1 px-4 py-2 rounded-lg border border-border-muted text-text-main font-bold text-sm hover:bg-background-light/50 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleAddAllowedOrigin}
+                  className="flex-1 px-4 py-2 rounded-lg bg-primary text-white font-bold text-sm hover:bg-primary/90 transition-colors shadow-lg shadow-primary/20"
+                >
+                  Add Origin
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Redirect URL Modal */}
-      {showOriginModal && (
+      {showRedirectUriModal && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full overflow-hidden">
             <div className="px-6 py-4 border-b border-border-muted bg-background-light/30 flex justify-between items-center">
               <h3 className="font-bold text-text-main">Add OAuth Redirect URI</h3>
               <button
                 onClick={() => {
-                  setShowOriginModal(false);
-                  setNewOrigin('');
+                  setShowRedirectUriModal(false);
+                  setNewRedirectUri('');
                 }}
                 className="text-text-muted hover:text-text-main transition-colors"
               >
@@ -533,11 +665,11 @@ const IntegrationDetail: React.FC = () => {
                 <input
                   type="text"
                   autoFocus
-                  value={newOrigin}
-                  onChange={(e) => setNewOrigin(e.target.value)}
+                  value={newRedirectUri}
+                  onChange={(e) => setNewRedirectUri(e.target.value)}
                   placeholder="https://myapp.com/auth/callback"
                   className="rounded-lg border border-border-muted bg-background-light/30 text-sm p-3 text-text-main focus:outline-none focus:ring-2 focus:ring-primary"
-                  onKeyDown={(e) => e.key === 'Enter' && handleAddOrigin()}
+                  onKeyDown={(e) => e.key === 'Enter' && handleAddRedirectUri()}
                 />
                 <p className="text-xs text-text-muted">Enter the complete redirect URI, including protocol, host, optional port, and callback path.</p>
               </div>
@@ -545,15 +677,15 @@ const IntegrationDetail: React.FC = () => {
               <div className="flex gap-3 mt-2">
                 <button
                   onClick={() => {
-                    setShowOriginModal(false);
-                    setNewOrigin('');
+                    setShowRedirectUriModal(false);
+                    setNewRedirectUri('');
                   }}
                   className="flex-1 px-4 py-2 rounded-lg border border-border-muted text-text-main font-bold text-sm hover:bg-background-light/50 transition-colors"
                 >
                   Cancel
                 </button>
                 <button
-                  onClick={handleAddOrigin}
+                  onClick={handleAddRedirectUri}
                   className="flex-1 px-4 py-2 rounded-lg bg-primary text-white font-bold text-sm hover:bg-primary/90 transition-colors shadow-lg shadow-primary/20"
                 >
                   Add URL
