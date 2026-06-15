@@ -56,6 +56,8 @@ jobs:
           env_vars: |
             NODE_ENV=production
             FRONTEND_URL=${{ secrets.FRONTEND_URL }}
+            ACCOUNT_FRONTEND_URL=${{ secrets.ACCOUNT_FRONTEND_URL }}
+            API_BASE_URL=${{ secrets.API_BASE_URL }}
             MONGODB_URI=${{ secrets.MONGODB_URI }}
             MONGODB_DATABASE_NAME=${{ secrets.MONGODB_DATABASE_NAME }}
             JWT_SECRET=${{ secrets.JWT_SECRET }}
