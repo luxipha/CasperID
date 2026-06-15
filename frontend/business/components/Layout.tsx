@@ -3,6 +3,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import Logo from '../../components/Logo';
 import { useAuth } from '../../contexts/AuthContext';
+import { apiService } from '../../services/api';
 
 interface NavItemProps {
   to: string;
@@ -34,15 +35,44 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isSandbox, setIsSandbox] = useState(false);
   const [isNotificationOpen, setIsNotificationOpen] = useState(false);
+  const [notifications, setNotifications] = useState<Array<{
+    id: string;
+    title: string;
+    message: string;
+    type: string;
+    read: boolean;
+    createdAt?: string;
+  }>>([]);
+  const [isNotificationLoading, setIsNotificationLoading] = useState(false);
   // Removed Global Modal state and logic in favor of centralized APIManagement modal
   const notificationRef = useRef<HTMLDivElement>(null);
 
-  const notifications = [
-    { id: 1, title: 'API Key Rotated', desc: 'The production key for Uniswap Clone was rotated successfully.', time: '2m ago', type: 'info', read: false },
-    { id: 2, title: 'New Verification', desc: 'A new user has verified their identity via Job Board Pro.', time: '15m ago', type: 'success', read: false },
-    { id: 3, title: 'Webhook Failure', desc: 'Endpoint https://api.lab.io returned a 500 error.', time: '1h ago', type: 'warning', read: true },
-    { id: 4, title: 'System Update', desc: 'CasperID B-Platform v2.4 is now live with Maps Grounding.', time: '4h ago', type: 'info', read: true },
-  ];
+  const unreadCount = notifications.filter(notification => !notification.read).length;
+
+  const formatRelativeTime = (value?: string) => {
+    if (!value) return '';
+    const timestamp = new Date(value).getTime();
+    if (Number.isNaN(timestamp)) return '';
+    const diffMs = Date.now() - timestamp;
+    const minutes = Math.max(1, Math.floor(diffMs / 60000));
+    if (minutes < 60) return `${minutes}m ago`;
+    const hours = Math.floor(minutes / 60);
+    if (hours < 24) return `${hours}h ago`;
+    const days = Math.floor(hours / 24);
+    return `${days}d ago`;
+  };
+
+  const loadNotifications = async () => {
+    try {
+      setIsNotificationLoading(true);
+      const response = await apiService.getBusinessNotifications();
+      setNotifications(response.notifications || []);
+    } catch (error) {
+      console.error('[Business Layout] Failed to load notifications:', error);
+    } finally {
+      setIsNotificationLoading(false);
+    }
+  };
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -53,6 +83,39 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
+
+  useEffect(() => {
+    if (user) {
+      loadNotifications();
+    }
+  }, [user]);
+
+  useEffect(() => {
+    if (isNotificationOpen) {
+      loadNotifications();
+    }
+  }, [isNotificationOpen]);
+
+  const handleNotificationClick = async (id: string, read: boolean) => {
+    if (read) return;
+    try {
+      await apiService.markBusinessNotificationAsRead(id);
+      setNotifications(prev => prev.map(notification => (
+        notification.id === id ? { ...notification, read: true } : notification
+      )));
+    } catch (error) {
+      console.error('[Business Layout] Failed to mark notification as read:', error);
+    }
+  };
+
+  const handleMarkAllNotificationsRead = async () => {
+    try {
+      await apiService.markAllBusinessNotificationsAsRead();
+      setNotifications(prev => prev.map(notification => ({ ...notification, read: true })));
+    } catch (error) {
+      console.error('[Business Layout] Failed to mark all notifications as read:', error);
+    }
+  };
 
   const navItems = [
     { to: '/business', icon: 'dashboard', label: 'Overview' },
@@ -178,31 +241,49 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
                   }`}
               >
                 <span className="material-symbols-outlined !text-xl">notifications</span>
-                {!isNotificationOpen && <span className="absolute top-2 right-2.5 size-2 bg-red-500 border-2 border-white rounded-full"></span>}
+                {!isNotificationOpen && unreadCount > 0 && <span className="absolute top-2 right-2.5 size-2 bg-red-500 border-2 border-white rounded-full"></span>}
               </button>
 
               {isNotificationOpen && (
                 <div className="absolute right-0 mt-3 w-80 md:w-96 bg-white rounded-2xl border border-border-muted shadow-2xl z-50 overflow-hidden animate-notification-enter">
                   <div className="px-6 py-4 border-b border-border-muted flex items-center justify-between bg-background-light/30">
                     <h3 className="font-bold text-text-main text-sm">Notifications</h3>
-                    <button className="text-primary text-[10px] font-bold uppercase tracking-wider hover:underline">Mark all as read</button>
+                    <button
+                      onClick={handleMarkAllNotificationsRead}
+                      disabled={unreadCount === 0}
+                      className="text-primary text-[10px] font-bold uppercase tracking-wider hover:underline disabled:text-text-muted disabled:no-underline"
+                    >
+                      Mark all as read
+                    </button>
                   </div>
                   <div className="max-h-[400px] overflow-y-auto">
-                    {notifications.map((n) => (
-                      <div key={n.id} className={`px-6 py-4 border-b border-border-muted hover:bg-background-light/50 transition-colors cursor-pointer flex gap-4 ${!n.read ? 'bg-primary/[0.02]' : ''}`}>
+                    {isNotificationLoading ? (
+                      <div className="px-6 py-8 text-sm text-text-sub text-center">Loading notifications...</div>
+                    ) : notifications.length === 0 ? (
+                      <div className="px-6 py-8 text-sm text-text-sub text-center">No business notifications yet.</div>
+                    ) : notifications.map((n) => (
+                      <div
+                        key={n.id}
+                        onClick={() => handleNotificationClick(n.id, n.read)}
+                        className={`px-6 py-4 border-b border-border-muted hover:bg-background-light/50 transition-colors cursor-pointer flex gap-4 ${!n.read ? 'bg-primary/[0.02]' : ''}`}
+                      >
                         <div className={`mt-1 size-8 shrink-0 rounded-full flex items-center justify-center ${n.type === 'success' ? 'bg-green-100 text-green-600' :
-                          n.type === 'warning' ? 'bg-red-100 text-red-600' : 'bg-blue-100 text-blue-600'
+                          n.type.includes('failed') || n.type.includes('deleted') ? 'bg-red-100 text-red-600' : 'bg-blue-100 text-blue-600'
                           }`}>
                           <span className="material-symbols-outlined !text-base">
-                            {n.type === 'success' ? 'check_circle' : n.type === 'warning' ? 'error' : 'info'}
+                            {n.type.includes('success') || n.type.includes('created') || n.type.includes('updated')
+                              ? 'check_circle'
+                              : n.type.includes('failed') || n.type.includes('deleted')
+                                ? 'error'
+                                : 'info'}
                           </span>
                         </div>
                         <div className="flex flex-col gap-0.5">
                           <div className="flex items-center justify-between">
                             <span className="text-sm font-bold text-text-main leading-tight">{n.title}</span>
-                            <span className="text-[10px] text-text-muted">{n.time}</span>
+                            <span className="text-[10px] text-text-muted">{formatRelativeTime(n.createdAt)}</span>
                           </div>
-                          <p className="text-xs text-text-muted leading-relaxed line-clamp-2">{n.desc}</p>
+                          <p className="text-xs text-text-muted leading-relaxed line-clamp-2">{n.message}</p>
                         </div>
                         {!n.read && <div className="mt-2 size-2 shrink-0 bg-primary rounded-full"></div>}
                       </div>

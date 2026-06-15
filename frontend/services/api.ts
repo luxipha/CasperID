@@ -1941,6 +1941,33 @@ class ApiService {
     }
   }
 
+  async getBusinessNotifications(): Promise<ApiResponse> {
+    try {
+      const response = await this.client.get('/api/business/notifications');
+      return response.data;
+    } catch (error) {
+      throw this.handleError(error);
+    }
+  }
+
+  async markBusinessNotificationAsRead(id: string): Promise<ApiResponse> {
+    try {
+      const response = await this.client.post(`/api/business/notifications/${id}/read`);
+      return response.data;
+    } catch (error) {
+      throw this.handleError(error);
+    }
+  }
+
+  async markAllBusinessNotificationsAsRead(): Promise<ApiResponse> {
+    try {
+      const response = await this.client.post('/api/business/notifications/read-all');
+      return response.data;
+    } catch (error) {
+      throw this.handleError(error);
+    }
+  }
+
   async getBusinessWebhooks(appId: string): Promise<ApiResponse> {
     try {
       const response = await this.client.get(`/api/business/webhooks?app_id=${appId}`);

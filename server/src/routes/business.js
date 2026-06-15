@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const crypto = require('crypto');
 const bcrypt = require('bcrypt');
-const { BusinessApp, WebhookSubscription, WebhookLog, VerificationRequestV2 } = require('../database/models');
+const { BusinessApp, WebhookSubscription, WebhookLog, VerificationRequestV2, Notification } = require('../database/models');
 const { requireAuth } = require('../middleware/auth');
 const { rateLimitMiddleware } = require('../utils/rate-limiter');
 const { dispatchEvent, sendTestWebhook } = require('../utils/webhook-dispatcher');
@@ -65,6 +65,95 @@ function normalizeRedirectUris(value) {
     }))];
 }
 
+async function createBusinessNotification(ownerUserId, type, title, message, metadata = {}) {
+    try {
+        await Notification.create({
+            user_id: ownerUserId,
+            type,
+            title,
+            message,
+            metadata,
+            data: {
+                scope: 'business',
+                ...metadata,
+            },
+            read: false,
+        });
+    } catch (error) {
+        console.error('[Business] Failed to create notification:', error.message);
+    }
+}
+
+function mapBusinessNotification(notification) {
+    return {
+        id: notification._id,
+        type: notification.type,
+        title: notification.title || 'Business update',
+        message: notification.message,
+        read: !!notification.read,
+        createdAt: notification.createdAt || notification.created_at,
+        metadata: notification.metadata || {},
+    };
+}
+
+// ============================================
+// BUSINESS NOTIFICATIONS
+// ============================================
+
+router.get('/notifications', requireAuth, async (req, res) => {
+    try {
+        const userId = req.user.userId || req.user.wallet;
+        const notifications = await Notification.find({
+            user_id: userId,
+            'data.scope': 'business',
+        }).sort({ createdAt: -1 }).limit(50).lean();
+
+        return res.json({
+            success: true,
+            notifications: notifications.map(mapBusinessNotification),
+            unread_count: notifications.filter(notification => !notification.read).length,
+        });
+    } catch (error) {
+        console.error('[Business] Get notifications failed:', error);
+        res.status(500).json({ success: false, error: 'Failed to fetch business notifications' });
+    }
+});
+
+router.post('/notifications/:id/read', requireAuth, async (req, res) => {
+    try {
+        const userId = req.user.userId || req.user.wallet;
+        const notification = await Notification.findOneAndUpdate(
+            { _id: req.params.id, user_id: userId, 'data.scope': 'business' },
+            { $set: { read: true } },
+            { new: true }
+        ).lean();
+
+        if (!notification) {
+            return res.status(404).json({ success: false, error: 'Notification not found' });
+        }
+
+        return res.json({ success: true, notification: mapBusinessNotification(notification) });
+    } catch (error) {
+        console.error('[Business] Mark notification read failed:', error);
+        res.status(500).json({ success: false, error: 'Failed to mark notification as read' });
+    }
+});
+
+router.post('/notifications/read-all', requireAuth, async (req, res) => {
+    try {
+        const userId = req.user.userId || req.user.wallet;
+        const result = await Notification.updateMany(
+            { user_id: userId, 'data.scope': 'business', read: false },
+            { $set: { read: true } }
+        );
+
+        return res.json({ success: true, updated_count: result.modifiedCount || 0 });
+    } catch (error) {
+        console.error('[Business] Mark all notifications read failed:', error);
+        res.status(500).json({ success: false, error: 'Failed to mark all notifications as read' });
+    }
+});
+
 // ============================================
 // APP REGISTRATION & KEY MANAGEMENT
 // ============================================
@@ -121,6 +210,13 @@ router.post('/apps', requireAuth, rateLimitMiddleware('business_api_key_create')
         });
 
         await newApp.save();
+        await createBusinessNotification(
+            userId,
+            'business_app_created',
+            'Application created',
+            `"${newApp.name}" is ready. Save the API secret now because it will not be shown again.`,
+            { app_id: newApp.app_id, app_name: newApp.name, environment: newApp.environment }
+        );
 
         if (!res.headersSent) {
             return res.status(201).json({
@@ -213,6 +309,13 @@ router.post('/apps/:app_id/rotate-key', requireAuth, rateLimitMiddleware('busine
         await BusinessApp.findOneAndUpdate(
             { app_id, owner_user_id: userId },
             { api_secret_hash: new_hash, updated_at: new Date() }
+        );
+        await createBusinessNotification(
+            userId,
+            'business_secret_rotated',
+            'API secret rotated',
+            `The API secret for "${app.name}" was rotated successfully.`,
+            { app_id: app.app_id, app_name: app.name }
         );
 
         if (!res.headersSent) {
@@ -316,6 +419,13 @@ router.patch('/apps/:app_id', requireAuth, async (req, res) => {
         }
 
         await app.save();
+        await createBusinessNotification(
+            userId,
+            'business_app_updated',
+            'Application updated',
+            `Settings for "${app.name}" were updated.`,
+            { app_id: app.app_id, app_name: app.name }
+        );
 
         const updated = app.toObject();
         delete updated.api_secret_hash;
@@ -346,6 +456,13 @@ router.delete('/apps/:app_id', requireAuth, async (req, res) => {
 
         app.active = false;
         await app.save();
+        await createBusinessNotification(
+            userId,
+            'business_app_deleted',
+            'Application deactivated',
+            `"${app.name}" was deactivated.`,
+            { app_id: app.app_id, app_name: app.name }
+        );
 
         return res.json({ success: true, message: 'App deactivated successfully' });
     } catch (error) {
@@ -386,6 +503,13 @@ router.post('/webhooks', requireAuth, async (req, res) => {
             signing_secret
         });
         await webhook.save();
+        await createBusinessNotification(
+            userId,
+            'business_webhook_created',
+            'Webhook added',
+            `A webhook was added for "${app.name}".`,
+            { app_id: app.app_id, app_name: app.name, webhook_id: webhook._id, url: webhook.url }
+        );
 
         return res.status(201).json({
             success: true,
@@ -456,6 +580,13 @@ router.delete('/webhooks/:webhook_id', requireAuth, async (req, res) => {
 
         webhook.active = false;
         await webhook.save();
+        await createBusinessNotification(
+            userId,
+            'business_webhook_deleted',
+            'Webhook removed',
+            `A webhook was removed from "${app.name}".`,
+            { app_id: app.app_id, app_name: app.name, webhook_id: webhook._id, url: webhook.url }
+        );
 
         return res.json({ success: true, message: 'Webhook removed' });
     } catch (error) {
@@ -498,6 +629,23 @@ router.post('/webhooks/:webhook_id/test', requireAuth, rateLimitMiddleware('busi
 
         // Use the shared sendTestWebhook function (logs the delivery)
         const result = await sendTestWebhook(webhook, testPayload);
+        await createBusinessNotification(
+            userId,
+            result.success ? 'business_webhook_test_success' : 'business_webhook_test_failed',
+            result.success ? 'Webhook test delivered' : 'Webhook test failed',
+            result.success
+                ? `Test delivery to ${webhook.url} succeeded for "${app.name}".`
+                : `Test delivery to ${webhook.url} failed for "${app.name}".`,
+            {
+                app_id: app.app_id,
+                app_name: app.name,
+                webhook_id: webhook._id,
+                url: webhook.url,
+                status_code: result.status_code,
+                delivery_id: result.delivery_id,
+                error: result.error,
+            }
+        );
 
         if (!res.headersSent) {
             res.json({
