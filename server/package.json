@@ -6,6 +6,7 @@
     "scripts": {
         "dev": "nodemon src/index.js",
         "start": "node src/index.js",
+        "admin:reset-password": "node src/reset-admin-password.js",
         "test": "jest"
     },
     "keywords": [

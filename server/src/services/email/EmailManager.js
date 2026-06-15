@@ -97,7 +97,7 @@ class EmailManager {
             to: email,
             subject: 'Welcome to CasperID - Your Digital Identity Awaits',
             html,
-            from: `"CasperID" <${(process.env.SMTP_USER || process.env.SUPPORT_EMAIL)}>`
+            from: process.env.EMAIL_FROM || `"CasperID" <${(process.env.SMTP_USER || process.env.SUPPORT_EMAIL)}>`
         });
     }
 
@@ -123,7 +123,7 @@ class EmailManager {
             to: email,
             subject: `CasperID: ${tierLabel} Verification Complete`,
             html,
-            from: `"CasperID Verification" <${(process.env.SMTP_USER || process.env.SUPPORT_EMAIL)}>`
+            from: process.env.EMAIL_FROM || `"CasperID Verification" <${(process.env.SMTP_USER || process.env.SUPPORT_EMAIL)}>`
         });
     }
 
@@ -148,7 +148,7 @@ class EmailManager {
             to: email,
             subject: 'Someone Viewed Your CasperID Profile',
             html,
-            from: `"CasperID" <${(process.env.SMTP_USER || process.env.SUPPORT_EMAIL)}>`
+            from: process.env.EMAIL_FROM || `"CasperID" <${(process.env.SMTP_USER || process.env.SUPPORT_EMAIL)}>`
         });
     }
 
@@ -173,7 +173,7 @@ class EmailManager {
             to: email,
             subject: 'Your CasperID Profile is Complete!',
             html,
-            from: `"CasperID" <${(process.env.SMTP_USER || process.env.SUPPORT_EMAIL)}>`
+            from: process.env.EMAIL_FROM || `"CasperID" <${(process.env.SMTP_USER || process.env.SUPPORT_EMAIL)}>`
         });
     }
 
@@ -198,7 +198,7 @@ class EmailManager {
             to: email,
             subject: 'CasperID Payment Confirmation',
             html,
-            from: `"CasperID Payments" <${(process.env.SMTP_USER || process.env.SUPPORT_EMAIL)}>`
+            from: process.env.EMAIL_FROM || `"CasperID Payments" <${(process.env.SMTP_USER || process.env.SUPPORT_EMAIL)}>`
         });
     }
 
@@ -240,7 +240,7 @@ class EmailManager {
             to: email,
             subject: 'Your CasperID Verification Code',
             html,
-            from: `"CasperID Security" <${(process.env.SMTP_USER || process.env.SUPPORT_EMAIL)}>`
+            from: process.env.EMAIL_FROM || `"CasperID Security" <${(process.env.SMTP_USER || process.env.SUPPORT_EMAIL)}>`
         });
     }
 

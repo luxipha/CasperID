@@ -13,16 +13,31 @@ const { eventBus, EVENTS } = require('../services/eventBus');
  */
 router.get('/verification-requests', adminAuthWithRateLimit, async (req, res) => {
     try {
-        const { status } = req.query;
+        const requestedStatus = typeof req.query.status === 'string' ? req.query.status : undefined;
+        const isAllFilter = requestedStatus === 'all';
+        const status = isAllFilter ? undefined : requestedStatus;
 
         // Default to showing pending/in_progress requests
         // For "pending" filter, V2 uses "in_progress" so include both
         const filterV1 = status ? { status } : { status: 'pending' };
-        const filterV2 = status === 'pending'
+        const filterV2Status = status === 'pending'
             ? { status: { $in: ['pending', 'in_progress'] } }  // "pending" includes V2's "in_progress"
-            : status
-                ? { status }
-                : { status: { $in: ['pending', 'in_progress'] } };
+            : status === 'approved'
+                ? { status: 'completed' }
+                : status
+                    ? { status }
+                    : isAllFilter
+                        ? {}
+                        : { status: { $in: ['pending', 'in_progress'] } };
+        const filterV2 = (isAllFilter || !status || ['pending', 'in_progress'].includes(status))
+            ? {
+                ...filterV2Status,
+                $or: [
+                    { verification_tier: { $ne: 'layer_3' } },
+                    { 'verification_data.submitted_at': { $exists: true, $nin: [null, ''] } }
+                ]
+            }
+            : filterV2Status;
 
         // Fetch from both collections
         const [requestsV1, requestsV2] = await Promise.all([
@@ -84,7 +99,7 @@ router.get('/verification-requests', adminAuthWithRateLimit, async (req, res) =>
                 wallet: userAccount?.wallet || null,
                 user_id: r.user_id,
                 tier: r.verification_tier,
-                status: r.status,
+                status: r.status === 'completed' ? 'approved' : r.status,
                 purpose: r.purpose,
                 created_at: r.created_at,
                 updated_at: r.updated_at,
@@ -213,6 +228,10 @@ router.post('/issue-credential', adminAuthWithRateLimit, async (req, res) => {
 
         if (!request) {
             return res.status(404).json({ success: false, error: 'Verification request not found' });
+        }
+
+        if (isV2 && request.verification_tier === 'layer_3' && !request.verification_data?.submitted_at) {
+            return res.status(400).json({ success: false, error: 'Layer 3 draft has not been submitted for review' });
         }
 
         const validStatuses = isV2 ? ['pending', 'in_progress'] : ['pending'];

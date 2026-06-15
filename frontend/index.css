@@ -41,6 +41,23 @@
 }
 
 @layer components {
+    .casperid-hosted-flow .bg-primary {
+        background-color: var(--casperid-primary) !important;
+    }
+
+    .casperid-hosted-flow .text-primary {
+        color: var(--casperid-primary) !important;
+    }
+
+    .casperid-hosted-flow .border-primary {
+        border-color: var(--casperid-primary) !important;
+    }
+
+    .casperid-hosted-flow .shadow-primary\/30,
+    .casperid-hosted-flow .shadow-primary\/25 {
+        --tw-shadow-color: color-mix(in srgb, var(--casperid-primary) 30%, transparent);
+    }
+
     .glass-container {
         @apply backdrop-blur-[32px] border transition-all duration-500;
         background: var(--glass-bg);

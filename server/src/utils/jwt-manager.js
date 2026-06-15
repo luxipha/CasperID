@@ -49,7 +49,7 @@ function generateToken(userData, platform) {
  * @param {string} appId - BusinessApp.app_id (becomes the `aud` claim)
  * @returns {string} Signed RS256 JWT
  */
-function generateBusinessToken(userData, appId) {
+function generateBusinessToken(userData, appId, authorization = {}) {
     const payload = {
         // Standard JWT claims
         iss: ISSUER,
@@ -65,12 +65,16 @@ function generateBusinessToken(userData, appId) {
         email: userData.email,
         // Business metadata
         app_id: appId,
-        token_type: 'business'
+        token_type: 'business',
+        required_tier: authorization.requiredTier || userData.tier,
+        scopes: authorization.scopes || [],
+        authorization_status: authorization.authorizationStatus || 'complete',
+        verification_status: authorization.verificationStatus || 'approved'
     };
 
     return jwt.sign(payload, rsaKeyManager.getPrivateKey(), {
         algorithm: 'RS256',
-        expiresIn: TOKEN_EXPIRATION,
+        expiresIn: authorization.expiresIn || TOKEN_EXPIRATION,
         keyid: rsaKeyManager.getKid()
     });
 }

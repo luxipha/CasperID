@@ -87,6 +87,25 @@ function normalizeTier(tier) {
 }
 
 /**
+ * Convert business-facing requiredTier values to canonical account tiers.
+ * @param {string} tier
+ * @returns {string}
+ */
+function normalizeRequiredTier(tier) {
+    const requiredTierMap = {
+        L1: TIER_LEVELS.LAYER_1,
+        L2: TIER_LEVELS.LAYER_2,
+        L3: TIER_LEVELS.LAYER_3
+    };
+    if (!tier) return TIER_LEVELS.LAYER_1;
+
+    const normalizedTier = requiredTierMap[tier] || normalizeTier(tier);
+    return TIER_ENUM.includes(normalizedTier) && normalizedTier !== TIER_LEVELS.LAYER_0
+        ? normalizedTier
+        : TIER_LEVELS.LAYER_1;
+}
+
+/**
  * Get persona limit for a specific tier
  * @param {string} tier 
  * @returns {number}
@@ -105,5 +124,6 @@ module.exports = {
     getTierIndex,
     compareTiers,
     normalizeTier,
+    normalizeRequiredTier,
     getPersonaLimit
 };

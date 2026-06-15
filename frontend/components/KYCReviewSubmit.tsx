@@ -15,6 +15,7 @@ interface DocumentData {
 }
 
 interface KYCReviewSubmitProps {
+  requestId: string;
   documentData: DocumentData;
   uploadId: string;
   frontImageUrl?: string;
@@ -26,6 +27,7 @@ interface KYCReviewSubmitProps {
 }
 
 export const KYCReviewSubmit: React.FC<KYCReviewSubmitProps> = ({
+  requestId,
   documentData,
   uploadId,
   frontImageUrl,
@@ -49,6 +51,7 @@ export const KYCReviewSubmit: React.FC<KYCReviewSubmitProps> = ({
 
       // Submit verification with image URLs
       await apiService.submitLayer3Verification({
+        request_id: requestId,
         document_data: documentData,
         upload_id: uploadId,
         front_image_url: frontImageUrl,
@@ -74,7 +77,7 @@ export const KYCReviewSubmit: React.FC<KYCReviewSubmitProps> = ({
   };
 
   return (
-    <div className="w-full max-w-7xl mx-auto animate-in fade-in slide-in-from-bottom-4 duration-700 pb-20">
+    <div className="w-full max-w-7xl mx-auto animate-in fade-in slide-in-from-bottom-4 duration-700 pb-10 md:pb-20">
       {/* Top Back Button */}
       <button
         onClick={onBack}
@@ -85,24 +88,24 @@ export const KYCReviewSubmit: React.FC<KYCReviewSubmitProps> = ({
       </button>
 
       {/* Page Header */}
-      <div className="mb-10">
-        <h1 className="text-[40px] font-black text-text-main tracking-tight leading-tight">
+      <div className="mb-6 md:mb-10">
+        <h1 className="text-[30px] md:text-[40px] font-black text-text-main tracking-tight leading-tight">
           Review & Submit Your Full KYC
         </h1>
-        <p className="text-text-sub text-lg font-medium leading-relaxed max-w-3xl mt-2">
+        <p className="text-text-sub text-base md:text-lg font-medium leading-relaxed max-w-3xl mt-2">
           Please review all the information you have provided for your Layer 3 verification before final submission.
         </p>
       </div>
 
       {/* Page Content Layout */}
-      <div className="grid grid-cols-1 lg:grid-cols-[1fr_340px] gap-10 items-start">
+      <div className="grid grid-cols-1 lg:grid-cols-[1fr_340px] gap-6 lg:gap-10 items-start">
 
         {/* Left: Review Cards Area */}
         <div className="space-y-6">
 
           {/* Section 1: Identity Verification */}
-          <div className="bg-white rounded-[32px] border border-gray-100 shadow-soft p-8 md:p-10 space-y-8">
-            <div className="flex items-center justify-between">
+          <div className="bg-white rounded-[24px] md:rounded-[32px] border border-gray-100 shadow-soft p-5 md:p-10 space-y-6 md:space-y-8">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div className="flex items-center gap-4">
                 <div className="size-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary">
                   <span className="material-symbols-outlined text-[22px]">badge</span>
@@ -141,8 +144,8 @@ export const KYCReviewSubmit: React.FC<KYCReviewSubmitProps> = ({
           </div>
 
           {/* Section 2: Personal Details */}
-          <div className="bg-white rounded-[32px] border border-gray-100 shadow-soft p-8 md:p-10 space-y-8">
-            <div className="flex items-center justify-between">
+          <div className="bg-white rounded-[24px] md:rounded-[32px] border border-gray-100 shadow-soft p-5 md:p-10 space-y-6 md:space-y-8">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div className="flex items-center gap-4">
                 <div className="size-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary">
                   <span className="material-symbols-outlined text-[22px]">person</span>
@@ -186,8 +189,8 @@ export const KYCReviewSubmit: React.FC<KYCReviewSubmitProps> = ({
           </div>
 
           {/* Section 3: Liveness Check */}
-          <div className="bg-white rounded-[32px] border border-gray-100 shadow-soft p-8 md:p-10 space-y-8">
-            <div className="flex items-center justify-between">
+          <div className="bg-white rounded-[24px] md:rounded-[32px] border border-gray-100 shadow-soft p-5 md:p-10 space-y-6 md:space-y-8">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div className="flex items-center gap-4">
                 <div className="size-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary">
                   <span className="material-symbols-outlined text-[22px]">face</span>
@@ -200,7 +203,7 @@ export const KYCReviewSubmit: React.FC<KYCReviewSubmitProps> = ({
               </button>
             </div>
 
-            <div className="flex items-center gap-6 p-6 rounded-[24px] bg-green-50/30 border border-green-100/50">
+            <div className="flex items-center gap-4 md:gap-6 p-4 md:p-6 rounded-[20px] md:rounded-[24px] bg-green-50/30 border border-green-100/50">
               <div className="size-12 rounded-full bg-green-500 flex items-center justify-center text-white shadow-lg">
                 <span className="material-symbols-outlined text-[24px] font-bold">check</span>
               </div>
@@ -212,7 +215,7 @@ export const KYCReviewSubmit: React.FC<KYCReviewSubmitProps> = ({
           </div>
 
           {/* Consent Checkbox */}
-          <div className="bg-primary/5 rounded-[24px] border border-primary/10 p-8 flex gap-5 group cursor-pointer" onClick={() => setConsent(!consent)}>
+          <div className="bg-primary/5 rounded-[20px] md:rounded-[24px] border border-primary/10 p-5 md:p-8 flex gap-4 md:gap-5 group cursor-pointer" onClick={() => setConsent(!consent)}>
             <div className={`size-6 rounded-md border-2 flex items-center justify-center transition-all shrink-0 mt-0.5 ${consent ? 'bg-primary border-primary' : 'border-primary/20 bg-white'}`}>
               {consent && <span className="material-symbols-outlined text-white text-[16px] font-bold">check</span>}
             </div>
@@ -225,7 +228,7 @@ export const KYCReviewSubmit: React.FC<KYCReviewSubmitProps> = ({
           <button
             disabled={!consent || isSubmitting}
             onClick={handleSubmit}
-            className={`w-full h-16 rounded-[22px] font-black text-lg flex items-center justify-center gap-3 shadow-xl transition-all active:scale-[0.98] ${(consent && !isSubmitting)
+            className={`w-full min-h-14 md:h-16 px-4 rounded-[18px] md:rounded-[22px] font-black text-base md:text-lg flex items-center justify-center gap-3 shadow-xl transition-all active:scale-[0.98] ${(consent && !isSubmitting)
               ? 'bg-primary text-white shadow-primary/30 hover:shadow-primary/40'
               : 'bg-gray-100 text-text-sub shadow-none cursor-not-allowed'
               }`}
@@ -236,7 +239,7 @@ export const KYCReviewSubmit: React.FC<KYCReviewSubmitProps> = ({
         </div>
 
         {/* Right: Verification Steps Sidebar */}
-        <aside className="space-y-6">
+        <aside className="hidden lg:block space-y-6">
           <div className="bg-white rounded-[32px] border border-gray-100 shadow-soft overflow-hidden p-8 space-y-8">
             <h2 className="text-[11px] font-black text-text-sub uppercase tracking-[0.2em] mb-4">Verification Steps</h2>
 
@@ -307,7 +310,7 @@ export const KYCReviewSubmit: React.FC<KYCReviewSubmitProps> = ({
       </div>
 
       {/* Footer Exit Link */}
-      <div className="mt-12 flex justify-center">
+      <div className="mt-8 md:mt-12 flex justify-center">
         <button
           onClick={onCancel}
           className="flex items-center gap-2 text-text-sub hover:text-alerts transition-all font-bold text-sm"

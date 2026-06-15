@@ -1,7 +1,10 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { CasperIDModal } from '@casperid/react';
-import '@casperid/react/style.css';
+import {
+  CasperIDButton,
+  useHostedAuthorizationCallback,
+  type HostedAuthorizationResult,
+} from '@casperid/react';
 import {
   LayoutGrid,
   Rocket,
@@ -19,15 +22,26 @@ import {
   XCircle,
 } from 'lucide-react';
 
-const API_KEY = import.meta.env.VITE_CASPERID_API_KEY ?? '';
-const API_BASE_URL = import.meta.env.VITE_CASPERID_API_BASE_URL ?? 'https://apis.casperid.com';
+// ═══════════════════════════════════════════
+//  DEBUG: enable via URL param or localStorage
+// ═══════════════════════════════════════════
+const DEBUG = new URLSearchParams(window.location.search).get('casperid_debug') === 'true' ||
+  localStorage.getItem('casperid_debug') === 'true';
+function debug(...args: unknown[]) {
+  if (DEBUG) console.log('[CasperID DEBUG]', ...args);
+}
+// ═══════════════════════════════════════════
+
+const CLIENT_ID = import.meta.env.VITE_CASPERID_CLIENT_ID ?? import.meta.env.VITE_CASPERID_API_KEY ?? '';
+const ACCOUNT_URL = import.meta.env.VITE_CASPERID_ACCOUNT_URL ?? 'https://account.casperid.com';
+const REDIRECT_URI = `${window.location.origin}/auth/callback`;
 
 interface VerificationEntry {
   id: string;
   typeName: string;
   proofId: string;
   date: string;
-  status: 'Verified' | 'Failed';
+  status: 'Authorized' | 'Provisional' | 'Failed';
   sessionToken: string;
   hasBusinessToken: boolean;
 }
@@ -44,33 +58,29 @@ function formatDate(iso: string): string {
 }
 
 export default function DashboardPortal() {
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [isVerified, setIsVerified] = useState(false);
+  const [isAuthorized, setIsAuthorized] = useState(false);
   const [history, setHistory] = useState<VerificationEntry[]>([]);
   const [sdkError, setSdkError] = useState<string | null>(null);
 
-  const handleClaimClick = () => {
-    setSdkError(null);
-    setIsModalOpen(true);
-  };
-
-  const handleAuthSuccess = (sessionToken: string, data?: { businessToken?: string }) => {
+  const handleAuthSuccess = (result: HostedAuthorizationResult) => {
+    debug('handleAuthSuccess called');
     const now = new Date().toISOString();
     const entry: VerificationEntry = {
       id: now,
-      typeName: data?.businessToken ? 'Business Auth' : 'Identity Auth',
-      proofId: formatProofId(sessionToken),
+      typeName: 'Authorization Code',
+      proofId: formatProofId(result.code),
       date: formatDate(now),
-      status: 'Verified',
-      sessionToken,
-      hasBusinessToken: !!data?.businessToken,
+      status: result.authorizationStatus === 'provisional' ? 'Provisional' : 'Authorized',
+      sessionToken: result.code,
+      hasBusinessToken: false,
     };
     setHistory((prev) => [entry, ...prev]);
-    setIsVerified(true);
-    setIsModalOpen(false);
+    setIsAuthorized(true);
+    window.history.replaceState({}, '', '/dashboard');
   };
 
   const handleAuthError = (err: Error) => {
+    debug('handleAuthError called:', err.message);
     console.error('[CasperID SDK]', err);
     setSdkError(err.message);
     const now = new Date().toISOString();
@@ -88,6 +98,8 @@ export default function DashboardPortal() {
     ]);
   };
 
+  useHostedAuthorizationCallback(handleAuthSuccess, handleAuthError);
+
   return (
     <div className="flex bg-background-warm min-h-screen">
       {/* SideNavBar */}
@@ -97,14 +109,14 @@ export default function DashboardPortal() {
             <div className="w-10 h-10 rounded-full bg-primary/10 border border-primary/10 flex items-center justify-center">
               <Fingerprint size={16} strokeWidth={1.5} className="text-primary/60" />
             </div>
-            <span className={`absolute bottom-0 right-0 w-3 h-3 border-2 border-background-warm rounded-full ${isVerified ? 'bg-primary' : 'bg-primary/20'}`}></span>
+            <span className={`absolute bottom-0 right-0 w-3 h-3 border-2 border-background-warm rounded-full ${isAuthorized ? 'bg-primary' : 'bg-primary/20'}`}></span>
           </div>
           <div className="flex flex-col">
             <h3 className="font-serif italic font-bold text-xs tracking-tight">
-              {isVerified ? 'Verified Member' : 'Anonymous'}
+              {isAuthorized ? 'Authorized Member' : 'Anonymous'}
             </h3>
             <span className="font-mono text-[8px] uppercase tracking-widest opacity-40">
-              {isVerified ? 'CasperID Verified' : 'Unverified Status'}
+              {isAuthorized ? 'Backend Exchange Required' : 'Not Authorized'}
             </span>
           </div>
         </div>
@@ -127,9 +139,9 @@ export default function DashboardPortal() {
         <header className="flex flex-col md:flex-row md:items-end justify-between gap-8 mb-20">
           <div>
             <div className="flex items-center gap-4 mb-6">
-              <span className={`px-4 py-1.5 text-white text-[9px] font-mono tracking-widest uppercase rounded-full flex items-center gap-2 transition-colors ${isVerified ? 'bg-primary' : 'bg-primary/30'}`}>
+              <span className={`px-4 py-1.5 text-white text-[9px] font-mono tracking-widest uppercase rounded-full flex items-center gap-2 transition-colors ${isAuthorized ? 'bg-primary' : 'bg-primary/30'}`}>
                 <ShieldCheck size={10} />
-                {isVerified ? 'Verified' : 'Unverified'}
+                {isAuthorized ? 'Authorized' : 'Not Authorized'}
               </span>
               <span className="font-mono text-[9px] uppercase tracking-widest opacity-40">Proof: #C992-8821</span>
             </div>
@@ -163,16 +175,21 @@ export default function DashboardPortal() {
               </div>
 
               <div className="mt-20 flex flex-col sm:flex-row gap-6">
-                <motion.button
+                <CasperIDButton
                   id="claim-vault-btn"
-                  onClick={handleClaimClick}
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
+                  clientId={CLIENT_ID}
+                  redirectUri={REDIRECT_URI}
+                  accountUrl={ACCOUNT_URL}
+                  mode="auto"
+                  timeoutMs={30 * 60 * 1000}
+                  onSuccess={handleAuthSuccess}
+                  onError={handleAuthError}
+                  disabled={!CLIENT_ID}
                   className="flex-1 bg-primary text-white py-5 px-8 flex items-center justify-center gap-3 font-mono text-[10px] uppercase tracking-widest hover:opacity-90 transition-all cursor-pointer"
                 >
                   <Download size={14} />
                   Claim to Vault
-                </motion.button>
+                </CasperIDButton>
                 <motion.button
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
@@ -294,9 +311,11 @@ export default function DashboardPortal() {
                           <td className="py-8 text-right">
                             <span
                               className={`text-[9px] uppercase tracking-widest px-4 py-1.5 rounded-full border ${
-                                entry.status === 'Verified'
+                                entry.status === 'Authorized'
                                   ? 'border-primary/20 text-primary'
-                                  : 'border-red-300 text-red-500'
+                                  : entry.status === 'Provisional'
+                                    ? 'border-amber-300 text-amber-700'
+                                    : 'border-red-300 text-red-500'
                               }`}
                             >
                               {entry.status}
@@ -313,17 +332,6 @@ export default function DashboardPortal() {
         </div>
       </main>
 
-      {/* CasperID SDK Modal */}
-      <CasperIDModal
-        isOpen={isModalOpen}
-        apiKey={API_KEY}
-        apiBaseUrl={API_BASE_URL}
-        requiredTier="L3"
-        onSuccess={handleAuthSuccess}
-        onClose={() => setIsModalOpen(false)}
-        onError={handleAuthError}
-        theme={{ mode: 'light' }}
-      />
     </div>
   );
 }

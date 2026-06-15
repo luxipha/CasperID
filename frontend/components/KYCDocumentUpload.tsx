@@ -50,34 +50,34 @@ export const KYCDocumentUpload: React.FC<KYCDocumentUploadProps> = ({ docType, o
   };
 
   return (
-    <div className="w-full max-w-7xl mx-auto animate-in fade-in slide-in-from-bottom-4 duration-700 pb-20">
+    <div className="w-full max-w-7xl mx-auto animate-in fade-in slide-in-from-bottom-4 duration-700 pb-10 md:pb-20">
       {/* Top Back Button */}
       <button
         onClick={onBack}
-        className="flex items-center gap-2 text-text-sub hover:text-primary transition-colors font-bold text-sm group mb-6"
+        className="flex items-center gap-2 text-text-sub hover:text-primary transition-colors font-bold text-sm group mb-5 md:mb-6"
       >
         <span className="material-symbols-outlined text-lg group-hover:-translate-x-1 transition-transform">arrow_back</span>
         Back to Document Type
       </button>
 
       {/* Page Header */}
-      <div className="mb-10">
-        <h1 className="text-[40px] font-black text-text-main tracking-tight leading-tight">
+      <div className="mb-6 md:mb-10">
+        <h1 className="text-[30px] md:text-[40px] font-black text-text-main tracking-tight leading-tight">
           Upload Your {getDocName()}
         </h1>
-        <p className="text-text-sub text-lg font-medium leading-relaxed max-w-3xl mt-2">
+        <p className="text-text-sub text-base md:text-lg font-medium leading-relaxed max-w-3xl mt-2">
           Please upload a clear image of {requiresBackImage ? 'the front and back' : 'your'} {getDocName()}. Ensure all details are legible and the image is well-lit. We will extract details automatically using OCR.
         </p>
       </div>
 
       {/* Page Content Layout */}
-      <div className="grid grid-cols-1 lg:grid-cols-[1fr_340px] gap-10 items-start">
+      <div className="grid grid-cols-1 lg:grid-cols-[1fr_340px] gap-6 lg:gap-10 items-start">
 
         {/* Left: Upload Area */}
-        <div className="space-y-8">
-          <div className="bg-white rounded-[40px] border border-gray-100 shadow-soft overflow-hidden">
-            <div className="p-4">
-              <div className="relative w-full aspect-[16/10] rounded-[32px] overflow-hidden bg-gradient-to-br from-[#EAE2D3] via-[#DBC9A6] to-[#C9B388] flex flex-col items-center justify-center">
+        <div className="space-y-6 md:space-y-8">
+          <div className="bg-white rounded-[24px] md:rounded-[40px] border border-gray-100 shadow-soft overflow-hidden">
+            <div className="p-3 md:p-4">
+              <div className="relative w-full min-h-[420px] md:min-h-0 md:aspect-[16/10] rounded-[20px] md:rounded-[32px] overflow-hidden bg-gradient-to-br from-[#EAE2D3] via-[#DBC9A6] to-[#C9B388] flex flex-col items-center justify-start md:justify-center px-4 py-8 md:p-0">
                 {/* Subtle Background Pattern */}
                 <div className="absolute inset-0 opacity-[0.05] pointer-events-none bg-[url('https://grainy-gradients.vercel.app/noise.svg')]"></div>
 
@@ -93,18 +93,25 @@ export const KYCDocumentUpload: React.FC<KYCDocumentUploadProps> = ({ docType, o
                       onChange={(e) => handleFileSelect('front', e)}
                     />
 
-                    <div className="size-20 rounded-full bg-white/20 backdrop-blur-md flex items-center justify-center text-primary mb-6 shadow-xl border border-white/30">
-                      <span className="material-symbols-outlined text-[36px] font-bold">cloud_upload</span>
+                    <div className="size-14 md:size-20 rounded-full bg-white/20 backdrop-blur-md flex items-center justify-center text-primary mb-4 md:mb-6 shadow-xl border border-white/30">
+                      <span className="material-symbols-outlined text-[30px] md:text-[36px] font-bold">cloud_upload</span>
                     </div>
-                    <h3 className="text-2xl font-black text-[#1A1A2E] mb-2">Drag & drop your files here</h3>
-                    <p className="text-[#1A1A2E]/60 text-lg font-bold mb-8 tracking-tight">or click to browse from your computer</p>
+                    <h3 className="text-xl md:text-2xl font-black text-[#1A1A2E] mb-2">
+                      <span className="md:hidden">Take or choose a document photo</span>
+                      <span className="hidden md:inline">Drag & drop your files here</span>
+                    </h3>
+                    <p className="text-[#1A1A2E]/60 text-sm md:text-lg font-bold mb-5 md:mb-8 tracking-tight">
+                      <span className="md:hidden">Use a clear, well-lit image</span>
+                      <span className="hidden md:inline">or click to browse from your computer</span>
+                    </p>
 
                     <button
                       type="button"
                       onClick={handleBrowseClick}
-                      className="h-14 px-10 bg-white text-text-main rounded-2xl font-black text-base shadow-xl hover:bg-gray-50 transition-all active:scale-[0.98]"
+                      className="h-12 md:h-14 px-7 md:px-10 bg-white text-text-main rounded-2xl font-black text-sm md:text-base shadow-xl hover:bg-gray-50 transition-all active:scale-[0.98]"
                     >
-                      Browse files
+                      <span className="md:hidden">Choose photo</span>
+                      <span className="hidden md:inline">Browse files</span>
                     </button>
                   </div>
                 ) : (
@@ -120,13 +127,13 @@ export const KYCDocumentUpload: React.FC<KYCDocumentUploadProps> = ({ docType, o
                 )}
 
                 {/* Horizontal Divider Line */}
-                <div className="absolute top-[60%] left-1/2 -translate-x-1/2 w-[85%] h-px bg-white/30"></div>
+                <div className="hidden md:block absolute top-[60%] left-1/2 -translate-x-1/2 w-[85%] h-px bg-white/30"></div>
 
                 {/* Document Placeholders */}
-                <div className="absolute bottom-12 left-0 right-0 flex justify-center gap-8">
+                <div className="relative z-10 mt-8 md:mt-0 md:absolute md:bottom-12 md:left-0 md:right-0 flex justify-center gap-3 md:gap-8">
                   {/* Front Upload */}
                   <label
-                    className={`size-32 md:size-40 rounded-2xl border-2 border-white/40 flex flex-col items-center justify-center gap-3 cursor-pointer group transition-all ${frontFile ? 'bg-white/40 border-white' : 'bg-white/10 hover:bg-white/20'}`}
+                    className={`size-28 sm:size-32 md:size-40 rounded-2xl border-2 border-white/40 flex flex-col items-center justify-center gap-2 md:gap-3 cursor-pointer group transition-all ${frontFile ? 'bg-white/40 border-white' : 'bg-white/10 hover:bg-white/20'}`}
                   >
                     <input
                       type="file"
@@ -146,7 +153,7 @@ export const KYCDocumentUpload: React.FC<KYCDocumentUploadProps> = ({ docType, o
                   {/* Back Upload - Only show for ID/License */}
                   {requiresBackImage && (
                     <label
-                      className={`size-32 md:size-40 rounded-2xl border-2 border-white/40 flex flex-col items-center justify-center gap-3 cursor-pointer group transition-all ${backFile ? 'bg-white/40 border-white' : 'bg-white/10 hover:bg-white/20'}`}
+                      className={`size-28 sm:size-32 md:size-40 rounded-2xl border-2 border-white/40 flex flex-col items-center justify-center gap-2 md:gap-3 cursor-pointer group transition-all ${backFile ? 'bg-white/40 border-white' : 'bg-white/10 hover:bg-white/20'}`}
                     >
                       <input
                         type="file"
@@ -169,7 +176,7 @@ export const KYCDocumentUpload: React.FC<KYCDocumentUploadProps> = ({ docType, o
           </div>
 
           {/* Tips Box */}
-          <div className="bg-[#EEF4FF]/50 border border-[#E0E7FF] rounded-[24px] p-8 flex items-start gap-6">
+          <div className="bg-[#EEF4FF]/50 border border-[#E0E7FF] rounded-[20px] md:rounded-[24px] p-5 md:p-8 flex items-start gap-4 md:gap-6">
             <div className="size-10 rounded-full bg-white flex items-center justify-center shadow-sm shrink-0">
               <span className="material-symbols-outlined text-primary text-[20px] icon-filled">lightbulb</span>
             </div>
@@ -198,7 +205,7 @@ export const KYCDocumentUpload: React.FC<KYCDocumentUploadProps> = ({ docType, o
                 setIsSubmitting(false);
               }
             }}
-            className={`w-full h-16 rounded-[22px] font-black text-lg flex items-center justify-center gap-3 shadow-xl transition-all active:scale-[0.98] ${isReady && !isSubmitting
+            className={`w-full h-14 md:h-16 rounded-[18px] md:rounded-[22px] font-black text-base md:text-lg flex items-center justify-center gap-3 shadow-xl transition-all active:scale-[0.98] ${isReady && !isSubmitting
               ? 'bg-primary text-white shadow-primary/30 hover:shadow-primary/40'
               : 'bg-gray-100 text-text-sub shadow-none cursor-not-allowed'
               }`}
@@ -218,7 +225,7 @@ export const KYCDocumentUpload: React.FC<KYCDocumentUploadProps> = ({ docType, o
         </div>
 
         {/* Right: Verification Steps Sidebar */}
-        <aside className="space-y-6">
+        <aside className="hidden lg:block space-y-6">
           <div className="bg-white rounded-[32px] border border-gray-100 shadow-soft overflow-hidden p-8 space-y-8">
             <h2 className="text-[11px] font-black text-text-sub uppercase tracking-[0.2em] mb-4">Verification Steps</h2>
 
@@ -300,7 +307,7 @@ export const KYCDocumentUpload: React.FC<KYCDocumentUploadProps> = ({ docType, o
       </div>
 
       {/* Footer Exit Link */}
-      <div className="mt-12 flex justify-center">
+      <div className="mt-8 md:mt-12 flex justify-center">
         <button
           onClick={onCancel}
           className="flex items-center gap-2 text-text-sub hover:text-alerts transition-all font-bold text-sm"

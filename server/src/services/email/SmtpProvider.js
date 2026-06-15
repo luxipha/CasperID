@@ -24,7 +24,7 @@ class SmtpProvider extends BaseEmailProvider {
             }
         };
 
-        this.defaultFrom = config.defaultFrom || process.env.EMAIL_FROM || `"CasperID" <${this.smtpConfig.auth.user}>`;
+        this.defaultFrom = config.defaultFrom || process.env.EMAIL_FROM || `"CasperID" <no-reply@casperid.com>`;
 
         // Create reusable transporter
         this.transporter = nodemailer.createTransport(this.smtpConfig);

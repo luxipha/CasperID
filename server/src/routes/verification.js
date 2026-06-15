@@ -281,7 +281,11 @@ router.get('/identity-status', async (req, res) => {
         if (userAccount) {
             pendingRequestV2 = await VerificationRequestV2.findOne({
                 user_id: userAccount.user_id,
-                status: { $in: ['pending', 'in_progress'] }
+                status: { $in: ['pending', 'in_progress'] },
+                $or: [
+                    { verification_tier: { $ne: 'layer_3' } },
+                    { 'verification_data.submitted_at': { $exists: true, $nin: [null, ''] } }
+                ]
             }).sort({ created_at: -1 });
         }
 

@@ -3,39 +3,43 @@ import React from 'react';
 
 interface KYCSubmissionReceivedProps {
   onDashboard: () => void;
+  actionLabel?: string;
 }
 
-export const KYCSubmissionReceived: React.FC<KYCSubmissionReceivedProps> = ({ onDashboard }) => {
+export const KYCSubmissionReceived: React.FC<KYCSubmissionReceivedProps> = ({
+  onDashboard,
+  actionLabel = 'Go to Dashboard',
+}) => {
   return (
-    <div className="w-full max-w-7xl mx-auto animate-in fade-in slide-in-from-bottom-4 duration-700 pb-20">
+    <div className="w-full max-w-7xl mx-auto animate-in fade-in slide-in-from-bottom-4 duration-700 pb-10 md:pb-20">
       {/* Page Header */}
-      <div className="mb-10">
-        <h1 className="text-[40px] font-black text-text-main tracking-tight leading-tight">
+      <div className="mb-6 md:mb-10">
+        <h1 className="text-[30px] md:text-[40px] font-black text-text-main tracking-tight leading-tight">
           Full KYC Submission Received!
         </h1>
-        <p className="text-primary text-lg font-bold tracking-tight mt-2">
+        <p className="text-primary text-base md:text-lg font-bold tracking-tight mt-2">
           Your Layer 3 verification is now under review.
         </p>
       </div>
 
       {/* Page Content Layout */}
-      <div className="grid grid-cols-1 lg:grid-cols-[1fr_340px] gap-10 items-start">
+      <div className="grid grid-cols-1 lg:grid-cols-[1fr_340px] gap-6 lg:gap-10 items-start">
         
         {/* Left: Status Card Area */}
         <div className="space-y-8">
-          <div className="bg-white rounded-[32px] border border-gray-100 shadow-soft p-12 md:p-16 flex items-start gap-8 relative overflow-hidden">
+          <div className="bg-white rounded-[24px] md:rounded-[32px] border border-gray-100 shadow-soft p-5 md:p-16 flex flex-col sm:flex-row items-start gap-5 md:gap-8 relative overflow-hidden">
             
             {/* Hourglass Icon Circle */}
-            <div className="size-20 rounded-2xl bg-primary/5 flex items-center justify-center text-primary shrink-0">
-              <span className="material-symbols-outlined text-[44px] animate-[pulse_3s_infinite]">hourglass_empty</span>
+            <div className="size-14 md:size-20 rounded-2xl bg-primary/5 flex items-center justify-center text-primary shrink-0">
+              <span className="material-symbols-outlined text-[32px] md:text-[44px] animate-[pulse_3s_infinite]">hourglass_empty</span>
             </div>
 
             <div className="space-y-6 relative z-10">
               <div className="space-y-4">
-                <h2 className="text-xl md:text-2xl font-black text-text-main leading-relaxed max-w-xl">
+                <h2 className="text-lg md:text-2xl font-black text-text-main leading-relaxed max-w-xl">
                   We are securely reviewing your identity details and liveness check. This process typically takes <span className="text-primary">24-48 hours.</span>
                 </h2>
-                <p className="text-text-sub text-lg font-medium leading-relaxed max-w-xl">
+                <p className="text-text-sub text-base md:text-lg font-medium leading-relaxed max-w-xl">
                   You will receive a notification on your dashboard and via email once your Layer 3 verification is complete.
                 </p>
               </div>
@@ -45,16 +49,16 @@ export const KYCSubmissionReceived: React.FC<KYCSubmissionReceivedProps> = ({ on
           <div className="max-w-xl">
             <button 
               onClick={onDashboard}
-              className="w-full h-16 bg-primary text-white rounded-[22px] font-black text-lg flex items-center justify-center gap-3 shadow-xl shadow-primary/30 hover:shadow-primary/40 hover:bg-primary/95 transition-all active:scale-[0.98]"
+              className="w-full h-14 md:h-16 bg-primary text-white rounded-[18px] md:rounded-[22px] font-black text-base md:text-lg flex items-center justify-center gap-3 shadow-xl shadow-primary/30 hover:shadow-primary/40 hover:bg-primary/95 transition-all active:scale-[0.98]"
             >
-              Go to Dashboard
+              {actionLabel}
               <span className="material-symbols-outlined text-2xl">arrow_forward</span>
             </button>
           </div>
         </div>
 
         {/* Right: Verification Steps Sidebar (All Complete) */}
-        <aside className="space-y-6">
+        <aside className="hidden lg:block space-y-6">
           <div className="bg-white rounded-[32px] border border-gray-100 shadow-soft overflow-hidden p-8 space-y-8">
             <h2 className="text-[11px] font-black text-text-sub uppercase tracking-[0.2em] mb-4">Verification Steps</h2>
             

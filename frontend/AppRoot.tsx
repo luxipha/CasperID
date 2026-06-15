@@ -6,6 +6,8 @@ import { CasperProvider } from './contexts/casper-context';
 import App from './App';
 import LandingPage from './components/landing/LandingPage';
 import ChangelogPage from './components/landing/casperos/changelog';
+import HostedAuthorize from './components/HostedAuthorize';
+import HostedLivenessCapture from './components/HostedLivenessCapture';
 
 /**
  * External redirect component - Navigate doesn't work for external URLs
@@ -47,6 +49,16 @@ const AppRoot: React.FC = () => {
         <Route path="/adevaros" element={<ExternalRedirect to="https://www.anra.rest" />} />
         <Route path="/casperos" element={<ExternalRedirect to="https://www.anra.rest" />} />
         <Route path="/changelog" element={<ChangelogPage />} />
+        <Route path="/authorize" element={
+          <AuthenticatedProviders>
+            <HostedAuthorize />
+          </AuthenticatedProviders>
+        } />
+        <Route path="/liveness" element={
+          <AuthenticatedProviders>
+            <HostedLivenessCapture />
+          </AuthenticatedProviders>
+        } />
 
         {/* Authenticated/App Routes - Wrapped in Providers */}
         <Route path="*" element={

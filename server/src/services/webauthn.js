@@ -20,6 +20,7 @@ const {
     UserProfile
 } = require('../database/models');
 const { normalizeEmail, buildEmailQuery } = require('../utils/email-normalizer');
+const { originCanUseRpId } = require('../utils/webauthn-rp');
 const { eventBus, EVENTS } = require('./eventBus');
 
 /**
@@ -50,13 +51,56 @@ class WebAuthnService {
     }
 
     /**
+     * Reject web origins that cannot legally exercise credentials for this RP ID.
+     * Native applications do not send a web Origin header and are validated
+     * separately through their platform-specific origin during verification.
+     */
+    assertOriginCanUseRpID(origin) {
+        if (!origin) return;
+
+        if (originCanUseRpId(origin, this.rpID)) return;
+
+        // VS Code Dev Tunnels can rewrite the browser Origin header to the
+        // local forwarded address before Vite proxies the request. Allow that
+        // development-only transport detail when the configured WebAuthn
+        // origin itself is valid for the RP ID. Verification still checks the
+        // browser-signed clientDataJSON origin against this.origins.
+        let receivedHostname = '';
+        try {
+            receivedHostname = new URL(origin).hostname;
+        } catch {
+            // The mismatch error below handles malformed origins.
+        }
+        const isLocalDevelopmentProxy =
+            process.env.NODE_ENV !== 'production' &&
+            (receivedHostname === 'localhost' || receivedHostname === '127.0.0.1') &&
+            this.origins.some(configuredOrigin => originCanUseRpId(configuredOrigin, this.rpID));
+
+        if (isLocalDevelopmentProxy) {
+            console.warn('[WebAuthn] Accepting localhost Origin rewritten by development proxy:', {
+                receivedOrigin: origin,
+                expectedRpId: this.rpID,
+                allowedOrigins: this.origins,
+            });
+            return;
+        }
+
+        console.warn('[WebAuthn] RP origin mismatch:', {
+            receivedOrigin: origin,
+            expectedRpId: this.rpID,
+            allowedOrigins: this.origins,
+        });
+        throw new Error(
+            `WebAuthn must be completed on a ${this.rpID} origin; received ${origin}`
+        );
+    }
+
+    /**
      * Generate registration options for new passkey creation
      */
-    async generateRegistrationOptions(userEmail, userName = null, isEmailVerified = false, rpId = null) {
+    async generateRegistrationOptions(userEmail, userName = null, isEmailVerified = false) {
         try {
             const userId = uuidv4();
-            // Use provided rpId (from Origin header) or fall back to default
-            const effectiveRpId = rpId || this.rpID;
             // Normalize email for consistent storage (handles Gmail dot-stripping)
             const normalizedUserEmail = normalizeEmail(userEmail);
             const userDisplayName = userName || normalizedUserEmail.split('@')[0];
@@ -74,7 +118,7 @@ class WebAuthnService {
 
             const options = await generateRegistrationOptions({
                 rpName: this.rpName,
-                rpID: effectiveRpId,
+                rpID: this.rpID,
                 userID: Buffer.from(userId),
                 userName: userEmail,
                 userDisplayName: userDisplayName,
@@ -99,7 +143,7 @@ class WebAuthnService {
                 challenge: options.challenge,
                 userEmail: userEmail.trim().toLowerCase(),  // Original email (just lowercased)
                 isEmailVerified,
-                rpId: effectiveRpId,  // Store for verification
+                rpId: this.rpID,
                 timestamp: Date.now(),
             });
 
@@ -195,6 +239,7 @@ class WebAuthnService {
             const passkeyCredential = new PasskeyCredential({
                 user_id: userId,
                 credential_id: Buffer.from(credentialID).toString('base64url'),
+                rp_id: expectedRPID,
                 credential_public_key: Buffer.from(credentialPublicKey),
                 counter: counter,
                 device_type: deviceInfo.deviceType || 'desktop',
@@ -282,10 +327,8 @@ class WebAuthnService {
     /**
      * Generate authentication options for passkey login
      */
-    async generateAuthenticationOptions(userIdentifier = null, rpId = null) {
+    async generateAuthenticationOptions(userIdentifier = null) {
         try {
-            // Use provided rpId (from Origin header) or fall back to default
-            const effectiveRpId = rpId || this.rpID;
             let allowCredentials = [];
             let deviceTypeHint = 'desktop';
             let passkeyTransports = [];
@@ -321,7 +364,7 @@ class WebAuthnService {
                 timeout: this.timeout,
                 allowCredentials: finalAllowCredentials,
                 userVerification: 'preferred',
-                rpID: effectiveRpId,
+                rpID: this.rpID,
             });
 
             // Store challenge temporarily
@@ -329,7 +372,7 @@ class WebAuthnService {
             this.challengeStorage.set(challengeId, {
                 challenge: options.challenge,
                 userIdentifier,
-                rpId: effectiveRpId,  // Store for verification
+                rpId: this.rpID,
                 timestamp: Date.now(),
             });
 
@@ -390,6 +433,10 @@ class WebAuthnService {
                 // Debug: List all credentials to see what we have
                 const allCredentials = await PasskeyCredential.find({ revoked: false });
                 throw new Error('Credential not found');
+            }
+
+            if (credential.rp_id && credential.rp_id !== storedChallenge.rpId) {
+                throw new Error('Credential belongs to a different relying party');
             }
 
 
@@ -585,6 +632,11 @@ class WebAuthnService {
             // Update counter
             credential.counter = verification.authenticationInfo.newCounter;
             credential.last_used = new Date();
+            // Credentials created before rp_id tracking are safe to backfill only
+            // after the authenticator proves they belong to the configured RP ID.
+            if (!credential.rp_id) {
+                credential.rp_id = expectedRPID;
+            }
             await credential.save();
 
             // Create device session

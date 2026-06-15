@@ -30,7 +30,11 @@ function hashPassword(password) {
  */
 function verifyPassword(password, salt, hash) {
     const hashVerify = crypto.pbkdf2Sync(password, salt, 10000, 64, 'sha512').toString('hex');
-    return hash === hashVerify;
+    const storedHash = Buffer.from(hash, 'hex');
+    const candidateHash = Buffer.from(hashVerify, 'hex');
+
+    return storedHash.length === candidateHash.length &&
+        crypto.timingSafeEqual(storedHash, candidateHash);
 }
 
 /**
@@ -142,6 +146,30 @@ async function changeAdminPassword(username, currentPassword, newPassword) {
 }
 
 /**
+ * Set or reset an admin password without requiring the current password.
+ * Intended for trusted bootstrap and local recovery tooling only.
+ */
+async function resetAdminPassword(username, newPassword, role = 'super_admin') {
+    const { salt, hash } = hashPassword(newPassword);
+    const admin = await AdminUser.findOne({ username });
+
+    if (!admin) {
+        return createAdminUser(username, newPassword, role);
+    }
+
+    admin.password_hash = hash;
+    admin.salt = salt;
+    admin.active = true;
+    admin.failed_login_attempts = 0;
+    admin.locked_until = null;
+    admin.updated_at = new Date();
+    await admin.save();
+
+    const { password_hash, salt: userSalt, ...safeUser } = admin.toObject();
+    return safeUser;
+}
+
+/**
  * Initialize default admin user if none exists
  *
  * SECURITY: The default password is written to a secure file, NOT logged to console.
@@ -158,33 +186,35 @@ async function initializeDefaultAdmin() {
         if (adminCount === 0) {
             console.log('🔧 Creating default admin user...');
 
-            // Generate a secure random password for initial setup
-            const defaultPassword = crypto.randomBytes(16).toString('hex');
+            const defaultUsername = process.env.ADMIN_USERNAME || 'admin';
+            const configuredPassword = process.env.ADMIN_PASSWORD;
+            const defaultPassword = configuredPassword || crypto.randomBytes(16).toString('hex');
 
-            await createAdminUser('admin', defaultPassword, 'super_admin');
+            await createAdminUser(defaultUsername, defaultPassword, 'super_admin');
 
-            // Write credentials to a secure file instead of logging
-            // This file should be in a location that's not committed to version control
-            const credentialsPath = path.join(__dirname, '../../.admin-credentials');
-            const credentialsContent = `# CasperID Default Admin Credentials
+            if (!configuredPassword) {
+                // Write generated credentials to a secure file instead of logging them.
+                const credentialsPath = path.join(__dirname, '../../.admin-credentials');
+                const credentialsContent = `# CasperID Default Admin Credentials
 # Generated: ${new Date().toISOString()}
 #
 # IMPORTANT: Delete this file after retrieving the password!
 # Change this password immediately after first login.
 #
-Username: admin
+Username: ${defaultUsername}
 Password: ${defaultPassword}
 `;
 
-            fs.writeFileSync(credentialsPath, credentialsContent, { mode: 0o600 }); // Read/write only by owner
+                fs.writeFileSync(credentialsPath, credentialsContent, { mode: 0o600 });
+                console.log('🔐 Admin credentials saved to: .admin-credentials');
+            } else {
+                console.log('🔐 Default admin created from ADMIN_USERNAME and ADMIN_PASSWORD');
+            }
 
             console.log('✅ Default admin created successfully!');
-            console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-            console.log('🔐 Admin credentials saved to: .admin-credentials');
-            console.log('   (in server directory, NOT in logs for security)');
             console.log('🔒 Please login and change this password immediately!');
-            console.log('🗑️  Delete the credentials file after retrieving the password.');
-            console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+        } else {
+            console.log(`✅ Admin system ready (${adminCount} account${adminCount === 1 ? '' : 's'} found)`);
         }
     } catch (error) {
         console.error('Failed to initialize default admin:', error);
@@ -197,5 +227,6 @@ module.exports = {
     createAdminUser,
     authenticateAdmin,
     changeAdminPassword,
+    resetAdminPassword,
     initializeDefaultAdmin
 };

@@ -4,6 +4,7 @@ type DocSection =
   | 'Quickstart'
   | 'React SDK Installation'
   | 'SDK Configuration'
+  | 'OAuth Token Exchange'
   | 'REST API (Headless)'
   | 'OTP Authentication'
   | 'Session Management'
@@ -33,13 +34,13 @@ const Docs: React.FC = () => {
   }> = {
     'Quickstart': {
       title: 'Quickstart Guide',
-      description: 'Get up and running with CasperID Business Platform. Choose between our React SDK for quick integration or REST API for custom implementations.',
+      description: 'Use the lightweight SDK to start hosted authorization. Authentication, onboarding, passkeys, and verification happen securely on account.casperid.com.',
       filename: 'quickstart.md',
       code: `// Option 1: React SDK (Recommended for web apps)
 npm install @casperid/react
 
-// Option 2: REST API (For custom UI or mobile apps)
-// Use your App ID from the dashboard
+// Option 2: REST API (advanced backend and native integrations)
+// Do not embed CasperID passkey or identity UI on an unrelated web domain.
 const APP_ID = 'app_...';
 
 // All API calls to: https://apis.casperid.com
@@ -48,7 +49,7 @@ const APP_ID = 'app_...';
 
     'React SDK Installation': {
       title: 'React SDK Installation',
-      description: 'The fastest way to integrate CasperID into your React application using our pre-built UI components.',
+      description: 'The fastest way to integrate the secure CasperID hosted authorization flow.',
       steps: [
         {
           title: '1. Install the package',
@@ -57,34 +58,31 @@ const APP_ID = 'app_...';
           filename: 'terminal'
         },
         {
-          title: '2. Import Styles',
-          desc: 'Import the required CSS in your main entry file (e.g., App.tsx or index.tsx).',
-          code: "import '@casperid/react/style.css';",
-          filename: 'App.tsx'
+          title: '2. Register your callback',
+          desc: 'Add the exact callback URL in API Management.',
+          code: 'https://your-app.example/auth/callback',
+          filename: 'dashboard'
         },
         {
-          title: '3. Implement the Modal',
-          desc: 'Use the CasperIDModal component to handle the authentication and verification flow.',
-          code: `import { CasperIDModal } from '@casperid/react';
+          title: '3. Add the hosted authorization button',
+          desc: 'Desktop opens a popup; mobile redirects to account.casperid.com. Long signup and verification flows default to a 30-minute SDK timeout.',
+          code: `import { CasperIDButton, useHostedAuthorizationCallback } from '@casperid/react';
 
 function MyAuthComponent() {
-  const [isOpen, setIsOpen] = useState(false);
-
-  const handleSuccess = (token, data) => {
-    console.log('Verified!', data.businessToken);
-    setIsOpen(false);
-  };
+  const handleSuccess = (result) => sendCodeToMyBackend(result);
+  useHostedAuthorizationCallback(handleSuccess, console.error);
 
   return (
-    <>
-      <button onClick={() => setIsOpen(true)}>Verify Identity</button>
-      <CasperIDModal
-        isOpen={isOpen}
-        apiKey="app_xyz123"
+      <CasperIDButton
+        clientId="app_xyz123"
+        redirectUri={\`\${window.location.origin}/auth/callback\`}
+        mode="auto"
+        timeoutMs={30 * 60 * 1000}
         onSuccess={handleSuccess}
-        onClose={() => setIsOpen(false)}
-      />
-    </>
+        onError={console.error}
+      >
+        Continue with CasperID
+      </CasperIDButton>
   );
 }`,
           filename: 'Auth.jsx'
@@ -93,39 +91,52 @@ function MyAuthComponent() {
     },
 
     'SDK Configuration': {
-      title: 'SDK Configuration Options',
-      description: 'Customize the CasperID modal appearance and behavior with theme options and configuration.',
+      title: 'Hosted Authorization Options',
+      description: 'Control popup or redirect transport. Branding and required tier are configured in the business dashboard.',
       filename: 'sdk-config.jsx',
-      code: `<CasperIDModal
-  isOpen={isOpen}
-  apiKey="app_xyz123"
+      code: `<CasperIDButton
+  clientId="app_xyz123"
+  redirectUri={\`\${window.location.origin}/auth/callback\`}
+  mode="auto" // 'auto' | 'popup' | 'redirect'
+  timeoutMs={30 * 60 * 1000} // Set 0 to disable client-side timeout
   onSuccess={handleSuccess}
-  onClose={() => setIsOpen(false)}
-
-  // Verification Settings
-  requiredTier="layer_2" // 'layer_1' | 'layer_2' | 'layer_3'
-  mode="login" // 'login' | 'verify'
-
-  // Theme Customization
-  theme={{
-    primaryColor: '#8651e1',
-    borderRadius: '12',
-    fontFamily: 'Inter',
-    mode: 'light', // 'light' | 'dark' | 'system'
-    layout: 'auto', // 'auto' | 'modal' | 'fullscreen'
-  }}
-
-  // Branding
-  logoUrl="https://yourdomain.com/logo.png"
-
-  // Localization
-  language="EN" // 'EN' | 'ES' | 'FR' | 'DE'
+  onError={console.error}
 />`
+    },
+
+    'OAuth Token Exchange': {
+      title: 'OAuth Code Exchange (Backend)',
+      description: 'The browser receives a short-lived authorization code and PKCE verifier. Exchange them on your backend using the API secret. Never expose the API secret in frontend code.',
+      filename: 'server.js',
+      code: `// result is returned by CasperIDButton / authorizeWithCasperID()
+// Send result.code, result.codeVerifier, and result.redirectUri to your backend.
+
+const tokenResponse = await fetch('https://apis.casperid.com/api/oauth/token', {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json',
+    'X-API-Secret': process.env.CASPERID_API_SECRET
+  },
+  body: JSON.stringify({
+    grant_type: 'authorization_code',
+    code: result.code,
+    client_id: process.env.CASPERID_CLIENT_ID,
+    redirect_uri: result.redirectUri,
+    code_verifier: result.codeVerifier
+  })
+});
+
+const authorization = await tokenResponse.json();
+// authorization.access_token
+// authorization.authorization_status: 'complete' | 'provisional'
+// authorization.verification_status: 'approved' | 'pending'
+// authorization.granted_tier: the user's actual tier
+// authorization.required_tier: your application's required tier`
     },
 
     'REST API (Headless)': {
       title: 'REST API (Headless)',
-      description: 'Build your own custom UI and logic using our robust REST API endpoints. Perfect for mobile apps or unique onboarding experiences.',
+      description: 'Advanced APIs for trusted backend and native integrations. Web applications should use hosted authorization so CasperID passkeys remain on the CasperID relying-party domain.',
       code: `// All API calls to: https://apis.casperid.com
 // Required headers:
 // X-App-Id: YOUR_APP_ID`,
@@ -235,7 +246,7 @@ localStorage.removeItem('casperid_session');`
 
     'Layer 1 Verification': {
       title: 'Layer 1: Basic Identity (Onboarding)',
-      description: 'The foundation of CasperID. Users go through a sequential flow to verify their identity and create their persistent digital wallet.',
+      description: 'The hosted CasperID account flow handles email verification, passkey registration, wallet creation, and DID minting. The endpoint sequence below documents what CasperID runs on its own account domain; partner web apps should not reproduce it.',
       steps: [
         {
           title: '1. Email & OTP Verification',
@@ -255,7 +266,7 @@ const { sessionToken } = await fetch('https://apis.casperid.com/api/auth/verify-
         },
         {
           title: '2. Passkey Registration',
-          desc: 'After email verification, the user registers a biometric passkey for secure, passwordless access.',
+          desc: 'On the CasperID account domain, the user registers a biometric passkey for secure, passwordless access.',
           code: `// Initialize passkey registration
 const { options } = await fetch('https://apis.casperid.com/api/passkey/register/begin', {
   method: 'POST',
@@ -295,7 +306,7 @@ await fetch('https://apis.casperid.com/api/passkey/did/mint', {
 
     'Layer 2 Verification': {
       title: 'Layer 2: Liveness Verification',
-      description: 'Verify user identity with facial liveness check. Requires camera access and captures multiple frames to detect live human presence.',
+      description: 'Hosted authorization uses a phone-first liveness flow. Desktop users scan a scoped QR code; mobile users continue directly. The QR authorizes one verification and does not permanently register the phone as a trusted passkey device.',
       filename: 'layer2.js',
       code: `// Step 1: Start Layer 2 verification
 const sessionToken = localStorage.getItem('casperid_session');
@@ -315,13 +326,22 @@ const startResponse = await fetch('https://apis.casperid.com/api/v2/verification
 
 const { verification } = await startResponse.json();
 const requestId = verification.requestId;
+const qrCode = verification.qrCode.dataUrl;
+const mobileUrl = verification.qrCode.mobileUrl;
 
-// Step 2: Capture liveness frames
-// Use camera API to capture 10-30 frames of user's face
-// with different angles and expressions
+// Step 2: Desktop displays qrCode. The phone opens mobileUrl and acknowledges
+// the scoped pairing. Poll status to show "Verification in progress".
+const status = await fetch(
+  \`https://apis.casperid.com/api/v2/verification/\${requestId}/status\`,
+  { headers: { Authorization: \`Bearer \${sessionToken}\` } }
+).then(r => r.json());
 
+// Step 3: The CasperID-hosted mobile page captures and submits liveness frames.
+// Native/headless clients may submit the scoped pairing token themselves:
 const formData = new FormData();
 formData.append('requestId', requestId);
+formData.append('pairingId', verification.pairingId);
+formData.append('pairingToken', verification.pairingToken);
 
 // Add captured frames
 imageFrames.forEach((frame, index) => {
@@ -335,7 +355,7 @@ formData.append('metadata', JSON.stringify({
   framesCount: imageFrames.length
 }));
 
-// Step 3: Submit liveness check
+// Never set Content-Type manually; the browser must add the multipart boundary.
 const livenessResponse = await fetch('https://apis.casperid.com/api/v2/verification/liveness', {
   method: 'POST',
   body: formData // Note: No Content-Type header, browser sets it automatically
@@ -343,14 +363,14 @@ const livenessResponse = await fetch('https://apis.casperid.com/api/v2/verificat
 
 const { success, liveness } = await livenessResponse.json();
 
-if (liveness.livenessVerified) {
+if (success && liveness.livenessVerified) {
   console.log('Liveness verified! Score:', liveness.score);
   // User is now Layer 2 verified
 } else {
   console.log('Liveness check failed');
 }
 
-// Step 4: Check final verification status
+// Step 4: The initiating desktop polls until status is completed.
 const statusResponse = await fetch(\`https://apis.casperid.com/api/v2/verification/\${requestId}/status\`);
 const { verification: finalStatus } = await statusResponse.json();
 
@@ -359,7 +379,7 @@ console.log('Verification tier:', finalStatus.status);`
 
     'Layer 3 Verification': {
       title: 'Layer 3: Full KYC Verification',
-      description: 'Complete KYC verification with government-issued ID document scanning and OCR extraction. Requires document photos and liveness check.',
+      description: 'The hosted flow collects government ID documents and liveness evidence. If review remains pending, OAuth may return a 24-hour provisional authorization while preserving the user’s actual L2 tier.',
       filename: 'layer3.js',
       code: `// Step 1: Start Layer 3 verification
 const sessionToken = localStorage.getItem('casperid_session');
@@ -392,7 +412,12 @@ const uploadResponse = await fetch('https://apis.casperid.com/api/v2/verificatio
   body: formData
 });
 
-const { extracted_data } = await uploadResponse.json();
+const {
+  extracted_data,
+  upload_id,
+  front_image_url,
+  back_image_url
+} = await uploadResponse.json();
 
 // Step 3: Complete liveness check 
 // (See Layer 2 Verification for implementation details)
@@ -406,9 +431,12 @@ const submitResponse = await fetch('https://apis.casperid.com/api/v2/verificatio
     'Authorization': \`Bearer \${sessionToken}\`
   },
   body: JSON.stringify({
-    requestId: requestId,
-    extractedData: extracted_data,
-    documentType: 'passport'
+    request_id: requestId,
+    document_data: extracted_data,
+    upload_id,
+    front_image_url,
+    back_image_url,
+    liveness_verified: true
   })
 });
 
@@ -463,7 +491,7 @@ verifications.forEach(v => {
 
     'Registration Flow': {
       title: 'Passkey Registration (Advanced)',
-      description: 'Register a new user with a passkey for passwordless authentication. Requires WebAuthn browser support and proper Origin header configuration.',
+      description: 'Advanced CasperID account-domain flow. Partner web applications must use hosted authorization because WebAuthn credentials are scoped to the CasperID relying-party domain.',
       filename: 'register.js',
       code: `// Step 1: Start Registration
 const beginRes = await fetch('https://apis.casperid.com/api/passkey/register/begin', {
@@ -486,13 +514,13 @@ const credential = await navigator.credentials.create({
 });
 
 // Step 3: Finish Registration
-// ⚠️ CRITICAL: Include Origin header that matches your dashboard config
+// This request and navigator.credentials.create() must run on the configured
+// CasperID account relying-party domain. Browsers set Origin automatically.
 const finishRes = await fetch('https://apis.casperid.com/api/passkey/register/finish', {
   method: 'POST',
   headers: {
     'Content-Type': 'application/json',
     'X-App-Id': 'app_xyz123',
-    'Origin': 'https://your-dapp-domain.com' // MUST match allowed_origins in dashboard
   },
   body: JSON.stringify({
     userId: userId, // From Step 1 response
@@ -516,22 +544,12 @@ const finishRes = await fetch('https://apis.casperid.com/api/passkey/register/fi
 const { business_token, sessionToken } = await finishRes.json();
 // Store business_token for future requests!
 
-/* ⚠️ IMPORTANT: Origin Header Validation
- * The Origin header must EXACTLY match one of the allowed origins
- * configured in your Business Dashboard → Integrations → [Your App] → Redirect Configuration
- *
- * Examples:
- * ✅ Dashboard: https://app.example.com  | Request Origin: https://app.example.com
- * ❌ Dashboard: https://app.example.com  | Request Origin: http://localhost:3000 (mismatch!)
- * ❌ Dashboard: https://app.example.com  | Request Origin: https://app.example.com/ (trailing slash!)
- *
- * Mismatch = verification will fail for security reasons.
- */`
+// Do not attempt this from a partner domain. Use CasperIDButton instead.`
     },
 
     'Authentication Flow': {
       title: 'Passkey Authentication (Advanced)',
-      description: 'Log in an existing user with their registered passkey. Similar to registration but uses WebAuthn get() instead of create(). Requires proper Origin header configuration.',
+      description: 'Advanced CasperID account-domain flow. Partner web applications should use hosted authorization; a CasperID passkey cannot be used directly from an unrelated relying-party domain.',
       filename: 'login.js',
       code: `// Step 1: Start Auth
 const beginRes = await fetch('https://apis.casperid.com/api/passkey/auth/begin', {
@@ -552,13 +570,12 @@ const credential = await navigator.credentials.get({
 });
 
 // Step 3: Finish Auth
-// ⚠️ CRITICAL: Include Origin header that matches your dashboard config
+// Must execute on the CasperID account relying-party domain.
 const finishRes = await fetch('https://apis.casperid.com/api/passkey/auth/finish', {
   method: 'POST',
   headers: {
     'Content-Type': 'application/json',
     'X-App-Id': 'app_xyz123',
-    'Origin': 'https://your-dapp-domain.com' // MUST match allowed_origins in dashboard
   },
   body: JSON.stringify({
     challengeId, // From Step 1 response
@@ -582,19 +599,7 @@ const finishRes = await fetch('https://apis.casperid.com/api/passkey/auth/finish
 
 const { business_token, sessionToken } = await finishRes.json();
 
-/* ⚠️ IMPORTANT: Origin Header Validation
- * The Origin header must EXACTLY match one of the allowed origins
- * configured in your Business Dashboard → Integrations → [Your App] → Redirect Configuration
- *
- * Common mistakes:
- * ❌ Trailing slashes: https://example.com/ vs https://example.com
- * ❌ Protocol mismatch: http:// vs https://
- * ❌ Port numbers: https://example.com:3000 vs https://example.com
- * ❌ Subdomain mismatch: app.example.com vs www.example.com
- *
- * The browser automatically sends the Origin header in fetch() requests,
- * but you may need to manually add it in non-browser environments (Node.js, React Native).
- */`
+// Do not attempt this from a partner domain. Use CasperIDButton instead.`
     },
 
     'User Profile': {
@@ -816,114 +821,62 @@ https://digitalassetlinks.googleapis.com/v1/statements:list?source.web.site=http
 
     'React Native Integration': {
       title: 'React Native Integration',
-      description: 'Integrate CasperID into your React Native application using our REST API and WebAuthn for passkeys.',
+      description: 'Use a system browser hosted-authorization flow for the default mobile integration. Direct passkey APIs are only for native apps configured for CasperID-associated domains.',
       steps: [
         {
-          title: '1. Install Dependencies',
-          desc: 'Install required packages for HTTP requests and WebAuthn support.',
-          code: `npm install axios
-npm install react-native-passkey
+          title: '1. Register a Universal-Link Callback',
+          desc: 'Add an exact HTTPS callback URI in API Management. The URI must open your mobile application through Universal Links or Android App Links.',
+          code: `https://app.example.com/auth/callback
 
-# For iOS, run pod install
-cd ios && pod install && cd ..`,
-          filename: 'terminal'
+// The backend currently accepts HTTPS callbacks, plus HTTP localhost for development.
+// Custom URL schemes are not accepted as OAuth redirect URIs.`,
+          filename: 'dashboard'
         },
         {
-          title: '2. Configure Android (AssetLinks)',
-          desc: 'Make sure you\'ve completed the "Android Setup" documentation first to enable passkey support.',
-          code: `// See "Android Setup" section in docs
-// You must configure Digital Asset Links in your dashboard`,
-          filename: 'reminder.js'
+          title: '2. Generate PKCE and Open the System Browser',
+          desc: 'Generate state and PKCE values in the app, retain the verifier securely, then open the hosted CasperID authorization URL in the system browser.',
+          code: `const authorizationUrl = new URL('https://account.casperid.com/authorize');
+authorizationUrl.search = new URLSearchParams({
+  response_type: 'code',
+  client_id: 'app_xyz123',
+  redirect_uri: 'https://app.example.com/auth/callback',
+  state,
+  code_challenge: codeChallenge,
+  code_challenge_method: 'S256'
+}).toString();
+
+await openSystemBrowser(authorizationUrl.toString());`,
+          filename: 'auth/casperid.ts'
         },
         {
-          title: '3. Initialize CasperID Client',
-          desc: 'Create a client service to handle API calls to CasperID.',
-          code: `import axios from 'axios';
+          title: '3. Handle the Callback',
+          desc: 'Validate the returned state and send the authorization code and retained PKCE verifier to your backend.',
+          code: `const callback = new URL(incomingUniversalLink);
+if (callback.searchParams.get('state') !== retainedState) {
+  throw new Error('Invalid OAuth state');
+}
 
-const casperIDClient = axios.create({
-  baseURL: 'https://apis.casperid.com',
-  headers: {
-    'Content-Type': 'application/json',
-    'X-App-Id': 'app_xyz123', // Your App ID from dashboard
-    'Origin': 'https://your-app-domain.com' // Required for passkey endpoints
-  }
-});
-
-// ⚠️ Note: Origin header must match allowed_origins in your dashboard
-// Configure in: Dashboard → Integrations → [Your App] → Redirect Configuration
-
-export default casperIDClient;`,
-          filename: 'services/casperid.js'
+await sendCodeToBackend({
+  code: callback.searchParams.get('code'),
+  codeVerifier: retainedCodeVerifier,
+  redirectUri: 'https://app.example.com/auth/callback'
+});`,
+          filename: 'auth/callback.ts'
         },
         {
-          title: '4. Implement OTP Authentication',
-          desc: 'Use email OTP for initial authentication (recommended for mobile).',
-          code: `import casperIDClient from './services/casperid';
+          title: '4. Exchange the Code on Your Backend',
+          desc: 'Use the same backend-only OAuth token exchange documented for the React SDK. Never ship the API secret in the mobile app.',
+          code: `POST https://apis.casperid.com/api/oauth/token
+X-API-Secret: your_backend_only_secret
 
-// Send OTP
-const sendOTP = async (email) => {
-  const response = await casperIDClient.post('/api/auth/send-otp', {
-    email
-  });
-  return response.data; // { verificationId, expiresIn }
-};
-
-// Verify OTP
-const verifyOTP = async (verificationId, otp) => {
-  const response = await casperIDClient.post('/api/auth/verify-otp', {
-    verificationId,
-    otp
-  });
-  return response.data; // { sessionToken, business_token, userAccount }
-};`,
-          filename: 'hooks/useAuth.js'
-        },
-        {
-          title: '5. Optional: Register Passkey',
-          desc: 'After OTP auth, optionally register a passkey for biometric login.',
-          code: `import Passkey from 'react-native-passkey';
-
-const registerPasskey = async (sessionToken) => {
-  // 1. Request registration options
-  const optionsRes = await casperIDClient.post('/api/passkey/register/begin', {}, {
-    headers: { 'Authorization': \`Bearer \${sessionToken}\` }
-  });
-
-  const { options } = optionsRes.data;
-
-  // 2. Create passkey with device biometric
-  const credential = await Passkey.register(options);
-
-  // 3. Complete registration
-  const completeRes = await casperIDClient.post('/api/passkey/register/complete', {
-    credential
-  }, {
-    headers: { 'Authorization': \`Bearer \${sessionToken}\` }
-  });
-
-  return completeRes.data;
-};`,
-          filename: 'services/passkey.js'
-        },
-        {
-          title: '6. Authenticate with Passkey',
-          desc: 'On subsequent logins, use passkey for instant biometric authentication.',
-          code: `const authenticateWithPasskey = async () => {
-  // 1. Request authentication options
-  const optionsRes = await casperIDClient.post('/api/passkey/authenticate/begin');
-  const { options } = optionsRes.data;
-
-  // 2. Get credential from device
-  const credential = await Passkey.authenticate(options);
-
-  // 3. Complete authentication
-  const authRes = await casperIDClient.post('/api/passkey/authenticate/complete', {
-    credential
-  });
-
-  return authRes.data; // { sessionToken, business_token, userAccount }
-};`,
-          filename: 'services/passkey.js'
+{
+  "grant_type": "authorization_code",
+  "code": "...",
+  "client_id": "app_xyz123",
+  "redirect_uri": "https://app.example.com/auth/callback",
+  "code_verifier": "..."
+}`,
+          filename: 'backend'
         }
       ]
     }
@@ -944,7 +897,8 @@ const registerPasskey = async (sessionToken) => {
               title: 'React SDK',
               items: [
                 { label: 'React SDK Installation' },
-                { label: 'SDK Configuration' }
+                { label: 'SDK Configuration' },
+                { label: 'OAuth Token Exchange' }
               ],
             },
             {

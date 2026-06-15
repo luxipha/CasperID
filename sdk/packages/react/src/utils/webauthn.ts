@@ -139,6 +139,7 @@ export function formatRegistrationCredential(
     response: {
         clientDataJSON: string;
         attestationObject: string;
+        transports?: string[];
     };
     clientExtensionResults: AuthenticationExtensionsClientOutputs;
     deviceInfo: { platform: string; userAgent: string; deviceType: string };
@@ -151,7 +152,8 @@ export function formatRegistrationCredential(
         type: credential.type,
         response: {
             clientDataJSON: arrayBufferToBase64url(response.clientDataJSON),
-            attestationObject: arrayBufferToBase64url(response.attestationObject)
+            attestationObject: arrayBufferToBase64url(response.attestationObject),
+            transports: response.getTransports?.()
         },
         clientExtensionResults: credential.getClientExtensionResults(),
         deviceInfo: getDeviceInfo()
@@ -205,6 +207,7 @@ export async function createPasskey(
     response: {
         clientDataJSON: string;
         attestationObject: string;
+        transports?: string[];
     };
     clientExtensionResults: AuthenticationExtensionsClientOutputs;
     deviceInfo: { platform: string; userAgent: string; deviceType: string };
