@@ -1,0 +1,60 @@
+{
+    "name": "@casperid/react-native",
+    "version": "2.0.1",
+    "description": "Lightweight React Native SDK for CasperID hosted authorization",
+    "main": "dist/index.js",
+    "types": "dist/index.d.ts",
+    "type": "module",
+    "keywords": [
+        "casper",
+        "identity",
+        "verification",
+        "blockchain",
+        "did",
+        "passkey",
+        "zkp",
+        "privacy",
+        "react-native",
+        "sdk",
+        "auth"
+    ],
+    "files": [
+        "dist"
+    ],
+    "author": "CasperID Team",
+    "license": "MIT",
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/luxipha/CasperID-sdk.git"
+    },
+    "bugs": {
+        "url": "https://github.com/luxipha/CasperID-sdk/issues"
+    },
+    "homepage": "https://casperid.com",
+    "exports": {
+        ".": {
+            "types": "./dist/index.d.ts",
+            "default": "./dist/index.js"
+        }
+    },
+    "scripts": {
+        "build": "tsc",
+        "lint": "tsc --noEmit",
+        "prepublishOnly": "npm run build"
+    },
+    "peerDependencies": {
+        "react": ">=18",
+        "react-native": ">=0.76"
+    },
+    "dependencies": {
+        "@react-native-async-storage/async-storage": ">=2.0",
+        "expo-crypto": "~14.0",
+        "expo-linking": "~7.0",
+        "expo-web-browser": "~14.0"
+    },
+    "devDependencies": {
+        "@types/react": "~19.0",
+        "react-native": ">=0.76",
+        "typescript": "~5.8.2"
+    }
+}
