@@ -28,6 +28,39 @@ describe('consumeHostedAuthorizationCallback', () => {
         expect(sessionStorage.getItem('casperid_authorization:state-123')).toBeNull();
     });
 
+    it('recovers a callback when mobile or PWA navigation loses sessionStorage', () => {
+        localStorage.setItem('casperid_authorization:state-123', JSON.stringify({
+            state: 'state-123',
+            codeVerifier: 'verifier-123',
+            redirectUri: 'https://affiliate.example/auth/callback',
+            accountOrigin: 'https://account.casperid.com',
+            expiresAt: Date.now() + 30 * 60 * 1000,
+        }));
+
+        expect(consumeHostedAuthorizationCallback('https://affiliate.example/auth/callback?code=code-123&state=state-123')).toEqual({
+            code: 'code-123',
+            state: 'state-123',
+            codeVerifier: 'verifier-123',
+            redirectUri: 'https://affiliate.example/auth/callback',
+        });
+        expect(sessionStorage.getItem('casperid_authorization:state-123')).toBeNull();
+        expect(localStorage.getItem('casperid_authorization:state-123')).toBeNull();
+    });
+
+    it('rejects and removes expired durable authorization transactions', () => {
+        localStorage.setItem('casperid_authorization:state-123', JSON.stringify({
+            state: 'state-123',
+            codeVerifier: 'verifier-123',
+            redirectUri: 'https://affiliate.example/auth/callback',
+            accountOrigin: 'https://account.casperid.com',
+            expiresAt: Date.now() - 1,
+        }));
+
+        expect(() => consumeHostedAuthorizationCallback('https://affiliate.example/auth/callback?code=code-123&state=state-123'))
+            .toThrow('CasperID authorization state is invalid or expired.');
+        expect(localStorage.getItem('casperid_authorization:state-123')).toBeNull();
+    });
+
     it('rejects callbacks without a matching state transaction', () => {
         expect(() => consumeHostedAuthorizationCallback('https://affiliate.example/auth/callback?code=code-123&state=unknown'))
             .toThrow('CasperID authorization state is invalid or expired.');
