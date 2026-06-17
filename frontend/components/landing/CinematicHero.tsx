@@ -188,7 +188,7 @@ const CinematicHero: React.FC = () => {
                     <div ref={tagRef} className="mb-6">
                         <div className="px-4 py-1.5 rounded-full border border-primary/20 bg-primary/5 backdrop-blur-sm flex items-center gap-2">
                             <div className="w-2 h-2 rounded-full bg-primary shadow-[0_0_8px_rgba(168,85,247,0.8)]"></div>
-                            <span className="text-[10px] font-black uppercase tracking-[0.2em] text-primary">Coming Soon: SDK</span>
+                            <span className="text-[10px] font-black uppercase tracking-[0.2em] text-primary">SDK v2 Live</span>
                         </div>
                     </div>
 
