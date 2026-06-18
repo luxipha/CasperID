@@ -32,6 +32,9 @@
         "url": "https://github.com/luxipha/CasperID-sdk/issues"
     },
     "homepage": "https://casperid.com",
+    "publishConfig": {
+        "access": "public"
+    },
     "scripts": {
         "dev": "vite --port=3001",
         "build": "tsc --noEmit && vite build",

@@ -31,6 +31,9 @@
         "url": "https://github.com/luxipha/CasperID-sdk/issues"
     },
     "homepage": "https://casperid.com",
+    "publishConfig": {
+        "access": "public"
+    },
     "exports": {
         ".": {
             "types": "./dist/index.d.ts",

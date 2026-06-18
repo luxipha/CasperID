@@ -2,6 +2,7 @@ const TRANSACTION_PREFIX = 'casperid_authorization:';
 const RESULT_PREFIX = 'casperid_authorization_result:';
 const POPUP_PREFIX = 'casperid_authorization_popup:';
 const DEFAULT_HOSTED_AUTHORIZATION_TIMEOUT_MS = 30 * 60 * 1000;
+const TRANSACTION_TTL_MS = DEFAULT_HOSTED_AUTHORIZATION_TIMEOUT_MS;
 
 export interface HostedAuthorizationOptions {
     clientId: string;
@@ -32,6 +33,7 @@ interface StoredTransaction {
     codeVerifier: string;
     redirectUri: string;
     accountOrigin: string;
+    expiresAt?: number;
 }
 
 interface StoredResult {
@@ -76,23 +78,75 @@ function popupKey(state: string): string {
     return `${POPUP_PREFIX}${state}`;
 }
 
-function saveTransaction(transaction: StoredTransaction): void {
-    sessionStorage.setItem(transactionKey(transaction.state), JSON.stringify(transaction));
-}
-
-function loadTransaction(state: string): StoredTransaction | null {
-    const stored = sessionStorage.getItem(transactionKey(state));
-    if (!stored) return null;
+function readStorageValue(storage: Storage, key: string): string | null {
     try {
-        return JSON.parse(stored) as StoredTransaction;
+        return storage.getItem(key);
     } catch {
         return null;
     }
 }
 
+function writeStorageValue(storage: Storage, key: string, value: string): void {
+    try {
+        storage.setItem(key, value);
+    } catch {
+        // Authorization can still complete if one storage layer is available.
+    }
+}
+
+function removeStorageValue(storage: Storage, key: string): void {
+    try {
+        storage.removeItem(key);
+    } catch {
+        // Ignore storage access failures during cleanup.
+    }
+}
+
+function parseTransaction(stored: string | null): StoredTransaction | null {
+    if (!stored) return null;
+    try {
+        const transaction = JSON.parse(stored) as StoredTransaction;
+        if (transaction.expiresAt && transaction.expiresAt <= Date.now()) {
+            return null;
+        }
+        return transaction;
+    } catch {
+        return null;
+    }
+}
+
+function saveTransaction(transaction: StoredTransaction): void {
+    const storedTransaction = {
+        ...transaction,
+        expiresAt: Date.now() + TRANSACTION_TTL_MS,
+    };
+    const serialized = JSON.stringify(storedTransaction);
+    const key = transactionKey(transaction.state);
+    writeStorageValue(sessionStorage, key, serialized);
+    writeStorageValue(localStorage, key, serialized);
+}
+
+function loadTransaction(state: string): StoredTransaction | null {
+    const key = transactionKey(state);
+    const sessionTransaction = parseTransaction(readStorageValue(sessionStorage, key));
+    if (sessionTransaction) return sessionTransaction;
+    removeStorageValue(sessionStorage, key);
+
+    const persistentTransaction = parseTransaction(readStorageValue(localStorage, key));
+    if (persistentTransaction) return persistentTransaction;
+    removeStorageValue(localStorage, key);
+    return null;
+}
+
+function clearTransaction(state: string): void {
+    const key = transactionKey(state);
+    removeStorageValue(sessionStorage, key);
+    removeStorageValue(localStorage, key);
+}
+
 function consumeTransaction(state: string): StoredTransaction | null {
     const transaction = loadTransaction(state);
-    sessionStorage.removeItem(transactionKey(state));
+    clearTransaction(state);
     return transaction;
 }
 

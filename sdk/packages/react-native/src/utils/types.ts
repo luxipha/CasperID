@@ -23,6 +23,7 @@ export interface StoredTransaction {
     codeVerifier: string;
     redirectUri: string;
     accountOrigin: string;
+    expiresAt?: number;
 }
 
 export interface StoredResult {

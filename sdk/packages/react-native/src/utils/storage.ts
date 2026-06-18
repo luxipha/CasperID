@@ -4,6 +4,7 @@ import type { StoredTransaction, StoredResult } from './types';
 const TRANSACTION_PREFIX = 'casperid_authorization:';
 const RESULT_PREFIX = 'casperid_authorization_result:';
 const POPUP_PREFIX = 'casperid_authorization_popup:';
+const TRANSACTION_TTL_MS = 30 * 60 * 1000;
 
 function transactionKey(state: string): string {
     return `${TRANSACTION_PREFIX}${state}`;
@@ -18,15 +19,25 @@ function popupKey(state: string): string {
 }
 
 export async function saveTransaction(transaction: StoredTransaction): Promise<void> {
-    await AsyncStorage.setItem(transactionKey(transaction.state), JSON.stringify(transaction));
+    await AsyncStorage.setItem(transactionKey(transaction.state), JSON.stringify({
+        ...transaction,
+        expiresAt: Date.now() + TRANSACTION_TTL_MS,
+    }));
 }
 
 export async function loadTransaction(state: string): Promise<StoredTransaction | null> {
-    const stored = await AsyncStorage.getItem(transactionKey(state));
+    const key = transactionKey(state);
+    const stored = await AsyncStorage.getItem(key);
     if (!stored) return null;
     try {
-        return JSON.parse(stored) as StoredTransaction;
+        const transaction = JSON.parse(stored) as StoredTransaction;
+        if (transaction.expiresAt && transaction.expiresAt <= Date.now()) {
+            await AsyncStorage.removeItem(key);
+            return null;
+        }
+        return transaction;
     } catch {
+        await AsyncStorage.removeItem(key);
         return null;
     }
 }
