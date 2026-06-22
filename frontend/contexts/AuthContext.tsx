@@ -32,6 +32,33 @@ function base64urlToArrayBuffer(base64url: string): ArrayBuffer {
   return bytes.buffer;
 }
 
+function getReadablePasskeyError(error: unknown): string {
+  const fallbackMessage = 'Passkey sign-in failed. Please try again.';
+  if (!(error instanceof Error)) {
+    return fallbackMessage;
+  }
+
+  const normalizedMessage = error.message.toLowerCase();
+  const domErrorName = (error as DOMException).name;
+
+  const isRpIdMismatch =
+    domErrorName === 'SecurityError' ||
+    normalizedMessage.includes('operation is insecure') ||
+    normalizedMessage.includes('relying party id') ||
+    normalizedMessage.includes('registrable domain suffix') ||
+    normalizedMessage.includes('wrong content-type');
+
+  if (isRpIdMismatch) {
+    return 'This passkey was created on a different CasperID domain. Open the matching domain for this account, or create a new passkey on this local environment.';
+  }
+
+  if (domErrorName === 'NotAllowedError') {
+    return 'Passkey sign-in was cancelled or not approved on this device.';
+  }
+
+  return error.message || fallbackMessage;
+}
+
 export interface User {
   user_id: string;
   email: string;
@@ -404,7 +431,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       return { success: true, deviceType, user: user || undefined };
 
     } catch (error: any) {
-      const errorMessage = error.message || 'Authentication failed';
+      const errorMessage = getReadablePasskeyError(error);
       setError(errorMessage);
       throw new Error(errorMessage);
     }

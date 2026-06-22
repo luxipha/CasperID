@@ -226,11 +226,7 @@ export const L3LivenessCheck: React.FC<L3LivenessCheckProps> = ({ onComplete, ve
 
                             // Capture frame when blink completes (async, non-blocking)
                             if (canvasRef.current && st.frames.length < 20) {
-                                captureFrame(canvasRef.current, st).then((captured) => {
-                                    if (captured) {
-                                        console.log(`[L3Liveness] Captured frame ${st.frames.length} after blink ${st.blinkCount}`);
-                                    }
-                                });
+                                captureFrame(canvasRef.current, st);
                             }
 
                             setProgress((st.blinkCount / 3) * 100);
@@ -259,11 +255,7 @@ export const L3LivenessCheck: React.FC<L3LivenessCheckProps> = ({ onComplete, ve
                     // Capture frames periodically during mouth opening (async, non-blocking)
                     if (now - st.lastFrameTime > 100 && st.frames.length < 25 && canvasRef.current && !st.isCapturing) {
                         st.lastFrameTime = now;
-                        captureFrame(canvasRef.current, st).then((captured) => {
-                            if (captured) {
-                                console.log(`[L3Liveness] Captured frame ${st.frames.length} during mouth open (ratio: ${mouthOpenRatio.toFixed(3)})`);
-                            }
-                        });
+                        captureFrame(canvasRef.current, st);
                     }
 
                     // Once the mouth challenge begins, progress represents captured evidence.
@@ -304,7 +296,6 @@ export const L3LivenessCheck: React.FC<L3LivenessCheckProps> = ({ onComplete, ve
             }
 
             if (!videoRef.current || !canvasRef.current || !isActive) {
-                console.warn("[L3LivenessCheck] Refs not ready after timeout");
                 return;
             }
 
@@ -338,8 +329,7 @@ export const L3LivenessCheck: React.FC<L3LivenessCheckProps> = ({ onComplete, ve
                     });
                     await camera.start();
                 }
-            } catch (error) {
-                console.error('Camera initialization failed:', error);
+            } catch {
                 setGuidance("Camera access denied");
             }
         };
@@ -386,7 +376,6 @@ export const L3LivenessCheck: React.FC<L3LivenessCheckProps> = ({ onComplete, ve
                     if (onComplete) onComplete();
                 }, 1500);
             } else {
-                console.error('[L3Liveness] Verification failed:', result);
                 setGuidance(result.error || "Verification failed. Please try again.");
                 resetLivenessState();
                 setState("POSITIONING");

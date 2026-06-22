@@ -57,8 +57,7 @@ export const OnboardingStart: React.FC<OnboardingStartProps> = ({ email, onConti
 
       // If successful, continue to main app
       onContinue(email);
-    } catch (error: any) {
-      console.error('❌ Passkey creation failed:', error);
+    } catch {
       // Error is handled by the auth context and displayed in UI
     } finally {
       setIsRegistering(false);

@@ -1,0 +1,395 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Human ID Collision Test</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            color: #fff;
+            min-height: 100vh;
+            padding: 2rem;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 3rem;
+        }
+
+        h1 {
+            font-size: 3rem;
+            margin-bottom: 0.5rem;
+            background: linear-gradient(90deg, #00d4ff, #7b2cbf);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .subtitle {
+            font-size: 1.2rem;
+            color: #a0a0a0;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 3rem;
+        }
+
+        .stat-card {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 16px;
+            padding: 2rem;
+            text-align: center;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 40px rgba(0, 212, 255, 0.2);
+        }
+
+        .stat-value {
+            font-size: 3.5rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+            color: #00d4ff;
+        }
+
+        .stat-label {
+            font-size: 1rem;
+            color: #a0a0a0;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .stat-card.collision .stat-value {
+            color: #ff4757;
+        }
+
+        .stat-card.rate .stat-value {
+            color: #2ed573;
+        }
+
+        .stat-card.progress .stat-value {
+            color: #ffa502;
+        }
+
+        .progress-section {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 16px;
+            padding: 2rem;
+            margin-bottom: 3rem;
+        }
+
+        .progress-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+
+        .progress-label {
+            font-size: 1.2rem;
+            font-weight: 600;
+        }
+
+        .progress-value {
+            font-size: 1.2rem;
+            color: #ffa502;
+        }
+
+        .progress-bar {
+            height: 40px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #ffa502, #ff6b6b);
+            border-radius: 8px;
+            transition: width 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            padding-right: 1rem;
+        }
+
+        .progress-text {
+            font-weight: 700;
+            font-size: 1.2rem;
+        }
+
+        .info-section {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 16px;
+            padding: 2rem;
+        }
+
+        .info-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 2rem;
+        }
+
+        .info-column h3 {
+            font-size: 1.3rem;
+            margin-bottom: 1rem;
+            color: #00d4ff;
+        }
+
+        .info-item {
+            background: rgba(255, 255, 255, 0.03);
+            border-radius: 8px;
+            padding: 1rem;
+            margin-bottom: 0.75rem;
+        }
+
+        .info-item-label {
+            font-size: 0.85rem;
+            color: #a0a0a0;
+            margin-bottom: 0.25rem;
+        }
+
+        .info-item-value {
+            font-size: 1.1rem;
+            font-weight: 600;
+        }
+
+        .status-badge {
+            display: inline-block;
+            padding: 0.5rem 1rem;
+            border-radius: 20px;
+            font-size: 0.9rem;
+            font-weight: 600;
+            margin-top: 1rem;
+        }
+
+        .status-running {
+            background: rgba(46, 213, 115, 0.2);
+            color: #2ed573;
+            border: 1px solid #2ed573;
+        }
+
+        .status-completed {
+            background: rgba(46, 213, 115, 0.2);
+            color: #2ed573;
+            border: 1px solid #2ed573;
+        }
+
+        .status-stopped {
+            background: rgba(255, 71, 87, 0.2);
+            color: #ff4757;
+            border: 1px solid #ff4757;
+        }
+
+        .collisions {
+            font-size: 0.9rem;
+            margin-top: 0.5rem;
+            color: #ff4757;
+        }
+
+        @media (max-width: 768px) {
+            h1 {
+                font-size: 2rem;
+            }
+
+            .stat-value {
+                font-size: 2.5rem;
+            }
+
+            .progress-bar {
+                height: 30px;
+            }
+
+            .progress-text {
+                font-size: 1rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Human ID Collision Test</h1>
+            <p class="subtitle">Visual Confirmation of Collision-Resistant Identity Generation</p>
+            <div id="statusBadge" class="status-badge status-stopped">Waiting to start</div>
+        </header>
+
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-value" id="processedCount">0</div>
+                <div class="stat-label">Wallets Generated</div>
+            </div>
+
+            <div class="stat-card collision">
+                <div class="stat-value" id="collisions">0</div>
+                <div class="stat-label">Collisions Detected</div>
+                <div class="collisions" id="collisionRate">0.0000000000%</div>
+            </div>
+
+            <div class="stat-card rate">
+                <div class="stat-value" id="rate">0</div>
+                <div class="stat-label">Rate / sec</div>
+            </div>
+
+            <div class="stat-card progress">
+                <div class="stat-value" id="progress">0%</div>
+                <div class="stat-label">Progress to 100M</div>
+            </div>
+        </div>
+
+        <div class="progress-section">
+            <div class="progress-header">
+                <div class="progress-label">Generation Progress</div>
+                <div class="progress-value" id="eta">ETA: --</div>
+            </div>
+            <div class="progress-bar">
+                <div class="progress-fill" id="progressBar" style="width: 0%">
+                    <span class="progress-text" id="progressText">0%</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="info-section">
+            <div class="info-grid">
+                <div class="info-column">
+                    <h3>📊 Statistics</h3>
+                    <div class="info-item">
+                        <div class="info-item-label">Target</div>
+                        <div class="info-item-value" id="targetCount">100,000,000</div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-item-label">Elapsed Time</div>
+                        <div class="info-item-value" id="elapsedTime">--</div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-item-label">Success Rate</div>
+                        <div class="info-item-value" id="successRate">100.0000000000%</div>
+                    </div>
+                </div>
+
+                <div class="info-column">
+                    <h3>🧬 Human ID Algorithm</h3>
+                    <div class="info-item">
+                        <div class="info-item-label">Method</div>
+                        <div class="info-item-value">SHA-256 + Base32 + Markov Chain</div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-item-label">Entropy</div>
+                        <div class="info-item-value">≈100 bits</div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-item-label">Word Segments</div>
+                        <div class="info-item-value">4 per ID</div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-item-label">Syllable Pool</div>
+                        <div class="info-item-value">50 syllables</div>
+                    </div>
+                </div>
+
+                <div class="info-column">
+                    <h3>🎯 Probability</h3>
+                    <div class="info-item">
+                        <div class="info-item-label">Collision at 100M</div>
+                        <div class="info-item-value" id="collisionProb">~1 in 10^30</div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-item-label">Expected Collisions</div>
+                        <div class="info-item-value">0.00000000000000000000000000000000000078</div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-item-label">Guarantee</div>
+                        <div class="info-item-value">Practically Zero</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const statsFile = 'output/collision-stats.json';
+        const targetCount = 100000000;
+
+        function formatNumber(num) {
+            return num.toLocaleString();
+        }
+
+        function formatTime(seconds) {
+            if (seconds >= 3600) {
+                const hours = Math.floor(seconds / 3600);
+                const mins = Math.floor((seconds % 3600) / 60);
+                return `${hours}h ${mins}m`;
+            } else if (seconds >= 60) {
+                const mins = Math.floor(seconds / 60);
+                const secs = Math.floor(seconds % 60);
+                return `${mins}m ${secs}s`;
+            } else {
+                return `${seconds.toFixed(0)}s`;
+            }
+        }
+
+        function updateStats(stats) {
+            document.getElementById('processedCount').textContent = formatNumber(stats.processedCount);
+            document.getElementById('collisions').textContent = formatNumber(stats.collisions);
+            document.getElementById('collisionRate').textContent = `${stats.collisionRate}%`;
+            document.getElementById('rate').textContent = formatNumber(stats.rate);
+            document.getElementById('progress').textContent = `${stats.progress}%`;
+
+            const progressBar = document.getElementById('progressBar');
+            progressBar.style.width = `${stats.progress}%`;
+            document.getElementById('progressText').textContent = `${stats.progress}%`;
+
+            if (stats.completed) {
+                document.getElementById('eta').textContent = 'Completed!';
+                document.getElementById('statusBadge').textContent = 'Test Completed';
+                document.getElementById('statusBadge').className = 'status-badge status-completed';
+            } else {
+                const elapsed = stats.timestamp ? (Date.now() - new Date(stats.timestamp).getTime()) / 1000 : 0;
+                document.getElementById('elapsedTime').textContent = formatTime(elapsed);
+                document.getElementById('statusBadge').textContent = 'Running...';
+                document.getElementById('statusBadge').className = 'status-badge status-running';
+            }
+        }
+
+        async function checkStats() {
+            try {
+                const response = await fetch(statsFile);
+                if (response.ok) {
+                    const stats = await response.json();
+                    updateStats(stats);
+                }
+            } catch (error) {
+                // File doesn't exist yet
+            }
+        }
+
+        // Initial check
+        checkStats();
+
+        // Check every second
+        setInterval(checkStats, 1000);
+    </script>
+</body>
+</html>

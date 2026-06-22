@@ -192,8 +192,6 @@ router.post('/ai/verify-liveness-sequence', upload.fields([
                 const keyFrameIndices = [0, frameInterval, frameInterval * 2, frameInterval * 3, frames.length - 1];
                 const livenessFrameUrls = [];
 
-                console.log(`[AI] Layer 3 liveness passed. Uploading ${keyFrameIndices.length} frames to ImageKit...`);
-
                 for (const idx of keyFrameIndices) {
                     if (frames[idx]) {
                         try {
@@ -220,7 +218,6 @@ router.post('/ai/verify-liveness-sequence', upload.fields([
                         liveness_confidence: result.confidence || 0
                     };
                     await pendingLayer3Request.save();
-                    console.log(`[AI] Stored ${livenessFrameUrls.length} liveness frames in VerificationRequestV2`);
                 }
 
                 return res.json({
@@ -235,8 +232,6 @@ router.post('/ai/verify-liveness-sequence', upload.fields([
             // Layer 2 flow - DON'T mint credential yet!
             // The credential will be minted AFTER successful Starknet ZK submission
             // This prevents out-of-sync states between Casper and Starknet
-            console.log(`[AI] Layer 2 liveness passed for ${userAccount.wallet}. Awaiting ZK submission...`);
-
             // Generate a secure liveness session token for the ZK submission step
             const livenessSessionToken = crypto.randomBytes(32).toString('hex');
             const livenessSessionExpiry = Date.now() + (30 * 60 * 1000); // 30 minutes

@@ -22,6 +22,7 @@ export const AuthEntry: React.FC<AuthEntryProps> = ({
   const [isLoading, setIsLoading] = useState(false);
   const [isVerifying, setIsVerifying] = useState(false);
   const [error, setError] = useState('');
+  const [errorTitle, setErrorTitle] = useState('Failed to Send Code');
   const { login } = useAuth();
 
   // Detect the current device type
@@ -40,6 +41,7 @@ export const AuthEntry: React.FC<AuthEntryProps> = ({
     try {
       setIsLoading(true);
       setError('');
+      setErrorTitle('Failed to Send Code');
 
       const { apiService } = await import('../services/api');
       const response = await apiService.sendOTP(email);
@@ -73,6 +75,7 @@ export const AuthEntry: React.FC<AuthEntryProps> = ({
             }
           } catch (loginError: any) {
             console.error('Sign-in failed:', loginError);
+            setErrorTitle('Sign-in Failed');
             setError(loginError.message || 'Sign-in failed. Please try again.');
           }
         } else {
@@ -80,10 +83,12 @@ export const AuthEntry: React.FC<AuthEntryProps> = ({
           onEmailSubmit(email, (response as any).verificationId);
         }
       } else {
+        setErrorTitle('Failed to Send Code');
         setError(response.error || 'Failed to send verification code');
       }
     } catch (error: any) {
       console.error('Failed to send OTP:', error);
+      setErrorTitle('Failed to Send Code');
       setError(error.message || 'Failed to send verification code');
     } finally {
       setIsLoading(false);
@@ -185,7 +190,7 @@ export const AuthEntry: React.FC<AuthEntryProps> = ({
               <div className="flex items-start gap-3">
                 <span className="material-symbols-outlined text-red-500 text-lg">error</span>
                 <div>
-                  <p className="text-red-800 font-bold text-sm">Failed to Send Code</p>
+                  <p className="text-red-800 font-bold text-sm">{errorTitle}</p>
                   <p className="text-red-600 text-xs mt-1">{error}</p>
                 </div>
               </div>

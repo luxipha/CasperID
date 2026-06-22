@@ -5,9 +5,9 @@ export type MobileStep = 'position' | 'blink' | 'smile' | 'processing' | 'succes
 
 interface MobileLivenessPageProps {
     onComplete: () => void;
-    onCancel: () => void;
-    videoRef: React.RefObject<HTMLVideoElement>;
-    canvasRef: React.RefObject<HTMLCanvasElement>;
+    onCancel?: () => void;
+    videoRef: React.RefObject<HTMLVideoElement | null>;
+    canvasRef: React.RefObject<HTMLCanvasElement | null>;
     step: MobileStep;
     progress: number;
     instruction: string;

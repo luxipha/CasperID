@@ -36,14 +36,8 @@ export default function HostedLivenessCapture() {
       requestId: payload.requestId,
       pairingId: payload.pairingId,
       pairingToken: payload.pairingToken,
-    }).then(() => {
-      console.info('[Liveness Pairing] Phone handoff acknowledged', {
-        requestId: payload.requestId,
-        pairingId: payload.pairingId,
-      });
-    }).catch((error) => {
+    }).catch(() => {
       sessionStorage.removeItem(acknowledgementKey);
-      console.error('[Liveness Pairing] Failed to acknowledge phone handoff', error);
     });
   }, [payload]);
 

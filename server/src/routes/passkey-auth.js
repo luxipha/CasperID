@@ -47,10 +47,6 @@ router.post('/register/begin', passkeyRateLimit, extractViewer, validatePasskeyR
         // requireAuth/extractViewer populates req.user.email
         const isEmailVerified = !!(req.user && req.user.email && req.user.email.toLowerCase() === email.toLowerCase());
 
-        if (isEmailVerified) {
-            console.log(`[Passkey] Suppressing redundant OTP for pre-verified email: ${email}`);
-        }
-
         if (!email) {
             return res.status(400).json({
                 success: false,
@@ -130,13 +126,6 @@ router.post('/register/begin', passkeyRateLimit, extractViewer, validatePasskeyR
 router.post('/register/finish', passkeyRateLimit, validatePasskeyAuth, extractApp, async (req, res) => {
     try {
         const { userId, credential, deviceInfo } = req.body;
-
-        // Debug logging for origin resolution
-        console.log('[Passkey Register] Origin:', req.headers.origin);
-        console.log('[Passkey Register] BusinessApp:', req.businessApp ? {
-            app_id: req.businessApp.app_id,
-            allowed_origins: req.businessApp.allowed_origins
-        } : 'Not found');
 
         if (!userId || !credential) {
             return res.status(400).json({
@@ -928,8 +917,6 @@ router.post('/wallet/generate', async (req, res) => {
         const existingCredential = await Credential.findOne({ wallet: walletInfo.walletAddress });
 
         if (!existingCredential) {
-            console.log(`[Layer 1] Initiating on-chain verification for ${walletInfo.walletAddress}`);
-
             // Use the shared credential minter to log on-chain immediately
             const { mintCredential } = require('../utils/credential-minter');
 
@@ -947,10 +934,8 @@ router.post('/wallet/generate', async (req, res) => {
             };
 
             try {
-                const result = await mintCredential(mockRequest);
-                console.log(`✅ Generated initial on-chain credential for ${walletInfo.walletAddress}: ${result.tx_hash}`);
+                await mintCredential(mockRequest);
             } catch (mintError) {
-                console.error('❌ Failed to mint initial credential:', mintError);
                 // Fallback to DB-only if chain fails, to not block onboarding? 
                 // For now, allow error to bubble up or log it.
                 // We'll proceed silently to ensure user can still login.
@@ -970,7 +955,6 @@ router.post('/wallet/generate', async (req, res) => {
             },
             { upsert: true, new: true }
         );
-        console.log(`✅ Ensured UserProfile exists for ${walletInfo.walletAddress}`);
 
         res.json({
             success: true,
@@ -1055,7 +1039,6 @@ router.post('/did/mint', async (req, res) => {
                 { user_id: userAccount.user_id },
                 { did_address: realDID, did_minted: true }
             );
-            console.log(`[DID] Synced existing on-chain DID to DB for ${userAccount.wallet}`);
             return res.json({
                 success: true,
                 message: 'DID already exists on-chain (synced to database)',
@@ -1068,7 +1051,6 @@ router.post('/did/mint', async (req, res) => {
         // Reload userAccount to get latest state
         const freshAccount = await UserAccount.findOne({ user_id: userAccount.user_id });
         if (freshAccount?.did_minted) {
-            console.log(`[DID] Mint already in progress for ${userAccount.wallet} (skipping)`);
             return res.json({
                 success: true,
                 message: 'DID minting already in progress',
@@ -1083,7 +1065,6 @@ router.post('/did/mint', async (req, res) => {
             { $set: { did_minted: true } }
         );
 
-        console.log(`[DID] Minting Master DID for ${userAccount.wallet}`);
         const txHash = await casperService.mintDID(userAccount.wallet, userAccount.tier || 'layer_1');
 
         const realDID = `did:casper:${userAccount.wallet}`;
@@ -1333,9 +1314,6 @@ router.post('/analytics/account-created', async (req, res) => {
                 onboarding_completed_at: new Date()
             }
         );
-
-        // TODO: Add to analytics service when available
-        console.log(`📊 Account creation completed for user: ${sessionData.userAccount.user_id}`);
 
         res.json({
             success: true,

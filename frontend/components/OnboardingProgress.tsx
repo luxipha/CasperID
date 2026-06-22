@@ -81,7 +81,6 @@ export const OnboardingProgress: React.FC<OnboardingProgressProps> = ({ email, o
         throw new Error(walletResponse.error || 'Wallet generation failed');
       }
     } catch (error) {
-      console.error('❌ Wallet generation error:', error);
       setWalletReady(false);
       setWalletGenerated(false);
       setSetupError(error instanceof Error ? error.message : 'Wallet generation failed');
@@ -132,7 +131,6 @@ export const OnboardingProgress: React.FC<OnboardingProgressProps> = ({ email, o
       setProgress(100);
 
     } catch (error) {
-      console.error('❌ DID minting and security setup error:', error);
       setDidMinted(false);
       setSetupError(error instanceof Error ? error.message : 'Secure profile setup failed');
     }

@@ -194,10 +194,6 @@ class WebAuthnService {
 
 
             if (!verification.verified || !verification.registrationInfo) {
-                console.error('❌ Registration verification failed:', {
-                    verified: verification.verified,
-                    hasRegistrationInfo: !!verification.registrationInfo
-                });
                 throw new Error('Registration verification failed');
             }
 
@@ -450,16 +446,12 @@ class WebAuthnService {
             }
 
 
-            // Ensure counter is a valid number
             const counter = credential.counter || 0;
-            console.log('🔍 Using counter value:', counter);
 
             // Verify the authentication
             // Need to use the original credential ID (searchCredentialId) for verification, not the double-encoded one
             const actualCredentialId = searchCredentialId;
-            console.log('🔍 Using credential ID for verification:', actualCredentialId);
 
-            // Debug the authenticator object
             const credentialIdBuffer = Buffer.from(actualCredentialId, 'base64url');
 
             // Ensure credentialPublicKey is a clean Buffer (not Mongoose Buffer)
@@ -470,66 +462,6 @@ class WebAuthnService {
                 credentialPublicKey: cleanPublicKey,
                 counter: counter,
             };
-
-            console.log('🔍 Clean public key conversion:', {
-                originalType: credential.credential_public_key.constructor.name,
-                isMongooseBuffer: credential.credential_public_key.isMongooseBuffer,
-                cleanType: cleanPublicKey.constructor.name,
-                isBuffer: Buffer.isBuffer(cleanPublicKey),
-                sameLength: credential.credential_public_key.length === cleanPublicKey.length
-            });
-
-            console.log('🔍 Authenticator object details:', {
-                credentialID: {
-                    type: typeof authenticatorObj.credentialID,
-                    isBuffer: Buffer.isBuffer(authenticatorObj.credentialID),
-                    length: authenticatorObj.credentialID?.length
-                },
-                credentialPublicKey: {
-                    type: typeof authenticatorObj.credentialPublicKey,
-                    isBuffer: Buffer.isBuffer(authenticatorObj.credentialPublicKey),
-                    length: authenticatorObj.credentialPublicKey?.length
-                },
-                counter: {
-                    value: authenticatorObj.counter,
-                    type: typeof authenticatorObj.counter
-                }
-            });
-
-            console.log('🔍 Authentication request details:', {
-                responseType: typeof authenticationResponse,
-                responseKeys: Object.keys(authenticationResponse),
-                challengeType: typeof storedChallenge.challenge,
-                origins: this.origins,
-                rpID: this.rpID
-            });
-
-            console.log('🔍 Authentication response content:', {
-                id: authenticationResponse.id,
-                rawId: {
-                    type: typeof authenticationResponse.rawId,
-                    length: authenticationResponse.rawId?.length
-                },
-                type: authenticationResponse.type,
-                response: {
-                    authenticatorData: {
-                        type: typeof authenticationResponse.response?.authenticatorData,
-                        length: authenticationResponse.response?.authenticatorData?.length
-                    },
-                    clientDataJSON: {
-                        type: typeof authenticationResponse.response?.clientDataJSON,
-                        length: authenticationResponse.response?.clientDataJSON?.length
-                    },
-                    signature: {
-                        type: typeof authenticationResponse.response?.signature,
-                        length: authenticationResponse.response?.signature?.length
-                    },
-                    userHandle: {
-                        type: typeof authenticationResponse.response?.userHandle,
-                        value: authenticationResponse.response?.userHandle
-                    }
-                }
-            });
 
             // Convert the authenticationResponse to the format expected by SimpleWebAuthn
             // The library expects specific formats for different fields
@@ -546,54 +478,12 @@ class WebAuthnService {
                 }
             };
 
-            console.log('🔍 Converted response for verification (all base64url strings):', {
-                id: {
-                    type: typeof convertedResponse.id,
-                    length: convertedResponse.id?.length,
-                    value: convertedResponse.id
-                },
-                rawId: {
-                    type: typeof convertedResponse.rawId,
-                    length: convertedResponse.rawId?.length,
-                    value: convertedResponse.rawId
-                },
-                type: convertedResponse.type,
-                response: {
-                    authenticatorData: {
-                        type: typeof convertedResponse.response.authenticatorData,
-                        length: convertedResponse.response.authenticatorData?.length
-                    },
-                    clientDataJSON: {
-                        type: typeof convertedResponse.response.clientDataJSON,
-                        length: convertedResponse.response.clientDataJSON?.length
-                    },
-                    signature: {
-                        type: typeof convertedResponse.response.signature,
-                        length: convertedResponse.response.signature?.length
-                    },
-                    userHandle: {
-                        type: typeof convertedResponse.response.userHandle,
-                        value: convertedResponse.response.userHandle
-                    }
-                }
-            });
-
             // Use override origins if provided (from BusinessApp), otherwise use default
             const expectedOrigins = overrideOrigins && overrideOrigins.length > 0
                 ? [...this.origins, ...overrideOrigins]
                 : this.origins;
             // Use the rpId that was stored during generateAuthenticationOptions
             const expectedRPID = storedChallenge.rpId || this.rpID;
-
-            console.log('🔍 About to call verifyAuthenticationResponse with:');
-            console.log('   expectedChallenge:', storedChallenge.challenge);
-            console.log('   expectedOrigins:', expectedOrigins);
-            console.log('   expectedRPID:', expectedRPID);
-            console.log('   authenticator:', {
-                credentialID: authenticatorObj.credentialID,
-                credentialPublicKey: authenticatorObj.credentialPublicKey,
-                counter: authenticatorObj.counter
-            });
 
             let verification;
             try {
@@ -612,16 +502,8 @@ class WebAuthnService {
                     requireUserVerification: true,
                 };
 
-                console.log('🔍 Verifying with options:', {
-                    credentialId: verificationOptions.credential.id,
-                    publicKeyLength: verificationOptions.credential.publicKey?.length,
-                    counter: verificationOptions.credential.counter
-                });
-
                 verification = await verifyAuthenticationResponse(verificationOptions);
-                console.log('✅ Authentication verification successful!');
             } catch (verificationError) {
-                console.error('❌ Authentication verification failed:', verificationError);
                 throw verificationError;
             }
 

@@ -61,7 +61,6 @@ class VerificationServiceV2 {
             await verificationRequest.save();
         }
 
-        console.info('[Liveness] Phone handoff acknowledged', { requestId, pairingId });
         return { requestId, pairingId, status: 'scanning' };
     }
 
@@ -384,20 +383,11 @@ class VerificationServiceV2 {
 
             // Convert imageFrames (multer file objects) to buffers
             const frameBuffers = imageFrames.map(frame => frame.buffer);
-            const totalBytes = imageFrames.reduce((sum, frame) => sum + (frame.size || frame.buffer?.length || 0), 0);
             const isLayer3 = verificationRequest.verification_tier === 'layer_3';
-            console.info('[Liveness] Processing started', {
-                requestId,
-                tier: verificationRequest.verification_tier,
-                pairingId: pairingId || undefined,
-                frameCount: imageFrames.length,
-                totalBytes,
-            });
 
             // Layer 2 is auto-decided and does not need slow admin-review uploads.
             let livenessFrameUrls = [];
             if (isLayer3) try {
-                const uploadStartedAt = Date.now();
                 const imagekit = require('./imagekit');
 
                 const uploadPromises = imageFrames.map((frame, i) => {
@@ -410,11 +400,6 @@ class VerificationServiceV2 {
                 });
 
                 livenessFrameUrls = await Promise.all(uploadPromises);
-                console.info('[Liveness] Review frame upload completed', {
-                    requestId,
-                    frameCount: livenessFrameUrls.length,
-                    durationMs: Date.now() - uploadStartedAt,
-                });
             } catch (uploadError) {
                 console.error('[Liveness] ImageKit upload failed:', uploadError.message);
                 // Continue without frames - admin won't see them but verification can proceed
@@ -427,17 +412,9 @@ class VerificationServiceV2 {
             let livenessScore;
             let livenessAnalysis;
             try {
-                const aiStartedAt = Date.now();
                 livenessAnalysis = await geminiService.verifyLivenessSequence(frameBuffers, stepSequence);
                 // Convert confidence (0-100) to score (0-1)
                 livenessScore = livenessAnalysis.confidence / 100;
-                console.info('[Liveness] AI analysis completed', {
-                    requestId,
-                    durationMs: Date.now() - aiStartedAt,
-                    passed: livenessAnalysis.passed,
-                    confidence: livenessAnalysis.confidence,
-                    validationChecks: livenessAnalysis.validationChecks,
-                });
             } catch (aiError) {
                 console.error('Liveness AI analysis failed:', aiError);
                 // Fallback to basic checks if AI fails
@@ -502,13 +479,7 @@ class VerificationServiceV2 {
 
             // If this is Layer 2 and only liveness is required, complete verification
             if (verificationRequest.verification_tier === 'layer_2') {
-                const result = await this.completeLayer2Verification(requestId);
-                console.info('[Liveness] Layer 2 processing completed', {
-                    requestId,
-                    durationMs: Date.now() - processingStartedAt,
-                    score: livenessScore,
-                });
-                return result;
+                return await this.completeLayer2Verification(requestId);
             }
 
             // For Layer 3, liveness is one step - proceed to next step (admin will review)

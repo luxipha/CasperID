@@ -121,30 +121,24 @@ export const LivenessCheck: React.FC<LivenessCheckProps> = ({ onBack, onComplete
 
     const initializeQRVerification = async () => {
       try {
-        console.log('[QR] Initializing QR verification...');
         const response = await apiService.post('/api/v2/verification/layer2/start', {
           linkWallet: false,
           purpose: 'Layer 2 Liveness Verification'
         });
 
-        console.log('[QR] API Response:', response);
-
         if (response && response.verification) {
           const { requestId: reqId, pairingId: pId, qrCode } = response.verification;
-          console.log('[QR] Received:', { reqId, pId, hasQrCode: !!qrCode });
 
           setRequestId(reqId);
           if (!isMobile) setPairingId(pId);
 
           if (!isMobile && qrCode && qrCode.dataUrl) {
-            console.log('[QR] Setting QR code image');
             setQrCodeDataUrl(qrCode.dataUrl);
             setDesktopQrStep('ready');
           }
         }
         setQrInitialized(true);
       } catch (error) {
-        console.error('[QR] Failed to initialize:', error);
         setQrError(error instanceof Error ? error.message : 'Unable to create mobile handoff.');
         setQrInitialized(true);
       }
@@ -294,10 +288,6 @@ export const LivenessCheck: React.FC<LivenessCheckProps> = ({ onBack, onComplete
                 setProgress(0);
                 st.lastFrameTime = now; // Reset timer for next phase
                 mouthCaptureStartedAt.current = now;
-                console.info('[Liveness Capture] Blink challenge completed', {
-                  blinkCount: st.blinkCount,
-                  frameCount: st.frames.length,
-                });
               }
             }
           }
@@ -334,22 +324,11 @@ export const LivenessCheck: React.FC<LivenessCheckProps> = ({ onBack, onComplete
           if (mouthRatio > 0.13) {
             if (now - lastCaptureLogAt.current >= 1000) {
               lastCaptureLogAt.current = now;
-              console.info('[Liveness Capture] Collecting open-mouth evidence', {
-                frameCount: st.frames.length,
-                requiredFrames: MIN_SUBMISSION_FRAMES,
-                mouthRatio: Number(mouthRatio.toFixed(3)),
-                isCapturing: st.isCapturing,
-              });
             }
 
             if (st.frames.length < MIN_SUBMISSION_FRAMES) {
               const elapsed = now - (mouthCaptureStartedAt.current || now);
               if (elapsed >= FRAME_CAPTURE_TIMEOUT_MS) {
-                console.error('[Liveness Capture] Frame collection stalled', {
-                  frameCount: st.frames.length,
-                  requiredFrames: MIN_SUBMISSION_FRAMES,
-                  elapsedMs: elapsed,
-                });
                 setGuidance("Camera capture stalled. Close your mouth and try again.");
                 mouthCaptureStartedAt.current = now;
               } else {
@@ -361,18 +340,10 @@ export const LivenessCheck: React.FC<LivenessCheckProps> = ({ onBack, onComplete
 
             if (!st.isSubmitting) {
               st.isSubmitting = true;
-              console.info('[Liveness Capture] Evidence ready; preparing submission', {
-                frameCount: st.frames.length,
-                blinkCount: st.blinkCount,
-                maxMouthOpen: Number(maxMouthOpen.current.toFixed(3)),
-              });
 
               // Capture PEAK frame
               if (canvasRef.current) {
                 captureFrame(canvasRef.current, st, true).then(() => {
-                  console.info('[Liveness Capture] Peak frame captured; submitting', {
-                    frameCount: st.frames.length,
-                  });
                   submitLiveness([...st.frames]);
                 });
               } else {
@@ -393,7 +364,6 @@ export const LivenessCheck: React.FC<LivenessCheckProps> = ({ onBack, onComplete
       }
 
       if (!videoRef.current || !canvasRef.current || !isActive) {
-        console.warn("[LivenessCheck] Refs not ready after timeout");
         return;
       }
 
@@ -427,8 +397,7 @@ export const LivenessCheck: React.FC<LivenessCheckProps> = ({ onBack, onComplete
           });
           await camera.start();
         }
-      } catch (error) {
-        console.error('Camera initialization failed:', error);
+      } catch {
         setGuidance("Camera access denied");
       }
     };
@@ -455,21 +424,11 @@ export const LivenessCheck: React.FC<LivenessCheckProps> = ({ onBack, onComplete
     try {
       setState("VERIFYING_AI"); // Transition to simple verifying UI
       setGuidance("Analyzing Face...");
-      const submissionStartedAt = performance.now();
-      const totalBytes = frames.reduce((sum, frame) => sum + frame.size, 0);
-      console.info('[Liveness] Submission started', {
-        requestId,
-        pairingId: pairingId || undefined,
-        frameCount: frames.length,
-        totalBytes,
-        totalMegabytes: Number((totalBytes / 1024 / 1024).toFixed(2)),
-      });
 
       let result;
 
       // V2 accepts the authenticated owner directly or a scoped cross-device pairing token.
       if (requestId) {
-        console.log('[Liveness] Using V2 endpoint', pairingId ? `with pairing ${pairingId}` : 'with owner session');
         result = await apiService.submitLivenessCheckV2(
           requestId,
           frames,
@@ -479,16 +438,10 @@ export const LivenessCheck: React.FC<LivenessCheckProps> = ({ onBack, onComplete
         );
       } else {
         // Fallback to old endpoint for non-paired flows
-        console.log('[Liveness] Using legacy endpoint');
         result = await apiService.verifyLivenessSequence(frames, ['blink', 'open_mouth']);
       }
 
       if (result.success || result.passed) {
-        console.info('[Liveness] Submission completed', {
-          requestId,
-          durationMs: Math.round(performance.now() - submissionStartedAt),
-          score: result.liveness?.score ?? result.score,
-        });
         setIsApiComplete(true); // Signal progress component to finish immediately
 
         if (requestId) {
@@ -499,7 +452,6 @@ export const LivenessCheck: React.FC<LivenessCheckProps> = ({ onBack, onComplete
           generateAndSubmitZkProof();
         }
       } else {
-        console.error('[Liveness] Verification failed:', result);
         const failure = result.liveness?.error || result.error || "Verification failed. Please try again.";
         const score = result.liveness?.score ?? result.score;
         setGuidance(score !== undefined ? `${failure} (${Math.round(score * 100)}%). Try again.` : failure);
@@ -508,11 +460,6 @@ export const LivenessCheck: React.FC<LivenessCheckProps> = ({ onBack, onComplete
         setIsApiComplete(false);
       }
     } catch (error: any) {
-      console.error('[Liveness] Submission request failed', {
-        requestId,
-        pairingId: pairingId || undefined,
-        message: error?.message,
-      });
       if (error.message?.includes('503') || error.details?.includes('503') || error.message?.includes('high demand')) {
         setGuidance("Our Neural engine is busy. retry again later.");
       } else {
@@ -526,7 +473,6 @@ export const LivenessCheck: React.FC<LivenessCheckProps> = ({ onBack, onComplete
   const generateAndSubmitZkProof = async () => {
     // Skip ZK if no landmarks captured
     if (!capturedLandmarks.current || capturedLandmarks.current.length < 100) {
-      console.log('[ZK] Skipping - insufficient landmarks');
       setGuidance("");
       setState("SUCCESS");
       setTimeout(() => setState("COMPLETED"), 2000);
@@ -569,7 +515,6 @@ export const LivenessCheck: React.FC<LivenessCheckProps> = ({ onBack, onComplete
       });
 
       if (result.success) {
-        console.log('[ZK] Proof submitted:', result.transactionHash);
         setGuidance(""); // Clear guidance text
         setState("SUCCESS");
 
@@ -582,8 +527,6 @@ export const LivenessCheck: React.FC<LivenessCheckProps> = ({ onBack, onComplete
         throw new Error(result.error || 'Unknown error');
       }
     } catch (error: any) {
-      console.error('[ZK] Proof submission error:', error);
-
       // Check for Sybil/duplicate errors
       const errorMessage = error?.message || error?.response?.data?.error || '';
       const errorCode = error?.response?.data?.code || '';
@@ -596,7 +539,6 @@ export const LivenessCheck: React.FC<LivenessCheckProps> = ({ onBack, onComplete
         errorMessage.includes('biometric identity')
       ) {
         // Sybil attack detected - show rejection UI
-        console.error('[ZK] SYBIL DETECTED:', errorMessage);
         setSybilError(
           errorCode === 'WALLET_ALREADY_VERIFIED'
             ? 'This wallet has already been verified with CasperID.'
@@ -607,7 +549,6 @@ export const LivenessCheck: React.FC<LivenessCheckProps> = ({ onBack, onComplete
       }
 
       // For other errors, ZK is optional - don't block user
-      console.warn('[ZK] Non-fatal error, continuing:', error);
       setGuidance("");
       setState("SUCCESS");
 
@@ -693,7 +634,6 @@ export const LivenessCheck: React.FC<LivenessCheckProps> = ({ onBack, onComplete
 
   // Handle Mobile Overlay (Mobile user - show camera and do liveness)
   if (isMobile) {
-    console.log('[Render] Showing MobileLivenessPage');
     // Note: VerificationProgress is shown inside state === "MINTING" usually,
     // but in Layer 2 it happens during state === "VERIFYING" transition.
     return (

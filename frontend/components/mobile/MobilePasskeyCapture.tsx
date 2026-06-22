@@ -100,8 +100,7 @@ export const MobilePasskeyCapture: React.FC = () => {
                             setStatus('ready');
                             return;
                         }
-                    } catch (parseErr) {
-                        console.warn('[MobileCapture] Failed to parse data param, falling back to API');
+                    } catch {
                     }
                 }
 
@@ -256,8 +255,6 @@ export const MobilePasskeyCapture: React.FC = () => {
             }
 
         } catch (err: any) {
-            console.error('[MobileCapture] Registration error:', err);
-
             // Handle user cancellation gracefully
             if (err.name === 'NotAllowedError') {
                 setError('Passkey registration was cancelled. Please try again.');
