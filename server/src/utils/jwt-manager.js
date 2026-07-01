@@ -50,26 +50,31 @@ function generateToken(userData, platform) {
  * @returns {string} Signed RS256 JWT
  */
 function generateBusinessToken(userData, appId, authorization = {}) {
+    const sharedData = userData.sharedData || [];
+    const include = (field) => sharedData.includes(field);
+    const selectedContext = authorization.selectedContext || undefined;
     const payload = {
         // Standard JWT claims
         iss: ISSUER,
         aud: appId,
         sub: userData.userId || userData.wallet,
         // User identity
-        wallet: userData.wallet,
-        humanId: userData.humanId,
+        ...(include('wallet') && userData.wallet ? { wallet: userData.wallet } : {}),
+        ...(include('human_id') && userData.humanId ? { humanId: userData.humanId } : {}),
+        ...(include('name') && userData.name ? { name: userData.name } : {}),
         cnsName: userData.cnsName || null, // Premium name if registered
         verified: userData.verified,
         tier: userData.tier,
-        sharedData: userData.sharedData || [],
-        email: userData.email,
+        sharedData,
+        ...(include('email') && userData.email ? { email: userData.email } : {}),
         // Business metadata
         app_id: appId,
         token_type: 'business',
         required_tier: authorization.requiredTier || userData.tier,
         scopes: authorization.scopes || [],
         authorization_status: authorization.authorizationStatus || 'complete',
-        verification_status: authorization.verificationStatus || 'approved'
+        verification_status: authorization.verificationStatus || 'approved',
+        ...(selectedContext ? { selected_context: selectedContext } : {})
     };
 
     return jwt.sign(payload, rsaKeyManager.getPrivateKey(), {

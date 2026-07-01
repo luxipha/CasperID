@@ -110,6 +110,11 @@ const NameManagement: React.FC<NameManagementProps> = ({ onRegisterCID }) => {
     const handleRegister = async () => {
         if (!registerName.trim()) return;
 
+        if (onRegisterCID) {
+            onRegisterCID();
+            return;
+        }
+
         setRegistering(true);
         setRegisterResult(null);
 

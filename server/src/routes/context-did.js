@@ -3,6 +3,7 @@ const router = express.Router();
 const { UserAccount } = require('../database/models');
 const { v4: uuidv4 } = require('uuid');
 const { TIER_LEVELS, getPersonaLimit } = require('../constants/tier-levels');
+const { getRootNameForAccount, buildContextualName } = require('../services/contextual-names');
 
 /**
  * Context DID Management Routes
@@ -94,14 +95,8 @@ router.post('/create', validateSession, async (req, res) => {
         const didSuffix = uuidv4().split('-')[0];
         const contextDID = `did:casper:context:${alias}:${didSuffix}`;
 
-        // Get master name (strip .cid if already present to avoid double suffix)
-        let masterName = userAccount.cns_name || userAccount.human_id;
-        if (masterName && masterName.endsWith('.cid')) {
-            masterName = masterName.slice(0, -4); // Remove trailing .cid
-        }
-
-        // Build the full name: alias.masterName.cid
-        const fullName = masterName ? `${alias}.${masterName}.cid` : null;
+        const rootName = getRootNameForAccount(userAccount);
+        const fullName = buildContextualName(alias, rootName);
 
         // Prepare context DID object - ALWAYS saved for both identity and wallet types
         const contextDidObj = {

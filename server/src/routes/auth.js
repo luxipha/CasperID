@@ -7,6 +7,7 @@ const emailService = require('../services/emailService');
 const { normalizeEmail, buildEmailQuery } = require('../utils/email-normalizer');
 const { extractApp } = require('../middleware/app-auth');
 const { generateBusinessToken } = require('../utils/jwt-manager');
+const { expandScopesToSharedFields } = require('../utils/business-disclosure');
 const { eventBus, EVENTS } = require('../services/eventBus');
 
 // Note: OTP storage now uses MongoDB EmailVerification model with TTL index for auto-cleanup
@@ -27,7 +28,8 @@ const REDIRECT_URI_BASE = process.env.API_URL || 'http://localhost:3001';
  */
 router.post('/send-otp', async (req, res) => {
     try {
-        const { email } = req.body;
+        const { email, purpose } = req.body;
+        const isRecovery = purpose === 'account_recovery';
 
         if (!email) {
             return res.status(400).json({
@@ -60,6 +62,9 @@ router.post('/send-otp', async (req, res) => {
             });
 
             if (userCredentials && userCredentials.length > 0) {
+                if (isRecovery) {
+                    // Continue to email OTP recovery instead of normal passkey-first sign-in.
+                } else {
                 // Returning user with passkey - direct to passkey auth
                 return res.json({
                     success: true,
@@ -67,6 +72,28 @@ router.post('/send-otp', async (req, res) => {
                     hasPasskey: true,
                     message: 'Returning user detected. Use your passkey to sign in.',
                     email: email
+                });
+                }
+            }
+        }
+
+        if (isRecovery) {
+            if (!existingUser) {
+                return res.status(404).json({
+                    success: false,
+                    error: 'No CasperID account was found for this email.'
+                });
+            }
+
+            const passkeyCount = await PasskeyCredential.countDocuments({
+                user_id: existingUser.user_id,
+                revoked: false
+            });
+
+            if (passkeyCount === 0) {
+                return res.status(400).json({
+                    success: false,
+                    error: 'This account does not have a passkey to recover yet.'
                 });
             }
         }
@@ -85,8 +112,10 @@ router.post('/send-otp', async (req, res) => {
         await EmailVerification.create({
             verification_id: verificationId,
             email,
+            user_id: existingUser?.user_id,
             verification_code: otp,
-            type: 'otp_auth',
+            type: isRecovery ? 'recovery' : 'otp_auth',
+            purpose: isRecovery ? 'account_recovery' : undefined,
             verified: false,
             attempts: 0,
             expires_at: expiresAt
@@ -94,15 +123,16 @@ router.post('/send-otp', async (req, res) => {
 
         // Send OTP email (skip in staging mode)
         if (isStagingMode) {
-            console.log(`[Staging] Skipping email send. Use OTP: ${stagingOtp}`);
+            console.log('[Staging] Skipping email send for OTP auth');
         } else {
             await emailService.sendOTP(email, otp);
         }
 
         res.json({
             success: true,
-            message: 'OTP sent successfully',
+            message: isRecovery ? 'Recovery code sent successfully' : 'OTP sent successfully',
             verificationId,
+            purpose: isRecovery ? 'account_recovery' : 'otp_auth',
             expiresIn: 10 * 60 * 1000 // 10 minutes in milliseconds
         });
 
@@ -198,15 +228,56 @@ router.post('/verify-otp', extractApp, async (req, res) => {
             });
         }
 
+        const userAccount = await UserAccount.findOne(buildEmailQuery(storedData.email));
+
         // Mark as verified
         storedData.verified = true;
         storedData.verified_at = now;
         await storedData.save();
 
+        if (storedData.type === 'recovery' || storedData.purpose === 'account_recovery') {
+            if (!userAccount) {
+                await EmailVerification.deleteOne({ verification_id: verificationId });
+                return res.status(404).json({
+                    success: false,
+                    error: 'User account not found for recovery'
+                });
+            }
+
+            const { RecoveryRequest } = require('../database/models');
+            const recoveryId = uuidv4();
+            const recoveryExpiresAt = new Date(Date.now() + (15 * 60 * 1000));
+
+            await RecoveryRequest.create({
+                recovery_id: recoveryId,
+                user_id: userAccount.user_id,
+                recovery_email: userAccount.recovery_email,
+                recovery_method: 'email_verification',
+                status: 'email_verified',
+                verification_steps_completed: [{
+                    step: 'email_otp',
+                    completed_at: now,
+                    metadata: {
+                        verification_id: verificationId
+                    }
+                }],
+                expires_at: recoveryExpiresAt
+            });
+
+            await EmailVerification.deleteOne({ verification_id: verificationId });
+
+            return res.json({
+                success: true,
+                message: 'Recovery code verified successfully',
+                recovery: true,
+                email: storedData.email,
+                recoveryToken: recoveryId,
+                expiresAt: recoveryExpiresAt.toISOString()
+            });
+        }
 
         // Generate Session Token
         // 1. Find user account to get wallet/human_id (use normalized email query for Gmail compatibility)
-        const userAccount = await UserAccount.findOne(buildEmailQuery(storedData.email));
 
         let wallet = null;
         let humanId = null;
@@ -316,7 +387,7 @@ router.post('/verify-otp', extractApp, async (req, res) => {
                     verified: true,
                     tier: tier,
                     email: storedData.email,
-                    sharedData: []
+                    sharedData: expandScopesToSharedFields(req.businessApp.requested_scopes || [])
                 }, req.businessApp.app_id);
             })()
         });
@@ -381,7 +452,7 @@ router.post('/resend-otp', async (req, res) => {
 
         // Send new OTP email (skip in staging mode)
         if (isStagingMode) {
-            console.log(`[Staging] Skipping resend email. Use OTP: ${stagingOtp}`);
+            console.log('[Staging] Skipping OTP resend email');
         } else {
             await emailService.sendOTP(storedData.email, newOtp);
         }
@@ -552,7 +623,7 @@ router.post('/send-verification-otp', require('../middleware/auth').requireAuth,
 
         // Send OTP email with purpose context (skip in staging mode)
         if (isStagingMode) {
-            console.log(`[Staging] Skipping verification email. Use OTP: ${stagingOtp}`);
+            console.log(`[Staging] Skipping verification email for ${purpose}`);
         } else {
             await emailService.sendOTP(userAccount.recovery_email, otp, `CasperID - ${purpose.replace('-', ' ').toUpperCase()} Verification`);
         }

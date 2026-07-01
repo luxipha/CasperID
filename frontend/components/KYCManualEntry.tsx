@@ -5,6 +5,7 @@ interface DocumentData {
     document_type: string;
     document_number: string;
     nin: string; // National ID Number
+    bvn?: string;
     first_name: string;
     last_name: string;
     date_of_birth: string;

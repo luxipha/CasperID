@@ -19,6 +19,7 @@ const {
 const { extractViewer } = require('../middleware/auth');
 const { extractApp } = require('../middleware/app-auth');
 const { generateBusinessToken } = require('../utils/jwt-manager');
+const { expandScopesToSharedFields } = require('../utils/business-disclosure');
 const { dispatchEvent } = require('../utils/webhook-dispatcher');
 const { normalizeEmail, buildEmailQuery } = require('../utils/email-normalizer');
 const { WEBHOOK_EVENTS } = require('../constants/webhook-events');
@@ -186,7 +187,7 @@ router.post('/register/finish', passkeyRateLimit, validatePasskeyAuth, extractAp
                 verified: ua.email_verified || false,
                 tier: ua.tier || 'layer_0',
                 email: ua.recovery_email,
-                sharedData: []
+                sharedData: expandScopesToSharedFields(req.businessApp.requested_scopes || [])
             }, req.businessApp.app_id);
 
             // Dispatch webhook
@@ -297,6 +298,148 @@ router.get('/register/:userId/status', async (req, res) => {
     } catch (error) {
         console.error('Registration status check failed:', error);
         res.status(500).json({
+            success: false,
+            error: error.message
+        });
+    }
+});
+
+/**
+ * Start passkey replacement after email-based recovery.
+ * POST /api/passkey/recovery/register/begin
+ */
+router.post('/recovery/register/begin', passkeyRateLimit, async (req, res) => {
+    try {
+        const { recoveryToken } = req.body;
+
+        if (!recoveryToken) {
+            return res.status(400).json({
+                success: false,
+                error: 'Recovery token is required'
+            });
+        }
+
+        webauthnService.assertOriginCanUseRpID(req.headers.origin);
+
+        const recoveryRequest = await RecoveryRequest.findOne({
+            recovery_id: recoveryToken,
+            status: 'email_verified',
+            expires_at: { $gt: new Date() }
+        });
+
+        if (!recoveryRequest) {
+            return res.status(403).json({
+                success: false,
+                error: 'Recovery session is invalid or expired'
+            });
+        }
+
+        const userAccount = await UserAccount.findOne({ user_id: recoveryRequest.user_id });
+        if (!userAccount) {
+            return res.status(404).json({
+                success: false,
+                error: 'User account not found'
+            });
+        }
+
+        const result = await webauthnService.generateRecoveryRegistrationOptions(userAccount);
+
+        res.json({
+            success: true,
+            options: result.options,
+            expiresIn: result.expiresIn,
+            email: userAccount.recovery_email
+        });
+    } catch (error) {
+        console.error('Recovery registration begin failed:', error);
+        res.status(400).json({
+            success: false,
+            error: error.message
+        });
+    }
+});
+
+/**
+ * Complete passkey replacement after email-based recovery.
+ * POST /api/passkey/recovery/register/finish
+ */
+router.post('/recovery/register/finish', passkeyRateLimit, validatePasskeyAuth, async (req, res) => {
+    try {
+        const { recoveryToken, credential, deviceInfo } = req.body;
+
+        if (!recoveryToken || !credential) {
+            return res.status(400).json({
+                success: false,
+                error: 'Recovery token and credential are required'
+            });
+        }
+
+        const recoveryRequest = await RecoveryRequest.findOne({
+            recovery_id: recoveryToken,
+            status: 'email_verified',
+            expires_at: { $gt: new Date() }
+        });
+
+        if (!recoveryRequest) {
+            return res.status(403).json({
+                success: false,
+                error: 'Recovery session is invalid or expired'
+            });
+        }
+
+        const userAccount = await UserAccount.findOne({ user_id: recoveryRequest.user_id });
+        if (!userAccount) {
+            return res.status(404).json({
+                success: false,
+                error: 'User account not found'
+            });
+        }
+
+        const enhancedDeviceInfo = {
+            ...deviceInfo,
+            ipAddress: req.ip,
+            userAgent: req.get('User-Agent')
+        };
+
+        const recoveryResult = await webauthnService.verifyRecoveryRegistration(
+            userAccount,
+            credential,
+            enhancedDeviceInfo
+        );
+
+        recoveryRequest.status = 'completed';
+        recoveryRequest.new_passkey_credential_id = recoveryResult.credentialId;
+        recoveryRequest.completed_at = new Date();
+        recoveryRequest.verification_steps_completed.push({
+            step: 'passkey_registered',
+            completed_at: new Date(),
+            metadata: {
+                credential_id: recoveryResult.credentialId
+            }
+        });
+        await recoveryRequest.save();
+
+        const isSecure = process.env.NODE_ENV === 'production' ||
+            req.secure ||
+            req.headers['x-forwarded-proto'] === 'https';
+        res.cookie('casperid_session', recoveryResult.sessionToken, {
+            httpOnly: true,
+            secure: isSecure,
+            sameSite: isSecure ? 'none' : 'lax',
+            maxAge: 24 * 60 * 60 * 1000
+        });
+
+        res.json({
+            success: true,
+            message: 'Account recovered successfully',
+            sessionId: recoveryResult.sessionId,
+            sessionToken: recoveryResult.sessionToken,
+            expiresAt: recoveryResult.expiresAt,
+            userAccount: recoveryResult.userAccount
+        });
+    } catch (error) {
+        console.error('Recovery registration finish failed:', error);
+        res.status(400).json({
             success: false,
             error: error.message
         });
@@ -485,7 +628,7 @@ router.post('/auth/finish', extractApp, async (req, res) => {
                 verified: ua.email_verified || false,
                 tier: ua.tier || 'layer_0',
                 email: ua.recovery_email,
-                sharedData: []
+                sharedData: expandScopesToSharedFields(req.businessApp.requested_scopes || [])
             }, req.businessApp.app_id);
 
             // Emit app authorization event (subscribers handle email, webhook)
@@ -1356,12 +1499,13 @@ router.get('/me', async (req, res) => {
         const token = authHeader.split(' ')[1];
 
         const { verifyAnyToken } = require('../utils/jwt-manager');
-        const { DeviceSession, UserAccount } = require('../database/models');
+        const { DeviceSession, UserAccount, UserProfile } = require('../database/models');
 
         let userAccount = null;
         let isBusinessToken = false;
         let sharedData = [];
         let scopedAppId = null;
+        let selectedContext = null;
 
         // Strategy 1: RS256 business token or HS256 JWT
         const decoded = verifyAnyToken(token);
@@ -1369,6 +1513,7 @@ router.get('/me', async (req, res) => {
             isBusinessToken = decoded._alg === 'RS256';
             sharedData = decoded.sharedData || [];
             scopedAppId = decoded.app_id || null;
+            selectedContext = decoded.selected_context || null;
 
             if (isBusinessToken) {
                 const userId = decoded.sub || decoded.userId;
@@ -1401,19 +1546,54 @@ router.get('/me', async (req, res) => {
         // Build scoped profile
         // For business tokens, only expose fields listed in sharedData claim
 
+        const userProfile = userAccount.wallet
+            ? await UserProfile.findOne({ wallet: userAccount.wallet }).lean()
+            : null;
+        const resolvedName = userProfile?.name ||
+            [userProfile?.first_name, userProfile?.last_name].filter(Boolean).join(' ') ||
+            userAccount.name ||
+            null;
+        const persona = isBusinessToken && selectedContext?.type === 'persona'
+            ? userAccount.context_dids?.find((contextDid) => contextDid.did === selectedContext.did && contextDid.routing_type !== 'wallet')
+            : null;
+        const personaDisclosures = persona?.disclosures || {};
+        const personaDisplayName =
+            [personaDisclosures.firstName ? userProfile?.first_name : null, personaDisclosures.lastName ? userProfile?.last_name : null]
+                .filter(Boolean)
+                .join(' ') ||
+            selectedContext?.name ||
+            selectedContext?.alias ||
+            null;
+        const exposedName = persona ? personaDisplayName : resolvedName;
+        const exposedHumanId = persona
+            ? (selectedContext?.name || selectedContext?.alias || persona.did)
+            : (userProfile?.human_id || userAccount.human_id || null);
+        const exposedEmail = persona
+            ? (personaDisclosures.email ? (userProfile?.email || userAccount.recovery_email || null) : null)
+            : (userAccount.recovery_email || null);
+        const exposedWallet = persona && persona.routing_type === 'wallet'
+            ? persona.target_wallet || null
+            : userAccount.wallet || null;
+
         const profile = {
             user_id: userAccount.user_id,
             verified: userAccount.email_verified,
             tier: userAccount.tier,
-            ...((!isBusinessToken || sharedData.includes('email')) && userAccount.recovery_email && {
-                email: userAccount.recovery_email
+            ...((!isBusinessToken || sharedData.includes('name')) && exposedName && {
+                name: exposedName
             }),
-            ...((!isBusinessToken || sharedData.includes('wallet')) && userAccount.wallet && {
-                wallet: userAccount.wallet
+            ...((!isBusinessToken || sharedData.includes('email')) && exposedEmail && {
+                email: exposedEmail
             }),
-            ...((!isBusinessToken || sharedData.includes('human_id')) && userAccount.human_id && {
-                human_id: userAccount.human_id
-            })
+            ...((!isBusinessToken || sharedData.includes('wallet')) && exposedWallet && {
+                wallet: exposedWallet
+            }),
+            ...((!isBusinessToken || sharedData.includes('human_id')) && exposedHumanId && {
+                human_id: exposedHumanId
+            }),
+            ...(isBusinessToken && selectedContext ? {
+                selected_context: selectedContext
+            } : {})
         };
 
         res.json({

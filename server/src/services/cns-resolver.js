@@ -19,6 +19,7 @@ const {
 } = require('../database/models');
 const { walletToHuman } = require('../utils/wallet-to-human');
 const casperService = require('./casper');
+const { findContextByAlias } = require('./contextual-names');
 
 /**
  * Name resolution result structure
@@ -181,18 +182,18 @@ async function resolveCidName(parsed) {
                 });
 
             case 'context_did':
-                const contextDid = rootOwner.context_dids?.find(c =>
-                    c.context === explicitRoute.target_id || c.did === explicitRoute.target_id
+                const explicitContextDid = rootOwner.context_dids?.find(c =>
+                    c.did === explicitRoute.target_id || c.alias === explicitRoute.target_id || c.context === explicitRoute.target_id
                 );
-                if (contextDid) {
+                if (explicitContextDid) {
                     return new ResolvedName({
                         name: fullName,
-                        did: contextDid.did,
+                        did: explicitContextDid.did,
                         wallet: rootOwner.wallet,
                         tier: rootOwner.tier,
                         isPremium: !isMarkovName(root),
-                        contextType: contextDid.context,
-                        profileData: await getContextProfileData(rootOwner.wallet, contextDid.context),
+                        contextType: explicitContextDid.context,
+                        profileData: await getContextProfileData(rootOwner.wallet, explicitContextDid.context),
                         verified: true
                     });
                 }
@@ -226,9 +227,8 @@ async function resolveCidName(parsed) {
     }
 
     // Resolve subdomain (implicit context mapping)
-    const contextDid = rootOwner.context_dids?.find(c =>
-        c.context === subdomain || c.did.includes(subdomain)
-    );
+    const contextDid = findContextByAlias(rootOwner.context_dids, subdomain) ||
+        rootOwner.context_dids?.find(c => c.did.includes(subdomain) || c.context === subdomain);
 
     if (contextDid) {
         return new ResolvedName({

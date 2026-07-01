@@ -4,11 +4,30 @@ import React, { useState, useEffect } from 'react';
 interface OTPVerifyProps {
   email: string;
   verificationId: string;
-  onSuccess: (email: string) => void;
+  onSuccess: (response: any) => void;
   onBack: () => void;
+  onVerifyCode?: (verificationId: string, otp: string) => Promise<any>;
+  onResendCode?: (verificationId: string) => Promise<any>;
+  title?: string;
+  description?: string;
+  backLabel?: string;
+  successLabel?: string;
+  errorTitle?: string;
 }
 
-export const OTPVerify: React.FC<OTPVerifyProps> = ({ email, verificationId, onSuccess, onBack }) => {
+export const OTPVerify: React.FC<OTPVerifyProps> = ({
+  email,
+  verificationId,
+  onSuccess,
+  onBack,
+  onVerifyCode,
+  onResendCode,
+  title = 'Verify Identity',
+  description,
+  backLabel = 'Change Email',
+  successLabel = 'Verify & Continue',
+  errorTitle = 'Verification Failed',
+}) => {
   const [otp, setOtp] = useState(['', '', '', '', '', '']);
   const [isLoading, setIsLoading] = useState(false);
   const [timeLeft, setTimeLeft] = useState(59);
@@ -43,10 +62,12 @@ export const OTPVerify: React.FC<OTPVerifyProps> = ({ email, verificationId, onS
 
       const otpString = otp.join('');
       const { apiService } = await import('../services/api');
-      const response = await apiService.verifyOTP(verificationId, otpString);
+      const response = onVerifyCode
+        ? await onVerifyCode(verificationId, otpString)
+        : await apiService.verifyOTP(verificationId, otpString);
 
       if (response.success) {
-        onSuccess(email);
+        onSuccess(response);
       } else {
         setError(response.error || 'Invalid verification code');
       }
@@ -62,7 +83,9 @@ export const OTPVerify: React.FC<OTPVerifyProps> = ({ email, verificationId, onS
     try {
       setError('');
       const { apiService } = await import('../services/api');
-      const response = await apiService.resendOTP(verificationId);
+      const response = onResendCode
+        ? await onResendCode(verificationId)
+        : await apiService.resendOTP(verificationId);
 
       if (response.success) {
         setTimeLeft(59);
@@ -88,11 +111,11 @@ export const OTPVerify: React.FC<OTPVerifyProps> = ({ email, verificationId, onS
             className="inline-flex items-center gap-2 text-text-sub hover:text-primary font-bold text-sm transition-colors mb-4 group"
           >
             <span className="material-symbols-outlined text-lg group-hover:-translate-x-1 transition-transform">arrow_back</span>
-            Change Email
+            {backLabel}
           </button>
-          <h1 className="text-3xl font-black text-text-main tracking-tight">Verify Identity</h1>
+          <h1 className="text-3xl font-black text-text-main tracking-tight">{title}</h1>
           <p className="text-text-sub text-base font-medium">
-            We sent a 6-digit code to <span className="text-text-main font-bold">{email}</span>
+            {description || <>We sent a 6-digit code to <span className="text-text-main font-bold">{email}</span></>}
           </p>
         </div>
 
@@ -121,7 +144,7 @@ export const OTPVerify: React.FC<OTPVerifyProps> = ({ email, verificationId, onS
               {isLoading ? (
                 <div className="size-6 border-3 border-white/30 border-t-white rounded-full animate-spin"></div>
               ) : (
-                'Verify & Continue'
+                successLabel
               )}
             </button>
 
@@ -130,7 +153,7 @@ export const OTPVerify: React.FC<OTPVerifyProps> = ({ email, verificationId, onS
                 <div className="flex items-start gap-3">
                   <span className="material-symbols-outlined text-red-500 text-lg">error</span>
                   <div>
-                    <p className="text-red-800 font-bold text-sm">Verification Failed</p>
+                    <p className="text-red-800 font-bold text-sm">{errorTitle}</p>
                     <p className="text-red-600 text-xs mt-1">{error}</p>
                   </div>
                 </div>

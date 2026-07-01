@@ -219,11 +219,7 @@ const JobsTab: React.FC<{ userData: any, currentJob: any, fetchData: () => void 
   // Removed mock data filtering
 
   const handleStartMatching = async () => {
-    console.log('[CasperID Popup] Start AI Matching clicked. currentJob:', currentJob);
-    console.log('[CasperID Popup] Current job description length:', currentJob?.description?.length || 0);
-
     if (!currentJob || isMatching) {
-      console.log('[CasperID Popup] Aborting - no job or already matching');
       return;
     }
 
@@ -235,8 +231,6 @@ const JobsTab: React.FC<{ userData: any, currentJob: any, fetchData: () => void 
 
     setIsMatching(true);
     setMatchError(null);
-
-    console.log('[CasperID Popup] Sending MATCH_JOB message to background...');
 
     try {
       chrome.runtime.sendMessage({
@@ -250,7 +244,6 @@ const JobsTab: React.FC<{ userData: any, currentJob: any, fetchData: () => void 
           return;
         }
 
-        console.log('[CasperID Popup] Received response from background:', response);
         setIsMatching(false);
 
         if (!response) {
@@ -262,7 +255,6 @@ const JobsTab: React.FC<{ userData: any, currentJob: any, fetchData: () => void 
         if (!response.success) {
           setMatchError(response.error || 'Failed to match job');
         } else {
-          console.log('[CasperID Popup] Match success! Refreshing data.');
           fetchData();
         }
       });
@@ -274,8 +266,6 @@ const JobsTab: React.FC<{ userData: any, currentJob: any, fetchData: () => void 
   };
 
   const handleGeneratePitch = async () => {
-    console.log('[CasperID Popup] Generate Pitch clicked');
-
     if (!currentJob || isGeneratingPitch) return;
 
     setIsGeneratingPitch(true);
@@ -293,7 +283,6 @@ const JobsTab: React.FC<{ userData: any, currentJob: any, fetchData: () => void 
           return;
         }
 
-        console.log('[CasperID Popup] Cover letter response:', response);
         setIsGeneratingPitch(false);
 
         if (!response) {
@@ -304,7 +293,6 @@ const JobsTab: React.FC<{ userData: any, currentJob: any, fetchData: () => void 
         if (!response.success) {
           setPitchError(response.error || 'Failed to generate pitch');
         } else {
-          console.log('[CasperID Popup] Pitch generated! Refreshing data.');
           fetchData();
           setShowCoverLetter(true);
         }
@@ -326,9 +314,6 @@ const JobsTab: React.FC<{ userData: any, currentJob: any, fetchData: () => void 
 
   const results = currentJob?.matchResults;
   const coverLetter = currentJob?.coverLetter;
-  if (results) {
-    console.log('[CasperID Popup] Rendering with match results:', results);
-  }
 
   return (
     <div className="flex-1 px-5 pb-6 space-y-5 overflow-y-auto bg-[#F8F9FF]/30 animate-in fade-in duration-300">
@@ -626,11 +611,6 @@ const DashboardScreen: React.FC<DashboardProps> = ({ onShare, onRevoke, onDiscon
 
   const fetchData = async () => {
     const data = await getStorageData();
-    console.log('[CasperID Popup] Fetched storage data:', {
-      hasUserData: !!data.userData,
-      hasCurrentJob: !!data.currentJob,
-      hasMatchResults: !!data.currentJob?.matchResults
-    });
     setUserData(data.userData);
     setPermissions(data.permissions || []);
 
@@ -649,12 +629,10 @@ const DashboardScreen: React.FC<DashboardProps> = ({ onShare, onRevoke, onDiscon
 
           // If platforms don't match, or we're not on a job platform, show stale warning or clear
           if ((isOnLinkedIn && storedIsIndeed) || (isOnIndeed && storedIsLinkedIn)) {
-            console.log('[CasperID Popup] Platform mismatch - clearing stale job data');
             setCurrentJob(null);
             chrome.storage.local.remove('currentJob');
           } else if (!isOnLinkedIn && !isOnIndeed && data.currentJob) {
             // Not on a job platform at all - keep the job but could show it as "recent"
-            console.log('[CasperID Popup] Not on a job platform, showing stored job as context');
             setCurrentJob(data.currentJob);
           } else {
             setCurrentJob(data.currentJob);
@@ -675,7 +653,6 @@ const DashboardScreen: React.FC<DashboardProps> = ({ onShare, onRevoke, onDiscon
     // Listen for storage changes (e.g. from content.js or background.js)
     const handleStorageChange = (changes: any) => {
       if (changes.userData || changes.permissions || changes.connected || changes.currentJob) {
-        console.log('[CasperID Popup] Storage changed, refreshing UI...', changes);
         fetchData();
       }
     };

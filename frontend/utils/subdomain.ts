@@ -19,19 +19,7 @@ const RESERVED_SUBDOMAINS = [
     'status'
 ];
 
-/**
- * Gets the current subdomain if it's a valid CasperID name.
- * Handles production (casperid.com), Vercel previews, and localhost.
- */
-export const getSubdomain = (): string | null => {
-    // Local Development & Manual Override Support (via ?subdomain=name)
-    const params = new URLSearchParams(window.location.search);
-    const manualSubdomain = params.get('subdomain');
-    if (manualSubdomain) return manualSubdomain.toLowerCase();
-
-    // Production logic continues below
-    const hostname = window.location.hostname;
-
+export const getSubdomainFromHostname = (hostname: string): string | null => {
     const parts = hostname.split('.');
 
     // Production: [name].casperid.com (3 parts)
@@ -50,5 +38,34 @@ export const getSubdomain = (): string | null => {
         }
     }
 
+    // Local custom domain: [name].casperid.cid
+    if (hostname.endsWith('casperid.cid') && parts.length >= 3) {
+        const subdomain = parts[0].toLowerCase();
+        if (!RESERVED_SUBDOMAINS.includes(subdomain)) {
+            return subdomain;
+        }
+    }
+
+    // Localhost-style testing: [name].localhost or [name].casperid.localhost
+    if (hostname.endsWith('.localhost') && parts.length >= 2) {
+        const subdomain = parts[0].toLowerCase();
+        if (!RESERVED_SUBDOMAINS.includes(subdomain)) {
+            return subdomain;
+        }
+    }
+
     return null;
+};
+
+/**
+ * Gets the current subdomain if it's a valid CasperID name.
+ * Handles production, custom local hosts, Vercel previews, and localhost.
+ */
+export const getSubdomain = (): string | null => {
+    // Local Development & Manual Override Support (via ?subdomain=name)
+    const params = new URLSearchParams(window.location.search);
+    const manualSubdomain = params.get('subdomain');
+    if (manualSubdomain) return manualSubdomain.toLowerCase();
+
+    return getSubdomainFromHostname(window.location.hostname);
 };

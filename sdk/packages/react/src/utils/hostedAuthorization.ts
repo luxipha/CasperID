@@ -26,6 +26,14 @@ export interface HostedAuthorizationResult {
     verificationStatus?: 'approved' | 'pending';
     grantedTier?: string;
     requiredTier?: string;
+    sharedFields?: string[];
+    selectedContext?: {
+        type: 'master' | 'persona';
+        did?: string;
+        alias?: string;
+        context?: string;
+        name?: string;
+    };
 }
 
 interface StoredTransaction {
@@ -45,6 +53,29 @@ interface StoredResult {
     verificationStatus?: 'approved' | 'pending';
     grantedTier?: string;
     requiredTier?: string;
+    sharedFields?: string[];
+    selectedContext?: HostedAuthorizationResult['selectedContext'];
+}
+
+function parseSharedFields(value: string | null): string[] | undefined {
+    if (!value) return undefined;
+    const fields = value
+        .split(',')
+        .map((field) => field.trim())
+        .filter(Boolean);
+    return fields.length ? fields : undefined;
+}
+
+function parseSelectedContext(url: URL): HostedAuthorizationResult['selectedContext'] | undefined {
+    const type = url.searchParams.get('selected_context_type');
+    if (type !== 'master' && type !== 'persona') return undefined;
+
+    const did = url.searchParams.get('selected_context_did') || undefined;
+    const alias = url.searchParams.get('selected_context_alias') || undefined;
+    const name = url.searchParams.get('selected_context_name') || undefined;
+    const context = url.searchParams.get('selected_context_category') || undefined;
+
+    return { type, did, alias, context, name };
 }
 
 function toBase64Url(bytes: Uint8Array): string {
@@ -180,20 +211,10 @@ function clearPopupTransaction(state: string): void {
     localStorage.removeItem(popupKey(state));
 }
 
-// ═══════════════════════════════════════════
-//  DEBUG: enable logging via URL param or localStorage flag
-// ═══════════════════════════════════════════
-function isDebugEnabled(): boolean {
-  return (
-    new URLSearchParams(window.location.search).get('casperid_debug') === 'true' ||
-    localStorage.getItem('casperid_debug') === 'true'
-  );
-}
-const DEBUG = /* @__PURE__ */ isDebugEnabled();
+const DEBUG = false;
 function debug(...args: unknown[]) {
   if (DEBUG) console.log('[CasperID SDK DEBUG]', ...args);
 }
-// ═══════════════════════════════════════════
 
 function isMobileBrowser(): boolean {
     return /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent);
@@ -302,6 +323,8 @@ export async function authorizeWithCasperID(options: HostedAuthorizationOptions)
                     verificationStatus: popupUrl.searchParams.get('verification_status') as StoredResult['verificationStatus'] || undefined,
                     grantedTier: popupUrl.searchParams.get('granted_tier') || undefined,
                     requiredTier: popupUrl.searchParams.get('required_tier') || undefined,
+                    sharedFields: parseSharedFields(popupUrl.searchParams.get('shared_fields')),
+                    selectedContext: parseSelectedContext(popupUrl),
                 });
             } catch {
                 // Still on the account origin; continue polling.
@@ -374,6 +397,8 @@ export async function authorizeWithCasperID(options: HostedAuthorizationOptions)
                 verificationStatus: metadata.verificationStatus,
                 grantedTier: metadata.grantedTier,
                 requiredTier: metadata.requiredTier,
+                sharedFields: metadata.sharedFields,
+                selectedContext: metadata.selectedContext,
             });
         }
 
@@ -393,6 +418,8 @@ export function consumeHostedAuthorizationCallback(url = window.location.href): 
         verificationStatus: callbackUrl.searchParams.get('verification_status') as StoredResult['verificationStatus'] || undefined,
         grantedTier: callbackUrl.searchParams.get('granted_tier') || undefined,
         requiredTier: callbackUrl.searchParams.get('required_tier') || undefined,
+        sharedFields: parseSharedFields(callbackUrl.searchParams.get('shared_fields')),
+        selectedContext: parseSelectedContext(callbackUrl),
     };
     if ((!code && !error) || !state) return null;
 
@@ -418,5 +445,7 @@ export function consumeHostedAuthorizationCallback(url = window.location.href): 
         verificationStatus: metadata.verificationStatus,
         grantedTier: metadata.grantedTier,
         requiredTier: metadata.requiredTier,
+        sharedFields: metadata.sharedFields,
+        selectedContext: metadata.selectedContext,
     };
 }

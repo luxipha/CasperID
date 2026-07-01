@@ -481,9 +481,7 @@ router.get('/public-profile/:identifier', async (req, res) => {
                 if (ownerAccount) {
                     // Find the context DID matching the subdomain alias
                     const contextAlias = trimmedIdentifier.split('.')[0]; // 'game' from 'game.bika'
-                    const contextDid = ownerAccount.context_dids?.find(c =>
-                        c.alias === contextAlias || c.context === contextAlias
-                    );
+                    const contextDid = ownerAccount.context_dids?.find(c => c.alias === contextAlias);
 
                     if (contextDid && contextDid.routing_type !== 'wallet') {
                         const disclosures = contextDid.disclosures || {};

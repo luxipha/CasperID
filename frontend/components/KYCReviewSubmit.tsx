@@ -5,6 +5,7 @@ interface DocumentData {
   document_type: string;
   document_number: string;
   nin?: string; // National ID Number
+  bvn?: string;
   first_name: string;
   last_name: string;
   date_of_birth: string;
@@ -21,6 +22,8 @@ interface KYCReviewSubmitProps {
   frontImageUrl?: string;
   backImageUrl?: string;
   livenessVerified: boolean;
+  verificationContext?: 'nigeria' | 'international';
+  verificationMethod?: 'document_upload' | 'nimc' | 'bvn';
   onBack: () => void;
   onSubmit: () => void;
   onCancel: () => void;
@@ -33,6 +36,8 @@ export const KYCReviewSubmit: React.FC<KYCReviewSubmitProps> = ({
   frontImageUrl,
   backImageUrl,
   livenessVerified,
+  verificationContext,
+  verificationMethod,
   onBack,
   onSubmit,
   onCancel
@@ -56,7 +61,9 @@ export const KYCReviewSubmit: React.FC<KYCReviewSubmitProps> = ({
         upload_id: uploadId,
         front_image_url: frontImageUrl,
         back_image_url: backImageUrl,
-        liveness_verified: livenessVerified
+        liveness_verified: livenessVerified,
+        country_context: verificationContext,
+        verification_method: verificationMethod
       });
 
       onSubmit();
@@ -75,6 +82,13 @@ export const KYCReviewSubmit: React.FC<KYCReviewSubmitProps> = ({
       default: return 'Document';
     }
   };
+
+  const methodLabel = documentData.nin
+    ? 'NIN + Document Upload'
+    : documentData.bvn
+      ? 'BVN + Document Upload'
+      : 'Document Upload';
+  const detailsLabel = (documentData.nin || documentData.bvn) ? 'Edit Identity Details' : 'Edit Document Details';
 
   return (
     <div className="w-full max-w-7xl mx-auto animate-in fade-in slide-in-from-bottom-4 duration-700 pb-10 md:pb-20">
@@ -122,7 +136,7 @@ export const KYCReviewSubmit: React.FC<KYCReviewSubmitProps> = ({
               <div className="space-y-1">
                 <p className="text-[10px] font-black text-text-sub uppercase tracking-widest opacity-60">Method</p>
                 <div className="flex items-center gap-2">
-                  <span className="text-base font-bold text-text-main">Document Upload</span>
+                  <span className="text-base font-bold text-text-main">{methodLabel}</span>
                   <span className="material-symbols-outlined text-green-500 text-[18px] icon-filled">check_circle</span>
                 </div>
               </div>
@@ -154,7 +168,7 @@ export const KYCReviewSubmit: React.FC<KYCReviewSubmitProps> = ({
               </div>
               <button className="text-primary font-black text-sm hover:underline flex items-center gap-1.5">
                 <span className="material-symbols-outlined text-lg">edit</span>
-                Edit NIMC Details
+                {detailsLabel}
               </button>
             </div>
 
@@ -171,6 +185,12 @@ export const KYCReviewSubmit: React.FC<KYCReviewSubmitProps> = ({
                 <div className="space-y-1">
                   <p className="text-[10px] font-black text-text-sub uppercase tracking-widest opacity-60">National ID Number (NIN)</p>
                   <p className="text-base font-bold text-text-main">{documentData.nin}</p>
+                </div>
+              )}
+              {documentData.bvn && (
+                <div className="space-y-1">
+                  <p className="text-[10px] font-black text-text-sub uppercase tracking-widest opacity-60">Bank Verification Number (BVN)</p>
+                  <p className="text-base font-bold text-text-main">{documentData.bvn}</p>
                 </div>
               )}
               <div className="space-y-1">

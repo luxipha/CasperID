@@ -1,0 +1,32 @@
+{
+  "defaultYears": 1,
+  "plans": [
+    {
+      "years": 1,
+      "priceUsd": 3,
+      "label": "1 Year",
+      "sub": "Standard pricing",
+      "revenueCatPackageId": "$rc_annual",
+      "legacyRevenueCatHints": ["annual", "1yr"]
+    },
+    {
+      "years": 3,
+      "priceUsd": 5,
+      "label": "3 Years",
+      "discount": "20% Off included",
+      "revenueCatPackageId": "$rc_three_year",
+      "legacyRevenueCatHints": ["3yr", "3-year", "three_year"]
+    },
+    {
+      "years": 100,
+      "priceUsd": 10,
+      "label": "Lifetime",
+      "discount": "33% Off included",
+      "sub": "No renewal fees. Yours forever.",
+      "recommended": true,
+      "isLifetime": true,
+      "revenueCatPackageId": "$rc_lifetime",
+      "legacyRevenueCatHints": ["lifetime", "100yr"]
+    }
+  ]
+}

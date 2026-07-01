@@ -50,6 +50,28 @@ class WebAuthnService {
         this.challengeStorage = new Map();
     }
 
+    normalizeCredentialIdForRegistrationOption(credentialId) {
+        if (!credentialId) return null;
+
+        if (typeof credentialId === 'string') {
+            return credentialId;
+        }
+
+        if (Buffer.isBuffer(credentialId)) {
+            return credentialId.toString('base64url');
+        }
+
+        if (credentialId?.buffer) {
+            try {
+                return Buffer.from(credentialId.buffer).toString('base64url');
+            } catch {
+                return null;
+            }
+        }
+
+        return null;
+    }
+
     /**
      * Reject web origins that cannot legally exercise credentials for this RP ID.
      * Native applications do not send a web Origin header and are validated
@@ -124,11 +146,18 @@ class WebAuthnService {
                 userDisplayName: userDisplayName,
                 timeout: this.timeout,
                 attestationType: 'none',
-                excludeCredentials: existingCredentials.map(cred => ({
-                    id: Buffer.from(cred.credential_id, 'base64url'),
-                    type: 'public-key',
-                    transports: cred.transports,
-                })),
+                excludeCredentials: existingCredentials
+                    .map(cred => {
+                        const credentialId = this.normalizeCredentialIdForRegistrationOption(cred.credential_id);
+                        if (!credentialId) return null;
+
+                        return {
+                            id: credentialId,
+                            type: 'public-key',
+                            transports: cred.transports,
+                        };
+                    })
+                    .filter(Boolean),
                 authenticatorSelection: {
                     residentKey: 'preferred',
                     userVerification: 'preferred',
@@ -159,6 +188,73 @@ class WebAuthnService {
         } catch (error) {
             console.error('Registration options generation failed:', error);
             throw new Error(`Registration setup failed: ${error.message}`);
+        }
+    }
+
+    /**
+     * Generate registration options for recovery-based passkey replacement.
+     * This intentionally bypasses the "user already exists" block because the
+     * caller has already proven recovery-email ownership through a short-lived
+     * RecoveryRequest.
+     */
+    async generateRecoveryRegistrationOptions(userAccount) {
+        try {
+            if (!userAccount?.user_id || !userAccount?.recovery_email) {
+                throw new Error('Recovery request is missing account information');
+            }
+
+            const existingCredentials = await PasskeyCredential.find({
+                user_id: userAccount.user_id,
+                revoked: false
+            });
+
+            const options = await generateRegistrationOptions({
+                rpName: this.rpName,
+                rpID: this.rpID,
+                userID: Buffer.from(userAccount.user_id),
+                userName: userAccount.recovery_email,
+                userDisplayName: userAccount.recovery_email.split('@')[0],
+                timeout: this.timeout,
+                attestationType: 'none',
+                excludeCredentials: existingCredentials
+                    .map(cred => {
+                        const credentialId = this.normalizeCredentialIdForRegistrationOption(cred.credential_id);
+                        if (!credentialId) return null;
+
+                        return {
+                            id: credentialId,
+                            type: 'public-key',
+                            transports: cred.transports,
+                        };
+                    })
+                    .filter(Boolean),
+                authenticatorSelection: {
+                    residentKey: 'preferred',
+                    userVerification: 'preferred',
+                },
+                supportedAlgorithmIDs: [-7, -257],
+            });
+
+            const challengeKey = `recovery:${userAccount.user_id}`;
+            this.challengeStorage.set(challengeKey, {
+                challenge: options.challenge,
+                userId: userAccount.user_id,
+                userEmail: userAccount.recovery_email,
+                rpId: this.rpID,
+                isRecovery: true,
+                timestamp: Date.now(),
+            });
+
+            this.cleanupExpiredChallenges();
+
+            return {
+                challengeKey,
+                options,
+                expiresIn: this.timeout,
+            };
+        } catch (error) {
+            console.error('Recovery registration options generation failed:', error);
+            throw new Error(`Recovery registration setup failed: ${error.message}`);
         }
     }
 
@@ -317,6 +413,129 @@ class WebAuthnService {
         } catch (error) {
             console.error('Registration verification failed:', error);
             throw new Error(`Registration failed: ${error.message}`);
+        }
+    }
+
+    /**
+     * Verify a recovery passkey registration and replace prior login credentials.
+     * For accounts with an existing wallet, keep active_passkey_id unchanged so
+     * wallet derivation remains stable while auth moves to the new passkey.
+     */
+    async verifyRecoveryRegistration(userAccount, registrationResponse, deviceInfo = {}, overrideOrigins = null) {
+        try {
+            const challengeKey = `recovery:${userAccount.user_id}`;
+            const storedChallenge = this.challengeStorage.get(challengeKey);
+            if (!storedChallenge || !storedChallenge.isRecovery) {
+                throw new Error('Recovery registration challenge not found or expired');
+            }
+
+            const expectedOrigins = overrideOrigins && overrideOrigins.length > 0
+                ? [...this.origins, ...overrideOrigins]
+                : this.origins;
+            const expectedRPID = storedChallenge.rpId || this.rpID;
+
+            const verification = await verifyRegistrationResponse({
+                response: registrationResponse,
+                expectedChallenge: storedChallenge.challenge,
+                expectedOrigin: expectedOrigins,
+                expectedRPID: expectedRPID,
+                requireUserVerification: true,
+            });
+
+            if (!verification.verified || !verification.registrationInfo) {
+                throw new Error('Recovery registration verification failed');
+            }
+
+            const { credential, attestationObject } = verification.registrationInfo;
+            const credentialId = Buffer.from(credential.id).toString('base64url');
+
+            await PasskeyCredential.updateMany(
+                { user_id: userAccount.user_id, revoked: false },
+                {
+                    revoked: true,
+                    revoked_reason: 'Account recovered',
+                    is_primary: false
+                }
+            );
+
+            await DeviceSession.updateMany(
+                { user_id: userAccount.user_id, revoked: false },
+                { revoked: true }
+            );
+
+            const passkeyCredential = new PasskeyCredential({
+                user_id: userAccount.user_id,
+                credential_id: credentialId,
+                rp_id: expectedRPID,
+                credential_public_key: Buffer.from(credential.publicKey),
+                counter: credential.counter,
+                device_type: deviceInfo.deviceType || 'desktop',
+                device_name: deviceInfo.deviceName || 'Recovered Device',
+                transports: registrationResponse.response.transports || [],
+                backup_eligible: verification.registrationInfo.backupEligible || false,
+                backup_state: verification.registrationInfo.backupState || false,
+                attestation_object: Buffer.from(attestationObject),
+                client_data_json: Buffer.from(registrationResponse.response.clientDataJSON, 'base64url'),
+                is_primary: true,
+            });
+
+            await passkeyCredential.save();
+
+            if (!userAccount.wallet) {
+                userAccount.active_passkey_id = credentialId;
+            }
+            userAccount.backup_passkeys = [];
+            await userAccount.save();
+
+            this.challengeStorage.delete(challengeKey);
+
+            const sessionId = uuidv4();
+            const sessionToken = crypto.randomBytes(64).toString('hex');
+            const expiresAt = new Date(Date.now() + (24 * 60 * 60 * 1000));
+
+            const deviceSession = new DeviceSession({
+                session_id: sessionId,
+                user_id: userAccount.user_id,
+                credential_id: credentialId,
+                session_token: sessionToken,
+                device_fingerprint: this.generateDeviceFingerprint(deviceInfo),
+                ip_address: deviceInfo.ipAddress,
+                user_agent: deviceInfo.userAgent,
+                expires_at: expiresAt,
+            });
+
+            await deviceSession.save();
+
+            let profileData = { human_id: null, name: null };
+            if (userAccount.wallet) {
+                const profile = await UserProfile.findOne({ wallet: userAccount.wallet });
+                if (profile) {
+                    profileData.human_id = profile.human_id || null;
+                    const fullName = [profile.first_name, profile.last_name].filter(Boolean).join(' ');
+                    profileData.name = fullName || null;
+                }
+            }
+
+            return {
+                success: true,
+                sessionId,
+                sessionToken,
+                expiresAt,
+                credentialId,
+                userAccount: {
+                    user_id: userAccount.user_id,
+                    recovery_email: userAccount.recovery_email,
+                    tier: userAccount.tier,
+                    email_verified: userAccount.email_verified,
+                    wallet: userAccount.wallet,
+                    metamask_connected: userAccount.metamask_connected,
+                    human_id: profileData.human_id,
+                    name: profileData.name,
+                }
+            };
+        } catch (error) {
+            console.error('Recovery registration verification failed:', error);
+            throw new Error(`Recovery registration failed: ${error.message}`);
         }
     }
 

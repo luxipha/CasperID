@@ -10,23 +10,50 @@ interface SelectiveDisclosureModalProps {
     initialSelectedFields?: string[];
 }
 
-const fields = [
-    { id: 'first_name', label: 'First Name', icon: 'person' },
-    { id: 'last_name', label: 'Last Name', icon: 'person' },
-    { id: 'age', label: 'Verified Age', icon: 'history_edu' },
-    { id: 'email', label: 'Email Address', icon: 'mail' },
-    { id: 'phone_number', label: 'Phone Number', icon: 'phone' },
-    { id: 'city', label: 'City', icon: 'location_city' },
-    { id: 'country', label: 'Country', icon: 'public' },
-    { id: 'address', label: 'Home Address', icon: 'home' },
-];
+interface ShareableField {
+    id: string;
+    label: string;
+    description?: string;
+    value?: any;
+    available: boolean;
+    verified?: boolean;
+    source?: string | null;
+    verification_method?: string | null;
+    sensitive?: boolean;
+}
+
+const fieldIcons: Record<string, string> = {
+    name: 'badge',
+    first_name: 'person',
+    last_name: 'person',
+    human_id: 'fingerprint',
+    age: 'history_edu',
+    email: 'mail',
+    phone_number: 'phone',
+    city: 'location_city',
+    country: 'public',
+    nationality: 'public',
+    address: 'home',
+    date_of_birth: 'calendar_month',
+    wallet: 'account_balance_wallet',
+    tier: 'workspace_premium',
+    document_type: 'id_card',
+    document_number: 'numbers',
+    passport_number: 'travel',
+    nin: 'badge',
+    bvn: 'account_balance',
+    bvn_verified: 'verified_user',
+    nin_verified: 'verified_user',
+    identity_provider: 'hub',
+    provider_document_match: 'fact_check'
+};
 
 export const SelectiveDisclosureModal: React.FC<SelectiveDisclosureModalProps> = ({
     isOpen,
     onClose,
     initialSelectedFields
 }) => {
-    const [profile, setProfile] = useState<any>(null);
+    const [fields, setFields] = useState<ShareableField[]>([]);
     const [loading, setLoading] = useState(true);
     const [generating, setGenerating] = useState(false);
     const [sharePackage, setSharePackage] = useState<any>(null);
@@ -42,21 +69,21 @@ export const SelectiveDisclosureModal: React.FC<SelectiveDisclosureModalProps> =
 
     useEffect(() => {
         if (isOpen) {
-            fetchProfile();
+            fetchAvailableFields();
             setSharePackage(null);
             setGenerating(false);
         }
     }, [isOpen]);
 
-    const fetchProfile = async () => {
+    const fetchAvailableFields = async () => {
         try {
             setLoading(true);
-            const response = await apiService.getUserProfile();
-            if (response) {
-                setProfile(response);
+            const response = await apiService.getAvailableShareFields();
+            if (response?.success) {
+                setFields(response.fields || []);
             }
         } catch (error) {
-            console.error('Failed to fetch profile:', error);
+            console.error('Failed to fetch shareable fields:', error);
         } finally {
             setLoading(false);
         }
@@ -99,6 +126,20 @@ export const SelectiveDisclosureModal: React.FC<SelectiveDisclosureModalProps> =
             setCopied(true);
             setTimeout(() => setCopied(false), 2000);
         }
+    };
+
+    const formatPreviewValue = (field: ShareableField) => {
+        if (!field.available) return 'Not available';
+        if (field.id === 'provider_document_match' && field.value) {
+            return field.value.overall_match === true ? 'Matched' : 'Review required';
+        }
+        if (typeof field.value === 'boolean') {
+            return field.value ? 'Yes' : 'No';
+        }
+        if (typeof field.value === 'object') {
+            return 'Verified object';
+        }
+        return String(field.value);
     };
 
     const handleClose = () => {
@@ -244,7 +285,7 @@ export const SelectiveDisclosureModal: React.FC<SelectiveDisclosureModalProps> =
             ) : (
                 <div className="space-y-3">
                     {fields.map((field) => {
-                        const hasValue = profile && (field.id === 'age' ? !!profile.date_of_birth : !!profile[field.id]);
+                        const hasValue = field.available;
                         const isSelected = selectedFields.includes(field.id);
                         return (
                             <div
@@ -257,30 +298,20 @@ export const SelectiveDisclosureModal: React.FC<SelectiveDisclosureModalProps> =
                                 <div className="flex items-center gap-3">
                                     <div className={`size-9 rounded-xl flex items-center justify-center transition-colors ${isSelected ? 'bg-primary text-white' : 'bg-white text-text-sub border border-gray-100'
                                         }`}>
-                                        <span className="material-symbols-outlined text-[20px]">{field.icon}</span>
+                                        <span className="material-symbols-outlined text-[20px]">{fieldIcons[field.id] || 'share'}</span>
                                     </div>
                                     <div>
                                         <p className="text-[14px] font-bold text-text-main leading-tight">{field.label}</p>
                                         <p className="text-[11px] text-text-sub font-medium mt-0.5 max-w-[180px] truncate">
-                                            {(() => {
-                                                if (!hasValue) return field.id === 'age' ? 'Layer 3 Required' : 'Not Provided';
-
-                                                if (field.id === 'age') {
-                                                    const dob = new Date(profile.date_of_birth);
-                                                    const today = new Date();
-                                                    let age = today.getFullYear() - dob.getFullYear();
-                                                    const m = today.getMonth() - dob.getMonth();
-                                                    if (m < 0 || (m === 0 && today.getDate() < dob.getDate())) {
-                                                        age--;
-                                                    }
-                                                    return `${age} years (Verified)`;
-                                                }
-
-                                                if (field.id === 'address') return 'Verified Address';
-
-                                                return profile[field.id];
-                                            })()}
+                                            {formatPreviewValue(field)}
                                         </p>
+                                        {(field.verified || field.source || field.sensitive) && (
+                                            <p className="text-[10px] text-text-sub/70 font-bold mt-1">
+                                                {field.verified ? 'Verified' : 'Profile'}
+                                                {field.source ? ` via ${field.source}` : ''}
+                                                {field.sensitive ? ' • Sensitive' : ''}
+                                            </p>
+                                        )}
                                     </div>
                                 </div>
 
@@ -298,7 +329,7 @@ export const SelectiveDisclosureModal: React.FC<SelectiveDisclosureModalProps> =
                                     {!hasValue && (
                                         <span className="text-[9px] font-bold text-amber-600 flex items-center gap-0.5 animate-pulse">
                                             <span className="material-symbols-outlined text-[12px]">warning</span>
-                                            {field.id === 'age' ? 'Level 3 Req' : 'Missing'}
+                                            Missing
                                         </span>
                                     )}
                                 </div>

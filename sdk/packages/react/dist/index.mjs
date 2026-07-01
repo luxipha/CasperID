@@ -1,28 +1,39 @@
-import { jsx as O } from "react/jsx-runtime";
-import { useState as V, useRef as y, useEffect as N } from "react";
-const q = "casperid_authorization:", x = "casperid_authorization_result:", M = "casperid_authorization_popup:", A = 1800 * 1e3, H = A;
+import { jsx as V } from "react/jsx-runtime";
+import { useState as F, useRef as T, useEffect as N } from "react";
+const q = "casperid_authorization:", M = "casperid_authorization_result:", H = "casperid_authorization_popup:", D = 1800 * 1e3, J = D;
 function R(e) {
+  if (!e) return;
+  const t = e.split(",").map((r) => r.trim()).filter(Boolean);
+  return t.length ? t : void 0;
+}
+function L(e) {
+  const t = e.searchParams.get("selected_context_type");
+  if (t !== "master" && t !== "persona") return;
+  const r = e.searchParams.get("selected_context_did") || void 0, o = e.searchParams.get("selected_context_alias") || void 0, s = e.searchParams.get("selected_context_name") || void 0, c = e.searchParams.get("selected_context_category") || void 0;
+  return { type: t, did: r, alias: o, context: c, name: s };
+}
+function O(e) {
   let t = "";
   return e.forEach((r) => {
     t += String.fromCharCode(r);
   }), btoa(t).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
 }
-function D(e = 32) {
+function x(e = 32) {
   const t = new Uint8Array(e);
-  return crypto.getRandomValues(t), R(t);
+  return crypto.getRandomValues(t), O(t);
 }
 async function B(e) {
   const t = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(e));
-  return R(new Uint8Array(t));
+  return O(new Uint8Array(t));
 }
-function P(e) {
+function I(e) {
   return `${q}${e}`;
 }
-function T(e) {
-  return `${x}${e}`;
-}
-function U(e) {
+function _(e) {
   return `${M}${e}`;
+}
+function z(e) {
+  return `${H}${e}`;
 }
 function E(e, t) {
   try {
@@ -31,19 +42,19 @@ function E(e, t) {
     return null;
   }
 }
-function C(e, t, r) {
+function b(e, t, r) {
   try {
     e.setItem(t, r);
   } catch {
   }
 }
-function v(e, t) {
+function S(e, t) {
   try {
     e.removeItem(t);
   } catch {
   }
 }
-function k(e) {
+function A(e) {
   if (!e) return null;
   try {
     const t = JSON.parse(e);
@@ -52,33 +63,33 @@ function k(e) {
     return null;
   }
 }
-function J(e) {
+function K(e) {
   const t = {
     ...e,
-    expiresAt: Date.now() + H
-  }, r = JSON.stringify(t), i = P(e.state);
-  C(sessionStorage, i, r), C(localStorage, i, r);
+    expiresAt: Date.now() + J
+  }, r = JSON.stringify(t), o = I(e.state);
+  b(sessionStorage, o, r), b(localStorage, o, r);
 }
-function L(e) {
-  const t = P(e), r = k(E(sessionStorage, t));
+function k(e) {
+  const t = I(e), r = A(E(sessionStorage, t));
   if (r) return r;
-  v(sessionStorage, t);
-  const i = k(E(localStorage, t));
-  return i || (v(localStorage, t), null);
-}
-function F(e) {
-  const t = P(e);
-  v(sessionStorage, t), v(localStorage, t);
-}
-function S(e) {
-  const t = L(e);
-  return F(e), t;
-}
-function K(e) {
-  localStorage.setItem(T(e.state), JSON.stringify(e));
+  S(sessionStorage, t);
+  const o = A(E(localStorage, t));
+  return o || (S(localStorage, t), null);
 }
 function X(e) {
-  const t = localStorage.getItem(T(e));
+  const t = I(e);
+  S(sessionStorage, t), S(localStorage, t);
+}
+function w(e) {
+  const t = k(e);
+  return X(e), t;
+}
+function W(e) {
+  localStorage.setItem(_(e.state), JSON.stringify(e));
+}
+function j(e) {
+  const t = localStorage.getItem(_(e));
   if (!t) return null;
   try {
     return JSON.parse(t);
@@ -86,30 +97,25 @@ function X(e) {
     return null;
   }
 }
-function I(e) {
-  localStorage.removeItem(T(e));
+function y(e) {
+  localStorage.removeItem(_(e));
 }
-function j(e) {
-  localStorage.setItem(U(e), "1");
+function Z(e) {
+  localStorage.setItem(z(e), "1");
 }
 function G(e) {
-  return localStorage.getItem(U(e)) === "1";
+  return localStorage.getItem(z(e)) === "1";
 }
 function m(e) {
-  localStorage.removeItem(U(e));
+  localStorage.removeItem(z(e));
 }
-function W() {
-  return new URLSearchParams(window.location.search).get("casperid_debug") === "true" || localStorage.getItem("casperid_debug") === "true";
-}
-const Z = /* @__PURE__ */ W();
-function l(...e) {
-  Z && console.log("[CasperID SDK DEBUG]", ...e);
+function h(...e) {
 }
 function Q() {
   return /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent);
 }
 async function Y(e) {
-  const t = new URL(e.accountUrl || "https://account.casperid.com"), r = e.state || D(), i = D(48), s = await B(i), c = new URL(e.redirectUri).toString();
+  const t = new URL(e.accountUrl || "https://account.casperid.com"), r = e.state || x(), o = x(48), s = await B(o), c = new URL(e.redirectUri).toString();
   return t.pathname = "/authorize", t.search = new URLSearchParams({
     response_type: "code",
     client_id: e.clientId,
@@ -117,161 +123,166 @@ async function Y(e) {
     state: r,
     code_challenge: s,
     code_challenge_method: "S256"
-  }).toString(), J({
+  }).toString(), K({
     state: r,
-    codeVerifier: i,
+    codeVerifier: o,
     redirectUri: c,
     accountOrigin: t.origin
-  }), l("buildHostedAuthorizationUrl → url:", t.toString(), "state:", r), { url: t.toString(), state: r };
+  }), h("buildHostedAuthorizationUrl → url:", t.toString(), "state:", r), { url: t.toString(), state: r };
 }
 async function ee(e) {
   const t = e.mode === "auto" || !e.mode ? Q() ? "redirect" : "popup" : e.mode, r = await Y(e);
-  if (l("authorizeWithCasperID → mode:", t, "authUrl:", r.url), t === "redirect")
+  if (h("authorizeWithCasperID → mode:", t, "authUrl:", r.url), t === "redirect")
     return window.location.assign(r.url), new Promise(() => {
     });
-  const i = new URL(r.url);
-  i.searchParams.set("response_mode", "web_message"), i.searchParams.set("response_origin", window.location.origin), j(r.state);
-  const s = window.open(i.toString(), "casperid_authorization", "popup=yes,width=520,height=720");
+  const o = new URL(r.url);
+  o.searchParams.set("response_mode", "web_message"), o.searchParams.set("response_origin", window.location.origin), Z(r.state);
+  const s = window.open(o.toString(), "casperid_authorization", "popup=yes,width=520,height=720");
   if (!s) {
-    if (l("popup was blocked!"), m(r.state), !e.mode || e.mode === "auto")
+    if (m(r.state), !e.mode || e.mode === "auto")
       return window.location.assign(r.url), new Promise(() => {
       });
-    throw S(r.state), new Error("CasperID authorization popup was blocked.");
+    throw w(r.state), new Error("CasperID authorization popup was blocked.");
   }
   const c = s;
-  return l("popup opened successfully. popup.closed:", c.closed, "origin:", window.location.origin), new Promise((u, d) => {
-    let h = !1;
-    const _ = e.timeoutMs ?? A, g = _ > 0 ? window.setTimeout(() => p(new Error("CasperID authorization timed out.")), _) : null;
-    let w = 0;
+  return h("popup opened successfully. popup.closed:", c.closed, "origin:", window.location.origin), new Promise((u, d) => {
+    let p = !1;
+    const v = e.timeoutMs ?? D, f = v > 0 ? window.setTimeout(() => l(new Error("CasperID authorization timed out.")), v) : null;
+    let P = 0;
     const $ = window.setInterval(() => {
-      w++;
-      const o = X(r.state);
-      if (o != null && o.error) {
-        p(new Error(o.errorDescription || o.error));
+      P++;
+      const a = j(r.state);
+      if (a != null && a.error) {
+        l(new Error(a.errorDescription || a.error));
         return;
       }
-      if (o != null && o.code) {
-        l(`tick #${w}: shared result found via localStorage`), p(void 0, o.code, o);
+      if (a != null && a.code) {
+        l(void 0, a.code, a);
         return;
       }
-      c.closed && l(`tick #${w}: popup.closed === true; ignored because opener isolation can sever the reference`);
+      c.closed;
       try {
         const n = new URL(c.location.href);
-        if (l(`tick #${w}: popup URL readable → origin: ${n.origin}, pathname: ${n.pathname}`), n.origin !== window.location.origin)
+        if (h(`tick #${P}: popup URL readable → origin: ${n.origin}, pathname: ${n.pathname}`), n.origin !== window.location.origin)
           return;
-        const a = n.searchParams.get("code"), f = n.searchParams.get("state");
-        if (l(`tick #${w}: same origin! code=${a}, state=${f}, expected_state=${r.state}`), !a || f !== r.state)
+        const i = n.searchParams.get("code"), g = n.searchParams.get("state");
+        if (h(`tick #${P}: same origin! code=${i}, state=${g}, expected_state=${r.state}`), !i || g !== r.state)
           return;
-        p(void 0, a, {
+        l(void 0, i, {
           authorizationStatus: n.searchParams.get("authorization_status") || void 0,
           verificationStatus: n.searchParams.get("verification_status") || void 0,
           grantedTier: n.searchParams.get("granted_tier") || void 0,
-          requiredTier: n.searchParams.get("required_tier") || void 0
+          requiredTier: n.searchParams.get("required_tier") || void 0,
+          sharedFields: R(n.searchParams.get("shared_fields")),
+          selectedContext: L(n)
         });
       } catch {
       }
-    }, 500), z = (o) => {
-      if (!(o.key !== T(r.state) || !o.newValue))
+    }, 500), U = (a) => {
+      if (!(a.key !== _(r.state) || !a.newValue))
         try {
-          const n = JSON.parse(o.newValue);
-          n.state === r.state && (n.error ? p(new Error(n.errorDescription || n.error)) : n.code && p(void 0, n.code, n));
+          const n = JSON.parse(a.newValue);
+          n.state === r.state && (n.error ? l(new Error(n.errorDescription || n.error)) : n.code && l(void 0, n.code, n));
         } catch {
         }
-    }, b = (o) => {
-      const n = L(r.state);
-      if (!n || o.origin !== n.accountOrigin || o.source !== c) return;
-      const a = o.data;
-      a.type !== "casperid:authorization" || a.state !== r.state || (a.error ? p(new Error(a.error_description || a.error)) : a.code && p(void 0, a.code, a));
+    }, C = (a) => {
+      const n = k(r.state);
+      if (!n || a.origin !== n.accountOrigin || a.source !== c) return;
+      const i = a.data;
+      i.type !== "casperid:authorization" || i.state !== r.state || (i.error ? l(new Error(i.error_description || i.error)) : i.code && l(void 0, i.code, i));
     };
-    function p(o, n, a = {}) {
-      if (h) {
-        l("finish called but already settled — skipping");
+    function l(a, n, i = {}) {
+      if (p)
         return;
-      }
-      l("finish called — error:", o == null ? void 0 : o.message, "code:", n), h = !0, g !== null && window.clearTimeout(g), window.clearInterval($), window.removeEventListener("storage", z), window.removeEventListener("message", b);
+      h("finish called — error:", a == null ? void 0 : a.message, "code:", n), p = !0, f !== null && window.clearTimeout(f), window.clearInterval($), window.removeEventListener("storage", U), window.removeEventListener("message", C);
       try {
         c.close();
       } catch {
-        l("popup reference is inaccessible due to opener isolation");
       }
-      if (o) {
-        S(r.state), I(r.state), m(r.state), l("rejecting with:", o.message), d(o);
+      if (a) {
+        w(r.state), y(r.state), m(r.state), h("rejecting with:", a.message), d(a);
         return;
       }
-      const f = S(r.state);
-      if (!f || !n) {
-        l("transaction missing or no code — rejecting"), I(r.state), m(r.state), d(new Error("CasperID authorization transaction is missing."));
+      const g = w(r.state);
+      if (!g || !n) {
+        y(r.state), m(r.state), d(new Error("CasperID authorization transaction is missing."));
         return;
       }
-      I(r.state), m(r.state), l("resolving successfully"), u({
+      y(r.state), m(r.state), u({
         code: n,
-        state: f.state,
-        codeVerifier: f.codeVerifier,
-        redirectUri: f.redirectUri,
-        authorizationStatus: a.authorizationStatus,
-        verificationStatus: a.verificationStatus,
-        grantedTier: a.grantedTier,
-        requiredTier: a.requiredTier
+        state: g.state,
+        codeVerifier: g.codeVerifier,
+        redirectUri: g.redirectUri,
+        authorizationStatus: i.authorizationStatus,
+        verificationStatus: i.verificationStatus,
+        grantedTier: i.grantedTier,
+        requiredTier: i.requiredTier,
+        sharedFields: i.sharedFields,
+        selectedContext: i.selectedContext
       });
     }
-    window.addEventListener("storage", z), window.addEventListener("message", b);
+    window.addEventListener("storage", U), window.addEventListener("message", C);
   });
 }
 function te(e = window.location.href) {
-  const t = new URL(e), r = t.searchParams.get("code"), i = t.searchParams.get("state"), s = t.searchParams.get("error"), c = t.searchParams.get("error_description"), u = {
+  const t = new URL(e), r = t.searchParams.get("code"), o = t.searchParams.get("state"), s = t.searchParams.get("error"), c = t.searchParams.get("error_description"), u = {
     authorizationStatus: t.searchParams.get("authorization_status") || void 0,
     verificationStatus: t.searchParams.get("verification_status") || void 0,
     grantedTier: t.searchParams.get("granted_tier") || void 0,
-    requiredTier: t.searchParams.get("required_tier") || void 0
+    requiredTier: t.searchParams.get("required_tier") || void 0,
+    sharedFields: R(t.searchParams.get("shared_fields")),
+    selectedContext: L(t)
   };
-  if (!r && !s || !i) return null;
-  const d = S(i);
+  if (!r && !s || !o) return null;
+  const d = w(o);
   if (!d) throw new Error("CasperID authorization state is invalid or expired.");
-  if (window.opener || G(i))
-    return l("popup callback detected; publishing result for opener"), K({ code: r || void 0, state: i, error: s || void 0, errorDescription: c || void 0, ...u }), m(i), window.close(), null;
+  if (window.opener || G(o))
+    return W({ code: r || void 0, state: o, error: s || void 0, errorDescription: c || void 0, ...u }), m(o), window.close(), null;
   if (s) throw new Error(c || s);
   return {
     code: r,
-    state: i,
+    state: o,
     codeVerifier: d.codeVerifier,
     redirectUri: d.redirectUri,
     authorizationStatus: u.authorizationStatus,
     verificationStatus: u.verificationStatus,
     grantedTier: u.grantedTier,
-    requiredTier: u.requiredTier
+    requiredTier: u.requiredTier,
+    sharedFields: u.sharedFields,
+    selectedContext: u.selectedContext
   };
 }
-function ie({
+function ne({
   onSuccess: e,
   onError: t,
   children: r = "Continue with CasperID",
-  className: i,
+  className: o,
   disabled: s,
   id: c,
   ...u
 }) {
-  const [d, h] = V(!1);
-  return /* @__PURE__ */ O("button", { id: c, type: "button", className: i, disabled: s || d, onClick: async () => {
-    h(!0);
+  const [d, p] = F(!1);
+  return /* @__PURE__ */ V("button", { id: c, type: "button", className: o, disabled: s || d, onClick: async () => {
+    p(!0);
     try {
-      const g = await ee(u);
-      e == null || e(g);
-    } catch (g) {
-      t == null || t(g instanceof Error ? g : new Error("CasperID authorization failed."));
+      const f = await ee(u);
+      e == null || e(f);
+    } catch (f) {
+      t == null || t(f instanceof Error ? f : new Error("CasperID authorization failed."));
     } finally {
-      h(!1);
+      p(!1);
     }
   }, children: d ? "Opening CasperID..." : r });
 }
-function ne(e, t) {
-  const r = y(!1), i = y(e), s = y(t);
-  i.current = e, s.current = t, N(() => {
+function ae(e, t) {
+  const r = T(!1), o = T(e), s = T(t);
+  o.current = e, s.current = t, N(() => {
     var c;
     if (!r.current) {
       r.current = !0;
       try {
         const u = te();
-        u && i.current(u);
+        u && o.current(u);
       } catch (u) {
         (c = s.current) == null || c.call(s, u instanceof Error ? u : new Error("CasperID authorization callback failed."));
       }
@@ -279,10 +290,10 @@ function ne(e, t) {
   }, []);
 }
 export {
-  ie as CasperIDButton,
+  ne as CasperIDButton,
   ee as authorizeWithCasperID,
   Y as buildHostedAuthorizationUrl,
   te as consumeHostedAuthorizationCallback,
-  ne as useHostedAuthorizationCallback
+  ae as useHostedAuthorizationCallback
 };
 //# sourceMappingURL=index.mjs.map

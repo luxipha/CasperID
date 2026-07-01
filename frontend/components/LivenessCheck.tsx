@@ -6,7 +6,7 @@ import { LivenessSuccess } from './LivenessSuccess';
 import { VerificationProgress } from './VerificationProgress';
 import { MobileLivenessPage, MobileStep } from './MobileLiveness';
 import { DesktopLivenessQR } from './DesktopLivenessQR';
-import { generateLivenessProof, FaceLandmark } from '../services/zkProver';
+import type { FaceLandmark } from '../services/zkProver';
 import { apiService } from '../services/api';
 
 interface LivenessCheckProps {
@@ -482,6 +482,8 @@ export const LivenessCheck: React.FC<LivenessCheckProps> = ({ onBack, onComplete
     try {
       setState("ZK_PROVING");
       setZkProgress(0);
+
+      const { generateLivenessProof } = await import('../services/zkProver');
 
       // Generate proof client-side
       const proof = await generateLivenessProof(

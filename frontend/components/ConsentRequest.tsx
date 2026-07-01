@@ -1,10 +1,22 @@
 
 import React from 'react';
 
+interface ContextOption {
+  id: string;
+  type: 'master' | 'persona';
+  title: string;
+  subtitle: string;
+  badge?: string;
+}
+
 interface ConsentRequestProps {
   appName: string;
   appLogo?: string;
   requestedScopes?: string[];
+  sharedFields?: string[];
+  contextOptions?: ContextOption[];
+  selectedContextId?: string;
+  onSelectContext?: (contextId: string) => void;
   onApprove: () => void;
   onDeny: () => void;
   approveLabel?: string;
@@ -21,15 +33,30 @@ const scopeDetails: Record<string, { title: string; description: string; icon: s
   'read:wallet': { title: 'Wallet address', description: 'Your public Casper wallet address', icon: 'account_balance_wallet' },
 };
 
+const sharedFieldLabels: Record<string, string> = {
+  name: 'Name',
+  human_id: 'Human ID',
+  email: 'Email',
+  wallet: 'Wallet',
+  tier: 'Verification Level',
+  verified: 'Identity Verification Status',
+};
+
 export const ConsentRequest: React.FC<ConsentRequestProps> = ({
   appName,
   appLogo,
   requestedScopes = ['verify:identity', 'read:profile', 'read:kyc_level'],
+  sharedFields = [],
+  contextOptions = [],
+  selectedContextId = 'master',
+  onSelectContext,
   onApprove,
   onDeny,
   approveLabel,
   denyLabel = 'Deny Access'
 }) => {
+  const selectedContext = contextOptions.find((option) => option.id === selectedContextId) || contextOptions[0];
+
   return (
     <div className="w-full max-w-[600px] mx-auto animate-in zoom-in-95 fade-in duration-500 py-4 md:py-8">
       <div className="bg-white rounded-[28px] md:rounded-[44px] border border-gray-100 shadow-[0_30px_70px_-24px_rgba(0,0,0,0.15)] overflow-hidden">
@@ -57,6 +84,53 @@ export const ConsentRequest: React.FC<ConsentRequestProps> = ({
 
         {/* Data Points List */}
         <div className="p-5 md:p-10 space-y-5 md:space-y-6">
+          {contextOptions.length > 0 && (
+            <div className="space-y-3">
+              <p className="text-[11px] font-black text-text-sub uppercase tracking-widest opacity-60">Share As</p>
+              <div className="space-y-3">
+                {contextOptions.map((option) => {
+                  const isSelected = option.id === selectedContextId;
+                  return (
+                    <button
+                      key={option.id}
+                      type="button"
+                      onClick={() => onSelectContext?.(option.id)}
+                      className={`w-full rounded-2xl border p-4 text-left transition-all ${
+                        isSelected
+                          ? 'border-primary bg-primary/[0.04] shadow-sm shadow-primary/10'
+                          : 'border-gray-100 bg-white hover:border-primary/20'
+                      }`}
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div>
+                          <h4 className="text-[15px] font-bold text-text-main">{option.title}</h4>
+                          <p className="mt-1 text-[11px] font-medium leading-relaxed text-text-sub">{option.subtitle}</p>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          {option.badge && (
+                            <span className="rounded-full bg-gray-100 px-2.5 py-1 text-[9px] font-black uppercase tracking-wider text-text-sub">
+                              {option.badge}
+                            </span>
+                          )}
+                          <span className={`material-symbols-outlined text-[20px] ${isSelected ? 'text-primary' : 'text-gray-300'}`}>
+                            {isSelected ? 'radio_button_checked' : 'radio_button_unchecked'}
+                          </span>
+                        </div>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+              {selectedContext && (
+                <div className="rounded-2xl border border-primary/10 bg-primary/[0.03] p-4">
+                  <p className="text-[11px] font-black uppercase tracking-widest text-primary/70">Selected identity</p>
+                  <p className="mt-2 text-sm font-bold text-text-main">{selectedContext.title}</p>
+                  <p className="mt-1 text-[12px] font-medium leading-relaxed text-text-sub">{selectedContext.subtitle}</p>
+                </div>
+              )}
+            </div>
+          )}
+
           <p className="text-[11px] font-black text-text-sub uppercase tracking-widest opacity-60">Requested Permissions</p>
 
           <div className="space-y-3">
@@ -77,6 +151,22 @@ export const ConsentRequest: React.FC<ConsentRequestProps> = ({
                 </div>
               );
             })}
+          </div>
+
+          <div className="rounded-2xl border border-gray-100 bg-gray-50/70 p-4 md:p-5">
+            <p className="text-[11px] font-black uppercase tracking-widest text-text-sub opacity-60">What {appName} will receive</p>
+            <div className="mt-3 flex flex-wrap gap-2">
+              {sharedFields.length > 0 ? sharedFields.map((field) => (
+                <span
+                  key={field}
+                  className="rounded-full border border-primary/15 bg-white px-3 py-1 text-[10px] font-black uppercase tracking-wider text-primary/80"
+                >
+                  {sharedFieldLabels[field] || field.replace(/_/g, ' ')}
+                </span>
+              )) : (
+                <span className="text-[12px] font-medium text-text-sub">Only the verification result and approved access status.</span>
+              )}
+            </div>
           </div>
 
           <div className="bg-blue-50/50 border border-blue-100 rounded-2xl p-4 md:p-5 flex gap-3 md:gap-4">

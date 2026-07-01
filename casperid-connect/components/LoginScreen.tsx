@@ -8,7 +8,7 @@ interface Props {
 
 type LoginMode = 'select' | 'session' | 'otp-cid' | 'otp-verify';
 
-const API_BASE_URL = 'https://1d84-42-114-170-11.ngrok-free.app'; // Point to local server in development
+const API_BASE_URL = (import.meta as any).env.VITE_API_URL || 'https://api.casperid.com';
 
 const LoginScreen: React.FC<Props> = ({ onSuccess }) => {
   const [mode, setMode] = useState<LoginMode>('otp-cid');
@@ -39,8 +39,8 @@ const LoginScreen: React.FC<Props> = ({ onSuccess }) => {
         try {
           await chrome.tabs.sendMessage(activeTab.id, { type: 'TRIGGER_SYNC' });
           await new Promise(resolve => setTimeout(resolve, 2000));
-        } catch (e) {
-          console.log('[CasperID] No content script on this page, checking storage directly');
+        } catch {
+          // Ignore missing content script and fall back to extension storage.
         }
       }
     }

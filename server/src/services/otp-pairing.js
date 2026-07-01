@@ -119,7 +119,7 @@ async function initiatePairing(cid) {
         cid: normalizedCid
     });
 
-    console.log(`[OTP-Pairing] Created session ${pairingId} for ${normalizedCid}, OTP: ${otp}`);
+    console.log(`[OTP-Pairing] Created session ${pairingId} for ${normalizedCid}`);
 
     return {
         pairingId,

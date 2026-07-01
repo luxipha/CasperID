@@ -16,6 +16,8 @@ const {
     TIER_NUMERIC,
     normalizeRequiredTier
 } = require('../constants/tier-levels');
+const { expandScopesToSharedFields } = require('../utils/business-disclosure');
+const { getRootNameForAccount, buildContextualName } = require('../services/contextual-names');
 
 const router = express.Router();
 const AUTHORIZATION_CODE_TTL_MS = 2 * 60 * 1000;
@@ -103,25 +105,60 @@ function isValidPkceValue(value) {
     return typeof value === 'string' && /^[A-Za-z0-9._~-]{43,128}$/.test(value);
 }
 
-async function loadBusinessTokenUser(userId) {
+function resolveSelectedContext(user, selectedContextDid) {
+    if (!selectedContextDid || selectedContextDid === 'master') {
+        return { type: 'master' };
+    }
+
+    const selectedContext = Array.isArray(user.context_dids)
+        ? user.context_dids.find((contextDid) => contextDid.did === selectedContextDid)
+        : null;
+    if (!selectedContext) {
+        return null;
+    }
+    if (selectedContext.routing_type === 'wallet') {
+        return false;
+    }
+
+    const rootName = getRootNameForAccount(user);
+    return {
+        type: 'persona',
+        did: selectedContext.did,
+        alias: selectedContext.alias,
+        context: selectedContext.context,
+        name: buildContextualName(selectedContext.alias, rootName) || undefined
+    };
+}
+
+async function loadBusinessTokenUser(userId, selectedContext = null) {
     const user = await UserAccount.findOne({
         $or: [{ user_id: userId }, { wallet: userId }]
     });
     if (!user) return null;
 
     const profile = user.wallet ? await UserProfile.findOne({ wallet: user.wallet }) : null;
-    const name = profile
+    const resolvedName = profile
         ? profile.name || [profile.first_name, profile.last_name].filter(Boolean).join(' ') || null
         : null;
+    const persona = selectedContext?.type === 'persona'
+        ? user.context_dids?.find((contextDid) => contextDid.did === selectedContext.did && contextDid.routing_type !== 'wallet')
+        : null;
+    const personaDisclosures = persona?.disclosures || {};
+    const personaName = [
+        personaDisclosures.firstName ? profile?.first_name : null,
+        personaDisclosures.lastName ? profile?.last_name : null
+    ].filter(Boolean).join(' ') || selectedContext?.name || selectedContext?.alias || null;
 
     return {
         userId: user.user_id,
         wallet: user.wallet,
-        humanId: user.human_id || null,
-        name,
+        humanId: persona ? (selectedContext?.name || selectedContext?.alias || persona.did) : (profile?.human_id || user.human_id || null),
+        name: persona ? personaName : resolvedName,
         verified: user.email_verified || false,
         tier: user.tier || 'layer_0',
-        email: user.recovery_email,
+        email: persona
+            ? (personaDisclosures.email ? (profile?.email || user.recovery_email || null) : null)
+            : user.recovery_email,
         sharedData: []
     };
 }
@@ -147,6 +184,9 @@ router.get('/authorize/validate', async (req, res) => {
                 redirect_uri: redirectUri,
                 required_tier: normalizeRequiredTier(app.sdk_config?.requiredTier),
                 requested_scopes: app.requested_scopes?.length ? app.requested_scopes : DEFAULT_SCOPES,
+                shared_fields: expandScopesToSharedFields(
+                    app.requested_scopes?.length ? app.requested_scopes : DEFAULT_SCOPES
+                ),
                 language: app.sdk_config?.language || 'EN',
                 theme: sanitizedTheme(app)
             }
@@ -190,7 +230,8 @@ router.post('/authorize/complete', requireAuth, async (req, res) => {
             client_id: clientId,
             redirect_uri: redirectUri,
             code_challenge: codeChallenge,
-            code_challenge_method: codeChallengeMethod
+            code_challenge_method: codeChallengeMethod,
+            selected_context_did: selectedContextDid
         } = req.body;
 
         const userId = req.user.userId || req.user.user_id || req.user.wallet;
@@ -214,6 +255,14 @@ router.post('/authorize/complete', requireAuth, async (req, res) => {
         });
         if (!user) {
             return res.status(401).json({ success: false, error: 'Authenticated user no longer exists' });
+        }
+
+        const selectedContext = resolveSelectedContext(user, selectedContextDid);
+        if (selectedContext === false) {
+            return res.status(400).json({ success: false, error: 'Wallet-routing personas cannot be used for identity authorization.' });
+        }
+        if (!selectedContext) {
+            return res.status(400).json({ success: false, error: 'The selected persona is no longer available.' });
         }
 
         const assessment = await assessAuthorizationEligibility(app, user);
@@ -243,8 +292,13 @@ router.post('/authorize/complete', requireAuth, async (req, res) => {
             requested_scopes: app.requested_scopes?.length ? app.requested_scopes : DEFAULT_SCOPES,
             authorization_status: assessment.authorizationStatus,
             verification_status: assessment.verificationStatus,
+            selected_context: selectedContext,
             expires_at: new Date(Date.now() + AUTHORIZATION_CODE_TTL_MS)
         });
+
+        const sharedFields = expandScopesToSharedFields(
+            app.requested_scopes?.length ? app.requested_scopes : DEFAULT_SCOPES
+        );
 
         return res.json({
             success: true,
@@ -253,6 +307,8 @@ router.post('/authorize/complete', requireAuth, async (req, res) => {
             verification_status: assessment.verificationStatus,
             granted_tier: assessment.grantedTier,
             required_tier: assessment.requiredTier,
+            selected_context: selectedContext,
+            shared_fields: sharedFields,
             expires_in: Math.floor(AUTHORIZATION_CODE_TTL_MS / 1000)
         });
     } catch (error) {
@@ -313,12 +369,13 @@ router.post('/token', async (req, res) => {
             return res.status(400).json({ success: false, error: 'Invalid or expired authorization code' });
         }
 
-        const userData = await loadBusinessTokenUser(consumedCode.user_id);
+        const userData = await loadBusinessTokenUser(consumedCode.user_id, consumedCode.selected_context);
         if (!userData) {
             return res.status(400).json({ success: false, error: 'Authorized user no longer exists' });
         }
 
         userData.tier = consumedCode.granted_tier;
+        userData.sharedData = expandScopesToSharedFields(consumedCode.requested_scopes || []);
         const isProvisional = consumedCode.authorization_status === 'provisional';
         return res.json({
             access_token: generateBusinessToken(userData, app.app_id, {
@@ -326,6 +383,7 @@ router.post('/token', async (req, res) => {
                 scopes: consumedCode.requested_scopes,
                 authorizationStatus: consumedCode.authorization_status,
                 verificationStatus: consumedCode.verification_status,
+                selectedContext: consumedCode.selected_context,
                 expiresIn: isProvisional ? '24h' : undefined
             }),
             token_type: 'Bearer',
@@ -334,7 +392,8 @@ router.post('/token', async (req, res) => {
             verification_status: consumedCode.verification_status,
             granted_tier: consumedCode.granted_tier,
             required_tier: consumedCode.required_tier,
-            scopes: consumedCode.requested_scopes
+            scopes: consumedCode.requested_scopes,
+            selected_context: consumedCode.selected_context
         });
     } catch (error) {
         console.error('[OAuth] Token exchange failed:', error);

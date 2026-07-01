@@ -32,6 +32,27 @@ function base64urlToArrayBuffer(base64url: string): ArrayBuffer {
   return bytes.buffer;
 }
 
+function normalizeCredentialCreationOptions(credentialCreationOptions: any): CredentialCreationOptions {
+  return {
+    publicKey: {
+      ...credentialCreationOptions,
+      challenge: base64urlToArrayBuffer(credentialCreationOptions.challenge),
+      user: {
+        ...credentialCreationOptions.user,
+        id: base64urlToArrayBuffer(credentialCreationOptions.user.id),
+      },
+      excludeCredentials: Array.isArray(credentialCreationOptions.excludeCredentials)
+        ? credentialCreationOptions.excludeCredentials
+          .filter((credential: any) => typeof credential?.id === 'string' && credential.id.length > 0)
+          .map((credential: any) => ({
+            ...credential,
+            id: base64urlToArrayBuffer(credential.id),
+          }))
+        : undefined,
+    },
+  };
+}
+
 function getReadablePasskeyError(error: unknown): string {
   const fallbackMessage = 'Passkey sign-in failed. Please try again.';
   if (!(error instanceof Error)) {
@@ -116,6 +137,8 @@ export interface User {
     did: string;
     alias?: string;
     context: string;
+    routing_type?: 'identity' | 'wallet';
+    target_wallet?: string;
     disclosures?: Record<string, boolean>;
     created_at?: string;
   }>;
@@ -131,6 +154,7 @@ export interface AuthContextType {
   login: (email?: string, skipNativePrompt?: boolean) => Promise<{ success: boolean; deviceType?: string; transports?: string[]; user?: User }>;
   logout: () => Promise<void>;
   register: (email: string, displayName: string) => Promise<void>;
+  recoverPasskey: (recoveryToken: string) => Promise<void>;
 
   // Profile methods
   updateProfile: (data: Partial<User>) => Promise<void>;
@@ -282,18 +306,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       }
 
       const credentialCreationOptions = initResponse.options;
-      const challenge = base64urlToArrayBuffer(credentialCreationOptions.challenge);
-
-      const publicKeyCredentialCreationOptions: CredentialCreationOptions = {
-        publicKey: {
-          ...credentialCreationOptions,
-          challenge,
-          user: {
-            ...credentialCreationOptions.user,
-            id: base64urlToArrayBuffer(credentialCreationOptions.user.id),
-          },
-        },
-      };
+      const publicKeyCredentialCreationOptions = normalizeCredentialCreationOptions(credentialCreationOptions);
 
       const credential = await navigator.credentials.create(publicKeyCredentialCreationOptions) as PublicKeyCredential;
 
@@ -349,6 +362,74 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
     } catch (error: any) {
       const errorMessage = error.message || 'Registration failed';
+      setError(errorMessage);
+      throw new Error(errorMessage);
+    }
+  }, [refreshUser]);
+
+  const recoverPasskey = useCallback(async (recoveryToken: string): Promise<void> => {
+    try {
+      setError(null);
+
+      const initResponse = await apiService.beginRecoveryPasskeyRegistration(recoveryToken);
+
+      if (!initResponse.success || !initResponse.options) {
+        throw new Error(initResponse.error || 'Failed to initialize account recovery');
+      }
+
+      const credentialCreationOptions = initResponse.options;
+      const publicKeyCredentialCreationOptions = normalizeCredentialCreationOptions(credentialCreationOptions);
+
+      const credential = await navigator.credentials.create(publicKeyCredentialCreationOptions) as PublicKeyCredential;
+
+      if (!credential) {
+        throw new Error('Failed to create recovery credential');
+      }
+
+      const response = credential.response as AuthenticatorAttestationResponse;
+
+      const formattedCredential = {
+        id: credential.id,
+        rawId: arrayBufferToBase64url(credential.rawId),
+        type: credential.type,
+        clientExtensionResults: {},
+        response: {
+          attestationObject: arrayBufferToBase64url(response.attestationObject),
+          clientDataJSON: arrayBufferToBase64url(response.clientDataJSON),
+          transports: response.getTransports?.() || [],
+        },
+      };
+
+      const getDeviceType = () => {
+        const userAgent = navigator.userAgent.toLowerCase();
+        if (/mobile|android|iphone|ipad|ipod|blackberry|windows phone/.test(userAgent)) {
+          return /ipad|tablet/.test(userAgent) ? 'tablet' : 'mobile';
+        }
+        return 'desktop';
+      };
+
+      const verifyResponse = await apiService.completeRecoveryPasskeyRegistration({
+        recoveryToken,
+        credential: formattedCredential,
+        deviceInfo: {
+          userAgent: navigator.userAgent,
+          platform: navigator.platform,
+          screenResolution: `${screen.width}x${screen.height}`,
+          timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+          language: navigator.language,
+          deviceType: getDeviceType(),
+          deviceName: `${getDeviceType().charAt(0).toUpperCase() + getDeviceType().slice(1)} Device`
+        }
+      });
+
+      if (!verifyResponse.success) {
+        throw new Error(verifyResponse.error || 'Failed to complete account recovery');
+      }
+
+      await apiService.refreshCsrfToken();
+      await refreshUser();
+    } catch (error: any) {
+      const errorMessage = getReadablePasskeyError(error);
       setError(errorMessage);
       throw new Error(errorMessage);
     }
@@ -507,6 +588,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     login,
     logout,
     register,
+    recoverPasskey,
     updateProfile,
     refreshUser,
     linkMetaMask,

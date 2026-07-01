@@ -570,6 +570,15 @@ class ApiService {
     }
   }
 
+  async getAvailableShareFields(): Promise<ApiResponse> {
+    try {
+      const response = await this.client.get('/api/v2/verification/share/available');
+      return response.data;
+    } catch (error) {
+      throw this.handleError(error);
+    }
+  }
+
   async verifyShareData(sharePackage: any): Promise<ApiResponse> {
     try {
       const response = await this.client.post('/api/v2/verification/share/verify', { sharePackage });
@@ -767,6 +776,56 @@ class ApiService {
       const response = await this.client.post('/api/auth/resend-otp', {
         verificationId
       });
+      return response.data;
+    } catch (error) {
+      throw this.handleError(error);
+    }
+  }
+
+  async sendRecoveryOTP(email: string): Promise<ApiResponse> {
+    try {
+      const response = await this.client.post('/api/auth/send-otp', {
+        email,
+        purpose: 'account_recovery'
+      });
+      return response.data;
+    } catch (error) {
+      throw this.handleError(error);
+    }
+  }
+
+  async verifyRecoveryOTP(verificationId: string, otp: string): Promise<ApiResponse> {
+    try {
+      const response = await this.client.post('/api/auth/verify-otp', {
+        verificationId,
+        otp
+      });
+      return response.data;
+    } catch (error) {
+      throw this.handleError(error);
+    }
+  }
+
+  async beginRecoveryPasskeyRegistration(recoveryToken: string): Promise<ApiResponse> {
+    try {
+      const response = await this.client.post('/api/passkey/recovery/register/begin', {
+        recoveryToken
+      });
+      return response.data;
+    } catch (error) {
+      throw this.handleError(error);
+    }
+  }
+
+  async completeRecoveryPasskeyRegistration(payload: any): Promise<ApiResponse> {
+    try {
+      const response = await this.client.post('/api/passkey/recovery/register/finish', payload);
+      if (response.data.success && response.data.sessionToken && response.data.expiresAt) {
+        this.setTokens({
+          sessionToken: response.data.sessionToken,
+          expiresAt: new Date(response.data.expiresAt).getTime()
+        });
+      }
       return response.data;
     } catch (error) {
       throw this.handleError(error);
@@ -1414,12 +1473,49 @@ class ApiService {
    * Start Layer 3 verification session
    * This must be called BEFORE uploading documents or submitting verification
    */
-  public async startLayer3Verification(verificationMethod: 'document_upload' | 'nimc' = 'document_upload'): Promise<ApiResponse> {
+  public async startLayer3Verification(verificationMethod: 'document_upload' | 'nimc' | 'bvn' = 'document_upload'): Promise<ApiResponse> {
     try {
       const response = await this.client.post('/api/v2/verification/layer3/start', {
         verificationMethod,
         purpose: 'Layer 3 KYC Verification'
       });
+      return response.data;
+    } catch (error: any) {
+      throw this.handleError(error);
+    }
+  }
+
+  /**
+   * Verify a Nigerian NIN against the active Layer 3 request.
+   */
+  public async verifyLayer3NIN(data: {
+    request_id: string;
+    nin: string;
+  }): Promise<ApiResponse> {
+    try {
+      const response = await this.client.post(
+        '/api/v2/verification/layer3/nin/verify',
+        data
+      );
+
+      return response.data;
+    } catch (error: any) {
+      throw this.handleError(error);
+    }
+  }
+
+  public async verifyLayer3BVN(data: {
+    request_id: string;
+    bvn: string;
+    account_number: string;
+    bank_code: string;
+  }): Promise<ApiResponse> {
+    try {
+      const response = await this.client.post(
+        '/api/v2/verification/layer3/bvn/verify',
+        data
+      );
+
       return response.data;
     } catch (error: any) {
       throw this.handleError(error);
@@ -1461,6 +1557,8 @@ class ApiService {
     document_data: {
       document_type: string;
       document_number: string;
+      nin?: string;
+      bvn?: string;
       first_name: string;
       last_name: string;
       date_of_birth: string;
@@ -1473,6 +1571,8 @@ class ApiService {
     front_image_url?: string;
     back_image_url?: string;
     liveness_verified: boolean;
+    country_context?: 'nigeria' | 'international';
+    verification_method?: 'document_upload' | 'nimc' | 'bvn';
   }): Promise<ApiResponse> {
     try {
       const response = await this.client.post(
@@ -1752,11 +1852,12 @@ class ApiService {
     }
   }
 
-  async registerCns(name: string, years: number): Promise<ApiResponse> {
+  async registerCns(name: string, years: number, paymentReference?: string): Promise<ApiResponse> {
     try {
       const response = await this.client.post('/api/cns/register', {
         name,
-        years
+        years,
+        paymentReference
       });
       return response.data;
     } catch (error) {
@@ -1786,7 +1887,7 @@ class ApiService {
 
   async createRevenueCatCheckout(domainName: string, years: number): Promise<ApiResponse> {
     try {
-      const response = await this.client.post('/api/revenuecat/create', {
+      const response = await this.client.post('/api/payment/revenuecat/create', {
         domainName,
         years
       });
@@ -2066,6 +2167,7 @@ class ApiService {
     redirect_uri: string;
     code_challenge: string;
     code_challenge_method: 'S256';
+    selected_context_did?: string;
   }): Promise<ApiResponse> {
     try {
       const response = await this.client.post('/api/oauth/authorize/complete', data);

@@ -7,6 +7,7 @@ interface AuthEntryProps {
   onEmailSubmit: (email: string, verificationId: string) => void;
   onReturningUser: (email: string) => void;
   onBiometricLogin: (email?: string) => void;
+  onRecoverAccount?: (email: string) => void;
   appLogo?: string;
   appName?: string;
 }
@@ -15,6 +16,7 @@ export const AuthEntry: React.FC<AuthEntryProps> = ({
   onEmailSubmit, 
   onReturningUser, 
   onBiometricLogin,
+  onRecoverAccount,
   appLogo,
   appName
 }) => {
@@ -184,6 +186,17 @@ export const AuthEntry: React.FC<AuthEntryProps> = ({
               )}
             </button>
           </form>
+
+          {onRecoverAccount && (
+            <button
+              type="button"
+              onClick={() => onRecoverAccount(email)}
+              disabled={!email || isLoading || isVerifying}
+              className="w-full h-12 rounded-2xl border border-gray-200 bg-gray-50 text-sm font-bold text-text-main transition-all hover:bg-gray-100 disabled:opacity-50"
+            >
+              Recover account
+            </button>
+          )}
 
           {error && (
             <div className="p-4 bg-red-50 border border-red-200 rounded-xl">

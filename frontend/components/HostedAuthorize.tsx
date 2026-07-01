@@ -15,6 +15,8 @@ type FlowStep =
   | 'validating'
   | 'signin'
   | 'verify_otp'
+  | 'recover_otp'
+  | 'recover_passkey'
   | 'register_passkey'
   | 'onboarding'
   | 'checking_tier'
@@ -30,6 +32,7 @@ interface AppMetadata {
   name: string;
   logo_url?: string;
   requested_scopes: string[];
+  shared_fields?: string[];
   language?: string;
   theme?: {
     primaryColor?: string;
@@ -37,6 +40,14 @@ interface AppMetadata {
     fontFamily?: string;
     mode?: 'light' | 'dark' | 'system';
   };
+}
+
+interface SelectedContext {
+  type: 'master' | 'persona';
+  did?: string;
+  alias?: string;
+  context?: string;
+  name?: string;
 }
 
 function appendAuthorizationResult(redirectUri: string, values: Record<string, string>): string {
@@ -171,9 +182,11 @@ const HostedAuthorize: React.FC = () => {
   const [flowStep, setFlowStep] = useState<FlowStep>('validating');
   const [email, setEmail] = useState('');
   const [verificationId, setVerificationId] = useState('');
+  const [recoveryToken, setRecoveryToken] = useState('');
   const [currentTier, setCurrentTier] = useState<Tier>('layer_0');
   const [authorizationStatus, setAuthorizationStatus] = useState<'complete' | 'provisional'>('complete');
   const [error, setError] = useState('');
+  const [selectedContextId, setSelectedContextId] = useState('master');
   const [l2Handoff, setL2Handoff] = useState<{
     requestId: string;
     qrCodeDataUrl: string;
@@ -187,6 +200,40 @@ const HostedAuthorize: React.FC = () => {
     return userAgentData?.mobile === true || isIPadOS ||
       /iPhone|iPad|iPod|Android|webOS|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
   }, []);
+  const sharedFields = useMemo(() => {
+    return Array.isArray(app?.shared_fields) ? app.shared_fields : [];
+  }, [app?.shared_fields]);
+  const contextOptions = useMemo(() => {
+    const rootName = user?.cns_name || user?.human_id || user?.display_name || 'your profile';
+    const options = [{
+      id: 'master',
+      type: 'master' as const,
+      title: 'Master profile',
+      subtitle: `Share from ${rootName}`,
+      badge: currentTier.replace('_', ' ').toUpperCase(),
+    }];
+
+    (user?.context_dids || [])
+      .filter((contextDid) => contextDid.routing_type !== 'wallet')
+      .forEach((contextDid) => {
+      const alias = contextDid.alias || contextDid.did;
+      options.push({
+        id: contextDid.did,
+        type: 'persona' as const,
+        title: contextDid.alias ? `${contextDid.alias}${contextDid.context ? `.${contextDid.context}` : ''}` : contextDid.did,
+        subtitle: contextDid.alias && rootName ? `${contextDid.alias}.${String(rootName).replace(/\.cid$/i, '')}.cid` : contextDid.did,
+        badge: contextDid.context,
+      });
+      });
+
+    return options;
+  }, [currentTier, user?.cns_name, user?.context_dids, user?.display_name, user?.human_id]);
+
+  useEffect(() => {
+    if (!contextOptions.some((option) => option.id === selectedContextId)) {
+      setSelectedContextId('master');
+    }
+  }, [contextOptions, selectedContextId]);
 
   const checkEligibility = useCallback(async () => {
     if (!clientId) return;
@@ -332,6 +379,7 @@ const HostedAuthorize: React.FC = () => {
         redirect_uri: redirectUri,
         code_challenge: codeChallenge,
         code_challenge_method: 'S256',
+        selected_context_did: selectedContextId === 'master' ? undefined : selectedContextId,
       });
 
       if (responseMode === 'web_message' && window.opener) {
@@ -347,6 +395,8 @@ const HostedAuthorize: React.FC = () => {
           verificationStatus: result.verification_status,
           grantedTier: result.granted_tier,
           requiredTier: result.required_tier,
+          sharedFields: result.shared_fields,
+          selectedContext: result.selected_context,
         }, responseOrigin);
         window.close();
         return;
@@ -359,6 +409,12 @@ const HostedAuthorize: React.FC = () => {
         verification_status: result.verification_status,
         granted_tier: result.granted_tier,
         required_tier: result.required_tier,
+        shared_fields: Array.isArray(result.shared_fields) ? result.shared_fields.join(',') : '',
+        selected_context_type: result.selected_context?.type || '',
+        selected_context_did: result.selected_context?.did || '',
+        selected_context_alias: result.selected_context?.alias || '',
+        selected_context_name: result.selected_context?.name || '',
+        selected_context_category: result.selected_context?.context || '',
       }));
     } catch (authorizationError: any) {
       setError(authorizationError.message || 'Authorization failed.');
@@ -400,6 +456,17 @@ const HostedAuthorize: React.FC = () => {
               setFlowStep('error');
             }
           }}
+          onRecoverAccount={async (nextEmail) => {
+            try {
+              const response = await apiService.sendRecoveryOTP(nextEmail);
+              setEmail(nextEmail);
+              setVerificationId(response.verificationId);
+              setFlowStep('recover_otp');
+            } catch (recoveryError: any) {
+              setError(recoveryError.message || 'Failed to start account recovery.');
+              setFlowStep('error');
+            }
+          }}
         />
       )}
 
@@ -408,9 +475,28 @@ const HostedAuthorize: React.FC = () => {
           email={email}
           verificationId={verificationId}
           onBack={() => setFlowStep('signin')}
-          onSuccess={(verifiedEmail) => {
-            setEmail(verifiedEmail);
+          onSuccess={(response) => {
+            setEmail(response.email);
             setFlowStep('register_passkey');
+          }}
+        />
+      )}
+
+      {flowStep === 'recover_otp' && (
+        <OTPVerify
+          email={email}
+          verificationId={verificationId}
+          title="Recover Your Account"
+          description={`We sent a 6-digit recovery code to ${email}`}
+          backLabel="Back to Sign In"
+          successLabel="Verify & Recover"
+          errorTitle="Recovery Failed"
+          onVerifyCode={(nextVerificationId, otp) => apiService.verifyRecoveryOTP(nextVerificationId, otp)}
+          onBack={() => setFlowStep('signin')}
+          onSuccess={(response) => {
+            setEmail(response.email || email);
+            setRecoveryToken(response.recoveryToken);
+            setFlowStep('recover_passkey');
           }}
         />
       )}
@@ -419,6 +505,16 @@ const HostedAuthorize: React.FC = () => {
         <OnboardingStart
           email={email}
           onContinue={() => setFlowStep('onboarding')}
+          onLogin={() => setFlowStep('signin')}
+        />
+      )}
+
+      {flowStep === 'recover_passkey' && (
+        <OnboardingStart
+          email={email}
+          mode="recovery"
+          recoveryToken={recoveryToken}
+          onContinue={checkEligibility}
           onLogin={() => setFlowStep('signin')}
         />
       )}
@@ -474,7 +570,7 @@ const HostedAuthorize: React.FC = () => {
       {flowStep === 'upgrade_l3' && (
         <div className="min-h-screen bg-[#F8F9FF] px-4 py-6 sm:px-6 md:p-8">
           <KYCHome
-            initialStep="layer3_method"
+            initialStep="layer3_context"
             onExit={() => returnError('access_denied', 'The required Layer 3 verification was not completed.')}
             onLayer3Submitted={checkEligibility}
           />
@@ -492,6 +588,10 @@ const HostedAuthorize: React.FC = () => {
             appName={app.name}
             appLogo={app.logo_url}
             requestedScopes={app.requested_scopes}
+            sharedFields={sharedFields}
+            contextOptions={contextOptions}
+            selectedContextId={selectedContextId}
+            onSelectContext={setSelectedContextId}
             approveLabel={`Continue to ${app.name}`}
             denyLabel="Cancel"
             onApprove={completeAuthorization}

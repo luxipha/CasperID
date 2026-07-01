@@ -66,7 +66,7 @@ router.get('/openid-configuration', (req, res) => {
         token_endpoint_auth_methods_supported: ['client_secret_post', 'client_secret_basic'],
         claims_supported: [
             'sub', 'iss', 'aud', 'exp', 'iat',
-            'wallet', 'humanId', 'verified', 'tier',
+            'wallet', 'humanId', 'name', 'verified', 'tier',
             'email', 'app_id', 'token_type', 'sharedData'
         ],
 

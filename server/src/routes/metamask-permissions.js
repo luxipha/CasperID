@@ -752,10 +752,31 @@ router.patch('/user/permissions/:grantId', async (req, res) => {
             return res.status(404).json({ success: false, error: 'Grant not found' });
         }
 
-        // Update permissions
-        // In a real implementation, we might want to validate these against the DApp's allowed scopes again
-        // For now, we trust the array conforms to schema
+        if (!Array.isArray(permissions)) {
+            return res.status(400).json({ success: false, error: 'permissions must be an array' });
+        }
+
+        const existingPermissionKeys = new Set(
+            grant.permissions.map((permission) => JSON.stringify({
+                action: permission.action,
+                scope: permission.scope || {}
+            }))
+        );
+
+        const containsUnknownPermission = permissions.some((permission) => !existingPermissionKeys.has(JSON.stringify({
+            action: permission.action,
+            scope: permission.scope || {}
+        })));
+
+        if (containsUnknownPermission) {
+            return res.status(400).json({ success: false, error: 'permissions must be a subset of the existing grant' });
+        }
+
         grant.permissions = permissions;
+        if (permissions.length === 0) {
+            grant.status = 'revoked';
+            grant.revoked_reason = 'All permissions removed by user';
+        }
         grant.updated_at = new Date();
         await grant.save();
 

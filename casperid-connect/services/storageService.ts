@@ -39,18 +39,12 @@ export const getStorageData = (): Promise<ChromeStorageData> => {
                 });
             });
         } else {
-            // Mock data for dev mode
             resolve({
-                connected: true,
-                userData: {
-                    wallet: '0xAbC...123',
-                    humanId: 'nete-tute-bona',
-                    cnsName: 'netetutebona.cid',
-                    verified: true,
-                    tier: 'Layer 3',
-                },
+                connected: false,
+                userData: null,
                 autoApprove: false,
                 permissions: [],
+                currentJob: null,
             });
         }
     });
@@ -63,7 +57,6 @@ export const setStorageData = (data: Partial<ChromeStorageData>): Promise<void> 
                 resolve();
             });
         } else {
-            console.log('Mock storage set:', data);
             resolve();
         }
     });

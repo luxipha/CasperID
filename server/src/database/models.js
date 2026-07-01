@@ -1306,18 +1306,30 @@ const verificationRequestV2Schema = new mongoose.Schema({
         liveness_confidence: Number,
         // Document
         kyc_status: String,
+        country_context: String,
+        verification_method: String,
+        identity_provider: String,
         document_verified: Boolean,
+        nin_verified: Boolean,
+        bvn_verified: Boolean,
         document_type: String,
         document_number: String,
         nin: String,
+        bvn: String,
         identity_data_hash: String,
+        provider_reference: String,
+        provider_results: mongoose.Schema.Types.Mixed,
+        provider_document_match: mongoose.Schema.Types.Mixed,
         // Personal fields from OCR
         first_name: String,
+        middle_name: String,
         last_name: String,
+        full_name: String,
         date_of_birth: String,
         gender: String,
         nationality: String,
         home_address: String,
+        phone_number: String,
         // ImageKit document image references
         front_image_url: String,
         front_image_file_id: String,
@@ -1638,6 +1650,17 @@ const authorizationCodeSchema = new mongoose.Schema({
         type: String,
         enum: ['approved', 'pending'],
         default: 'approved'
+    },
+    selected_context: {
+        type: {
+            type: String,
+            enum: ['master', 'persona'],
+            default: 'master'
+        },
+        did: String,
+        alias: String,
+        context: String,
+        name: String
     },
     consumed_at: Date,
     expires_at: {

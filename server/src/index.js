@@ -26,7 +26,6 @@ const ACCOUNT_FRONTEND_URL = process.env.ACCOUNT_FRONTEND_URL || FRONTEND_URL;
 console.log(`[${new Date().toISOString()}]  Bootstrap: Target port is ${PORT}`);
 console.log(`[${new Date().toISOString()}]  API Base URL: ${API_BASE_URL}`);
 console.log(`[${new Date().toISOString()}]  Frontend URL: ${FRONTEND_URL}`);
-console.log(`[${new Date().toISOString()}]  Environment Keys Loaded: ${Object.keys(process.env).join(', ')}`);
 
 // ============================================
 // CORS ORIGIN CACHE (Prevents DB query per request)

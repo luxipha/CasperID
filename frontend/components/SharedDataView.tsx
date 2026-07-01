@@ -77,13 +77,16 @@ export const SharedDataView: React.FC<SharedDataViewProps> = ({ shareId: propSha
 
     const getFieldIcon = (field: string) => {
         switch (field) {
+            case 'name':
             case 'first_name':
             case 'last_name': return <User className="w-5 h-5" />;
             case 'email': return <Mail className="w-5 h-5" />;
             case 'phone_number': return <Phone className="w-5 h-5" />;
             case 'city':
             case 'country':
+            case 'nationality':
             case 'address': return <MapPin className="w-5 h-5" />;
+            case 'date_of_birth':
             case 'age': return <Calendar className="w-5 h-5" />;
             default: return <Globe className="w-5 h-5" />;
         }
@@ -124,6 +127,8 @@ export const SharedDataView: React.FC<SharedDataViewProps> = ({ shareId: propSha
         );
     }
 
+    const fieldMetadata = shareData?.field_metadata || {};
+
     return (
         <div className="min-h-screen bg-[#F8FAFC] flex flex-col items-center justify-center p-6">
             <div className="max-w-2xl w-full">
@@ -150,7 +155,7 @@ export const SharedDataView: React.FC<SharedDataViewProps> = ({ shareId: propSha
                     <div className="p-10 space-y-8">
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             {Object.entries(shareData || {})
-                                .filter(([key]) => key !== 'verification')
+                                .filter(([key]) => key !== 'verification' && key !== 'field_metadata')
                                 .map(([key, value]) => (
                                     <div key={key} className="bg-gray-50 rounded-2xl p-5 border border-gray-100/50">
                                         <div className="flex items-center gap-3 mb-2 text-primary/60">
@@ -158,8 +163,31 @@ export const SharedDataView: React.FC<SharedDataViewProps> = ({ shareId: propSha
                                             <span className="text-[10px] font-black uppercase tracking-widest">{getFieldLabel(key)}</span>
                                         </div>
                                         <div className="text-lg font-bold text-gray-900 truncate">
-                                            {typeof value === 'string' || typeof value === 'number' ? value : JSON.stringify(value)}
+                                            {typeof value === 'string' || typeof value === 'number'
+                                                ? value
+                                                : typeof value === 'boolean'
+                                                    ? (value ? 'Yes' : 'No')
+                                                    : value?.overall_match === true
+                                                        ? 'Matched'
+                                                        : JSON.stringify(value)}
                                         </div>
+                                        {fieldMetadata[key] && (
+                                            <div className="mt-3 flex flex-wrap gap-2 text-[10px] font-black uppercase tracking-wider">
+                                                <span className={`rounded-full px-2.5 py-1 ${fieldMetadata[key].verified ? 'bg-green-100 text-green-700' : 'bg-gray-200 text-gray-700'}`}>
+                                                    {fieldMetadata[key].verified ? 'Verified' : 'Declared'}
+                                                </span>
+                                                {fieldMetadata[key].source && (
+                                                    <span className="rounded-full bg-blue-100 px-2.5 py-1 text-blue-700">
+                                                        {fieldMetadata[key].source}
+                                                    </span>
+                                                )}
+                                                {fieldMetadata[key].sensitive && (
+                                                    <span className="rounded-full bg-amber-100 px-2.5 py-1 text-amber-700">
+                                                        Sensitive
+                                                    </span>
+                                                )}
+                                            </div>
+                                        )}
                                     </div>
                                 ))
                             }

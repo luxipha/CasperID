@@ -181,6 +181,7 @@ const App: React.FC = () => {
 
   const [onboardingEmail, setOnboardingEmail] = useState('');
   const [verificationId, setVerificationId] = useState('');
+  const [recoveryToken, setRecoveryToken] = useState('');
   const [selectedActivityId, setSelectedActivityId] = useState<string | null>(null);
   const [isConsentModalOpen, setIsConsentModalOpen] = useState(false);
   const [isPersonaModalOpen, setIsPersonaModalOpen] = useState(false);
@@ -344,7 +345,7 @@ const App: React.FC = () => {
     if (!isLoading) {
       if (isAuthenticated && user) {
         // Only redirect to overview if we're currently in an auth-related view or loading
-        const isAuthView = ['auth-entry', 'otp-verify', 'onboarding-start', 'pairing', 'loading', 'handoff'].includes(currentView);
+        const isAuthView = ['auth-entry', 'otp-verify', 'onboarding-start', 'pairing', 'loading', 'handoff', 'recovery-otp', 'recovery-passkey'].includes(currentView);
 
         if (isAuthView) {
           if (user.wallet) {
@@ -361,7 +362,7 @@ const App: React.FC = () => {
         }
       } else {
         // New user - start with email entry
-        const isDashboardView = !['landing', 'public-profile', 'verify-credential', 'verify-zk-claims', 'verify-share-data', 'auth-entry', 'otp-verify', 'onboarding-start', 'onboarding-progress', 'pairing', 'loading', 'handoff'].includes(currentView);
+        const isDashboardView = !['landing', 'public-profile', 'verify-credential', 'verify-zk-claims', 'verify-share-data', 'auth-entry', 'otp-verify', 'onboarding-start', 'onboarding-progress', 'pairing', 'loading', 'handoff', 'recovery-otp', 'recovery-passkey'].includes(currentView);
         if (isDashboardView) {
           setCurrentView('auth-entry');
         }
@@ -426,6 +427,12 @@ const App: React.FC = () => {
     setCurrentView('onboarding-start');
   }, []);
 
+  const handleRecoverySuccess = useCallback((token: string, email: string) => {
+    setRecoveryToken(token);
+    setOnboardingEmail(email);
+    setCurrentView('recovery-passkey');
+  }, []);
+
   const handleEmailSubmit = useCallback((email: string, vid: string) => {
     setOnboardingEmail(email);
     setVerificationId(vid);
@@ -438,6 +445,23 @@ const App: React.FC = () => {
       setCurrentView('handoff');
     } else {
       setCurrentView('overview');
+    }
+  }, []);
+
+  const handleRecoverAccount = useCallback(async (email: string) => {
+    if (!email) return;
+
+    try {
+      const { apiService } = await import('./services/api');
+      const response = await apiService.sendRecoveryOTP(email);
+      if (response.success) {
+        setOnboardingEmail(email);
+        setVerificationId(response.verificationId);
+        setCurrentView('recovery-otp');
+      }
+    } catch (error: any) {
+      console.error('Recovery init failed:', error);
+      alert(error.message || 'Failed to start account recovery.');
     }
   }, []);
 
@@ -489,6 +513,7 @@ const App: React.FC = () => {
             onEmailSubmit={handleEmailSubmit}
             onReturningUser={handleToOverview}
             onBiometricLogin={handleBiometricLogin}
+            onRecoverAccount={handleRecoverAccount}
             appLogo={appMetadata?.logo_url}
             appName={appMetadata?.name}
           />
@@ -498,7 +523,25 @@ const App: React.FC = () => {
           <OTPVerify
             email={onboardingEmail}
             verificationId={verificationId}
-            onSuccess={handleVerificationSuccess}
+            onSuccess={(response) => handleVerificationSuccess(response.email)}
+            onBack={handleBackToAuth}
+          />
+        );
+      case 'recovery-otp':
+        return (
+          <OTPVerify
+            email={onboardingEmail}
+            verificationId={verificationId}
+            title="Recover Your Account"
+            description={`We sent a 6-digit recovery code to ${onboardingEmail}`}
+            backLabel="Back to Sign In"
+            successLabel="Verify & Recover"
+            errorTitle="Recovery Failed"
+            onVerifyCode={async (nextVerificationId, otp) => {
+              const { apiService } = await import('./services/api');
+              return apiService.verifyRecoveryOTP(nextVerificationId, otp);
+            }}
+            onSuccess={(response) => handleRecoverySuccess(response.recoveryToken, response.email || onboardingEmail)}
             onBack={handleBackToAuth}
           />
         );
@@ -508,6 +551,16 @@ const App: React.FC = () => {
             email={onboardingEmail}
             onContinue={handleStartOnboarding}
             onLogin={handleToOverview}
+          />
+        );
+      case 'recovery-passkey':
+        return (
+          <OnboardingStart
+            email={onboardingEmail}
+            mode="recovery"
+            recoveryToken={recoveryToken}
+            onContinue={handleToOverview}
+            onLogin={handleBackToAuth}
           />
         );
       case 'handoff':

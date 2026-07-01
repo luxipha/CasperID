@@ -20,6 +20,7 @@ import {
   Clock,
   CheckCircle2,
   XCircle,
+  Layers3,
 } from 'lucide-react';
 
 // ═══════════════════════════════════════════
@@ -44,7 +45,18 @@ interface VerificationEntry {
   status: 'Authorized' | 'Provisional' | 'Failed';
   sessionToken: string;
   hasBusinessToken: boolean;
+  sharedFields: string[];
+  selectedContext?: HostedAuthorizationResult['selectedContext'];
 }
+
+const fieldLabels: Record<string, string> = {
+  name: 'Name',
+  email: 'Email',
+  wallet: 'Wallet',
+  human_id: 'Human ID',
+  tier: 'Verification Level',
+  verified: 'Identity Verified',
+};
 
 function formatProofId(token: string): string {
   // Show first 6 and last 4 chars of the session token as the "proof hash"
@@ -61,9 +73,12 @@ export default function DashboardPortal() {
   const [isAuthorized, setIsAuthorized] = useState(false);
   const [history, setHistory] = useState<VerificationEntry[]>([]);
   const [sdkError, setSdkError] = useState<string | null>(null);
+  const [lastSharedFields, setLastSharedFields] = useState<string[]>([]);
+  const [lastSelectedContext, setLastSelectedContext] = useState<HostedAuthorizationResult['selectedContext']>();
 
   const handleAuthSuccess = (result: HostedAuthorizationResult) => {
     debug('handleAuthSuccess called');
+    const sharedFields = result.sharedFields ?? [];
     const now = new Date().toISOString();
     const entry: VerificationEntry = {
       id: now,
@@ -73,8 +88,12 @@ export default function DashboardPortal() {
       status: result.authorizationStatus === 'provisional' ? 'Provisional' : 'Authorized',
       sessionToken: result.code,
       hasBusinessToken: false,
+      sharedFields,
+      selectedContext: result.selectedContext,
     };
     setHistory((prev) => [entry, ...prev]);
+    setLastSharedFields(sharedFields);
+    setLastSelectedContext(result.selectedContext);
     setIsAuthorized(true);
     window.history.replaceState({}, '', '/dashboard');
   };
@@ -93,6 +112,8 @@ export default function DashboardPortal() {
         status: 'Failed',
         sessionToken: '',
         hasBusinessToken: false,
+        sharedFields: [],
+        selectedContext: undefined,
       },
       ...prev,
     ]);
@@ -244,11 +265,37 @@ export default function DashboardPortal() {
               className="bg-background-warm p-10 h-1/2 border-l border-t border-primary/5"
             >
               <div className="flex items-center gap-3 mb-8 opacity-40">
-                <Clock size={16} strokeWidth={1} />
-                <span className="font-mono text-[10px] uppercase tracking-widest">Snapshot</span>
+                <Layers3 size={16} strokeWidth={1} />
+                <span className="font-mono text-[10px] uppercase tracking-widest">Shared Context</span>
               </div>
-              <div className="text-4xl font-serif italic font-bold text-primary">14:22:08</div>
-              <p className="mt-8 font-mono text-[9px] uppercase tracking-widest opacity-40">Cycle: Volume 04</p>
+              <div className="text-2xl font-serif italic font-bold text-primary">
+                {lastSelectedContext?.type === 'persona'
+                  ? (lastSelectedContext.alias || lastSelectedContext.name || 'Persona')
+                  : lastSelectedContext?.type === 'master'
+                    ? 'Master Profile'
+                    : lastSharedFields.length > 0
+                      ? `${lastSharedFields.length} Fields`
+                      : 'No Data Shared Yet'}
+              </div>
+              <div className="mt-6 flex flex-wrap gap-2">
+                {lastSelectedContext && (
+                  <span className="rounded-full border border-primary/15 px-3 py-1 font-mono text-[9px] uppercase tracking-widest text-primary/70">
+                    {lastSelectedContext.type === 'persona'
+                      ? `persona: ${lastSelectedContext.alias || lastSelectedContext.context || 'selected'}`
+                      : 'master profile'}
+                  </span>
+                )}
+                {lastSharedFields.length > 0 ? lastSharedFields.map((field) => (
+                  <span
+                    key={field}
+                    className="rounded-full border border-primary/15 px-3 py-1 font-mono text-[9px] uppercase tracking-widest text-primary/70"
+                  >
+                    {fieldLabels[field] || field.replace(/_/g, ' ')}
+                  </span>
+                )) : !lastSelectedContext ? (
+                  <p className="font-mono text-[9px] uppercase tracking-widest opacity-40">Waiting for first authorization</p>
+                ) : null}
+              </div>
             </motion.div>
           </div>
 
@@ -269,6 +316,8 @@ export default function DashboardPortal() {
                 <thead>
                   <tr className="border-b border-primary/10">
                     <th className="pb-8 text-[9px] uppercase tracking-[0.3em] opacity-40">Type</th>
+                    <th className="pb-8 text-[9px] uppercase tracking-[0.3em] opacity-40">Persona</th>
+                    <th className="pb-8 text-[9px] uppercase tracking-[0.3em] opacity-40">Shared Fields</th>
                     <th className="pb-8 text-[9px] uppercase tracking-[0.3em] opacity-40">Proof Signature</th>
                     <th className="pb-8 text-[9px] uppercase tracking-[0.3em] opacity-40">Business Token</th>
                     <th className="pb-8 text-[9px] uppercase tracking-[0.3em] opacity-40">Date</th>
@@ -279,7 +328,7 @@ export default function DashboardPortal() {
                   <AnimatePresence>
                     {history.length === 0 ? (
                       <tr>
-                        <td colSpan={5} className="py-16 text-center">
+                        <td colSpan={7} className="py-16 text-center">
                           <span className="font-mono text-[10px] uppercase tracking-widest opacity-20">
                             No verification records yet — click "Claim to Vault" to begin
                           </span>
@@ -295,6 +344,36 @@ export default function DashboardPortal() {
                         >
                           <td className="py-8">
                             <span className="font-serif italic font-bold text-lg">{entry.typeName}</span>
+                          </td>
+                          <td className="py-8 text-xs">
+                            {entry.selectedContext ? (
+                              <div className="flex flex-col gap-1">
+                                <span className="font-mono text-[9px] uppercase tracking-widest text-primary/70">
+                                  {entry.selectedContext.type === 'persona' ? 'Persona' : 'Master'}
+                                </span>
+                                <span className="text-[11px] text-primary/60">
+                                  {entry.selectedContext.alias || entry.selectedContext.name || entry.selectedContext.context || 'Default profile'}
+                                </span>
+                              </div>
+                            ) : (
+                              <span className="text-[9px] uppercase tracking-widest opacity-30">—</span>
+                            )}
+                          </td>
+                          <td className="py-8 text-xs">
+                            {entry.sharedFields.length > 0 ? (
+                              <div className="flex flex-wrap gap-2">
+                                {entry.sharedFields.map((field) => (
+                                  <span
+                                    key={field}
+                                    className="rounded-full border border-primary/10 px-2 py-1 font-mono text-[8px] uppercase tracking-widest text-primary/70"
+                                  >
+                                    {fieldLabels[field] || field.replace(/_/g, ' ')}
+                                  </span>
+                                ))}
+                              </div>
+                            ) : (
+                              <span className="text-[9px] uppercase tracking-widest opacity-30">—</span>
+                            )}
                           </td>
                           <td className="py-8 text-xs opacity-40 font-mono">{entry.proofId}</td>
                           <td className="py-8 text-xs">

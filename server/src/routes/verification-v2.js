@@ -5,8 +5,129 @@ const multer = require('multer');
 const path = require('path');
 const { extractApp } = require('../middleware/app-auth');
 const imagekit = require('../services/imagekit');
+const monnifyService = require('../services/monnify');
 const { v4: uuidv4 } = require('uuid');
+const { VerificationRequestV2 } = require('../database/models');
 const { DataShare } = require('../database/temporary-shares');
+
+function normalizeComparableValue(value) {
+    return typeof value === 'string' ? value.trim().toLowerCase() : '';
+}
+
+function normalizeDateValue(value) {
+    if (!value) return '';
+    const parsed = new Date(value);
+    if (Number.isNaN(parsed.getTime())) {
+        return normalizeComparableValue(value);
+    }
+    return parsed.toISOString().slice(0, 10);
+}
+
+function normalizeIdentityValue(value, type) {
+    if (value == null) return '';
+
+    const stringValue = String(value).trim();
+    if (!stringValue) return '';
+
+    switch (type) {
+    case 'phone_number':
+        return stringValue.replace(/\D/g, '');
+    case 'document_number':
+    case 'nin':
+    case 'bvn':
+        return stringValue.replace(/\s+/g, '').toUpperCase();
+    default:
+        return normalizeComparableValue(stringValue);
+    }
+}
+
+async function findDuplicateIdentityRecord({
+    userId,
+    requestId,
+    documentNumber,
+    nin,
+    bvn,
+    phoneNumber
+}) {
+    const checks = [
+        { field: 'nin', value: nin, label: 'NIN' },
+        { field: 'bvn', value: bvn, label: 'BVN' },
+        { field: 'document_number', value: documentNumber, label: 'ID' },
+        { field: 'phone_number', value: phoneNumber, label: 'phone number' }
+    ]
+        .map((entry) => ({
+            ...entry,
+            normalized: normalizeIdentityValue(entry.value, entry.field)
+        }))
+        .filter((entry) => entry.normalized);
+
+    if (checks.length === 0) {
+        return null;
+    }
+
+    const candidateRequests = await VerificationRequestV2.find({
+        verification_tier: 'layer_3',
+        user_id: { $ne: userId },
+        request_id: requestId ? { $ne: requestId } : { $exists: true },
+        status: { $nin: ['cancelled', 'rejected', 'failed'] }
+    }).select('request_id user_id status verification_data');
+
+    for (const candidate of candidateRequests) {
+        const candidateData = candidate.verification_data || {};
+
+        for (const check of checks) {
+            const candidateValue = normalizeIdentityValue(candidateData[check.field], check.field);
+            if (candidateValue && candidateValue === check.normalized) {
+                return {
+                    field: check.field,
+                    label: check.label,
+                    requestId: candidate.request_id,
+                    userId: candidate.user_id,
+                    status: candidate.status
+                };
+            }
+        }
+    }
+
+    return null;
+}
+
+function buildProviderDocumentMatch(existingData = {}, documentData = {}) {
+    if (!existingData.identity_provider) {
+        return null;
+    }
+
+    const comparisons = {};
+    const firstNameMatches = normalizeComparableValue(existingData.first_name) &&
+        normalizeComparableValue(documentData.first_name) &&
+        normalizeComparableValue(existingData.first_name) === normalizeComparableValue(documentData.first_name);
+    const lastNameMatches = normalizeComparableValue(existingData.last_name) &&
+        normalizeComparableValue(documentData.last_name) &&
+        normalizeComparableValue(existingData.last_name) === normalizeComparableValue(documentData.last_name);
+    const dobMatches = normalizeDateValue(existingData.date_of_birth) &&
+        normalizeDateValue(documentData.date_of_birth) &&
+        normalizeDateValue(existingData.date_of_birth) === normalizeDateValue(documentData.date_of_birth);
+    const genderMatches = normalizeComparableValue(existingData.gender) &&
+        normalizeComparableValue(documentData.gender) &&
+        normalizeComparableValue(existingData.gender) === normalizeComparableValue(documentData.gender);
+    const ninMatches = normalizeComparableValue(existingData.nin) &&
+        normalizeComparableValue(documentData.nin) &&
+        normalizeComparableValue(existingData.nin) === normalizeComparableValue(documentData.nin);
+
+    if (firstNameMatches !== '') comparisons.first_name = !!firstNameMatches;
+    if (lastNameMatches !== '') comparisons.last_name = !!lastNameMatches;
+    if (dobMatches !== '') comparisons.date_of_birth = !!dobMatches;
+    if (genderMatches !== '') comparisons.gender = !!genderMatches;
+    if (ninMatches !== '') comparisons.nin = !!ninMatches;
+
+    const comparedValues = Object.values(comparisons);
+    return {
+        provider: existingData.identity_provider,
+        verification_method: existingData.verification_method || null,
+        comparisons,
+        overall_match: comparedValues.length > 0 ? comparedValues.every(Boolean) : null
+    };
+}
 
 /**
  * Verification V2 Routes
@@ -225,6 +346,267 @@ router.post('/layer3/start', extractApp, async (req, res) => {
         res.status(400).json({
             success: false,
             error: error.message
+        });
+    }
+});
+
+/**
+ * Verify NIN for Layer 3 and persist the provider-backed result on the active draft.
+ * POST /api/v2/verification/layer3/nin/verify
+ */
+router.post('/layer3/nin/verify', async (req, res) => {
+    try {
+        const sessionToken = req.cookies.casperid_session ||
+            req.headers.authorization?.replace('Bearer ', '');
+
+        if (!sessionToken) {
+            return res.status(401).json({
+                success: false,
+                error: 'Authentication required'
+            });
+        }
+
+        const { request_id, requestId, nin } = req.body;
+        const targetRequestId = request_id || requestId;
+
+        if (!targetRequestId || !nin) {
+            return res.status(400).json({
+                success: false,
+                error: 'request_id and nin are required'
+            });
+        }
+
+        if (!/^\d{11}$/.test(nin)) {
+            return res.status(400).json({
+                success: false,
+                error: 'NIN must be 11 digits'
+            });
+        }
+
+        if (!monnifyService.isLiveVerificationEnvironment()) {
+            return res.status(400).json({
+                success: false,
+                error: 'Monnify NIN verification is live-only. Switch to MONNIFY_ENVIRONMENT=live with live credentials before testing this step.'
+            });
+        }
+
+        const webauthnService = require('../services/webauthn');
+        const sessionData = await webauthnService.validateSession(sessionToken);
+
+        if (!sessionData) {
+            return res.status(401).json({ success: false, error: 'Invalid or expired session' });
+        }
+
+        const verificationRequest = await VerificationRequestV2.findOne({
+            request_id: targetRequestId,
+            user_id: sessionData.userAccount.user_id,
+            verification_tier: 'layer_3',
+            status: { $in: ['pending', 'in_progress'] },
+            expires_at: { $gt: new Date() }
+        });
+
+        if (!verificationRequest) {
+            return res.status(404).json({
+                success: false,
+                error: 'Active Layer 3 verification session not found'
+            });
+        }
+
+        const duplicateIdentity = await findDuplicateIdentityRecord({
+            userId: sessionData.userAccount.user_id,
+            requestId: verificationRequest.request_id,
+            nin
+        });
+
+        if (duplicateIdentity) {
+            return res.status(409).json({
+                success: false,
+                error: `${duplicateIdentity.label} already exists`,
+                code: 'IDENTITY_ALREADY_EXISTS',
+                duplicate_field: duplicateIdentity.field
+            });
+        }
+
+        const providerResult = await monnifyService.verifyNIN(nin);
+        const existingData = verificationRequest.verification_data || {};
+
+        verificationRequest.verification_data = {
+            ...existingData,
+            country_context: 'nigeria',
+            verification_method: 'nimc',
+            identity_provider: 'monnify',
+            provider_reference: providerResult.responseCode || providerResult.responseMessage || null,
+            provider_results: {
+                ...(existingData.provider_results || {}),
+                monnify_nin: providerResult.raw
+            },
+            nin,
+            nin_verified: providerResult.ninInformationMatch === true,
+            first_name: providerResult.identity.first_name || existingData.first_name,
+            middle_name: providerResult.identity.middle_name || existingData.middle_name,
+            last_name: providerResult.identity.last_name || existingData.last_name,
+            full_name: providerResult.identity.full_name || existingData.full_name,
+            date_of_birth: providerResult.identity.date_of_birth || existingData.date_of_birth,
+            gender: providerResult.identity.gender || existingData.gender,
+            nationality: providerResult.identity.nationality || existingData.nationality || 'Nigerian',
+            home_address: providerResult.identity.address || existingData.home_address,
+            phone_number: providerResult.identity.phone_number || existingData.phone_number
+        };
+
+        await verificationRequest.save();
+
+        return res.json({
+            success: true,
+            nin_verification: {
+                requestSuccessful: providerResult.requestSuccessful,
+                responseCode: providerResult.responseCode,
+                responseMessage: providerResult.responseMessage,
+                ninInformationMatch: providerResult.ninInformationMatch,
+                identity: providerResult.identity
+            }
+        });
+    } catch (error) {
+        console.error('[Layer3] NIN verification failed:', error);
+        return res.status(400).json({
+            success: false,
+            error: error.message || 'Failed to verify NIN'
+        });
+    }
+});
+
+/**
+ * Verify BVN for Layer 3 and persist the provider-backed result on the active draft.
+ * POST /api/v2/verification/layer3/bvn/verify
+ */
+router.post('/layer3/bvn/verify', async (req, res) => {
+    try {
+        const sessionToken = req.cookies.casperid_session ||
+            req.headers.authorization?.replace('Bearer ', '');
+
+        if (!sessionToken) {
+            return res.status(401).json({
+                success: false,
+                error: 'Authentication required'
+            });
+        }
+
+        const { request_id, requestId, bvn, account_number, accountNumber, bank_code, bankCode } = req.body;
+        const targetRequestId = request_id || requestId;
+        const normalizedAccountNumber = account_number || accountNumber;
+        const normalizedBankCode = bank_code || bankCode;
+
+        if (!targetRequestId || !bvn || !normalizedAccountNumber || !normalizedBankCode) {
+            return res.status(400).json({
+                success: false,
+                error: 'request_id, bvn, account_number, and bank_code are required'
+            });
+        }
+
+        if (!/^\d{11}$/.test(bvn)) {
+            return res.status(400).json({
+                success: false,
+                error: 'BVN must be 11 digits'
+            });
+        }
+
+        if (!/^\d{10}$/.test(normalizedAccountNumber)) {
+            return res.status(400).json({
+                success: false,
+                error: 'Account number must be 10 digits'
+            });
+        }
+
+        if (!monnifyService.isLiveVerificationEnvironment()) {
+            return res.status(400).json({
+                success: false,
+                error: 'Monnify BVN verification is live-only. Switch to MONNIFY_ENVIRONMENT=live with live credentials before testing this step.'
+            });
+        }
+
+        const webauthnService = require('../services/webauthn');
+        const sessionData = await webauthnService.validateSession(sessionToken);
+
+        if (!sessionData) {
+            return res.status(401).json({ success: false, error: 'Invalid or expired session' });
+        }
+
+        const verificationRequest = await VerificationRequestV2.findOne({
+            request_id: targetRequestId,
+            user_id: sessionData.userAccount.user_id,
+            verification_tier: 'layer_3',
+            status: { $in: ['pending', 'in_progress'] },
+            expires_at: { $gt: new Date() }
+        });
+
+        if (!verificationRequest) {
+            return res.status(404).json({
+                success: false,
+                error: 'Active Layer 3 verification session not found'
+            });
+        }
+
+        const duplicateIdentity = await findDuplicateIdentityRecord({
+            userId: sessionData.userAccount.user_id,
+            requestId: verificationRequest.request_id,
+            bvn
+        });
+
+        if (duplicateIdentity) {
+            return res.status(409).json({
+                success: false,
+                error: `${duplicateIdentity.label} already exists`,
+                code: 'IDENTITY_ALREADY_EXISTS',
+                duplicate_field: duplicateIdentity.field
+            });
+        }
+
+        const providerResult = await monnifyService.verifyBVN({
+            bvn,
+            accountNumber: normalizedAccountNumber,
+            bankCode: normalizedBankCode
+        });
+        const existingData = verificationRequest.verification_data || {};
+
+        verificationRequest.verification_data = {
+            ...existingData,
+            country_context: 'nigeria',
+            verification_method: 'bvn',
+            identity_provider: 'monnify',
+            provider_reference: providerResult.responseCode || providerResult.responseMessage || null,
+            provider_results: {
+                ...(existingData.provider_results || {}),
+                monnify_bvn: providerResult.raw
+            },
+            bvn,
+            bvn_verified: providerResult.bvnInformationMatch === true,
+            first_name: providerResult.identity.first_name || existingData.first_name,
+            middle_name: providerResult.identity.middle_name || existingData.middle_name,
+            last_name: providerResult.identity.last_name || existingData.last_name,
+            full_name: providerResult.identity.full_name || existingData.full_name,
+            date_of_birth: providerResult.identity.date_of_birth || existingData.date_of_birth,
+            gender: providerResult.identity.gender || existingData.gender,
+            nationality: providerResult.identity.nationality || existingData.nationality || 'Nigerian',
+            home_address: providerResult.identity.address || existingData.home_address,
+            phone_number: providerResult.identity.phone_number || existingData.phone_number
+        };
+
+        await verificationRequest.save();
+
+        return res.json({
+            success: true,
+            bvn_verification: {
+                requestSuccessful: providerResult.requestSuccessful,
+                responseCode: providerResult.responseCode,
+                responseMessage: providerResult.responseMessage,
+                bvnInformationMatch: providerResult.bvnInformationMatch,
+                identity: providerResult.identity
+            }
+        });
+    } catch (error) {
+        console.error('[Layer3] BVN verification failed:', error);
+        return res.status(400).json({
+            success: false,
+            error: error.message || 'Failed to verify BVN'
         });
     }
 });
@@ -509,7 +891,9 @@ router.post('/layer3/submit', async (req, res) => {
             front_image_file_id,
             back_image_url,
             back_image_file_id,
-            liveness_verified
+            liveness_verified,
+            country_context,
+            verification_method
         } = req.body;
 
         if (!document_data || !upload_id) {
@@ -538,6 +922,24 @@ router.post('/layer3/submit', async (req, res) => {
             });
         }
 
+        const duplicateIdentity = await findDuplicateIdentityRecord({
+            userId: fullUserAccount.user_id,
+            requestId: pendingRequest.request_id,
+            documentNumber: document_data.document_number,
+            nin: document_data.nin || pendingRequest.verification_data?.nin,
+            bvn: document_data.bvn || pendingRequest.verification_data?.bvn,
+            phoneNumber: document_data.phone_number || pendingRequest.verification_data?.phone_number
+        });
+
+        if (duplicateIdentity) {
+            return res.status(409).json({
+                success: false,
+                error: `${duplicateIdentity.label} already exists`,
+                code: 'IDENTITY_ALREADY_EXISTS',
+                duplicate_field: duplicateIdentity.field
+            });
+        }
+
         // Enrich the existing request with document data
         pendingRequest.status = 'in_progress';
 
@@ -546,16 +948,20 @@ router.post('/layer3/submit', async (req, res) => {
 
         pendingRequest.verification_data = {
             ...existingData, // Preserve any existing data (liveness, etc.)
+            country_context: country_context || existingData.country_context || null,
+            verification_method: verification_method || existingData.verification_method || 'document_upload',
             document_verified: true, // Provisional — admin review will confirm
             document_type: document_data.document_type,
             document_number: document_data.document_number,
-            nin: document_data.nin,
+            nin: document_data.nin || existingData.nin,
+            bvn: document_data.bvn || existingData.bvn,
             first_name: document_data.first_name,
             last_name: document_data.last_name,
             date_of_birth: document_data.date_of_birth,
             gender: document_data.gender,
             nationality: document_data.nationality || 'Nigerian',
             home_address: document_data.address || document_data.home_address,
+            phone_number: document_data.phone_number || existingData.phone_number || null,
             liveness_verified: existingData.liveness_verified || liveness_verified || false,
             // ImageKit references (no local paths)
             front_image_url: front_image_url || null,
@@ -563,6 +969,7 @@ router.post('/layer3/submit', async (req, res) => {
             back_image_url: back_image_url || null,
             back_image_file_id: back_image_file_id || null,
             upload_id,
+            provider_document_match: buildProviderDocumentMatch(existingData, document_data),
             submitted_at: new Date().toISOString()
         };
 
@@ -778,6 +1185,36 @@ router.get('/history', async (req, res) => {
 // ============================================
 // SELECTIVE DISCLOSURE (SHARE KYC)
 // ============================================
+
+/**
+ * Get the currently available shareable fields for selective disclosure.
+ * GET /api/v2/verification/share/available
+ */
+router.get('/share/available', async (req, res) => {
+    try {
+        const sessionToken = req.cookies.casperid_session ||
+            req.headers.authorization?.replace('Bearer ', '');
+
+        if (!sessionToken) {
+            return res.status(401).json({
+                success: false,
+                error: 'Authentication required'
+            });
+        }
+
+        const fields = await verificationServiceV2.getAvailableShareFields(sessionToken);
+        return res.json({
+            success: true,
+            fields
+        });
+    } catch (error) {
+        console.error('Selective Disclosure fields lookup failed:', error);
+        return res.status(400).json({
+            success: false,
+            error: error.message
+        });
+    }
+});
 
 /**
  * Generate a Selective Disclosure share package

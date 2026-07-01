@@ -232,6 +232,8 @@ const SecurityTab = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [revoking, setRevoking] = useState<string | null>(null);
+  const [exporting, setExporting] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     const fetchDevices = async () => {
@@ -294,6 +296,47 @@ const SecurityTab = () => {
       alert('Failed to revoke device: ' + (err.message || 'Unknown error'));
     } finally {
       setRevoking(null);
+    }
+  };
+
+  const handleExportData = async () => {
+    try {
+      setExporting(true);
+      const data = await apiService.exportData();
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `casperid-data-export-${new Date().toISOString()}.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(url);
+    } catch (err: any) {
+      alert('Failed to export data: ' + (err.message || 'Unknown error'));
+    } finally {
+      setExporting(false);
+    }
+  };
+
+  const handleDeleteAccount = async () => {
+    const confirmed = confirm(
+      'Are you sure you want to permanently delete your account, profile, credentials, and passkeys? This action cannot be undone.'
+    );
+
+    if (!confirmed) {
+      return;
+    }
+
+    try {
+      setDeleting(true);
+      await apiService.deleteAccount();
+      alert('Account deleted successfully.');
+      window.location.href = '/login';
+    } catch (err: any) {
+      alert('Failed to delete account: ' + (err.message || 'Unknown error'));
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -373,26 +416,28 @@ const SecurityTab = () => {
 
       <section className="pt-8 border-t border-gray-100">
         <div className="bg-red-50/50 border border-red-100 rounded-[32px] p-8 flex flex-col md:flex-row items-center justify-between gap-6">
-          <div>
+          <div className="max-w-2xl">
             <h4 className="text-alerts font-bold text-base">Danger Zone</h4>
-            <p className="text-sm text-text-sub font-medium">Irreversible actions regarding your account and data.</p>
+            <p className="text-sm text-text-sub font-medium">
+              Export your account data or permanently delete your identity. Deletion removes your account, profile, credentials, and registered passkeys.
+            </p>
           </div>
-          <button
-            onClick={async () => {
-              if (confirm('⚠️ ARE YOU SURE? This will permanently delete your account, Verifiable Credentials, and Profile information. This action CANNOT be undone.')) {
-                try {
-                  await apiService.deleteAccount();
-                  alert('Account deleted successfully.');
-                  window.location.href = '/login'; // Redirect to login
-                } catch (e: any) {
-                  alert('Failed to delete account: ' + e.message);
-                }
-              }
-            }}
-            className="px-6 py-3 bg-white border border-red-100 rounded-2xl text-sm font-bold text-alerts hover:bg-red-50 transition-all shadow-sm"
-          >
-            Delete Account
-          </button>
+          <div className="flex w-full flex-col gap-4 md:w-auto md:flex-row">
+            <button
+              onClick={handleExportData}
+              disabled={exporting || deleting}
+              className="flex-1 md:flex-none px-6 py-3.5 bg-white border border-red-100 rounded-2xl text-sm font-bold text-text-main hover:bg-white transition-all shadow-sm disabled:opacity-50"
+            >
+              {exporting ? 'Exporting...' : 'Export Data'}
+            </button>
+            <button
+              onClick={handleDeleteAccount}
+              disabled={deleting || exporting}
+              className="flex-1 md:flex-none px-6 py-3.5 bg-red-600 text-white rounded-2xl text-sm font-bold hover:bg-red-700 transition-all shadow-lg shadow-red-200 disabled:opacity-50"
+            >
+              {deleting ? 'Deleting...' : 'Delete Account'}
+            </button>
+          </div>
         </div>
       </section>
     </div>
@@ -486,7 +531,7 @@ const NotificationsTab = () => {
 const PermissionsTab = () => {
   const { user, isAuthenticated, isLoading } = useAuth();
   const [profile, setProfile] = useState<any>(null);
-  const [permissions, setPermissions] = useState<any[]>([]);
+  const [grants, setGrants] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [revoking, setRevoking] = useState(false);
 
@@ -499,7 +544,7 @@ const PermissionsTab = () => {
         ]);
 
         if (profileRes) setProfile(profileRes);
-        if (permsRes.success) setPermissions(permsRes.userPermissions || []);
+        if (permsRes.success) setGrants(permsRes.userPermissions?.permissions || []);
 
       } catch (e) {
         console.error('Failed to load permissions data:', e);
@@ -526,7 +571,7 @@ const PermissionsTab = () => {
         await apiService.unlinkMetaMaskAccount();
       }
       setProfile({ ...profile, metamask_connected: false, metamask_address: null });
-      setPermissions([]);
+      setGrants([]);
       alert('MetaMask disconnected successfully.');
     } catch (e: any) {
       alert('Failed to disconnect: ' + e.message);
@@ -625,20 +670,49 @@ const PermissionsTab = () => {
               {/* <button className="text-xs font-bold text-primary hover:underline">View Policy</button> */}
             </div>
 
-            {permissions.length === 0 ? (
+            {grants.length === 0 ? (
               <div className="p-6 rounded-2xl bg-gray-50 border border-gray-100 text-center">
                 <p className="text-sm text-text-sub font-medium">No active permissions found.</p>
               </div>
             ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {permissions.map((perm, i) => (
-                  <div key={i} className="flex items-start gap-4 p-6 rounded-[24px] border border-gray-100 bg-white transition-all shadow-sm">
-                    <span className="material-symbols-outlined text-[24px] text-primary mt-0.5">verified_user</span>
-                    <div className="flex flex-col gap-0.5">
-                      <h4 className="text-[15px] font-bold text-text-main leading-tight">{perm.scope || 'Custom Permission'}</h4>
-                      <p className="text-[13px] text-text-sub font-medium leading-relaxed">
-                        Expires: {new Date(perm.expires_at).toLocaleDateString()}
-                      </p>
+              <div className="space-y-4">
+                {grants.map((grant, i) => (
+                  <div key={grant.grantId || i} className="rounded-[24px] border border-gray-100 bg-white p-6 shadow-sm">
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="flex items-start gap-4">
+                        <span className="material-symbols-outlined text-[24px] text-primary mt-0.5">verified_user</span>
+                        <div className="flex flex-col gap-1">
+                          <h4 className="text-[15px] font-bold text-text-main leading-tight">{grant.dappName || 'Connected App'}</h4>
+                          <p className="text-[13px] text-text-sub font-medium leading-relaxed break-all">
+                            {grant.dappOrigin || 'Unknown origin'}
+                          </p>
+                        </div>
+                      </div>
+                      <span className="inline-flex items-center gap-1.5 rounded-full bg-green-50 px-3 py-1 text-[10px] font-black uppercase tracking-widest text-green-700 border border-green-100">
+                        <span className="w-1.5 h-1.5 rounded-full bg-green-500"></span>
+                        {grant.status || 'active'}
+                      </span>
+                    </div>
+
+                    <div className="mt-5 grid grid-cols-1 gap-3 md:grid-cols-2">
+                      {Array.isArray(grant.permissions) && grant.permissions.length > 0 ? grant.permissions.map((permission: any, permissionIndex: number) => (
+                        <div key={`${grant.grantId}-${permission.action}-${permissionIndex}`} className="rounded-2xl border border-gray-100 bg-gray-50/70 p-4">
+                          <p className="text-sm font-black text-text-main">{permission.action}</p>
+                          <p className="mt-1 text-[11px] font-bold uppercase tracking-wider text-text-sub">
+                            Tier: {permission.scope?.tier || 'n/a'} • Frequency: {permission.scope?.frequency || 'n/a'}
+                          </p>
+                        </div>
+                      )) : (
+                        <div className="rounded-2xl border border-gray-100 bg-gray-50/70 p-4 text-sm font-medium text-text-sub">
+                          No active permission entries for this grant.
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="mt-5 flex flex-wrap items-center gap-4 text-[11px] font-bold uppercase tracking-wider text-text-sub">
+                      <span>Usage: {grant.usageCount || 0}</span>
+                      <span>Last used: {grant.lastUsed ? new Date(grant.lastUsed).toLocaleDateString() : 'Never'}</span>
+                      <span>Expires: {grant.expiresAt ? new Date(grant.expiresAt).toLocaleDateString() : 'Unknown'}</span>
                     </div>
                   </div>
                 ))}
@@ -646,7 +720,9 @@ const PermissionsTab = () => {
             )}
           </div>
           <div className="flex flex-col md:flex-row items-center gap-4 pt-4 border-t border-gray-50">
-            <button className="w-full md:w-auto px-8 py-3.5 border-2 border-gray-100 rounded-2xl text-sm font-black text-text-main hover:bg-gray-50 transition-all opacity-50 cursor-not-allowed">Modify Permissions</button>
+            <div className="w-full md:w-auto rounded-2xl border border-gray-100 bg-gray-50 px-6 py-3 text-sm font-bold text-text-sub">
+              Detailed permission editing lives in Data Controls.
+            </div>
             <div className="flex-1"></div>
             <button
               onClick={handleUnlink}

@@ -22,6 +22,8 @@ export const DataControls: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [revokingApp, setRevokingApp] = useState<any | null>(null);
   const [auditLog, setAuditLog] = useState<any[]>([]);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [activeAuditApp, setActiveAuditApp] = useState<string | null>(null);
   const [stats, setStats] = useState({
     activeConnections: 0,
     totalGrants: 0,
@@ -91,9 +93,6 @@ export const DataControls: React.FC = () => {
   };
 
   const handleTogglePermission = async (appIndex: number, permId: string, enabled: boolean) => {
-    // If disabling, we remove it from the list sent to backend
-    // If enabling, we currently can't add it back as we lose scope. 
-    // UI behavior: Once unchecked, it effectively revokes.
     if (!enabled) {
       const app = apps[appIndex];
       const newPermissions = app.permissions
@@ -115,6 +114,17 @@ export const DataControls: React.FC = () => {
     }
   };
 
+  const handleRevokePermission = async (appIndex: number, permId: string) => {
+    const app = apps[appIndex];
+    const permission = app.permissions.find((p: any) => p.id === permId);
+    if (!permission) return;
+
+    const confirmed = confirm(`Remove ${permission.label} access from ${app.name}?`);
+    if (!confirmed) return;
+
+    await handleTogglePermission(appIndex, permId, false);
+  };
+
   const handleRevokeApp = async () => {
     if (!revokingApp) return;
     try {
@@ -127,29 +137,26 @@ export const DataControls: React.FC = () => {
     }
   };
 
-  const handleExportData = async () => {
-    try {
-      const data = await apiService.exportData();
-      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `casperid-data-export-${new Date().toISOString()}.json`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      window.URL.revokeObjectURL(url);
-    } catch (error) {
-      console.error('Export failed:', error);
-      alert('Failed to export data');
-    }
-  };
-
   const statCards = [
     { label: 'Privacy Score', value: stats.privacyScore.toString(), total: '100', trend: '+0% vs last week', icon: 'shield', color: 'text-green-600', progress: stats.privacyScore },
     { label: 'Active Connections', value: stats.activeConnections.toString(), sub: 'Apps connected', icon: 'hub', color: 'text-primary' },
     { label: 'Recent Requests', value: auditLog.length.toString(), sub: 'Total activity', icon: 'history', color: 'text-blue-500' },
   ];
+
+  const normalizedSearch = searchTerm.trim().toLowerCase();
+  const filteredApps = apps.filter((app) => {
+    if (!normalizedSearch) return true;
+    const permissionText = app.permissions.map((permission: any) => `${permission.label} ${permission.sub}`).join(' ').toLowerCase();
+    return `${app.name} ${app.category} ${permissionText}`.toLowerCase().includes(normalizedSearch);
+  });
+
+  const filteredAuditLog = auditLog.filter((row) => {
+    const appMatches = activeAuditApp ? row.app === activeAuditApp : true;
+    const searchMatches = normalizedSearch
+      ? `${row.app} ${row.data} ${row.type} ${row.status}`.toLowerCase().includes(normalizedSearch)
+      : true;
+    return appMatches && searchMatches;
+  });
 
   return (
     <div className="space-y-10 pb-12 animate-in fade-in duration-500">
@@ -199,6 +206,8 @@ export const DataControls: React.FC = () => {
               className="w-full h-11 rounded-xl border-none bg-white py-2 pl-10 pr-4 text-sm text-text-main shadow-sm ring-1 ring-inset ring-gray-200 placeholder:text-gray-400 focus:ring-2 focus:ring-primary/20 outline-none"
               placeholder="Search apps or services..."
               type="text"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
             />
           </div>
         </div>
@@ -207,14 +216,16 @@ export const DataControls: React.FC = () => {
           <div className="flex items-center justify-center py-20">
             <div className="animate-spin size-12 border-4 border-primary border-t-transparent rounded-full"></div>
           </div>
-        ) : apps.length === 0 ? (
+        ) : filteredApps.length === 0 ? (
           <div className="bg-white rounded-[32px] border border-gray-100 p-12 text-center text-text-sub">
             <span className="material-symbols-outlined text-4xl mb-4">apps</span>
-            <p>No connected applications found.</p>
+            <p>No connected applications match the current filter.</p>
           </div>
         ) : (
           <div className="grid grid-cols-1 xl:grid-cols-2 gap-4 md:gap-6">
-            {apps.map((app, idx) => (
+            {filteredApps.map((app) => {
+              const idx = apps.findIndex((candidate) => candidate.grantId === app.grantId);
+              return (
               <div key={idx} className="bg-white rounded-[28px] md:rounded-[32px] border border-gray-100 p-5 md:p-7 shadow-soft flex flex-col gap-5 md:gap-6">
                 <div className="flex justify-between items-start">
                   <div className="flex gap-3 md:gap-4">
@@ -254,22 +265,24 @@ export const DataControls: React.FC = () => {
                           </span>
                         </div>
                       </div>
-                      <label className="relative inline-flex items-center cursor-pointer scale-90 md:scale-100">
-                        <input
-                          type="checkbox"
-                          className="sr-only peer"
-                          checked={p.enabled && !p.revoked}
-                          onChange={(e) => handleTogglePermission(idx, p.id, e.target.checked)}
-                          disabled={p.revoked}
-                        />
-                        <div className="w-11 h-6 bg-gray-200 rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
-                      </label>
+                      <button
+                        onClick={() => handleRevokePermission(idx, p.id)}
+                        disabled={p.revoked}
+                        className="rounded-xl border border-red-100 px-3 py-2 text-[11px] font-black uppercase tracking-wider text-red-600 transition-all hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-40"
+                      >
+                        {p.revoked ? 'Revoked' : 'Revoke'}
+                      </button>
                     </div>
                   ))}
                 </div>
 
                 <div className="flex gap-2.5 pt-2">
-                  <button className="flex-1 h-11 rounded-2xl bg-gray-50 text-[13px] font-black text-text-main hover:bg-gray-100 transition-all active:scale-95 shadow-sm border border-gray-100">View Logs</button>
+                  <button
+                    onClick={() => setActiveAuditApp(app.name)}
+                    className="flex-1 h-11 rounded-2xl bg-gray-50 text-[13px] font-black text-text-main hover:bg-gray-100 transition-all active:scale-95 shadow-sm border border-gray-100"
+                  >
+                    View Logs
+                  </button>
                   <button
                     onClick={() => setRevokingApp(app)}
                     className="flex-1 h-11 rounded-2xl border border-red-100 text-[13px] font-black text-red-600 hover:bg-red-50 transition-all active:scale-95"
@@ -278,7 +291,7 @@ export const DataControls: React.FC = () => {
                   </button>
                 </div>
               </div>
-            ))}
+            )})}
           </div>
         )}
       </section>
@@ -299,11 +312,21 @@ export const DataControls: React.FC = () => {
 
       {/* Audit Log */}
       <section className="space-y-6">
-        <h2 className="text-xl font-bold text-text-main">Access Audit Log</h2>
+        <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+          <h2 className="text-xl font-bold text-text-main">Access Audit Log</h2>
+          {activeAuditApp ? (
+            <button
+              onClick={() => setActiveAuditApp(null)}
+              className="w-fit rounded-xl border border-gray-200 px-4 py-2 text-xs font-black uppercase tracking-wider text-text-main hover:bg-gray-50"
+            >
+              Clear App Filter: {activeAuditApp}
+            </button>
+          ) : null}
+        </div>
         <div className="bg-white rounded-[28px] md:rounded-[32px] border border-gray-100 shadow-soft overflow-hidden">
           <div className="overflow-x-auto no-scrollbar">
-            {auditLog.length === 0 ? (
-              <div className="p-8 text-center text-text-sub text-sm">No recent access activity.</div>
+            {filteredAuditLog.length === 0 ? (
+              <div className="p-8 text-center text-text-sub text-sm">No access activity matches the current filter.</div>
             ) : (
               <table className="w-full text-left text-sm whitespace-nowrap min-w-[600px] md:min-w-0">
                 <thead className="bg-gray-50/50 border-b border-gray-100">
@@ -316,7 +339,7 @@ export const DataControls: React.FC = () => {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-50">
-                  {auditLog.map((row, i) => (
+                  {filteredAuditLog.map((row, i) => (
                     <tr key={i} className="hover:bg-gray-50/30 transition-colors group">
                       <td className="px-6 py-5">
                         <div className="flex items-center gap-3">
@@ -349,29 +372,6 @@ export const DataControls: React.FC = () => {
         </div>
       </section>
 
-      {/* Danger Zone */}
-      <section className="pt-8 border-t border-gray-100">
-        <h3 className="text-lg font-bold text-alerts mb-6 flex items-center gap-2">
-          <span className="material-symbols-outlined text-[20px]">warning</span> Danger Zone
-        </h3>
-        <div className="bg-red-50/50 border border-red-100 rounded-[32px] p-8 flex flex-col md:flex-row items-start md:items-center justify-between gap-8">
-          <div className="flex flex-col gap-2">
-            <h4 className="text-text-main font-bold text-base">Delete Identity or Export Data</h4>
-            <p className="text-sm text-text-sub font-medium leading-relaxed">
-              Once you delete your identity, there is no going back. All encrypted local data will be purged.
-            </p>
-          </div>
-          <div className="flex gap-4 w-full md:w-auto">
-            <button
-              onClick={handleExportData}
-              className="flex-1 md:flex-none px-6 py-3.5 bg-white border border-red-100 rounded-2xl text-sm font-bold text-text-main hover:bg-white transition-all shadow-sm"
-            >
-              Export Data
-            </button>
-            <button className="flex-1 md:flex-none px-6 py-3.5 bg-red-600 text-white rounded-2xl text-sm font-bold hover:bg-red-700 transition-all shadow-lg shadow-red-200">Delete Identity</button>
-          </div>
-        </div>
-      </section>
     </div>
   );
 };

@@ -320,6 +320,8 @@ router.get('/activity-log/:id', requireAuth, async (req, res) => {
     try {
         const { id } = req.params;
         const wallet = sanitizeWallet(req.user.wallet);
+        const userAccount = await UserAccount.findOne({ wallet }).lean();
+        const userId = userAccount?.user_id;
 
         let activity = null;
         let source = null;
@@ -340,12 +342,32 @@ router.get('/activity-log/:id', requireAuth, async (req, res) => {
             }
         }
 
+        // Try V2 Verifications
+        if (!activity) {
+            const verificationV2 = await VerificationRequestV2.findById(id).lean();
+            if (verificationV2 && verificationV2.user_id === userId) {
+                activity = verificationV2;
+                source = 'verification_v2';
+            }
+        }
+
         // Try Credentials
         if (!activity) {
             const credential = await Credential.findById(id).lean();
             if (credential && credential.wallet === wallet) {
                 activity = credential;
                 source = 'credential';
+            }
+        }
+
+        // Try Notifications
+        if (!activity) {
+            const notification = await Notification.findById(id).lean();
+            const belongsToUser = notification &&
+                ((userId && notification.user_id === userId) || sanitizeWallet(notification.recipientWallet) === wallet);
+            if (belongsToUser) {
+                activity = notification;
+                source = 'notification';
             }
         }
 
@@ -371,7 +393,10 @@ router.get('/activity-log/:id', requireAuth, async (req, res) => {
             }
         }
 
-        res.json(activity);
+        res.json({
+            ...activity,
+            source
+        });
 
     } catch (error) {
         console.error('Activity detail error:', error);

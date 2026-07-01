@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { CIDExplanationModal } from './ui/CIDexplantionModal';
 import apiService from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
+import cnsPlansConfig from '../../shared/cns-plans.json';
 
 interface RegisterCIDProps {
   onBack: () => void;
@@ -75,11 +76,15 @@ export const RegisterCID: React.FC<RegisterCIDProps> = ({ onBack }) => {
     return () => clearInterval(timer);
   }, []);
 
-  const pricing = [
-    { years: 1, price: 3, discount: null, label: '1 Year', sub: 'Standard pricing' },
-    { years: 3, price: 5, discount: '20% Off included', label: '3 Years' },
-    { years: 100, price: 10, discount: '33% Off included', label: 'Lifetime', sub: 'No renewal fees. Yours forever.', recommended: true, isLifetime: true }
-  ];
+  const pricing = cnsPlansConfig.plans.map(plan => ({
+    years: plan.years,
+    price: plan.priceUsd,
+    discount: plan.discount || null,
+    label: plan.label,
+    sub: plan.sub,
+    recommended: !!plan.recommended,
+    isLifetime: !!plan.isLifetime
+  }));
 
   const basePrice = pricing.find(p => p.years === selectedYears)?.price || pricing[0].price;
   const targetPrice = isPromoApplied ? 0 : basePrice;

@@ -7,13 +7,22 @@ interface OnboardingStartProps {
   email: string; // Email verified from OTP flow
   onContinue: (email: string) => void;
   onLogin: () => void;
+  mode?: 'registration' | 'recovery';
+  recoveryToken?: string;
 }
 
-export const OnboardingStart: React.FC<OnboardingStartProps> = ({ email, onContinue, onLogin }) => {
-  const { register, isLoading, error, clearError } = useAuth();
+export const OnboardingStart: React.FC<OnboardingStartProps> = ({
+  email,
+  onContinue,
+  onLogin,
+  mode = 'registration',
+  recoveryToken
+}) => {
+  const { register, recoverPasskey, isLoading, error, clearError } = useAuth();
   const [isRegistering, setIsRegistering] = useState(false);
   const [showMobileHandoff, setShowMobileHandoff] = useState(false);
   const [platformBiometricsAvailable, setPlatformBiometricsAvailable] = useState<boolean | null>(null);
+  const isRecovery = mode === 'recovery';
 
   // Check for platform biometric support (Face ID, Touch ID, Windows Hello)
   React.useEffect(() => {
@@ -49,10 +58,15 @@ export const OnboardingStart: React.FC<OnboardingStartProps> = ({ email, onConti
         throw new Error('WebAuthn is not supported in this browser. Please use Chrome, Safari, or Firefox.');
       }
 
-      // Use the verified email to register passkey
-      const tempDisplayName = 'CasperID User'; // Temporary until human-id is generated
-
-      await register(email, tempDisplayName);
+      if (isRecovery) {
+        if (!recoveryToken) {
+          throw new Error('Recovery session is missing. Restart account recovery.');
+        }
+        await recoverPasskey(recoveryToken);
+      } else {
+        const tempDisplayName = 'CasperID User'; // Temporary until human-id is generated
+        await register(email, tempDisplayName);
+      }
 
 
       // If successful, continue to main app
@@ -65,7 +79,7 @@ export const OnboardingStart: React.FC<OnboardingStartProps> = ({ email, onConti
   };
 
   // Mobile Handoff view
-  if (showMobileHandoff) {
+  if (showMobileHandoff && !isRecovery) {
     return (
       <div className="min-h-screen bg-[#F8F9FF] flex flex-col items-center justify-center p-6 animate-in fade-in duration-700">
         <div className="w-full max-w-[540px] bg-white rounded-[44px] border border-gray-100 shadow-[0_40px_80px_-20px_rgba(134,82,226,0.12)] overflow-hidden">
@@ -91,11 +105,13 @@ export const OnboardingStart: React.FC<OnboardingStartProps> = ({ email, onConti
         <div className="text-center space-y-3">
           <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-primary/5 rounded-full border border-primary/10 mb-4">
             <span className="material-symbols-outlined text-primary text-sm">verified</span>
-            <span className="text-[10px] font-black text-primary uppercase tracking-widest">Email Verified</span>
+            <span className="text-[10px] font-black text-primary uppercase tracking-widest">{isRecovery ? 'Recovery Verified' : 'Email Verified'}</span>
           </div>
-          <h1 className="text-4xl font-black text-text-main tracking-tight">Create Your Passkey</h1>
+          <h1 className="text-4xl font-black text-text-main tracking-tight">{isRecovery ? 'Recover Your Account' : 'Create Your Passkey'}</h1>
           <p className="text-text-sub text-base font-medium">
-            Use your device's biometric authentication to create a secure passkey for <strong>{email}</strong>
+            {isRecovery
+              ? <>Register a new passkey for <strong>{email}</strong>. Your old sign-in passkeys will be revoked.</>
+              : <>Use your device's biometric authentication to create a secure passkey for <strong>{email}</strong></>}
           </p>
         </div>
 
@@ -123,9 +139,11 @@ export const OnboardingStart: React.FC<OnboardingStartProps> = ({ email, onConti
             {/* Info Section */}
             <div className="w-full text-center space-y-6">
               <div className="space-y-2">
-                <h3 className="text-xl font-black text-text-main">Secure Biometric Authentication</h3>
+                <h3 className="text-xl font-black text-text-main">{isRecovery ? 'Create a Replacement Passkey' : 'Secure Biometric Authentication'}</h3>
                 <p className="text-text-sub text-sm leading-relaxed">
-                  Your passkey will use your device's built-in biometric authentication like Face ID, Touch ID, or fingerprint scanner for secure access.
+                  {isRecovery
+                    ? 'This new passkey becomes your sign-in method on this device after recovery is completed.'
+                    : "Your passkey will use your device's built-in biometric authentication like Face ID, Touch ID, or fingerprint scanner for secure access."}
                 </p>
               </div>
 
@@ -164,18 +182,18 @@ export const OnboardingStart: React.FC<OnboardingStartProps> = ({ email, onConti
                 {isRegistering || isLoading ? (
                   <>
                     <div className="size-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
-                    Creating Passkey...
+                    {isRecovery ? 'Recovering Account...' : 'Creating Passkey...'}
                   </>
                 ) : (
                   <>
                     <span className="material-symbols-outlined">add_circle</span>
-                    Create My Passkey
+                    {isRecovery ? 'Create New Passkey' : 'Create My Passkey'}
                   </>
                 )}
               </button>
 
               {/* Use Phone Option */}
-              <button
+              {!isRecovery && <button
                 onClick={() => setShowMobileHandoff(true)}
                 disabled={isRegistering || isLoading}
                 className={`w-full h-14 rounded-2xl font-bold text-base flex items-center justify-center gap-3 border transition-all active:scale-[0.98] disabled:opacity-50 ${platformBiometricsAvailable === false
@@ -185,14 +203,14 @@ export const OnboardingStart: React.FC<OnboardingStartProps> = ({ email, onConti
               >
                 <span className="material-symbols-outlined text-primary">smartphone</span>
                 Use my phone instead
-              </button>
+              </button>}
 
               {error && (
                 <div className="p-4 bg-red-50 border border-red-200 rounded-xl">
                   <div className="flex items-start gap-3">
                     <span className="material-symbols-outlined text-red-500 text-lg">error</span>
                     <div>
-                      <p className="text-red-800 font-bold text-sm">Passkey Creation Failed</p>
+                      <p className="text-red-800 font-bold text-sm">{isRecovery ? 'Account Recovery Failed' : 'Passkey Creation Failed'}</p>
                       <p className="text-red-600 text-xs mt-1">{error}</p>
                     </div>
                   </div>
@@ -202,7 +220,7 @@ export const OnboardingStart: React.FC<OnboardingStartProps> = ({ email, onConti
 
             <div className="flex items-center gap-2 text-text-sub/40 text-xs">
               <span className="material-symbols-outlined text-sm">info</span>
-              <span>Your passkey never leaves your device and cannot be accessed by anyone else</span>
+              <span>{isRecovery ? 'Recovery only verifies your email temporarily. Your new passkey remains device-bound.' : 'Your passkey never leaves your device and cannot be accessed by anyone else'}</span>
             </div>
           </div>
         </div>
@@ -210,7 +228,7 @@ export const OnboardingStart: React.FC<OnboardingStartProps> = ({ email, onConti
         {/* Footer */}
         <div className="text-center">
           <p className="text-text-sub font-medium text-sm">
-            Already have a passkey?{' '}
+            {isRecovery ? 'Want to try your existing passkey instead?' : 'Already have a passkey?'}{' '}
             <button onClick={onLogin} className="text-primary font-black hover:underline">
               Sign In Instead
             </button>

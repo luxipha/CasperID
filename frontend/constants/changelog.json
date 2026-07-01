@@ -1,5 +1,103 @@
 [
   {
+    "version": "4.0.2",
+    "title": "Layer 3 Duplicate Identity Enforcement",
+    "date": "June 24, 2026",
+    "status": "Production Update",
+    "highlight": {
+      "title": "Cross-Account Duplicate Blocking",
+      "description": "Layer 3 now rejects reused NIN, BVN, ID number, and phone number across different accounts.",
+      "type": "shield"
+    },
+    "summary": "This update closes a fraud gap in the normal Layer 3 review flow by enforcing direct off-chain duplicate checks before identity data is saved. NIN verification, BVN verification, and final document submission now reject reused identity records across different accounts with a clear API error instead of relying on manual review to catch duplicates.",
+    "categories": [
+      {
+        "id": "v402-layer3",
+        "title": "Duplicate Identity Protection",
+        "items": [
+          "Added shared Layer 3 duplicate checks for NIN, BVN, document number, and phone number across other user accounts.",
+          "NIN verification now returns a 409 conflict when the same NIN already exists on another Layer 3 request.",
+          "BVN verification now returns a 409 conflict when the same BVN already exists on another Layer 3 request.",
+          "Final Layer 3 submission now blocks reused document numbers and phone numbers before the request enters admin review.",
+          "Duplicate checks normalize values before comparison so spacing, casing, and phone formatting do not bypass enforcement."
+        ]
+      },
+      {
+        "id": "v402-architecture",
+        "title": "Verification Architecture Notes",
+        "items": [
+          "Implemented duplicate enforcement off-chain to avoid introducing additional chain gas costs for identity uniqueness checks.",
+          "Kept biometric nullifier protection scoped to the separate ZK flow rather than coupling it to the standard Layer 3 review flow.",
+          "Left identity_data_hash as optional future privacy infrastructure instead of making it a requirement for duplicate blocking."
+        ]
+      }
+    ]
+  },
+  {
+    "version": "4.0.1",
+    "title": "Authoritative CNS Fulfillment & Contextual Alias Routing",
+    "date": "June 23, 2026",
+    "status": "Production Update",
+    "highlight": {
+      "title": "Contextuals Lifecycle Repair",
+      "description": "Root-name payments now finalize server-side, and contextual subdomains consistently resolve from the user-owned alias.",
+      "type": "sparkles"
+    },
+    "summary": "This update closes the most fragile gaps in the .cid and contextual identity lifecycle. Premium name payments are now fulfilled authoritatively on the server instead of depending on a browser polling loop, the fiat checkout route and plan mapping are aligned across frontend and backend, and contextual identities now consistently treat alias as the owned hostname prefix. We also added local custom host support for contextual testing and isolated the ZK prover entry so the liveness proof path can lazy-load independently from the main frontend flow.",
+    "categories": [
+      {
+        "id": "v401-payments",
+        "title": "Premium Name Fulfillment",
+        "items": [
+          "Moved premium .cid registration fulfillment into a shared server-side payment finalization path instead of relying on /cns-success polling to mint names.",
+          "RevenueCat and Boomfi webhooks now attempt authoritative post-payment registration immediately after marking the payment complete.",
+          "GET /api/payment/status/:reference now acts as a status check and retry path rather than the primary mint trigger.",
+          "Fixed fiat checkout initialization to call the mounted /api/payment/revenuecat/create route.",
+          "Payment creation now binds authenticated user identity to each checkout instead of using guest fallback metadata."
+        ]
+      },
+      {
+        "id": "v401-plans",
+        "title": "Plan & Registration Integrity",
+        "items": [
+          "Centralized premium .cid pricing, duration, and RevenueCat package mapping in shared CNS plan configuration used by both frontend and backend.",
+          "Aligned supported plans to 1 year, 3 years, and lifetime across checkout UI and payment processing.",
+          "Locked direct POST /api/cns/register behind a completed payment reference so premium names cannot bypass payment enforcement.",
+          "Preserved coupon-based 100% claims while keeping premium root registration on the same resolver sync path."
+        ]
+      },
+      {
+        "id": "v401-contextuals",
+        "title": "Contextual Alias Model",
+        "items": [
+          "Standardized contextual ownership so alias is always the subdomain prefix, while context remains the category (professional, gaming, social, etc.).",
+          "Updated my-names, CNS routing, resolver logic, and public profile lookup to resolve pay.alice.cid from alias instead of leaking category names into hostnames.",
+          "Migrated legacy /api/cns/subname creation to write the same alias/context schema used by Context DID creation.",
+          "Updated subdomain rebinding to modify alias instead of overwriting context category fields.",
+          "Unified contextual full-name generation through shared server helpers to prevent drift between root-name fallback paths."
+        ]
+      },
+      {
+        "id": "v401-local",
+        "title": "Local Routing & Testing",
+        "items": [
+          "Added frontend contextual host parsing for custom local domains like name.casperid.cid.",
+          "Added localhost-style contextual detection for hosts such as name.localhost and name.casperid.localhost.",
+          "Kept ?subdomain=name override support for manual local testing while expanding true host-based contextual routing."
+        ]
+      },
+      {
+        "id": "v401-zk",
+        "title": "ZK Runtime Isolation",
+        "items": [
+          "Removed the circomlibjs Poseidon browser import from the nullifier path to stop that hashing helper from inflating the main frontend bundle.",
+          "Lazy-loaded zkProver from LivenessCheck only when proof generation starts, producing a dedicated small prover entry chunk instead of statically linking the module into the liveness component bundle.",
+          "Confirmed the remaining oversized proof chunk is primarily the Noir/Barretenberg browser proving runtime, not the old browser-side Poseidon helper."
+        ]
+      }
+    ]
+  },
+  {
     "version": "4.0.0",
     "title": "Hosted Authorization & Lightweight SDK v2",
     "date": "June 14 2026",

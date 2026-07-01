@@ -5,19 +5,15 @@ import { apiService } from '../services/api';
 import { LivenessCheck } from './LivenessCheck';
 import { L3LivenessCheck, type Layer3VerificationSession } from './L3LivenessCheck';
 import { LivenessSuccess } from './LivenessSuccess';
-import { KYCLayer3Method } from './KYCLayer3Method';
-import { KYCNIMCSelection } from './KYCNIMCSelection';
 import { KYCDocumentSelection } from './KYCDocumentSelection';
 import { KYCNIMCNumberEntry } from './KYCNIMCNumberEntry';
-import { KYCNIMCOTP } from './KYCNIMCOTP';
-import { KYCNIMCSuccess } from './KYCNIMCSuccess';
 import { KYCReviewSubmit } from './KYCReviewSubmit';
 import { KYCFullSuccess } from './KYCFullSuccess';
 import { KYCDocumentUpload } from './KYCDocumentUpload';
 import { KYCManualEntry } from './KYCManualEntry';
 import { KYCSubmissionReceived } from './KYCSubmissionReceived';
-import { KYCProcessing } from './KYCProcessing';
-import { KYCNIMCMobileQR } from './KYCNIMCMobileQR';
+import { KYCVerificationContext } from './KYCVerificationContext';
+import { KYCNINConfirmation } from './KYCNINConfirmation';
 import { IdentityStatusCard, ReusableKYCCard, TrustScoreCard } from './DashboardCards';
 import { ConnectedPlatforms } from './ConnectedPlatforms';
 import { ReusableTools } from './ReusableTools';
@@ -27,19 +23,19 @@ type ViewState =
   | 'dashboard'
   | 'liveness'
   | 'success'
+  | 'layer3_context'
   | 'layer3_method'
-  | 'layer3_nimc_selection'
-  | 'layer3_nimc_qr'
   | 'layer3_doc_selection'
   | 'layer3_doc_upload'
   | 'layer3_manual_entry'
   | 'layer3_nimc_number'
-  | 'layer3_nimc_otp'
-  | 'layer3_processing'
-  | 'layer3_nimc_success'
+  | 'layer3_nin_confirm'
   | 'layer3_review_submit'
   | 'layer3_submission_received'
   | 'layer3_full_success';
+
+type VerificationContext = 'nigeria' | 'international';
+type NigerianIdentityMethod = 'nimc' | 'bvn';
 
 interface KYCHomeProps {
   initialStep?: ViewState;
@@ -62,7 +58,12 @@ export const KYCHome: React.FC<KYCHomeProps> = ({
   const [backImageUrl, setBackImageUrl] = useState<string>('');
   const [isLayer3Flow, setIsLayer3Flow] = useState<boolean>(false); // Track if we're in Layer 3 flow
   const [layer3Session, setLayer3Session] = useState<Layer3VerificationSession | null>(null);
-  const [layer3Method, setLayer3Method] = useState<'document_upload' | 'nimc'>('document_upload');
+  const [layer3Method, setLayer3Method] = useState<'document_upload' | 'nimc' | 'bvn'>('document_upload');
+  const [verificationContext, setVerificationContext] = useState<VerificationContext | null>(null);
+  const [identityMethod, setIdentityMethod] = useState<NigerianIdentityMethod>('nimc');
+  const [ninValue, setNinValue] = useState<string>('');
+  const [bvnValue, setBvnValue] = useState<string>('');
+  const [identityVerifiedData, setIdentityVerifiedData] = useState<any>(null);
   const { user } = useAuth();
 
   // Check for pending Layer 3 verification on mount
@@ -107,6 +108,16 @@ export const KYCHome: React.FC<KYCHomeProps> = ({
     const requestId = layer3Session?.requestId;
     setLayer3Session(null);
     setIsLayer3Flow(false);
+    setVerificationContext(null);
+    setIdentityMethod('nimc');
+    setNinValue('');
+    setBvnValue('');
+    setIdentityVerifiedData(null);
+    setExtractedData(null);
+    setUploadId('');
+    setFrontImageUrl('');
+    setBackImageUrl('');
+    setLayer3Method('document_upload');
     if (requestId && !kycSubmitted) {
       try {
         await apiService.delete(`/api/v2/verification/${requestId}`);
@@ -116,7 +127,7 @@ export const KYCHome: React.FC<KYCHomeProps> = ({
     }
     exitFlow();
   };
-  const startOrRefreshLayer3Session = async (method: 'document_upload' | 'nimc') => {
+  const startOrRefreshLayer3Session = async (method: 'document_upload' | 'nimc' | 'bvn') => {
     const response = await apiService.startLayer3Verification(method);
     const verification = response.verification;
     if (!verification?.requestId || !verification?.pairingId || !verification?.pairingToken) {
@@ -131,6 +142,18 @@ export const KYCHome: React.FC<KYCHomeProps> = ({
     };
     setLayer3Session(session);
     return session;
+  };
+  const beginLayer3Context = async (context: VerificationContext) => {
+    try {
+      const method = context === 'nigeria' ? identityMethod : 'document_upload';
+      setVerificationContext(context);
+      setLayer3Method(method);
+      await startOrRefreshLayer3Session(method);
+      setActiveStep(context === 'nigeria' ? 'layer3_nimc_number' : 'layer3_doc_selection');
+    } catch (error) {
+      console.error('[Layer3] Failed to start verification session:', error);
+      alert(error instanceof Error ? error.message : 'Failed to start verification. Please try again.');
+    }
   };
   const beginLayer3Liveness = async () => {
     try {
@@ -237,53 +260,12 @@ export const KYCHome: React.FC<KYCHomeProps> = ({
     );
   }
 
-  if (activeStep === 'layer3_method') {
+  if (activeStep === 'layer3_context' || activeStep === 'layer3_method') {
     return (
-      <KYCLayer3Method
+      <KYCVerificationContext
         onBack={cancelLayer3Draft}
-        onSelectMethod={async (m) => {
-          try {
-            // Start Layer 3 verification session BEFORE proceeding
-            const method = m === 'nimc' ? 'nimc' : 'document_upload';
-            setLayer3Method(method);
-            await startOrRefreshLayer3Session(method);
-
-            if (m === 'nimc') {
-              setActiveStep('layer3_nimc_selection');
-            } else {
-              setActiveStep('layer3_doc_selection');
-            }
-          } catch (error) {
-            console.error('[Layer3] Failed to start verification session:', error);
-            alert(error instanceof Error ? error.message : 'Failed to start verification. Please try again.');
-          }
-        }}
-      />
-    );
-  }
-
-  if (activeStep === 'layer3_nimc_selection') {
-    return (
-      <KYCNIMCSelection
-        onBack={() => setActiveStep('layer3_method')}
         onCancel={cancelLayer3Draft}
-        onSelectMode={(mode) => {
-          if (mode === 'desktop') {
-            setActiveStep('layer3_nimc_number');
-          } else {
-            setActiveStep('layer3_nimc_qr');
-          }
-        }}
-      />
-    );
-  }
-
-  if (activeStep === 'layer3_nimc_qr') {
-    return (
-      <KYCNIMCMobileQR
-        onBack={() => setActiveStep('layer3_nimc_selection')}
-        onCancel={cancelLayer3Draft}
-        onScanned={() => setActiveStep('layer3_processing')}
+        onSelectContext={beginLayer3Context}
       />
     );
   }
@@ -291,42 +273,62 @@ export const KYCHome: React.FC<KYCHomeProps> = ({
   if (activeStep === 'layer3_nimc_number') {
     return (
       <KYCNIMCNumberEntry
-        onBack={() => setActiveStep('layer3_nimc_selection')}
+        onBack={() => setActiveStep('layer3_context')}
         onCancel={cancelLayer3Draft}
-        onNext={(num) => {
-          setActiveStep('layer3_nimc_otp');
+        onNext={async (details) => {
+          try {
+            const requestId = layer3Session?.requestId;
+            if (!requestId) {
+              throw new Error('Layer 3 session is missing. Please restart verification.');
+            }
+
+            if (details.method === 'nimc' && details.nin) {
+              const response = await apiService.verifyLayer3NIN({
+                request_id: requestId,
+                nin: details.nin
+              });
+              setIdentityMethod('nimc');
+              setLayer3Method('nimc');
+              setNinValue(details.nin);
+              setBvnValue('');
+              setIdentityVerifiedData(response.nin_verification?.identity || { nin: details.nin });
+            } else if (details.method === 'bvn' && details.bvn && details.account_number && details.bank_code) {
+              const response = await apiService.verifyLayer3BVN({
+                request_id: requestId,
+                bvn: details.bvn,
+                account_number: details.account_number,
+                bank_code: details.bank_code
+              });
+              setIdentityMethod('bvn');
+              setLayer3Method('bvn');
+              setBvnValue(details.bvn);
+              setNinValue('');
+              setIdentityVerifiedData(response.bvn_verification?.identity || {
+                bvn: details.bvn,
+                account_number: details.account_number,
+                bank_code: details.bank_code
+              });
+            } else {
+              throw new Error('Identity verification details are incomplete.');
+            }
+            setActiveStep('layer3_nin_confirm');
+          } catch (error) {
+            console.error('[Layer3] Identity verification failed:', error);
+            alert(error instanceof Error ? error.message : 'Failed to verify identity details. Please try again.');
+          }
         }}
       />
     );
   }
 
-  if (activeStep === 'layer3_nimc_otp') {
+  if (activeStep === 'layer3_nin_confirm') {
     return (
-      <KYCNIMCOTP
+      <KYCNINConfirmation
+        identity={identityVerifiedData || (identityMethod === 'nimc' ? { nin: ninValue } : { bvn: bvnValue })}
+        identityMethod={identityMethod}
         onBack={() => setActiveStep('layer3_nimc_number')}
         onCancel={cancelLayer3Draft}
-        onVerify={(otp) => {
-          setActiveStep('layer3_processing');
-        }}
-      />
-    );
-  }
-
-  if (activeStep === 'layer3_processing') {
-    return (
-      <KYCProcessing
-        title="Processing Identity Data"
-        subtitle="We're securely analyzing your details to verify authenticity."
-        onComplete={() => setActiveStep('layer3_nimc_success')}
-      />
-    );
-  }
-
-  if (activeStep === 'layer3_nimc_success') {
-    return (
-      <KYCNIMCSuccess
-        onProceed={beginLayer3Liveness}
-        onCancel={cancelLayer3Draft}
+        onContinue={() => setActiveStep('layer3_doc_selection')}
       />
     );
   }
@@ -340,6 +342,8 @@ export const KYCHome: React.FC<KYCHomeProps> = ({
         frontImageUrl={frontImageUrl}
         backImageUrl={backImageUrl}
         livenessVerified={true} // We know liveness is verified if we reached this step
+        verificationContext={verificationContext || undefined}
+        verificationMethod={layer3Method}
         onBack={() => setActiveStep('liveness')}
         onCancel={cancelLayer3Draft}
         onSubmit={() => {
@@ -381,7 +385,7 @@ export const KYCHome: React.FC<KYCHomeProps> = ({
   if (activeStep === 'layer3_doc_selection') {
     return (
       <KYCDocumentSelection
-        onBack={() => setActiveStep('layer3_method')}
+        onBack={() => setActiveStep(verificationContext === 'nigeria' ? 'layer3_nin_confirm' : 'layer3_context')}
         onCancel={cancelLayer3Draft}
         onNext={(type) => {
           setSelectedDocType(type);
@@ -412,7 +416,19 @@ export const KYCHome: React.FC<KYCHomeProps> = ({
 
 
             // Set extracted data and image URLs
-            setExtractedData(response.extracted_data);
+            setExtractedData({
+              ...response.extracted_data,
+              nin: response.extracted_data?.nin || ninValue,
+              first_name: response.extracted_data?.first_name || identityVerifiedData?.first_name || '',
+              last_name: response.extracted_data?.last_name || identityVerifiedData?.last_name || '',
+              date_of_birth: response.extracted_data?.date_of_birth || identityVerifiedData?.date_of_birth || '',
+              gender: response.extracted_data?.gender || identityVerifiedData?.gender || '',
+              phone_number: response.extracted_data?.phone_number || identityVerifiedData?.phone_number || '',
+              address: response.extracted_data?.address || identityVerifiedData?.address || '',
+              nationality: verificationContext === 'nigeria'
+                ? 'Nigerian'
+                : (response.extracted_data?.nationality || 'Unknown')
+            });
             setUploadId(response.upload_id);
             setFrontImageUrl(response.front_image_url || '');
             setBackImageUrl(response.back_image_url || '');
@@ -424,14 +440,16 @@ export const KYCHome: React.FC<KYCHomeProps> = ({
             // Fallback to manual entry with empty data
             setExtractedData({
               document_type: selectedDocType,
+              nin: ninValue,
+              bvn: bvnValue,
               document_number: '',
-              first_name: '',
-              last_name: '',
-              date_of_birth: '',
-              gender: '',
-              nationality: 'Nigerian',
-              address: '',
-              phone_number: ''
+              first_name: identityVerifiedData?.first_name || '',
+              last_name: identityVerifiedData?.last_name || '',
+              date_of_birth: identityVerifiedData?.date_of_birth || '',
+              gender: identityVerifiedData?.gender || '',
+              nationality: verificationContext === 'nigeria' ? 'Nigerian' : 'Unknown',
+              address: identityVerifiedData?.address || '',
+              phone_number: identityVerifiedData?.phone_number || ''
             });
             setUploadId('fallback_' + Date.now());
             // Move to manual entry but PRESERVE any image URLs we might have
@@ -665,7 +683,7 @@ export const KYCHome: React.FC<KYCHomeProps> = ({
               </button>
             </>
           ) : (
-            <button onClick={() => setActiveStep('layer3_method')} className="mt-auto w-full h-14 bg-primary text-white rounded-[18px] font-black text-sm flex items-center justify-center gap-3 shadow-lg hover:bg-primary/90 transition-all">
+            <button onClick={() => setActiveStep('layer3_context')} className="mt-auto w-full h-14 bg-primary text-white rounded-[18px] font-black text-sm flex items-center justify-center gap-3 shadow-lg hover:bg-primary/90 transition-all">
               Complete Full KYC (Layer 3)
             </button>
           )}

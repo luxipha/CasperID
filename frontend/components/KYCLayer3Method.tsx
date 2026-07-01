@@ -24,34 +24,10 @@ export const KYCLayer3Method: React.FC<KYCLayer3MethodProps> = ({ onBack, onSele
           </div>
 
           <div className="flex flex-col gap-4 md:gap-6">
-            {/* NIMC Card - DISABLED */}
-            <div
-              className="order-2 md:order-1 w-full text-left bg-white rounded-[24px] md:rounded-[32px] border border-gray-100 shadow-soft p-5 pt-16 sm:p-8 flex flex-col sm:flex-row sm:items-center gap-4 sm:gap-6 opacity-50 cursor-not-allowed relative overflow-hidden"
-            >
-              {/* Coming Soon Badge */}
-              <div className="absolute top-4 right-4 px-3 py-1.5 rounded-full bg-amber-50 text-amber-700 text-[10px] font-black uppercase tracking-widest border border-amber-200 flex items-center gap-1.5">
-                <span className="material-symbols-outlined text-sm">schedule</span>
-                Coming Soon
-              </div>
-
-              <div className="size-14 md:size-16 rounded-2xl bg-indigo-50 flex items-center justify-center text-primary shrink-0">
-                <span className="material-symbols-outlined text-[32px]">badge</span>
-              </div>
-              <div className="flex-1">
-                <div className="flex items-center justify-between mb-1">
-                  <h3 className="text-lg md:text-xl font-black text-text-main">NIMC Verification</h3>
-                </div>
-                <p className="text-text-sub text-sm md:text-base font-medium leading-relaxed max-w-xl">
-                  Verify using your National Identity Management Commission number via QR Code (Mobile) or OTP (Desktop).
-                </p>
-              </div>
-              <span className="material-symbols-outlined text-text-sub ml-4">lock</span>
-            </div>
-
             {/* Upload ID Card */}
             <button
               onClick={() => onSelectMethod('upload')}
-              className="order-1 md:order-2 w-full text-left bg-white rounded-[24px] md:rounded-[32px] border border-gray-100 shadow-soft p-5 md:p-8 flex flex-col gap-5 md:gap-6 group hover:border-primary/40 hover:shadow-glow transition-all active:scale-[0.99]"
+              className="w-full text-left bg-white rounded-[24px] md:rounded-[32px] border border-gray-100 shadow-soft p-5 md:p-8 flex flex-col gap-5 md:gap-6 group hover:border-primary/40 hover:shadow-glow transition-all active:scale-[0.99]"
             >
               <div className="flex flex-col sm:flex-row sm:items-center gap-4 sm:gap-6">
                 <div className="size-14 md:size-16 rounded-2xl bg-green-50 flex items-center justify-center text-green-600 shrink-0 group-hover:scale-105 transition-transform">
@@ -106,7 +82,7 @@ export const KYCLayer3Method: React.FC<KYCLayer3MethodProps> = ({ onBack, onSele
                 </div>
                 <div className="flex flex-col">
                   <span className="text-sm font-black text-text-main">Verification</span>
-                  <span className="text-[11px] font-bold text-text-sub">Document Upload or NIMC</span>
+                  <span className="text-[11px] font-bold text-text-sub">Document Upload</span>
                 </div>
               </div>
 

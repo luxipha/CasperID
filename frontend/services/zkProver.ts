@@ -546,29 +546,8 @@ async function computeNoirCompatibleNullifier(
     q4 * 100n +              // 10^2
     q5;                      // 10^0
 
-  // DEBUG: Log for stability analysis
-  console.log('[ZK Nullifier Debug - Ratios]', {
-    raw_ratios: {
-      mouth_eye: ratio1.toFixed(4),
-      face_eye: ratio2.toFixed(4),
-      left_eye: ratio3.toFixed(4),
-      right_eye: ratio4.toFixed(4),
-      nose_chin: ratio5.toFixed(4),
-    },
-    quantized: {
-      q1: q1.toString(),
-      q2: q2.toString(),
-      q3: q3.toString(),
-      q4: q4.toString(),
-      q5: q5.toString(),
-    },
-    fingerprint: geometricFingerprint.toString(),
-  });
-
   // Compute Poseidon hash of the geometric fingerprint
   const nullifier = await poseidonBn254Hash([geometricFingerprint]);
-
-  console.log('[ZK Nullifier]', nullifier);
 
   return {
     nullifier,
@@ -591,49 +570,34 @@ const BN254_FIELD_MODULUS = 2188824287183927522224640574525727508854836440041603
 let poseidonHasher: ((inputs: bigint[]) => bigint) | null = null;
 
 /**
- * Initialize Poseidon hasher using circomlibjs
- * This uses the same parameters as Noir's poseidon bn254 implementation
+ * Initialize the browser-side nullifier hasher.
+ *
+ * We intentionally avoid loading circomlibjs in the web bundle because it
+ * pulls ffjavascript/wasmcurves into the client and produces a ~60MB chunk.
+ * The frontend only needs a deterministic per-face hash for nullifier
+ * generation, so we use the lightweight fallback here and keep Noir proof
+ * generation lazy-loaded separately above.
  */
 async function initPoseidon(): Promise<(inputs: bigint[]) => bigint> {
   if (poseidonHasher) {
     return poseidonHasher;
   }
 
-  try {
-    // @ts-ignore - circomlibjs types
-    const { buildPoseidon } = await import('circomlibjs');
-    const poseidon = await buildPoseidon();
+  poseidonHasher = (inputs: bigint[]): bigint => {
+    const input = inputs[0] % BN254_FIELD_MODULUS;
+    // Deterministic browser-side hash for stable nullifier generation.
+    let hash = input;
+    for (let i = 0; i < 5; i++) {
+      hash = (hash * hash + input) % BN254_FIELD_MODULUS;
+    }
+    return hash;
+  };
 
-    // Create a wrapper that converts to/from bigint
-    poseidonHasher = (inputs: bigint[]): bigint => {
-      const result = poseidon(inputs.map(i => i % BN254_FIELD_MODULUS));
-      // poseidon returns a buffer, convert to bigint
-      return poseidon.F.toObject(result);
-    };
-
-    return poseidonHasher;
-  } catch (error) {
-    console.warn('Failed to initialize circomlibjs Poseidon, using fallback:', error);
-
-    // Fallback: deterministic hash (won't match Noir exactly but provides consistency)
-    poseidonHasher = (inputs: bigint[]): bigint => {
-      const input = inputs[0] % BN254_FIELD_MODULUS;
-      // Simple deterministic "hash" for fallback
-      // This won't match Noir but maintains determinism per face
-      let hash = input;
-      for (let i = 0; i < 5; i++) {
-        hash = (hash * hash + input) % BN254_FIELD_MODULUS;
-      }
-      return hash;
-    };
-
-    return poseidonHasher;
-  }
+  return poseidonHasher;
 }
 
 /**
- * Poseidon hash for bn254 using circomlibjs
- * This matches Noir's std::hash::poseidon::bn254::hash_1
+ * Deterministic BN254-field hash used by the browser nullifier path.
  */
 async function poseidonBn254Hash(inputs: bigint[]): Promise<string> {
   const hasher = await initPoseidon();

@@ -3,8 +3,34 @@ const router = express.Router();
 const axios = require('axios');
 const crypto = require('crypto');
 const { Payment, UserAccount } = require('../database/models');
-const cnsResolver = require('../services/cns-resolver');
 const { eventBus, EVENTS } = require('../services/eventBus');
+const { requireAuth } = require('../middleware/auth');
+const { getPlanByYears, getDefaultPlan, getPlanByRevenueCatProductId } = require('../services/cns-plans');
+const { finalizeCompletedPayment } = require('../services/payment-fulfillment');
+
+function getCheckoutPlan(years) {
+    return getPlanByYears(years) || getDefaultPlan();
+}
+
+async function completePaymentRecord(payment, transactionId) {
+    payment.status = 'completed';
+    payment.orderId = transactionId || payment.orderId;
+    payment.completed_at = payment.completed_at || new Date();
+    await payment.save();
+    return payment;
+}
+
+async function attemptPaymentFulfillment(payment, transactionId) {
+    try {
+        return await finalizeCompletedPayment(payment, { transactionId });
+    } catch (error) {
+        console.error(`[Payment] Fulfillment failed for ${payment.reference}:`, error.message);
+        return {
+            minted: false,
+            error: error.message
+        };
+    }
+}
 
 // POST /api/payment/revenuecat/webhook
 // This handles the server-to-server webhook from RevenueCat for fiat purchases
@@ -31,19 +57,16 @@ router.post('/revenuecat/webhook', async (req, res) => {
             const appUserId = event.app_user_id;
             const productId = event.product_id;
 
-            // Pricing logic (must match frontend and create endpoint)
-            const pricing = { 1: 3, 2: 5, 5: 10 };
-
             // Try to find the payment record by reference (appUserId)
             let paymentRecord = await Payment.findOne({ reference: appUserId });
             let domainName = '';
-            let years = 1;
+            let plan = getDefaultPlan();
             let userId = '';
             let user = null;
 
             if (paymentRecord) {
                 domainName = paymentRecord.metadata.domainName;
-                years = paymentRecord.metadata.years;
+                plan = getPlanByYears(paymentRecord.metadata.years) || getDefaultPlan();
                 userId = paymentRecord.metadata.userId;
                 // Find the user from our payment record
                 user = await UserAccount.findOne({ user_id: userId });
@@ -52,8 +75,7 @@ router.post('/revenuecat/webhook', async (req, res) => {
                 const attrs = event.subscriber_attributes || {};
                 domainName = attrs.domain_name?.value;
                 userId = attrs.user_id?.value || appUserId;
-                if (productId.includes('2yr')) years = 2;
-                else if (productId.includes('5yr')) years = 5;
+                plan = getPlanByRevenueCatProductId(productId) || getDefaultPlan();
                 // Try to find user from subscriber attributes
                 user = await UserAccount.findOne({ user_id: userId });
             }
@@ -68,24 +90,14 @@ router.post('/revenuecat/webhook', async (req, res) => {
                 return res.status(400).json({ error: 'Missing user data' });
             }
 
-            // Calculate price based on years
-            const price = pricing[years] || 3;
+            const price = plan.priceUsd;
 
             if (paymentRecord) {
-                // Update the original pending record to completed (preserving rc_ref_xxx reference)
-                const alreadyCompleted = paymentRecord.status === 'completed';
-                if (alreadyCompleted) {
-                    console.log(`[Payment] Duplicate webhook detected for Revenuecat Tx ${transactionId}, payment already completed`);
-                    return res.json({ received: true, status: 'already_processed' });
-                }
-                paymentRecord.status = 'completed';
-                paymentRecord.orderId = transactionId;
-                paymentRecord.completed_at = new Date();
-                await paymentRecord.save();
-                console.log(`[Payment] Updated pending payment ${paymentRecord.reference} to completed for RevenueCat tx ${transactionId}`);
+                await completePaymentRecord(paymentRecord, transactionId);
+                console.log(`[Payment] Updated payment ${paymentRecord.reference} to completed for RevenueCat tx ${transactionId}`);
             } else {
                 // Fallback: create a new record (no matching pending record found)
-                await Payment.create({
+                paymentRecord = await Payment.create({
                     reference: transactionId,
                     type: 'fiat',
                     provider: 'revenuecat',
@@ -94,15 +106,20 @@ router.post('/revenuecat/webhook', async (req, res) => {
                     status: 'completed',
                     metadata: {
                         domainName: domainName,
-                        years: years,
-                        userId: user.user_id
-                    }
+                        years: plan.years,
+                        userId: user.user_id,
+                        userWallet: user.wallet,
+                        userEmail: user.recovery_email || user.email
+                    },
+                    completed_at: new Date()
                 });
             }
 
             const wallet = user.wallet;
 
-            console.log(`[Payment] Valid RevenueCat Fiat Purchase! Payment recorded for ${domainName}.cid for ${wallet}. Minting deferred to polling/status endpoint.`);
+            console.log(`[Payment] Valid RevenueCat Fiat Purchase! Payment recorded for ${domainName}.cid for ${wallet}. Finalizing registration server-side.`);
+
+            const fulfillment = await attemptPaymentFulfillment(paymentRecord, transactionId);
 
             // Emit payment completed event (subscribers handle email, activity)
             eventBus.emit(EVENTS.PAYMENT_COMPLETED, {
@@ -111,10 +128,14 @@ router.post('/revenuecat/webhook', async (req, res) => {
                 wallet: wallet,
                 amount: price,
                 currency: 'USD',
-                items: `${domainName}.cid Domain Registration (${years} year${years > 1 ? 's' : ''})`,
+                items: `${domainName}.cid Domain Registration (${plan.years} year${plan.years > 1 ? 's' : ''})`,
                 transactionId: transactionId,
                 provider: 'revenuecat'
             });
+
+            if (!fulfillment.minted) {
+                console.warn(`[Payment] RevenueCat fulfillment deferred for ${paymentRecord.reference}: ${fulfillment.error}`);
+            }
         }
 
         res.json({ received: true });
@@ -126,15 +147,15 @@ router.post('/revenuecat/webhook', async (req, res) => {
 
 // POST /api/payment/revenuecat/create
 // Initializes a fiat payment session (Stripe/RevenueCat)
-router.post('/revenuecat/create', async (req, res) => {
+router.post('/revenuecat/create', requireAuth, async (req, res) => {
     try {
         const { domainName, years } = req.body;
-        const userId = req.body.userId || 'guest';
-        const userEmail = req.body.userEmail || 'guest@example.com';
+        const userId = req.user.userId;
+        const userEmail = req.user.email || '';
+        const userWallet = req.user.wallet;
 
-        // Pricing logic (shared with Boomfi)
-        const pricing = { 1: 3, 2: 5, 5: 10 };
-        const priceUsd = pricing[years] || 3;
+        const plan = getCheckoutPlan(years);
+        const priceUsd = plan.priceUsd;
 
         // Note: For RevenueCat Web Billing, we usually create a Stripe Checkout session
         // that RevenueCat tracks via webhooks. Here we'll generate a secure checkout link.
@@ -156,8 +177,9 @@ router.post('/revenuecat/create', async (req, res) => {
             status: 'pending',
             metadata: {
                 domainName,
-                years,
+                years: plan.years,
                 userId,
+                userWallet,
                 userEmail
             }
         });
@@ -168,7 +190,7 @@ router.post('/revenuecat/create', async (req, res) => {
 
         // Placeholder that mimics the real behavior for now
         // Real RevenueCat Purchase Link provided by user - direct to checkout using package_id
-        const purchaseLink = `https://pay.rev.cat/xkvcmsuutoelrqal/${reference}?package_id=$rc_annual`;
+        const purchaseLink = `https://pay.rev.cat/xkvcmsuutoelrqal/${reference}?package_id=${encodeURIComponent(plan.revenueCatPackageId)}`;
 
         res.json({
             success: true,
@@ -185,12 +207,13 @@ router.post('/revenuecat/create', async (req, res) => {
 
 // POST /api/payment/boomfi/create
 // Creates a Boomfi payment session via their Merchant API
-router.post('/boomfi/create', async (req, res) => {
+router.post('/boomfi/create', requireAuth, async (req, res) => {
     try {
         const { domainName, years, currency } = req.body;
-        const userId = req.body.userId || 'guest';
-        const userEmail = req.body.userEmail || '';
+        const userId = req.user.userId;
+        const userEmail = req.body.userEmail || req.user.email || '';
         const userName = req.body.userName || '';
+        const userWallet = req.user.wallet;
 
         const boomfiApiKey = process.env.BOOMFI_API_KEY;
         if (!boomfiApiKey) {
@@ -198,9 +221,8 @@ router.post('/boomfi/create', async (req, res) => {
             return res.status(500).json({ error: 'Payment provider not configured' });
         }
 
-        // Pricing logic
-        const pricing = { 1: 3, 2: 5, 5: 10 };
-        const priceUsd = pricing[years] || 3;
+        const plan = getCheckoutPlan(years);
+        const priceUsd = plan.priceUsd;
 
         // Create a unique reference for tracking
         const reference = `bf_ref_${crypto.randomBytes(8).toString('hex')}`;
@@ -220,7 +242,7 @@ router.post('/boomfi/create', async (req, res) => {
             metadata: {
                 ext_ref: reference,
                 domain_name: domainName,
-                years: String(years),
+                years: String(plan.years),
                 user_id: userId
             }
         };
@@ -278,8 +300,9 @@ router.post('/boomfi/create', async (req, res) => {
             orderId: paylinkId,
             metadata: {
                 domainName,
-                years,
+                years: plan.years,
                 userId,
+                userWallet,
                 userEmail,
                 userName,
                 boomfiPaylinkId: paylinkId
@@ -362,9 +385,7 @@ router.post('/boomfi/webhook', express.raw({ type: 'application/json' }), async 
             });
 
             if (payment) {
-                payment.status = 'completed';
-                payment.orderId = paymentId;
-                await payment.save();
+                await completePaymentRecord(payment, paymentId);
 
                 const metadata = payment.metadata;
 
@@ -374,7 +395,9 @@ router.post('/boomfi/webhook', express.raw({ type: 'application/json' }), async 
                     const walletAddress = user ? user.wallet : metadata.wallet;
 
                     if (walletAddress) {
-                        console.log(`[Payment] Boomfi payment success! Payment recorded for ${metadata.domainName}.cid for ${walletAddress}. Minting deferred to polling/status endpoint.`);
+                        console.log(`[Payment] Boomfi payment success! Payment recorded for ${metadata.domainName}.cid for ${walletAddress}. Finalizing registration server-side.`);
+
+                        const fulfillment = await attemptPaymentFulfillment(payment, paymentId);
 
                         // Emit payment completed event (subscribers handle email, activity)
                         const userEmail = user?.recovery_email || user?.email || metadata.userEmail;
@@ -390,6 +413,10 @@ router.post('/boomfi/webhook', express.raw({ type: 'application/json' }), async 
                             transactionId: paymentId,
                             provider: 'boomfi'
                         });
+
+                        if (!fulfillment.minted) {
+                            console.warn(`[Payment] Boomfi fulfillment deferred for ${payment.reference}: ${fulfillment.error}`);
+                        }
                     } else {
                         console.error('[Payment] No wallet found for Boomfi payment', externalRef);
                     }
@@ -417,8 +444,7 @@ router.post('/boomfi/webhook', express.raw({ type: 'application/json' }), async 
 });
 
 // GET /api/payment/status/:reference
-// Checks payment status and triggers .cid minting if payment is completed.
-// This is polled by the frontend after the user returns from the payment provider.
+// Checks payment status. If fulfillment was deferred, this can retry registration.
 router.get('/status/:reference', async (req, res) => {
     try {
         const { reference } = req.params;
@@ -439,69 +465,27 @@ router.get('/status/:reference', async (req, res) => {
             return res.json({ success: true, status: payment.status });
         }
 
-        // Payment completed — check if name has been minted yet
+        // Payment completed — return minted state, retrying fulfillment only if needed
         if (payment.status === 'completed') {
-            const metadata = payment.metadata || {};
-            const domainName = metadata.domainName;
+            const fulfillment = await attemptPaymentFulfillment(payment, payment.orderId || payment.reference);
 
-            if (!domainName) {
-                return res.json({ success: true, status: 'completed', minted: false, error: 'Missing domain name in payment record' });
-            }
-
-            // Check if already minted by looking up the user's account
-            const user = await UserAccount.findOne({ user_id: metadata.userId });
-
-            if (!user) {
-                return res.json({ success: true, status: 'completed', minted: false, error: 'User not found' });
-            }
-
-            // Idempotency: if user already has a cns_name, minting was already done
-            if (user.cns_name) {
-                console.log(`[Payment] Status: name ${domainName}.cid already minted for ${user.wallet}, skipping`);
+            if (fulfillment.minted) {
                 return res.json({
                     success: true,
                     status: 'completed',
                     minted: true,
-                    name: `${domainName}.cid`,
-                    txHash: user.onchain_name_tx || null,
-                    alreadyMinted: true
+                    name: fulfillment.name,
+                    txHash: fulfillment.txHash,
+                    alreadyMinted: fulfillment.alreadyMinted
                 });
             }
 
-            // Mint it now — this is the trigger point
-            try {
-                const result = await cnsResolver.registerPremiumName(user.wallet, domainName);
-
-                console.log(`[Payment] Status: minted ${domainName}.cid for wallet ${user.wallet} via status poll`);
-
-                // Emit CNS registered event
-                const years = metadata.years || 1;
-                eventBus.emit(EVENTS.CNS_REGISTERED, {
-                    userId: user.user_id,
-                    email: user.recovery_email || user.email,
-                    wallet: user.wallet,
-                    domainName: domainName,
-                    years: years,
-                    transactionId: payment.reference
-                });
-
-                return res.json({
-                    success: true,
-                    status: 'completed',
-                    minted: true,
-                    name: `${domainName}.cid`,
-                    txHash: result.txHash || null,
-                    alreadyMinted: false
-                });
-            } catch (mintError) {
-                console.error(`[Payment] Status: minting failed for ${domainName}.cid:`, mintError.message);
-                return res.json({
-                    success: true,
-                    status: 'completed',
-                    minted: false,
-                    error: mintError.message
-                });
-            }
+            return res.json({
+                success: true,
+                status: 'completed',
+                minted: false,
+                error: fulfillment.error || 'Payment confirmed but domain registration is still pending'
+            });
         }
 
         return res.json({ success: true, status: payment.status });

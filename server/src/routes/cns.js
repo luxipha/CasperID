@@ -6,7 +6,8 @@
 const express = require('express');
 const router = express.Router();
 const cnsResolver = require('../services/cns-resolver');
-const { eventBus, EVENTS } = require('../services/eventBus');
+const { getRootNameForAccount, buildContextualName } = require('../services/contextual-names');
+const { findCompletedPaymentForUser, finalizeCompletedPayment } = require('../services/payment-fulfillment');
 
 // ============================================
 // WALLET SANITIZATION UTILITY
@@ -139,7 +140,7 @@ router.get('/cns/check/:name', async (req, res) => {
  */
 router.post('/cns/register', validateSession, async (req, res) => {
     try {
-        const { name } = req.body;
+        const { name, paymentReference } = req.body;
         const wallet = sanitizeWallet(req.userAccount.wallet);
 
         if (!name) {
@@ -160,28 +161,37 @@ router.post('/cns/register', validateSession, async (req, res) => {
             });
         }
 
-        // Note: Tier gating is for SUBDOMAINS only, not root name registration
-        // Any authenticated user can register a root name
+        if (!paymentReference) {
+            return res.status(403).json({
+                success: false,
+                error: 'Completed payment reference is required for premium registration'
+            });
+        }
 
-        // TODO: Add payment verification here
-        // For now, proceed with registration
-
-        const result = await cnsResolver.registerPremiumName(wallet, name);
-
-        // Emit CNS registered event (subscribers handle email, activity)
-        eventBus.emit(EVENTS.CNS_REGISTERED, {
+        const payment = await findCompletedPaymentForUser({
+            reference: paymentReference,
             userId: userAccount.user_id,
-            email: userAccount.recovery_email || userAccount.email,
-            wallet: wallet,
-            domainName: name,
-            years: 1,
-            transactionId: result.registrationId || 'direct-registration'
+            wallet,
+            domainName: name
+        });
+
+        if (!payment) {
+            return res.status(403).json({
+                success: false,
+                error: 'No completed payment found for this name'
+            });
+        }
+
+        const result = await finalizeCompletedPayment(payment, {
+            transactionId: payment.orderId || payment.reference
         });
 
         res.json({
             success: true,
             message: 'Name registered successfully',
-            ...result
+            name: result.name,
+            txHash: result.txHash,
+            alreadyMinted: result.alreadyMinted
         });
     } catch (error) {
         console.error('CNS register error:', error);
@@ -200,11 +210,10 @@ router.get('/cns/my-names', validateSession, async (req, res) => {
     try {
         const wallet = sanitizeWallet(req.userAccount.wallet);
 
-        const { UserAccount, UserProfile } = require('../database/models');
+        const { UserAccount } = require('../database/models');
         const { walletToHuman } = require('../utils/wallet-to-human');
 
         const userAccount = await UserAccount.findOne({ wallet });
-        const profile = await UserProfile.findOne({ wallet });
 
         if (!userAccount) {
             return res.status(404).json({
@@ -213,8 +222,8 @@ router.get('/cns/my-names', validateSession, async (req, res) => {
             });
         }
 
-        // Get Markov name
         const { humanId } = walletToHuman(wallet);
+        const rootName = getRootNameForAccount(userAccount);
 
         const names = [];
 
@@ -243,12 +252,9 @@ router.get('/cns/my-names', validateSession, async (req, res) => {
 
         // Add context DIDs as subdomains
         if (userAccount.context_dids && userAccount.context_dids.length > 0) {
-            // Strip .cid from rootName for subdomain construction
-            const rootName = (userAccount.cns_name || humanId).replace(/\.cid$/i, '');
-
             for (const contextDid of userAccount.context_dids) {
                 names.push({
-                    name: `${contextDid.context}.${rootName}.cid`,
+                    name: buildContextualName(contextDid.alias, rootName),
                     type: 'subdomain',
                     isPremium: !!userAccount.cns_name,
                     contextType: contextDid.context,
@@ -311,7 +317,7 @@ router.post('/cns/bind-subdomain', validateSession, async (req, res) => {
         // Update the context with the subdomain binding
         await UserAccount.updateOne(
             { wallet, 'context_dids.did': contextDid },
-            { $set: { 'context_dids.$.context': subdomain } }
+            { $set: { 'context_dids.$.alias': subdomain } }
         );
 
         res.json({
@@ -457,45 +463,45 @@ router.post('/cns/subname', validateSession, async (req, res) => {
             });
         }
 
-        // Verify user owns the parent name
-        const { walletToHuman } = require('../utils/wallet-to-human');
-        const { humanId } = walletToHuman(wallet);
-        const markovName = `${humanId}.cid`;
-        const premiumName = userAccount.cns_name;
+        const rootName = getRootNameForAccount(userAccount);
+        const normalizedParentName = parentName.endsWith('.cid') ? parentName : `${parentName}.cid`;
+        const expectedParentName = `${rootName}.cid`;
 
-        const ownedNames = [markovName, premiumName].filter(Boolean);
-        if (!ownedNames.includes(parentName)) {
+        if (normalizedParentName !== expectedParentName) {
             return res.status(403).json({
                 success: false,
                 error: 'You do not own this parent name'
             });
         }
 
-        // Construct sub-name
-        const subName = `${prefix}.${parentName}`;
+        const subName = buildContextualName(prefix, rootName);
 
-        // Check if sub-name already exists
-        const existingSubNames = userAccount.context_dids || [];
-        if (existingSubNames.find(c => c.name === subName)) {
+        if ((userAccount.context_dids || []).some((contextDid) => contextDid.alias === prefix)) {
             return res.status(400).json({
                 success: false,
                 error: 'Sub-name already exists'
             });
         }
 
-        // Create Context DID for this sub-name
-        const contextDid = `did:casper:${wallet}:${contextType}:${prefix}`;
-
-        // Save to user account
-        if (!userAccount.context_dids) {
-            userAccount.context_dids = [];
-        }
+        const contextDid = `did:casper:context:${prefix}:${Date.now().toString(36)}`;
+        userAccount.context_dids = userAccount.context_dids || [];
+        userAccount.cns_routing = userAccount.cns_routing || [];
 
         userAccount.context_dids.push({
             did: contextDid,
-            name: subName,
-            context_type: contextType,
+            alias: prefix,
+            context: contextType,
+            routing_type: 'identity',
+            disclosures: {},
+            tier_required: userAccount.tier,
             created_at: new Date()
+        });
+
+        userAccount.cns_routing.push({
+            name: subName,
+            target_type: 'context_did',
+            target_id: contextDid,
+            active: true
         });
 
         await userAccount.save();

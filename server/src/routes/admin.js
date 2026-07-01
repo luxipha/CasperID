@@ -106,15 +106,21 @@ router.get('/verification-requests', adminAuthWithRateLimit, async (req, res) =>
                 expires_at: r.expires_at,
 
                 // Layer 3 document data from verification_data
-                verification_method: 'document_upload',
+                verification_method: vData.verification_method || 'document_upload',
+                country_context: vData.country_context || null,
+                identity_provider: vData.identity_provider || null,
                 document_type: vData.document_type,
                 document_number: vData.document_number,
+                nin_verified: vData.nin_verified || false,
+                bvn_verified: vData.bvn_verified || false,
                 liveness_verified: vData.liveness_verified,
                 upload_id: vData.upload_id,
 
                 // Personal info from verification_data (with fallback to profile)
                 first_name: vData.first_name || userProfile?.first_name,
+                middle_name: vData.middle_name,
                 last_name: vData.last_name || userProfile?.last_name,
+                full_name: vData.full_name || [vData.first_name, vData.middle_name, vData.last_name].filter(Boolean).join(' ') || null,
                 email: userAccount?.recovery_email || userAccount?.email,
                 date_of_birth: vData.date_of_birth || userProfile?.date_of_birth,
                 gender: vData.gender,
@@ -149,10 +155,18 @@ router.get('/verification-requests', adminAuthWithRateLimit, async (req, res) =>
                     liveness_ai_reasoning: vData.liveness_ai_reasoning,
                     document_type: vData.document_type,
                     document_number: vData.document_number,
+                    country_context: vData.country_context,
+                    identity_provider: vData.identity_provider,
+                    nin_verified: vData.nin_verified,
+                    bvn_verified: vData.bvn_verified,
                     nin: vData.nin,
+                    bvn: vData.bvn,
                     gender: vData.gender,
                     nationality: vData.nationality,
-                    upload_id: vData.upload_id
+                    upload_id: vData.upload_id,
+                    provider_reference: vData.provider_reference,
+                    provider_results: vData.provider_results,
+                    provider_document_match: vData.provider_document_match
                 },
 
                 // Profile data

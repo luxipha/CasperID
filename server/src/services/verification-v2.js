@@ -181,7 +181,7 @@ class VerificationServiceV2 {
     async startLayer3Verification(sessionToken, options = {}) {
         try {
             const {
-                verificationMethod = 'document_upload', // 'document_upload' or 'nimc'
+                verificationMethod = 'document_upload', // 'document_upload', 'nimc', or 'bvn'
                 purpose = 'Layer 3 KYC Verification',
                 appId = 'casperid-internal'
             } = options;
@@ -297,6 +297,7 @@ class VerificationServiceV2 {
                 requirements: {
                     identityDocument: verificationMethod === 'document_upload',
                     nimcVerification: verificationMethod === 'nimc',
+                    bvnVerification: verificationMethod === 'bvn',
                     livenessCheck: true
                 },
                 expiresAt: verificationRequest.expires_at,
@@ -305,7 +306,7 @@ class VerificationServiceV2 {
                     payload: qrPayload,
                     mobileUrl: mobileLivenessUrl
                 },
-                nextStep: verificationMethod === 'nimc' ? 'nimc_verification' : 'document_upload'
+                nextStep: verificationMethod === 'document_upload' ? 'document_upload' : 'identity_verification'
             };
 
         } catch (error) {
@@ -851,66 +852,337 @@ class VerificationServiceV2 {
     }
 
     /**
+     * Build the shareable identity field catalogue from profile + latest completed Layer 3 data.
+     */
+    async buildShareableIdentityData(userAccount) {
+        const profile = await UserProfile.findOne({ wallet: userAccount.wallet }).lean();
+        if (!profile) {
+            throw new Error('User profile not found');
+        }
+
+        const latestLayer3 = await VerificationRequestV2.findOne({
+            user_id: userAccount.user_id,
+            verification_tier: 'layer_3',
+            status: 'completed'
+        }).sort({ completed_at: -1, created_at: -1 }).lean();
+
+        const verificationData = latestLayer3?.verification_data || {};
+        const profileName = profile.name || [profile.first_name, profile.last_name].filter(Boolean).join(' ') || null;
+        const verifiedName = verificationData.full_name ||
+            [verificationData.first_name, verificationData.middle_name, verificationData.last_name].filter(Boolean).join(' ') ||
+            null;
+        const identityProvider = verificationData.identity_provider || null;
+        const verificationMethod = verificationData.verification_method || null;
+        const verificationCompletedAt = latestLayer3?.completed_at || null;
+
+        const calculateAge = (value) => {
+            if (!value) return null;
+            const dob = new Date(value);
+            if (Number.isNaN(dob.getTime())) return null;
+            const today = new Date();
+            let age = today.getFullYear() - dob.getFullYear();
+            const monthDelta = today.getMonth() - dob.getMonth();
+            if (monthDelta < 0 || (monthDelta === 0 && today.getDate() < dob.getDate())) {
+                age -= 1;
+            }
+            return age;
+        };
+
+        const resolvedCountry = verificationData.country_context === 'nigeria'
+            ? 'Nigeria'
+            : (verificationData.nationality || profile.country || null);
+
+        const passportNumber = verificationData.document_type === 'passport'
+            ? verificationData.document_number
+            : null;
+
+        const baseVerificationMetadata = {
+            tier: userAccount.tier,
+            human_id: profile.human_id,
+            wallet: userAccount.wallet,
+            timestamp: Date.now(),
+            layer3_verified: !!latestLayer3,
+            latest_layer3_completed_at: verificationCompletedAt
+        };
+
+        const fields = {
+            name: {
+                value: verifiedName || profileName,
+                verified: !!verifiedName,
+                source: verifiedName ? (identityProvider || 'layer3_review') : 'profile',
+                verification_method: verifiedName ? verificationMethod : null,
+                sensitive: false,
+                label: 'Full Name',
+                description: 'Your displayable verified name'
+            },
+            first_name: {
+                value: verificationData.first_name || profile.first_name || null,
+                verified: !!verificationData.first_name,
+                source: verificationData.first_name ? (identityProvider || 'layer3_review') : 'profile',
+                verification_method: verificationData.first_name ? verificationMethod : null,
+                sensitive: false,
+                label: 'First Name',
+                description: 'Your given name'
+            },
+            last_name: {
+                value: verificationData.last_name || profile.last_name || null,
+                verified: !!verificationData.last_name,
+                source: verificationData.last_name ? (identityProvider || 'layer3_review') : 'profile',
+                verification_method: verificationData.last_name ? verificationMethod : null,
+                sensitive: false,
+                label: 'Last Name',
+                description: 'Your family name'
+            },
+            human_id: {
+                value: profile.human_id || userAccount.human_id || null,
+                verified: !!(profile.human_id || userAccount.human_id),
+                source: 'casperid',
+                verification_method: null,
+                sensitive: false,
+                label: 'Human ID',
+                description: 'Your CasperID human-readable identity'
+            },
+            email: {
+                value: userAccount.recovery_email || profile.email || null,
+                verified: !!userAccount.email_verified,
+                source: 'account',
+                verification_method: 'email_verification',
+                sensitive: true,
+                label: 'Email Address',
+                description: 'Your verified account email'
+            },
+            phone_number: {
+                value: verificationData.phone_number || profile.phone_number || null,
+                verified: !!verificationData.phone_number,
+                source: verificationData.phone_number ? (identityProvider || 'layer3_review') : 'profile',
+                verification_method: verificationData.phone_number ? verificationMethod : null,
+                sensitive: true,
+                label: 'Phone Number',
+                description: 'Your contact phone number'
+            },
+            address: {
+                value: verificationData.home_address || profile.address || null,
+                verified: !!verificationData.home_address,
+                source: verificationData.home_address ? (identityProvider || 'layer3_review') : 'profile',
+                verification_method: verificationData.home_address ? verificationMethod : null,
+                sensitive: true,
+                label: 'Home Address',
+                description: 'Your residential address'
+            },
+            city: {
+                value: profile.city || null,
+                verified: false,
+                source: 'profile',
+                verification_method: null,
+                sensitive: false,
+                label: 'City',
+                description: 'Your city from profile settings'
+            },
+            country: {
+                value: resolvedCountry,
+                verified: !!verificationData.nationality || verificationData.country_context === 'nigeria',
+                source: verificationData.nationality || verificationData.country_context ? (identityProvider || 'layer3_review') : 'profile',
+                verification_method: verificationData.nationality || verificationData.country_context ? verificationMethod : null,
+                sensitive: false,
+                label: 'Country',
+                description: 'Country resolved from your verified identity context'
+            },
+            nationality: {
+                value: verificationData.nationality || null,
+                verified: !!verificationData.nationality,
+                source: verificationData.nationality ? (identityProvider || 'layer3_review') : null,
+                verification_method: verificationData.nationality ? verificationMethod : null,
+                sensitive: false,
+                label: 'Nationality',
+                description: 'Nationality from your Layer 3 verification'
+            },
+            date_of_birth: {
+                value: verificationData.date_of_birth || profile.date_of_birth || null,
+                verified: !!verificationData.date_of_birth,
+                source: verificationData.date_of_birth ? (identityProvider || 'layer3_review') : 'profile',
+                verification_method: verificationData.date_of_birth ? verificationMethod : null,
+                sensitive: true,
+                label: 'Date of Birth',
+                description: 'Your date of birth'
+            },
+            age: {
+                value: calculateAge(verificationData.date_of_birth || profile.date_of_birth),
+                verified: !!(verificationData.date_of_birth || profile.date_of_birth),
+                source: verificationData.date_of_birth ? (identityProvider || 'layer3_review') : 'profile',
+                verification_method: verificationData.date_of_birth ? verificationMethod : null,
+                sensitive: false,
+                label: 'Verified Age',
+                description: 'Calculated from your stored date of birth'
+            },
+            wallet: {
+                value: userAccount.wallet || null,
+                verified: !!userAccount.wallet,
+                source: 'casper_wallet',
+                verification_method: null,
+                sensitive: false,
+                label: 'Wallet Address',
+                description: 'Your public Casper wallet'
+            },
+            tier: {
+                value: userAccount.tier || 'layer_0',
+                verified: true,
+                source: 'casperid',
+                verification_method: null,
+                sensitive: false,
+                label: 'Verification Tier',
+                description: 'Your current CasperID verification level'
+            },
+            document_type: {
+                value: verificationData.document_type || null,
+                verified: !!verificationData.document_type && !!latestLayer3,
+                source: verificationData.document_type ? 'layer3_document_review' : null,
+                verification_method: verificationMethod,
+                sensitive: false,
+                label: 'Document Type',
+                description: 'The ID document type used for Layer 3'
+            },
+            document_number: {
+                value: verificationData.document_number || null,
+                verified: !!verificationData.document_number && !!latestLayer3,
+                source: verificationData.document_number ? 'layer3_document_review' : null,
+                verification_method: verificationMethod,
+                sensitive: true,
+                label: 'Document Number',
+                description: 'The identifier printed on your submitted ID'
+            },
+            passport_number: {
+                value: passportNumber,
+                verified: !!passportNumber && !!latestLayer3,
+                source: passportNumber ? 'layer3_document_review' : null,
+                verification_method: verificationMethod,
+                sensitive: true,
+                label: 'Passport Number',
+                description: 'Shared only when your Layer 3 document was a passport'
+            },
+            nin: {
+                value: verificationData.nin || null,
+                verified: verificationData.nin_verified === true,
+                source: verificationData.nin ? (identityProvider || 'layer3_review') : null,
+                verification_method: verificationMethod,
+                sensitive: true,
+                label: 'NIN',
+                description: 'National Identification Number'
+            },
+            bvn: {
+                value: verificationData.bvn || null,
+                verified: verificationData.bvn_verified === true,
+                source: verificationData.bvn ? (identityProvider || 'layer3_review') : null,
+                verification_method: verificationMethod,
+                sensitive: true,
+                label: 'BVN',
+                description: 'Bank Verification Number'
+            },
+            bvn_verified: {
+                value: verificationData.bvn_verified === true ? true : null,
+                verified: verificationData.bvn_verified === true,
+                source: verificationData.bvn_verified === true ? (identityProvider || 'layer3_review') : null,
+                verification_method: verificationMethod,
+                sensitive: false,
+                label: 'BVN Verification Status',
+                description: 'Whether CasperID confirmed your BVN through a provider'
+            },
+            nin_verified: {
+                value: verificationData.nin_verified === true ? true : null,
+                verified: verificationData.nin_verified === true,
+                source: verificationData.nin_verified === true ? (identityProvider || 'layer3_review') : null,
+                verification_method: verificationMethod,
+                sensitive: false,
+                label: 'NIN Verification Status',
+                description: 'Whether CasperID confirmed your NIN through a provider'
+            },
+            identity_provider: {
+                value: identityProvider,
+                verified: !!identityProvider,
+                source: identityProvider ? 'casperid' : null,
+                verification_method: verificationMethod,
+                sensitive: false,
+                label: 'Identity Provider',
+                description: 'Provider used for your upstream identity check'
+            },
+            provider_document_match: {
+                value: verificationData.provider_document_match || null,
+                verified: verificationData.provider_document_match?.overall_match === true,
+                source: verificationData.provider_document_match ? 'casperid_comparison' : null,
+                verification_method: verificationMethod,
+                sensitive: false,
+                label: 'Provider vs Document Match',
+                description: 'Comparison between provider-backed identity data and uploaded document data'
+            }
+        };
+
+        return {
+            profile,
+            latestLayer3,
+            verificationData,
+            verification: baseVerificationMetadata,
+            fields
+        };
+    }
+
+    async getAvailableShareFields(sessionToken) {
+        const sessionData = await this.validateUserSession(sessionToken);
+        if (!sessionData) {
+            throw new Error('Invalid or expired session');
+        }
+
+        const { userAccount } = sessionData;
+        const shareableData = await this.buildShareableIdentityData(userAccount);
+        return Object.entries(shareableData.fields).map(([id, config]) => ({
+            id,
+            label: config.label,
+            description: config.description,
+            value: config.value,
+            available: config.value !== null && config.value !== undefined && config.value !== '',
+            verified: config.verified,
+            source: config.source,
+            verification_method: config.verification_method,
+            sensitive: !!config.sensitive
+        }));
+    }
+
+    /**
      * Generate a Selective Disclosure share package
      */
     async generateSharePackage(sessionToken, requestedFields = []) {
         try {
-            // Validate user session
             const sessionData = await this.validateUserSession(sessionToken);
             if (!sessionData) {
                 throw new Error('Invalid or expired session');
             }
 
             const { userAccount } = sessionData;
-
-            // Fetch user's profile which contains the verified data
-            const { UserProfile } = require('../database/models');
-            const profile = await UserProfile.findOne({ wallet: userAccount.wallet });
-
-            if (!profile) {
-                throw new Error('User profile not found');
-            }
-
-            // Filter data based on requested fields
+            const shareableData = await this.buildShareableIdentityData(userAccount);
             const sharedData = {};
-            const availableFields = [
-                'first_name', 'last_name', 'email', 'phone_number',
-                'city', 'country', 'pronouns', 'headline', 'about', 'age'
-            ];
+            const fieldMetadata = {};
+            const availableFieldIds = Object.keys(shareableData.fields);
+            const filteredRequestedFields = [...new Set((requestedFields || []).filter(field => availableFieldIds.includes(field)))];
 
-            requestedFields.forEach(field => {
-                if (field === 'age' && profile.date_of_birth) {
-                    // Calculate age from date_of_birth
-                    const dob = new Date(profile.date_of_birth);
-                    if (!isNaN(dob.getTime())) {
-                        const today = new Date();
-                        let age = today.getFullYear() - dob.getFullYear();
-                        const m = today.getMonth() - dob.getMonth();
-                        if (m < 0 || (m === 0 && today.getDate() < dob.getDate())) {
-                            age--;
-                        }
-                        sharedData.age = age;
-                    }
+            filteredRequestedFields.forEach((field) => {
+                const fieldConfig = shareableData.fields[field];
+                const hasValue = fieldConfig && fieldConfig.value !== null && fieldConfig.value !== undefined && fieldConfig.value !== '';
+                if (!hasValue) {
                     return;
                 }
-
-                if (availableFields.includes(field) && profile[field]) {
-                    sharedData[field] = profile[field];
-                }
+                sharedData[field] = fieldConfig.value;
+                fieldMetadata[field] = {
+                    verified: fieldConfig.verified,
+                    source: fieldConfig.source,
+                    verification_method: fieldConfig.verification_method,
+                    sensitive: !!fieldConfig.sensitive
+                };
             });
-
-            // If a custom address was requested, we handle that specifically
-            if (requestedFields.includes('address') && profile.address) {
-                sharedData.address = profile.address;
-            }
 
             // Always include basic verification metadata
             sharedData.verification = {
-                tier: userAccount.tier,
-                human_id: profile.human_id,
-                wallet: userAccount.wallet,
-                timestamp: Date.now()
+                ...shareableData.verification,
+                shared_fields: filteredRequestedFields
             };
+            sharedData.field_metadata = fieldMetadata;
 
             // Sign the shared data package
             const payloadHash = crypto.createHash('sha256')
@@ -926,6 +1198,7 @@ class VerificationServiceV2 {
             return {
                 share_id: uuidv4(),
                 data: sharedData,
+                field_metadata: fieldMetadata,
                 signature: signatureData.signature,
                 public_key: signatureData.publicKey,
                 signer: 'CasperID-User',
