@@ -192,7 +192,7 @@ class WebAuthnService {
     }
 
     /**
-     * Generate registration options for recovery-based passkey replacement.
+     * Generate registration options for recovery-based device enrollment.
      * This intentionally bypasses the "user already exists" block because the
      * caller has already proven recovery-email ownership through a short-lived
      * RecoveryRequest.
@@ -417,9 +417,9 @@ class WebAuthnService {
     }
 
     /**
-     * Verify a recovery passkey registration and replace prior login credentials.
-     * For accounts with an existing wallet, keep active_passkey_id unchanged so
-     * wallet derivation remains stable while auth moves to the new passkey.
+     * Verify recovery registration and add a new active passkey for this device.
+     * Existing credentials and sessions stay active so recovery can be used for
+     * multi-device enrollment after email ownership is verified.
      */
     async verifyRecoveryRegistration(userAccount, registrationResponse, deviceInfo = {}, overrideOrigins = null) {
         try {
@@ -448,20 +448,11 @@ class WebAuthnService {
 
             const { credential, attestationObject } = verification.registrationInfo;
             const credentialId = Buffer.from(credential.id).toString('base64url');
-
-            await PasskeyCredential.updateMany(
-                { user_id: userAccount.user_id, revoked: false },
-                {
-                    revoked: true,
-                    revoked_reason: 'Account recovered',
-                    is_primary: false
-                }
-            );
-
-            await DeviceSession.updateMany(
-                { user_id: userAccount.user_id, revoked: false },
-                { revoked: true }
-            );
+            const hasPrimaryPasskey = await PasskeyCredential.exists({
+                user_id: userAccount.user_id,
+                revoked: false,
+                is_primary: true
+            });
 
             const passkeyCredential = new PasskeyCredential({
                 user_id: userAccount.user_id,
@@ -476,15 +467,14 @@ class WebAuthnService {
                 backup_state: verification.registrationInfo.backupState || false,
                 attestation_object: Buffer.from(attestationObject),
                 client_data_json: Buffer.from(registrationResponse.response.clientDataJSON, 'base64url'),
-                is_primary: true,
+                is_primary: !hasPrimaryPasskey,
             });
 
             await passkeyCredential.save();
 
-            if (!userAccount.wallet) {
+            if (!userAccount.active_passkey_id) {
                 userAccount.active_passkey_id = credentialId;
             }
-            userAccount.backup_passkeys = [];
             await userAccount.save();
 
             this.challengeStorage.delete(challengeKey);

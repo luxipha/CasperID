@@ -107,10 +107,10 @@ export const OnboardingStart: React.FC<OnboardingStartProps> = ({
             <span className="material-symbols-outlined text-primary text-sm">verified</span>
             <span className="text-[10px] font-black text-primary uppercase tracking-widest">{isRecovery ? 'Recovery Verified' : 'Email Verified'}</span>
           </div>
-          <h1 className="text-4xl font-black text-text-main tracking-tight">{isRecovery ? 'Recover Your Account' : 'Create Your Passkey'}</h1>
+          <h1 className="text-4xl font-black text-text-main tracking-tight">{isRecovery ? 'Add This Device' : 'Create Your Passkey'}</h1>
           <p className="text-text-sub text-base font-medium">
             {isRecovery
-              ? <>Register a new passkey for <strong>{email}</strong>. Your old sign-in passkeys will be revoked.</>
+              ? <>Create a new passkey for <strong>{email}</strong> on this device. Your existing passkeys stay active.</>
               : <>Use your device's biometric authentication to create a secure passkey for <strong>{email}</strong></>}
           </p>
         </div>
@@ -139,10 +139,10 @@ export const OnboardingStart: React.FC<OnboardingStartProps> = ({
             {/* Info Section */}
             <div className="w-full text-center space-y-6">
               <div className="space-y-2">
-                <h3 className="text-xl font-black text-text-main">{isRecovery ? 'Create a Replacement Passkey' : 'Secure Biometric Authentication'}</h3>
+                <h3 className="text-xl font-black text-text-main">{isRecovery ? 'Create a Device Passkey' : 'Secure Biometric Authentication'}</h3>
                 <p className="text-text-sub text-sm leading-relaxed">
                   {isRecovery
-                    ? 'This new passkey becomes your sign-in method on this device after recovery is completed.'
+                    ? 'This passkey lets this device sign in without removing passkeys from your other devices.'
                     : "Your passkey will use your device's built-in biometric authentication like Face ID, Touch ID, or fingerprint scanner for secure access."}
                 </p>
               </div>
@@ -182,12 +182,12 @@ export const OnboardingStart: React.FC<OnboardingStartProps> = ({
                 {isRegistering || isLoading ? (
                   <>
                     <div className="size-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
-                    {isRecovery ? 'Recovering Account...' : 'Creating Passkey...'}
+                    {isRecovery ? 'Adding Device...' : 'Creating Passkey...'}
                   </>
                 ) : (
                   <>
                     <span className="material-symbols-outlined">add_circle</span>
-                    {isRecovery ? 'Create New Passkey' : 'Create My Passkey'}
+                    {isRecovery ? 'Add Passkey to This Device' : 'Create My Passkey'}
                   </>
                 )}
               </button>

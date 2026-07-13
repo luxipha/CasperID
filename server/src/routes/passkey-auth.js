@@ -305,7 +305,7 @@ router.get('/register/:userId/status', async (req, res) => {
 });
 
 /**
- * Start passkey replacement after email-based recovery.
+ * Start adding a passkey after email-based recovery.
  * POST /api/passkey/recovery/register/begin
  */
 router.post('/recovery/register/begin', passkeyRateLimit, async (req, res) => {
@@ -360,7 +360,7 @@ router.post('/recovery/register/begin', passkeyRateLimit, async (req, res) => {
 });
 
 /**
- * Complete passkey replacement after email-based recovery.
+ * Complete adding a passkey after email-based recovery.
  * POST /api/passkey/recovery/register/finish
  */
 router.post('/recovery/register/finish', passkeyRateLimit, validatePasskeyAuth, async (req, res) => {
@@ -431,7 +431,7 @@ router.post('/recovery/register/finish', passkeyRateLimit, validatePasskeyAuth, 
 
         res.json({
             success: true,
-            message: 'Account recovered successfully',
+            message: 'Device passkey added successfully',
             sessionId: recoveryResult.sessionId,
             sessionToken: recoveryResult.sessionToken,
             expiresAt: recoveryResult.expiresAt,

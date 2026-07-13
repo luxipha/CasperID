@@ -14,6 +14,7 @@ type Tier = 'layer_0' | 'layer_1' | 'layer_2' | 'layer_3';
 type FlowStep =
   | 'validating'
   | 'signin'
+  | 'recover_prompt'
   | 'verify_otp'
   | 'recover_otp'
   | 'recover_passkey'
@@ -54,6 +55,18 @@ function appendAuthorizationResult(redirectUri: string, values: Record<string, s
   const url = new URL(redirectUri);
   Object.entries(values).forEach(([key, value]) => url.searchParams.set(key, value));
   return url.toString();
+}
+
+function isRecoverablePasskeyFailure(error: unknown): boolean {
+  if (!(error instanceof Error)) return false;
+
+  const normalizedMessage = error.message.toLowerCase();
+  return (
+    normalizedMessage.includes('cancelled or not approved') ||
+    normalizedMessage.includes('authentication was cancelled') ||
+    normalizedMessage.includes('notallowederror') ||
+    normalizedMessage.includes('not allowed')
+  );
 }
 
 const tierLabels: Record<Tier, string> = {
@@ -186,6 +199,7 @@ const HostedAuthorize: React.FC = () => {
   const [currentTier, setCurrentTier] = useState<Tier>('layer_0');
   const [authorizationStatus, setAuthorizationStatus] = useState<'complete' | 'provisional'>('complete');
   const [error, setError] = useState('');
+  const [recoveryNotice, setRecoveryNotice] = useState('');
   const [selectedContextId, setSelectedContextId] = useState('master');
   const [l2Handoff, setL2Handoff] = useState<{
     requestId: string;
@@ -422,6 +436,19 @@ const HostedAuthorize: React.FC = () => {
     }
   };
 
+  const startRecovery = useCallback(async (nextEmail: string) => {
+    try {
+      setError('');
+      const response = await apiService.sendRecoveryOTP(nextEmail);
+      setEmail(nextEmail);
+      setVerificationId(response.verificationId);
+      setFlowStep('recover_otp');
+    } catch (recoveryError: any) {
+      setError(recoveryError.message || 'Failed to start account recovery.');
+      setFlowStep('error');
+    }
+  }, []);
+
   const theme = app?.theme;
   const themeStyle = {
     '--casperid-primary': theme?.primaryColor || '#8651e1',
@@ -452,22 +479,45 @@ const HostedAuthorize: React.FC = () => {
               await login(nextEmail);
               setFlowStep('checking_tier');
             } catch (loginError: any) {
+              if (nextEmail && isRecoverablePasskeyFailure(loginError)) {
+                setEmail(nextEmail);
+                setRecoveryNotice('This device does not have a passkey for your CasperID account. Verify your email to add this device.');
+                setFlowStep('recover_prompt');
+                return;
+              }
+
               setError(loginError.message || 'Passkey sign-in failed.');
               setFlowStep('error');
             }
           }}
-          onRecoverAccount={async (nextEmail) => {
-            try {
-              const response = await apiService.sendRecoveryOTP(nextEmail);
-              setEmail(nextEmail);
-              setVerificationId(response.verificationId);
-              setFlowStep('recover_otp');
-            } catch (recoveryError: any) {
-              setError(recoveryError.message || 'Failed to start account recovery.');
-              setFlowStep('error');
-            }
-          }}
+          onRecoverAccount={startRecovery}
         />
+      )}
+
+      {flowStep === 'recover_prompt' && (
+        <div className="min-h-screen bg-[#F8F9FF] flex items-center justify-center p-6">
+          <div className="w-full max-w-md rounded-[32px] border border-amber-100 bg-white p-8 text-center shadow-xl">
+            <div className="mx-auto flex size-14 items-center justify-center rounded-2xl bg-amber-50 text-amber-700">
+              <span className="material-symbols-outlined text-3xl">phonelink_lock</span>
+            </div>
+            <h1 className="mt-5 text-2xl font-black text-text-main">Add a passkey on this device</h1>
+            <p className="mt-3 text-sm font-semibold leading-relaxed text-text-sub">
+              {recoveryNotice || 'This device does not have a passkey for your CasperID account. Verify your email to add this device.'}
+            </p>
+            <button
+              onClick={() => startRecovery(email)}
+              className="mt-6 h-12 w-full rounded-xl bg-primary font-black text-white"
+            >
+              Continue with email recovery
+            </button>
+            <button
+              onClick={() => setFlowStep('signin')}
+              className="mt-3 h-11 w-full rounded-xl font-bold text-text-sub hover:bg-gray-50"
+            >
+              Try existing passkey again
+            </button>
+          </div>
+        </div>
       )}
 
       {flowStep === 'verify_otp' && (
