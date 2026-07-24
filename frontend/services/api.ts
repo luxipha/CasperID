@@ -1897,6 +1897,31 @@ class ApiService {
     }
   }
 
+  async getAdminPaymentSettings(token: string): Promise<{ success: boolean; settings: any }> {
+    try {
+      const response = await this.client.get('/api/admin/payment-settings', {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      return response.data;
+    } catch (error) {
+      throw this.handleError(error);
+    }
+  }
+
+  async updateAdminPaymentSettings(token: string, settings: {
+    verification_fee_ngn?: number;
+    usd_to_ngn_rate?: number;
+  }): Promise<{ success: boolean; settings: any }> {
+    try {
+      const response = await this.client.patch('/api/admin/payment-settings', settings, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      return response.data;
+    } catch (error) {
+      throw this.handleError(error);
+    }
+  }
+
   // --- Admin Quest Management ---
 
   async getAdminQuests(): Promise<{ success: boolean; quests: any[] }> {
@@ -2009,12 +2034,37 @@ class ApiService {
     }
   }
 
+  async createMonnifyCnsCheckout(domainName: string, years: number): Promise<ApiResponse> {
+    try {
+      const response = await this.client.post('/api/payment/monnify/cns/create', {
+        domainName,
+        years
+      });
+      return response.data;
+    } catch (error) {
+      throw this.handleError(error);
+    }
+  }
+
   async createRevenueCatCheckout(domainName: string, years: number): Promise<ApiResponse> {
     try {
       const response = await this.client.post('/api/payment/revenuecat/create', {
         domainName,
         years
       });
+      return response.data;
+    } catch (error) {
+      throw this.handleError(error);
+    }
+  }
+
+  async createMonnifyVerificationCheckout(data: {
+    requestId: string;
+    verificationMethod: 'nimc' | 'bvn';
+    redirectPath?: string;
+  }): Promise<ApiResponse> {
+    try {
+      const response = await this.client.post('/api/payment/monnify/verification/create', data);
       return response.data;
     } catch (error) {
       throw this.handleError(error);

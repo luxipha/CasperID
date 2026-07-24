@@ -1,5 +1,69 @@
 [
   {
+    "version": "4.0.3",
+    "title": "Nigeria Payments, Recovery Stability, and Toast UX Cleanup",
+    "date": "July 24, 2026",
+    "status": "Production Update",
+    "highlight": {
+      "title": "Monnify Rollout for Nigeria",
+      "description": "Added Monnify-powered Nigeria verification and .cid payment flows, plus admin-managed pricing and smoother KYC payment return handling.",
+      "type": "sparkles"
+    },
+    "summary": "This update strengthens both account recovery and Nigeria payment flows while cleaning up several rough edges across profile and review management. Recovery now keeps users on a valid OTP session instead of rejecting fresh codes against stale screens, review owners can actively manage invitations instead of only archiving approved feedback, Monnify now powers Nigeria-specific verification and .cid checkout flows, and frontend browser alerts have been replaced with the reusable toast system for a more consistent product experience.",
+    "categories": [
+      {
+        "id": "v403-recovery",
+        "title": "Recovery Flow Reliability",
+        "items": [
+          "Kept the Recover account button active in onboarding and hosted auth, but now require a valid email before recovery can continue.",
+          "Reused a single active recovery OTP verification session per user instead of leaving multiple pending recovery sessions alive.",
+          "Prevented the common failure mode where a fresh recovery email code looked incorrect because the user was still on an older verification screen.",
+          "Added inline recovery guidance instead of leaving the CTA looking inactive or broken."
+        ]
+      },
+      {
+        "id": "v403-reviews",
+        "title": "Reviews & Public Profile UX",
+        "items": [
+          "Expanded owner-side review management to support resend invite, generate fresh link, revoke request, archive, and status filtering.",
+          "Exposed invite status metadata such as expiry, lockout, and last access to owners managing endorsement requests.",
+          "Added a profile reviews drawer overlay so public profiles can preview reviews without forcing an immediate page navigation.",
+          "Kept the dedicated full reviews page as the canonical long-form destination."
+        ]
+      },
+      {
+        "id": "v403-monnify",
+        "title": "Nigeria Payment Infrastructure",
+        "items": [
+          "Extended the Monnify service to support checkout initialization, transaction status queries, and webhook signature handling.",
+          "Added Monnify payment creation for Nigeria Layer 3 verification and Monnify NGN checkout for .cid registration.",
+          "Restricted Monnify .cid checkout visibility to Nigeria users and presented it as a local Pay in Naira option.",
+          "Enforced completed Monnify payment before NIN or BVN verification can call the provider-backed identity checks.",
+          "Improved the Monnify KYC return path so verification details are restored, payment confirmation is polled briefly, and the flow resumes automatically on return."
+        ]
+      },
+      {
+        "id": "v403-admin",
+        "title": "Admin Payment Controls",
+        "items": [
+          "Added persisted admin payment settings for Nigeria verification fee and USD-to-NGN conversion rate.",
+          "Made Monnify runtime pricing prefer admin-managed values while preserving environment defaults as fallback.",
+          "Added an admin dashboard panel for Monnify payment settings instead of requiring every pricing adjustment to go through deployment secrets."
+        ]
+      },
+      {
+        "id": "v403-ux",
+        "title": "Frontend UX Cleanup",
+        "items": [
+          "Mounted the reusable toast system globally and added shared notification helpers for success, info, warning, and error states.",
+          "Removed browser alert() usage across onboarding, KYC, admin, settings, profile editing, copy actions, integrations, and landing workflows.",
+          "Replaced blocking popup notifications with the shared toast experience for a more consistent product feel.",
+          "Corrected the public profile verification hero so unverified profiles no longer display verified-only copy."
+        ]
+      }
+    ]
+  },
+  {
     "version": "4.0.2",
     "title": "Layer 3 Duplicate Identity Enforcement",
     "date": "June 24, 2026",

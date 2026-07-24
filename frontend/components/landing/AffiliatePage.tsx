@@ -4,6 +4,7 @@ import HeaderMarketing from '../HeaderMarketing';
 import { ArrowLeft, Share2, CheckCircle, Hourglass, Rocket, BarChart3, Headphones, Award, Wand2, QrCode, Loader2 } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import axios from 'axios';
+import { notifyError, notifySuccess } from '../../utils/notify';
 
 const AffiliatePage: React.FC = () => {
     const { user, isAuthenticated } = useAuth();
@@ -26,10 +27,10 @@ const AffiliatePage: React.FC = () => {
                 applicantId: user.human_id || user.wallet || 'Unknown ID',
                 location: 'Not Specified' // Could add a prompt for this if needed
             });
-            alert('Application submitted successfully! Check your email.');
+            notifySuccess('Application submitted successfully! Check your email.');
         } catch (error) {
             console.error('Failed to apply:', error);
-            alert('Failed to submit application. Please try again.');
+            notifyError('Failed to submit application. Please try again.');
         } finally {
             setIsApplying(false);
         }

@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { RevokeModal } from './RevokeModal';
 import { apiService } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
+import { notifyError } from '../utils/notify';
 
 // Helper to map backend actions to UI labels
 const PERMISSION_MAP: Record<string, { label: string; sub: string; icon: string }> = {
@@ -109,7 +110,7 @@ export const DataControls: React.FC = () => {
         setApps(newApps);
       } catch (error) {
         console.error('Failed to update permission:', error);
-        alert('Failed to update permission');
+        notifyError('Failed to update permission');
       }
     }
   };
@@ -133,7 +134,7 @@ export const DataControls: React.FC = () => {
       fetchData(); // Refresh list
     } catch (error) {
       console.error('Failed to revoke app:', error);
-      alert('Failed to revoke access');
+      notifyError('Failed to revoke access');
     }
   };
 

@@ -1,6 +1,7 @@
 "use client";
 
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { notifyError, notifyInfo } from '../utils/notify';
 
 interface CasperContextType {
     isConnected: boolean;
@@ -60,7 +61,7 @@ export function CasperProvider({ children }: { children: ReactNode }) {
             }
 
             if (!walletProvider) {
-                alert('Casper Wallet extension not detected! Please ensure it is installed and enabled.');
+                notifyError('Casper Wallet extension not detected! Please ensure it is installed and enabled.');
                 // Optional: Only redirect if they explicitly confirm they need it
                 if (confirm("Go to download page?")) {
                     window.open('https://www.casperwallet.io/', '_blank');
@@ -82,7 +83,7 @@ export function CasperProvider({ children }: { children: ReactNode }) {
 
         } catch (error: any) {
             console.error('Error connecting to Casper wallet:', error);
-            alert(error.message || 'Failed to connect to Casper wallet');
+            notifyError(error.message || 'Failed to connect to Casper wallet');
         }
     };
 

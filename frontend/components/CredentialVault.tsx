@@ -3,6 +3,7 @@ import { apiService } from '../services/api';
 import { CredentialQRModal } from './CredentialQRModal';
 import { UserProfile } from '../types';
 import { useAuth } from '../contexts/AuthContext';
+import { notifySuccess } from '../utils/notify';
 
 interface Credential {
   id: string;
@@ -206,7 +207,7 @@ export const CredentialVault: React.FC = () => {
   const handleCopyUrl = (identity: Identity) => {
     const url = getIdentityUrl(identity);
     navigator.clipboard.writeText(url);
-    alert('URL copied to clipboard!');
+    notifySuccess('URL copied to clipboard!');
   };
 
   // Loading state
@@ -474,7 +475,7 @@ export const CredentialVault: React.FC = () => {
                           const identifier = userProfile?.cns_name ? `${userProfile.cns_name}.cid` : (userProfile as any)?.wallet;
                           const link = `${window.location.origin}/verify/${vc.id}?as=${identifier}`;
                           navigator.clipboard.writeText(link);
-                          alert('Verification link copied to clipboard!');
+                          notifySuccess('Verification link copied to clipboard!');
                         }}
                         className="size-12 rounded-full bg-white text-primary shadow-xl flex items-center justify-center hover:scale-110 transition-transform"
                         title="Copy Share Link"

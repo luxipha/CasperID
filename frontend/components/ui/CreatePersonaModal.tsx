@@ -4,6 +4,7 @@ import { apiService } from '../../services/api';
 import { useAuth } from '../../contexts/AuthContext';
 import { useAccount, useChainId } from '../../contexts/WalletConnectProvider';
 import { TIER_LEVELS, getPersonaLimit } from '../../constants/tier-levels';
+import { notifyError } from '../../utils/notify';
 
 interface CreatePersonaModalProps {
     isOpen: boolean;
@@ -233,7 +234,7 @@ export const CreatePersonaModal: React.FC<CreatePersonaModalProps> = ({
             }
         } catch (error) {
             console.error('Failed to create persona:', error);
-            alert('Failed to create persona. Please try again.');
+            notifyError('Failed to create persona. Please try again.');
         } finally {
             setIsLoading(false);
         }

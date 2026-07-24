@@ -2006,7 +2006,7 @@ const paymentSchema = new mongoose.Schema({
     },
     provider: {
         type: String,
-        enum: ['revenuecat', 'boomfi', 'direct'],
+        enum: ['revenuecat', 'boomfi', 'monnify', 'direct'],
         required: true
     },
     amount: {
@@ -2027,11 +2027,22 @@ const paymentSchema = new mongoose.Schema({
     },
     txHash: String,
     metadata: {
+        purpose: String,
+        country: String,
         domainName: String,
         years: Number,
         userId: String,
         userWallet: String,
-        userEmail: String
+        userEmail: String,
+        userName: String,
+        verificationMethod: String,
+        verificationRequestId: String,
+        redirectPath: String,
+        monnifyTransactionReference: String,
+        monnifyPaymentMethod: String,
+        monnifyCheckoutUrl: String,
+        usdBasePrice: Number,
+        fxRate: Number
     },
     created_at: { type: Date, default: Date.now },
     completed_at: Date,
@@ -2040,13 +2051,32 @@ const paymentSchema = new mongoose.Schema({
 
 paymentSchema.index({ expires_at: 1 }, { expireAfterSeconds: 0 });
 
+const adminSettingSchema = new mongoose.Schema({
+    key: {
+        type: String,
+        required: true,
+        unique: true,
+        index: true
+    },
+    value: {
+        type: mongoose.Schema.Types.Mixed,
+        required: true
+    },
+    updated_at: {
+        type: Date,
+        default: Date.now
+    }
+});
+
 const Payment = mongoose.model('Payment', paymentSchema);
+const AdminSetting = mongoose.model('AdminSetting', adminSettingSchema);
 const AuthorizationCode = mongoose.model('AuthorizationCode', authorizationCodeSchema);
 const ProfileReview = mongoose.model('ProfileReview', profileReviewSchema);
 
 module.exports = {
     // Payments
     Payment,
+    AdminSetting,
 
     // Verification & Credentials
     VerificationRequest,

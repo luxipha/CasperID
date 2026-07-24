@@ -1,5 +1,6 @@
 import React from 'react';
 import { QRCodeSVG } from 'qrcode.react';
+import { notifySuccess } from '../utils/notify';
 
 interface Credential {
     id: string;
@@ -29,7 +30,7 @@ export const CredentialQRModal: React.FC<CredentialQRModalProps> = ({
 
     const handleCopyLink = () => {
         navigator.clipboard.writeText(verificationUrl);
-        alert('Verification link copied to clipboard!');
+        notifySuccess('Verification link copied to clipboard!');
     };
 
     return (

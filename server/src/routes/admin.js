@@ -1,10 +1,95 @@
 const express = require('express');
 const router = express.Router();
 const { adminAuthWithRateLimit } = require('../middleware/auth');
-const { VerificationRequest, VerificationRequestV2, Credential, UserProfile, UserAccount } = require('../database/models');
+const { VerificationRequest, VerificationRequestV2, Credential, UserProfile, UserAccount, AdminSetting } = require('../database/models');
 const { walletToHuman } = require('../utils/wallet-to-human');
 const { mintCredential } = require('../utils/credential-minter');
 const { eventBus, EVENTS } = require('../services/eventBus');
+const PAYMENT_SETTINGS_KEY = 'payment_settings';
+const DEFAULT_MONNIFY_USD_TO_NGN_RATE = Number(process.env.MONNIFY_USD_TO_NGN_RATE || process.env.NGN_USD_RATE || 1650);
+const DEFAULT_VERIFICATION_FEE_NGN = Number(
+    process.env.MONNIFY_VERIFICATION_FEE_NGN ||
+    process.env.MONNIFY_NIN_VERIFICATION_FEE_NGN ||
+    process.env.MONNIFY_BVN_VERIFICATION_FEE_NGN ||
+    1500
+);
+
+async function readPaymentSettings() {
+    const settingsRecord = await AdminSetting.findOne({ key: PAYMENT_SETTINGS_KEY }).lean();
+    const stored = settingsRecord?.value || {};
+    const verificationFeeNgn = Number(stored.verification_fee_ngn);
+    const usdToNgnRate = Number(stored.usd_to_ngn_rate);
+
+    return {
+        verification_fee_ngn: Number.isFinite(verificationFeeNgn) && verificationFeeNgn > 0
+            ? verificationFeeNgn
+            : DEFAULT_VERIFICATION_FEE_NGN,
+        usd_to_ngn_rate: Number.isFinite(usdToNgnRate) && usdToNgnRate > 0
+            ? usdToNgnRate
+            : DEFAULT_MONNIFY_USD_TO_NGN_RATE,
+        source: settingsRecord ? 'admin' : 'env'
+    };
+}
+
+async function writePaymentSettings(partialSettings = {}) {
+    const currentSettings = await readPaymentSettings();
+    const nextSettings = {
+        verification_fee_ngn: Number(partialSettings.verification_fee_ngn ?? currentSettings.verification_fee_ngn),
+        usd_to_ngn_rate: Number(partialSettings.usd_to_ngn_rate ?? currentSettings.usd_to_ngn_rate)
+    };
+
+    if (!Number.isFinite(nextSettings.verification_fee_ngn) || nextSettings.verification_fee_ngn <= 0) {
+        throw new Error('verification_fee_ngn must be a positive number');
+    }
+    if (!Number.isFinite(nextSettings.usd_to_ngn_rate) || nextSettings.usd_to_ngn_rate <= 0) {
+        throw new Error('usd_to_ngn_rate must be a positive number');
+    }
+
+    await AdminSetting.findOneAndUpdate(
+        { key: PAYMENT_SETTINGS_KEY },
+        {
+            key: PAYMENT_SETTINGS_KEY,
+            value: nextSettings,
+            updated_at: new Date()
+        },
+        {
+            upsert: true,
+            new: true,
+            setDefaultsOnInsert: true
+        }
+    );
+
+    return {
+        ...nextSettings,
+        source: 'admin'
+    };
+}
+
+router.get('/payment-settings', adminAuthWithRateLimit, async (req, res) => {
+    try {
+        const settings = await readPaymentSettings();
+        res.json({
+            success: true,
+            settings
+        });
+    } catch (error) {
+        console.error('[Admin] Failed to read payment settings:', error);
+        res.status(500).json({ success: false, error: 'Failed to load payment settings' });
+    }
+});
+
+router.patch('/payment-settings', adminAuthWithRateLimit, async (req, res) => {
+    try {
+        const settings = await writePaymentSettings(req.body || {});
+        res.json({
+            success: true,
+            settings
+        });
+    } catch (error) {
+        console.error('[Admin] Failed to update payment settings:', error);
+        res.status(400).json({ success: false, error: error.message || 'Failed to update payment settings' });
+    }
+});
 
 /**
  * GET /api/admin/verification-requests

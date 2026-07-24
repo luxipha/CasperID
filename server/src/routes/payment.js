@@ -2,14 +2,107 @@ const express = require('express');
 const router = express.Router();
 const axios = require('axios');
 const crypto = require('crypto');
-const { Payment, UserAccount } = require('../database/models');
+const { Payment, UserAccount, VerificationRequestV2, AdminSetting } = require('../database/models');
 const { eventBus, EVENTS } = require('../services/eventBus');
 const { requireAuth } = require('../middleware/auth');
 const { getPlanByYears, getDefaultPlan, getPlanByRevenueCatProductId } = require('../services/cns-plans');
 const { finalizeCompletedPayment } = require('../services/payment-fulfillment');
+const monnifyService = require('../services/monnify');
 
 function getCheckoutPlan(years) {
     return getPlanByYears(years) || getDefaultPlan();
+}
+
+const MONNIFY_PAYMENT_METHODS = ['CARD', 'ACCOUNT_TRANSFER', 'USSD'];
+const PAYMENT_SETTINGS_KEY = 'payment_settings';
+const DEFAULT_MONNIFY_USD_TO_NGN_RATE = Number(process.env.MONNIFY_USD_TO_NGN_RATE || process.env.NGN_USD_RATE || 1650);
+const DEFAULT_VERIFICATION_FEE_NGN = Number(
+    process.env.MONNIFY_VERIFICATION_FEE_NGN ||
+    process.env.MONNIFY_NIN_VERIFICATION_FEE_NGN ||
+    process.env.MONNIFY_BVN_VERIFICATION_FEE_NGN ||
+    1500
+);
+
+function resolveOrigin(req) {
+    return req.headers.origin || `${req.protocol}://${req.get('host')}`;
+}
+
+async function getPaymentSettings() {
+    const settingsRecord = await AdminSetting.findOne({ key: PAYMENT_SETTINGS_KEY }).lean();
+    const settings = settingsRecord?.value || {};
+
+    const verificationFeeNgn = Number(settings.verification_fee_ngn);
+    const usdToNgnRate = Number(settings.usd_to_ngn_rate);
+
+    return {
+        verificationFeeNgn: Number.isFinite(verificationFeeNgn) && verificationFeeNgn > 0
+            ? verificationFeeNgn
+            : DEFAULT_VERIFICATION_FEE_NGN,
+        usdToNgnRate: Number.isFinite(usdToNgnRate) && usdToNgnRate > 0
+            ? usdToNgnRate
+            : DEFAULT_MONNIFY_USD_TO_NGN_RATE
+    };
+}
+
+function buildVerificationPricing(verificationFeeNgn) {
+    return {
+        nimc: {
+            amount: verificationFeeNgn,
+            currency: 'NGN'
+        },
+        bvn: {
+            amount: verificationFeeNgn,
+            currency: 'NGN'
+        }
+    };
+}
+
+function convertUsdToNgn(usdAmount, fxRate) {
+    if (!Number.isFinite(fxRate) || fxRate <= 0) {
+        throw new Error('Monnify NGN conversion rate is not configured');
+    }
+
+    return {
+        fxRate,
+        ngnAmount: Math.ceil(Number(usdAmount) * fxRate)
+    };
+}
+
+function buildDashboardRedirectUrl(origin, params) {
+    const searchParams = new URLSearchParams(params);
+    return `${origin}/dashboard?${searchParams.toString()}`;
+}
+
+function isVerificationPayment(payment) {
+    return payment?.metadata?.purpose === 'verification';
+}
+
+function isCnsPayment(payment) {
+    return payment?.metadata?.purpose === 'cns' || !!payment?.metadata?.domainName;
+}
+
+async function emitCnsPaymentCompleted(payment, transactionId) {
+    const metadata = payment.metadata || {};
+    const user = await UserAccount.findOne({ user_id: metadata.userId });
+    const walletAddress = user ? user.wallet : metadata.userWallet;
+    const userEmail = user?.recovery_email || user?.email || metadata.userEmail;
+    const years = metadata.years || 1;
+
+    if (!walletAddress) {
+        console.error('[Payment] No wallet found for Monnify CNS payment', payment.reference);
+        return;
+    }
+
+    eventBus.emit(EVENTS.PAYMENT_COMPLETED, {
+        userId: user?.user_id || metadata.userId,
+        email: userEmail,
+        wallet: walletAddress,
+        amount: payment.amount,
+        currency: payment.currency || 'NGN',
+        items: `${metadata.domainName}.cid Domain Registration (${years} year${years > 1 ? 's' : ''})`,
+        transactionId,
+        provider: 'monnify'
+    });
 }
 
 async function completePaymentRecord(payment, transactionId) {
@@ -30,6 +123,31 @@ async function attemptPaymentFulfillment(payment, transactionId) {
             error: error.message
         };
     }
+}
+
+async function handleMonnifyPaymentCompletion(payment, transactionId, providerPayload = {}) {
+    await completePaymentRecord(payment, transactionId);
+
+    payment.metadata = {
+        ...(payment.metadata || {}),
+        monnifyTransactionReference: transactionId || payment.metadata?.monnifyTransactionReference,
+        monnifyPaymentMethod: providerPayload.paymentMethod || payment.metadata?.monnifyPaymentMethod
+    };
+    await payment.save();
+
+    if (isCnsPayment(payment)) {
+        const fulfillment = await attemptPaymentFulfillment(payment, transactionId);
+        await emitCnsPaymentCompleted(payment, transactionId);
+        return {
+            completed: true,
+            fulfillment
+        };
+    }
+
+    return {
+        completed: true,
+        verificationEntitled: isVerificationPayment(payment)
+    };
 }
 
 // POST /api/payment/revenuecat/webhook
@@ -205,6 +323,226 @@ router.post('/revenuecat/create', requireAuth, async (req, res) => {
     }
 });
 
+// POST /api/payment/monnify/cns/create
+// Creates a Monnify NGN checkout for .cid registration.
+router.post('/monnify/cns/create', requireAuth, async (req, res) => {
+    try {
+        const { domainName, years } = req.body;
+        const userId = req.user.userId;
+        const userEmail = req.user.email || '';
+        const userWallet = req.user.wallet;
+
+        if (!domainName) {
+            return res.status(400).json({ error: 'Domain name is required' });
+        }
+
+        const user = await UserAccount.findOne({ user_id: userId });
+        const customerName = [user?.first_name, user?.last_name].filter(Boolean).join(' ') || user?.cns_name || 'CasperID User';
+        const plan = getCheckoutPlan(years);
+        const priceUsd = plan.priceUsd;
+        const paymentSettings = await getPaymentSettings();
+        const { fxRate, ngnAmount } = convertUsdToNgn(priceUsd, paymentSettings.usdToNgnRate);
+        const reference = `mnfy_cns_${crypto.randomBytes(8).toString('hex')}`;
+        const origin = resolveOrigin(req);
+        const redirectUrl = buildDashboardRedirectUrl(origin, {
+            view: 'register-cid',
+            paymentProvider: 'monnify',
+            paymentPurpose: 'cns',
+            paymentReference: reference
+        });
+
+        const transaction = await monnifyService.initializeTransaction({
+            amount: ngnAmount,
+            customerEmail: userEmail,
+            customerName,
+            paymentReference: reference,
+            paymentDescription: `CasperID domain registration for ${domainName}.cid`,
+            currencyCode: 'NGN',
+            redirectUrl,
+            paymentMethods: MONNIFY_PAYMENT_METHODS,
+            metadata: {
+                purpose: 'cns',
+                domainName,
+                years: String(plan.years),
+                userId
+            }
+        });
+
+        await Payment.create({
+            reference,
+            type: 'fiat',
+            provider: 'monnify',
+            amount: ngnAmount,
+            currency: 'NGN',
+            status: 'pending',
+            orderId: transaction.transactionReference || reference,
+            metadata: {
+                purpose: 'cns',
+                country: 'nigeria',
+                domainName,
+                years: plan.years,
+                userId,
+                userWallet,
+                userEmail,
+                userName: customerName,
+                usdBasePrice: priceUsd,
+                fxRate,
+                monnifyTransactionReference: transaction.transactionReference || null,
+                monnifyCheckoutUrl: transaction.checkoutUrl || null
+            }
+        });
+
+        res.json({
+            success: true,
+            checkoutUrl: transaction.checkoutUrl,
+            redirectUrl,
+            orderId: reference,
+            amount: ngnAmount,
+            currency: 'NGN',
+            usdBasePrice: priceUsd,
+            fxRate
+        });
+    } catch (error) {
+        console.error('[Payment] Monnify CNS creation error:', error.response?.data || error.message);
+        res.status(500).json({
+            error: error.message || 'Failed to initialize Monnify checkout'
+        });
+    }
+});
+
+// POST /api/payment/monnify/verification/create
+// Creates a request-scoped Monnify checkout for Nigeria verification.
+router.post('/monnify/verification/create', requireAuth, async (req, res) => {
+    try {
+        const { requestId, verificationMethod, redirectPath } = req.body;
+        const method = String(verificationMethod || '').trim().toLowerCase();
+        const paymentSettings = await getPaymentSettings();
+        const pricing = buildVerificationPricing(paymentSettings.verificationFeeNgn)[method];
+
+        if (!requestId || !pricing) {
+            return res.status(400).json({
+                error: 'requestId and a valid verificationMethod are required'
+            });
+        }
+
+        const verificationRequest = await VerificationRequestV2.findOne({
+            request_id: requestId,
+            user_id: req.user.userId,
+            verification_tier: 'layer_3',
+            status: { $in: ['pending', 'in_progress'] }
+        });
+
+        if (!verificationRequest) {
+            return res.status(404).json({
+                error: 'Active Layer 3 verification request not found'
+            });
+        }
+
+        const existingCompleted = await Payment.findOne({
+            provider: 'monnify',
+            status: 'completed',
+            'metadata.purpose': 'verification',
+            'metadata.verificationRequestId': requestId,
+            'metadata.verificationMethod': method,
+            'metadata.userId': req.user.userId
+        });
+
+        if (existingCompleted) {
+            return res.json({
+                success: true,
+                status: 'completed',
+                orderId: existingCompleted.reference,
+                paymentReference: existingCompleted.reference
+            });
+        }
+
+        const pendingPayment = await Payment.findOne({
+            provider: 'monnify',
+            status: 'pending',
+            'metadata.purpose': 'verification',
+            'metadata.verificationRequestId': requestId,
+            'metadata.verificationMethod': method,
+            'metadata.userId': req.user.userId
+        });
+
+        if (pendingPayment?.metadata?.monnifyCheckoutUrl) {
+            return res.json({
+                success: true,
+                checkoutUrl: pendingPayment.metadata.monnifyCheckoutUrl,
+                redirectUrl: pendingPayment.metadata.redirectPath || null,
+                orderId: pendingPayment.reference,
+                paymentReference: pendingPayment.reference,
+                amount: pendingPayment.amount,
+                currency: pendingPayment.currency
+            });
+        }
+
+        const user = await UserAccount.findOne({ user_id: req.user.userId });
+        const customerName = [user?.first_name, user?.last_name].filter(Boolean).join(' ') || 'CasperID User';
+        const reference = `mnfy_ver_${crypto.randomBytes(8).toString('hex')}`;
+        const origin = resolveOrigin(req);
+        const targetRedirectPath = redirectPath || `/dashboard?view=kyc&paymentProvider=monnify&paymentPurpose=verification&paymentReference=${reference}&requestId=${encodeURIComponent(requestId)}&method=${encodeURIComponent(method)}`;
+        const redirectUrl = targetRedirectPath.startsWith('http')
+            ? targetRedirectPath
+            : `${origin}${targetRedirectPath.startsWith('/') ? '' : '/'}${targetRedirectPath}`;
+
+        const transaction = await monnifyService.initializeTransaction({
+            amount: pricing.amount,
+            customerEmail: req.user.email || user?.recovery_email || user?.email,
+            customerName,
+            paymentReference: reference,
+            paymentDescription: `CasperID ${method.toUpperCase()} verification`,
+            currencyCode: pricing.currency,
+            redirectUrl,
+            paymentMethods: MONNIFY_PAYMENT_METHODS,
+            metadata: {
+                purpose: 'verification',
+                requestId,
+                verificationMethod: method,
+                userId: req.user.userId
+            }
+        });
+
+        await Payment.create({
+            reference,
+            type: 'fiat',
+            provider: 'monnify',
+            amount: pricing.amount,
+            currency: pricing.currency,
+            status: 'pending',
+            orderId: transaction.transactionReference || reference,
+            metadata: {
+                purpose: 'verification',
+                country: 'nigeria',
+                userId: req.user.userId,
+                userWallet: req.user.wallet,
+                userEmail: req.user.email || user?.recovery_email || user?.email,
+                userName: customerName,
+                verificationMethod: method,
+                verificationRequestId: requestId,
+                redirectPath: targetRedirectPath,
+                monnifyTransactionReference: transaction.transactionReference || null,
+                monnifyCheckoutUrl: transaction.checkoutUrl || null
+            }
+        });
+
+        res.json({
+            success: true,
+            checkoutUrl: transaction.checkoutUrl,
+            redirectUrl,
+            orderId: reference,
+            paymentReference: reference,
+            amount: pricing.amount,
+            currency: pricing.currency
+        });
+    } catch (error) {
+        console.error('[Payment] Monnify verification creation error:', error.response?.data || error.message);
+        res.status(500).json({
+            error: error.message || 'Failed to initialize Monnify verification checkout'
+        });
+    }
+});
+
 // POST /api/payment/boomfi/create
 // Creates a Boomfi payment session via their Merchant API
 router.post('/boomfi/create', requireAuth, async (req, res) => {
@@ -326,6 +664,55 @@ router.post('/boomfi/create', requireAuth, async (req, res) => {
             'Failed to initialize crypto checkout session';
 
         res.status(500).json({ error: errorMessage });
+    }
+});
+
+// POST /api/payment/monnify/webhook
+// Monnify signs production webhooks with monnify-signature.
+router.post('/monnify/webhook', express.raw({ type: 'application/json' }), async (req, res) => {
+    try {
+        const rawBodyBuffer = req.body;
+        const rawBody = rawBodyBuffer.toString();
+        const signature = req.headers['monnify-signature'];
+
+        if (!monnifyService.verifyWebhookSignature(rawBody, signature)) {
+            console.error('[Payment] Invalid Monnify webhook signature');
+            return res.status(401).json({ error: 'Invalid webhook signature' });
+        }
+
+        const payload = JSON.parse(rawBody);
+        const eventType = String(payload.eventType || '').toUpperCase();
+        const eventData = payload.eventData || {};
+        const paymentReference = eventData.paymentReference;
+        const transactionReference = eventData.transactionReference;
+        const paymentStatus = eventData.paymentStatus;
+
+        if (eventType !== 'SUCCESSFUL_TRANSACTION' || !paymentReference) {
+            return res.json({ received: true });
+        }
+
+        if (!monnifyService.isSuccessfulPaymentStatus(paymentStatus)) {
+            return res.json({ received: true });
+        }
+
+        const payment = await Payment.findOne({ reference: paymentReference });
+        if (!payment) {
+            console.warn(`[Payment] Monnify webhook: no payment found for ${paymentReference}`);
+            return res.json({ received: true });
+        }
+
+        if (payment.status === 'completed') {
+            return res.json({ received: true, status: 'already_completed' });
+        }
+
+        await handleMonnifyPaymentCompletion(payment, transactionReference || paymentReference, {
+            paymentMethod: eventData.paymentMethod
+        });
+
+        res.json({ received: true });
+    } catch (error) {
+        console.error('[Payment] Monnify webhook error:', error);
+        res.status(500).json({ error: 'Internal server error processing Monnify webhook' });
     }
 });
 
@@ -457,22 +844,64 @@ router.get('/status/:reference', async (req, res) => {
 
         // Payment is still pending — frontend should keep polling
         if (payment.status === 'pending' || payment.status === 'confirming') {
-            return res.json({ success: true, status: payment.status });
+            if (payment.provider === 'monnify') {
+                try {
+                    const providerPayment = await monnifyService.queryTransactionByReference(reference);
+                    if (monnifyService.isSuccessfulPaymentStatus(providerPayment.paymentStatus)) {
+                        await handleMonnifyPaymentCompletion(payment, providerPayment.transactionReference || payment.orderId || reference, {
+                            paymentMethod: providerPayment.paymentMethod
+                        });
+                    } else if (monnifyService.isFailedPaymentStatus(providerPayment.paymentStatus)) {
+                        payment.status = providerPayment.paymentStatus === 'EXPIRED' ? 'expired' : 'failed';
+                        await payment.save();
+                    }
+                } catch (error) {
+                    console.warn(`[Payment] Monnify status query failed for ${reference}:`, error.message);
+                }
+            }
+
+            if (payment.status === 'pending' || payment.status === 'confirming') {
+                return res.json({
+                    success: true,
+                    status: payment.status,
+                    purpose: payment.metadata?.purpose || null,
+                    provider: payment.provider
+                });
+            }
         }
 
         // Payment failed
         if (payment.status === 'failed' || payment.status === 'expired') {
-            return res.json({ success: true, status: payment.status });
+            return res.json({
+                success: true,
+                status: payment.status,
+                purpose: payment.metadata?.purpose || null,
+                provider: payment.provider
+            });
         }
 
         // Payment completed — return minted state, retrying fulfillment only if needed
         if (payment.status === 'completed') {
+            if (isVerificationPayment(payment)) {
+                return res.json({
+                    success: true,
+                    status: 'completed',
+                    provider: payment.provider,
+                    purpose: 'verification',
+                    entitled: true,
+                    verificationMethod: payment.metadata?.verificationMethod || null,
+                    verificationRequestId: payment.metadata?.verificationRequestId || null
+                });
+            }
+
             const fulfillment = await attemptPaymentFulfillment(payment, payment.orderId || payment.reference);
 
             if (fulfillment.minted) {
                 return res.json({
                     success: true,
                     status: 'completed',
+                    provider: payment.provider,
+                    purpose: payment.metadata?.purpose || 'cns',
                     minted: true,
                     name: fulfillment.name,
                     txHash: fulfillment.txHash,
@@ -483,12 +912,19 @@ router.get('/status/:reference', async (req, res) => {
             return res.json({
                 success: true,
                 status: 'completed',
+                provider: payment.provider,
+                purpose: payment.metadata?.purpose || 'cns',
                 minted: false,
                 error: fulfillment.error || 'Payment confirmed but domain registration is still pending'
             });
         }
 
-        return res.json({ success: true, status: payment.status });
+        return res.json({
+            success: true,
+            status: payment.status,
+            purpose: payment.metadata?.purpose || null,
+            provider: payment.provider
+        });
     } catch (error) {
         console.error('[Payment] Status Error:', error);
         res.status(500).json({ success: false, error: 'Failed to check payment status' });

@@ -6,6 +6,7 @@ import { Card } from '../../components/ui/card';
 import { Input } from '../../components/ui/input';
 import { Badge } from '../../components/ui/badge';
 import { Loader2, Plus, Edit2, Trash2, Check, X, Bolt } from 'lucide-react';
+import { notifyError, notifySuccess } from '../../utils/notify';
 
 interface Quest {
     _id: string;
@@ -62,7 +63,7 @@ export const QuestManager: React.FC = () => {
             fetchQuests();
         } catch (err) {
             console.error('Failed to save quest', err);
-            alert('Error saving quest. Ensure Quest ID is unique.');
+            notifyError('Error saving quest. Ensure Quest ID is unique.');
         }
     };
 
@@ -71,8 +72,10 @@ export const QuestManager: React.FC = () => {
         try {
             await apiService.deleteQuest(id);
             fetchQuests();
+            notifySuccess('Quest deleted successfully.');
         } catch (err) {
             console.error('Failed to delete quest', err);
+            notifyError('Failed to delete quest.');
         }
     };
 

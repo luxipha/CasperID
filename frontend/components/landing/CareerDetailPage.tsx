@@ -9,6 +9,7 @@ import { useDocumentTitle } from '../../hooks/useDocumentTitle';
 import { apiService } from '../../services/api';
 import { calculateGlobalTrustScore, APPLY_THRESHOLD, getScoreGradient, TrustScoreBreakdown } from '../../utils/trustScore';
 import ProfileCompletionModal from './ProfileCompletionModal';
+import { notifyError } from '../../utils/notify';
 
 interface CareerDetailPageProps {
     onBack: () => void;
@@ -111,7 +112,7 @@ const CareerDetailPage: React.FC<CareerDetailPageProps> = ({ onBack, onApplySucc
             onApplySuccess(job?.title || 'Position');
         } catch (error) {
             console.error('Failed to apply:', error);
-            alert('Failed to submit application. Please try again.');
+            notifyError('Failed to submit application. Please try again.');
         } finally {
             setIsApplying(false);
         }
@@ -346,4 +347,3 @@ const CareerDetailPage: React.FC<CareerDetailPageProps> = ({ onBack, onApplySucc
 };
 
 export default CareerDetailPage;
-

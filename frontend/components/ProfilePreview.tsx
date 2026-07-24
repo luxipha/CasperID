@@ -1,6 +1,7 @@
 import React from 'react';
 import { UserProfile, Experience, Education, Skill, Project, Certification, Award, Volunteer, Language as LanguageType } from '../types';
 import ProfileDisplay from './ProfileDisplay.tsx';
+import { notifyError, notifySuccess } from '../utils/notify';
 
 interface ProfilePreviewProps {
   onBack: () => void;
@@ -35,7 +36,7 @@ export const ProfilePreview: React.FC<ProfilePreviewProps> = ({ onBack, data }) 
 
     // Copy to clipboard
     navigator.clipboard.writeText(publicUrl).then(() => {
-      alert('Profile link copied to clipboard!');
+      notifySuccess('Profile link copied to clipboard!');
     }).catch(err => {
       console.error('Failed to copy profile link:', err);
     });
@@ -347,7 +348,7 @@ export const ProfilePreview: React.FC<ProfilePreviewProps> = ({ onBack, data }) 
 
     const printWindow = window.open('', '_blank', 'width=800,height=900');
     if (!printWindow) {
-      alert('Unable to open print window. Please check your browser popup settings.');
+      notifyError('Unable to open print window. Please check your browser popup settings.');
       return;
     }
 
@@ -407,4 +408,3 @@ export const ProfilePreview: React.FC<ProfilePreviewProps> = ({ onBack, data }) 
     </div>
   );
 };
-

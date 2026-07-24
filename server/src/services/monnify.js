@@ -15,6 +15,8 @@ const MONNIFY_BASE_URL = resolveBaseUrl();
 const MONNIFY_AUTH_PATH = process.env.MONNIFY_AUTH_PATH || '/api/v1/auth/login';
 const MONNIFY_NIN_VERIFICATION_PATH = process.env.MONNIFY_NIN_VERIFICATION_PATH || '/api/v1/verification/nin';
 const MONNIFY_BVN_VERIFICATION_PATH = process.env.MONNIFY_BVN_VERIFICATION_PATH || '/api/v1/verification/bvn-details-match';
+const MONNIFY_INIT_TRANSACTION_PATH = process.env.MONNIFY_INIT_TRANSACTION_PATH || '/api/v1/merchant/transactions/init-transaction';
+const MONNIFY_QUERY_TRANSACTION_PATH = process.env.MONNIFY_QUERY_TRANSACTION_PATH || '/api/v2/merchant/transactions/query';
 
 function buildUrl(baseUrl, path) {
     if (!path) return baseUrl;
@@ -125,16 +127,26 @@ class MonnifyService {
     constructor() {
         this.apiKey = process.env.MONNIFY_API_KEY || '';
         this.secretKey = process.env.MONNIFY_SECRET_KEY || '';
+        this.contractCode = process.env.MONNIFY_CONTRACT_CODE || '';
         this.environment = (process.env.MONNIFY_ENVIRONMENT || 'live').trim().toLowerCase();
         this.baseUrl = MONNIFY_BASE_URL;
         this.authUrl = buildUrl(this.baseUrl, MONNIFY_AUTH_PATH);
         this.ninVerificationUrl = buildUrl(this.baseUrl, MONNIFY_NIN_VERIFICATION_PATH);
         this.bvnVerificationUrl = buildUrl(this.baseUrl, MONNIFY_BVN_VERIFICATION_PATH);
+        this.initTransactionUrl = buildUrl(this.baseUrl, MONNIFY_INIT_TRANSACTION_PATH);
+        this.queryTransactionUrl = buildUrl(this.baseUrl, MONNIFY_QUERY_TRANSACTION_PATH);
     }
 
     ensureConfigured() {
         if (!this.apiKey || !this.secretKey) {
             throw new Error('Monnify API keys are not configured');
+        }
+    }
+
+    ensurePaymentConfigured() {
+        this.ensureConfigured();
+        if (!this.contractCode) {
+            throw new Error('Monnify contract code is not configured');
         }
     }
 
@@ -178,6 +190,123 @@ class MonnifyService {
         }
 
         return accessToken;
+    }
+
+    isSandboxEnvironment() {
+        return this.environment === 'sandbox';
+    }
+
+    isSuccessfulPaymentStatus(status = '') {
+        return ['PAID', 'SUCCESS', 'COMPLETED'].includes(String(status || '').trim().toUpperCase());
+    }
+
+    isFailedPaymentStatus(status = '') {
+        return ['FAILED', 'CANCELLED', 'EXPIRED', 'ABANDONED'].includes(String(status || '').trim().toUpperCase());
+    }
+
+    verifyWebhookSignature(rawBody, signature) {
+        if (this.isSandboxEnvironment()) {
+            return true;
+        }
+
+        if (!signature) {
+            return false;
+        }
+
+        const crypto = require('crypto');
+        const expected = crypto
+            .createHmac('sha512', this.secretKey)
+            .update(rawBody)
+            .digest('hex');
+
+        return expected === signature;
+    }
+
+    async initializeTransaction({
+        amount,
+        customerEmail,
+        customerName,
+        paymentReference,
+        paymentDescription,
+        currencyCode = 'NGN',
+        redirectUrl,
+        paymentMethods,
+        metadata
+    }) {
+        this.ensurePaymentConfigured();
+
+        if (!amount || Number(amount) <= 0) {
+            throw new Error('Monnify transaction amount must be greater than zero');
+        }
+        if (!customerEmail) {
+            throw new Error('Customer email is required for Monnify checkout');
+        }
+        if (!paymentReference) {
+            throw new Error('Payment reference is required for Monnify checkout');
+        }
+        if (!paymentDescription) {
+            throw new Error('Payment description is required for Monnify checkout');
+        }
+        if (!redirectUrl) {
+            throw new Error('Redirect URL is required for Monnify checkout');
+        }
+
+        const accessToken = await this.authenticate();
+        const payload = {
+            amount: Number(amount),
+            customerEmail,
+            paymentReference,
+            paymentDescription,
+            currencyCode,
+            contractCode: this.contractCode,
+            redirectUrl
+        };
+
+        if (customerName) {
+            payload.customerName = customerName;
+        }
+        if (Array.isArray(paymentMethods) && paymentMethods.length > 0) {
+            payload.paymentMethods = paymentMethods;
+        }
+        if (metadata && typeof metadata === 'object') {
+            payload.metadata = metadata;
+        }
+
+        const response = await axios.post(
+            this.initTransactionUrl,
+            payload,
+            {
+                headers: {
+                    Authorization: `Bearer ${accessToken}`,
+                    'Content-Type': 'application/json'
+                },
+                timeout: 30000
+            }
+        );
+
+        return response.data?.responseBody || response.data?.data || response.data;
+    }
+
+    async queryTransactionByReference(paymentReference) {
+        this.ensurePaymentConfigured();
+
+        if (!paymentReference) {
+            throw new Error('Payment reference is required to query Monnify transaction');
+        }
+
+        const accessToken = await this.authenticate();
+        const response = await axios.get(
+            this.queryTransactionUrl,
+            {
+                params: { paymentReference },
+                headers: {
+                    Authorization: `Bearer ${accessToken}`
+                },
+                timeout: 30000
+            }
+        );
+
+        return response.data?.responseBody || response.data?.data || response.data;
     }
 
     async verifyNIN(nin) {

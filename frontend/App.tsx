@@ -55,8 +55,10 @@ import { QRScannerModal } from './components/QRScannerModal';
 import PublicReviewsPage from './components/reviews/PublicReviewsPage';
 import ReviewInvitationPage from './components/reviews/ReviewInvitationPage';
 import OTPPairingNotification from './components/OTPPairingNotification';
+import { Toaster } from './components/ui/toaster';
 import { useAuth } from './contexts/AuthContext';
 import { useDocumentTitle } from './hooks/useDocumentTitle';
+import { notifyError, notifySuccess } from './utils/notify';
 // ApiTest removed - was for debugging
 // import { ApiTest } from './components/ApiTest';
 import LandingPage from './components/landing/LandingPage';
@@ -479,7 +481,7 @@ const App: React.FC = () => {
       }
     } catch (error: any) {
       console.error('Recovery init failed:', error);
-      alert(error.message || 'Failed to start account recovery.');
+      notifyError(error.message || 'Failed to start account recovery.');
     }
   }, []);
 
@@ -513,7 +515,7 @@ const App: React.FC = () => {
         <MobileLinkingPage
           onComplete={() => {
             // Show success message and optionally redirect
-            alert('Account created successfully! You can now return to your desktop.');
+            notifySuccess('Account created successfully! You can now return to your desktop.');
           }}
           onCancel={() => {
             window.history.back();
@@ -1031,6 +1033,7 @@ const App: React.FC = () => {
 
       {/* OTP Pairing Notification for Extension */}
       <OTPPairingNotification isAuthenticated={isAuthenticated} />
+      <Toaster />
     </>
   );
 };

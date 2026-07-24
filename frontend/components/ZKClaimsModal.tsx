@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
 import { apiService } from '../services/api';
 import { IdentityToolModal } from './ui/IdentityToolModal';
+import { notifyError } from '../utils/notify';
 
 interface ZKClaimsModalProps {
     isOpen: boolean;
@@ -92,7 +93,7 @@ export const ZKClaimsModal: React.FC<ZKClaimsModalProps> = ({
             }
         } catch (error) {
             console.error('Generation failed:', error);
-            alert('Failed to generate ZK proof');
+            notifyError('Failed to generate ZK proof');
         } finally {
             setGenerating(false);
         }

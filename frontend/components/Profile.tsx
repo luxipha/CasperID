@@ -25,6 +25,7 @@ import { LanguageForm } from './forms/LanguageForm';
 import { calculateATSScore } from '../utils/atsAlgorithm';
 import { ATSScoreCard } from './ATSScoreCard';
 import { ProfileReviewsManager } from './reviews/ProfileReviewsManager';
+import { notifyError, notifyInfo, notifySuccess, notifyWarning } from '../utils/notify';
 
 // Reverted to self-contained state for compatibility
 // interface ProfileProps {
@@ -109,7 +110,7 @@ export const Profile: React.FC<ProfileProps> = ({ initialTab = 'Profile' }) => {
       }
     } catch (e) {
       console.error("Delete error:", e);
-      alert("Failed to delete item: " + e.message);
+      notifyError("Failed to delete item: " + e.message);
     }
   };
 
@@ -177,7 +178,7 @@ export const Profile: React.FC<ProfileProps> = ({ initialTab = 'Profile' }) => {
         // Force refresh to ensure UI updates
         await refreshAllData();
       }
-    } catch (e) { alert("Failed to save experience"); }
+    } catch (e) { notifyError("Failed to save experience"); }
   };
 
   const handleSaveEducation = async (data: Education) => {
@@ -196,7 +197,7 @@ export const Profile: React.FC<ProfileProps> = ({ initialTab = 'Profile' }) => {
         // Force refresh to ensure UI updates
         await refreshAllData();
       }
-    } catch (e) { alert("Failed to save education"); }
+    } catch (e) { notifyError("Failed to save education"); }
   };
 
   const handleSaveSkill = async (data: Skill) => {
@@ -224,7 +225,7 @@ export const Profile: React.FC<ProfileProps> = ({ initialTab = 'Profile' }) => {
       }
     } catch (e) {
       console.error('❌ Error saving skill:', e);
-      alert("Failed to save skill: " + e.message);
+      notifyError("Failed to save skill: " + e.message);
     }
   };
 
@@ -244,7 +245,7 @@ export const Profile: React.FC<ProfileProps> = ({ initialTab = 'Profile' }) => {
         // Force refresh to ensure UI updates
         await refreshAllData();
       }
-    } catch (e) { alert("Failed to save certification"); }
+    } catch (e) { notifyError("Failed to save certification"); }
   };
 
   const handleSaveProject = async (data: Project) => {
@@ -263,7 +264,7 @@ export const Profile: React.FC<ProfileProps> = ({ initialTab = 'Profile' }) => {
         // Force refresh to ensure UI updates
         await refreshAllData();
       }
-    } catch (e) { alert("Failed to save project"); }
+    } catch (e) { notifyError("Failed to save project"); }
   };
 
   const handleSaveAward = async (data: Award) => {
@@ -282,7 +283,7 @@ export const Profile: React.FC<ProfileProps> = ({ initialTab = 'Profile' }) => {
         // Force refresh to ensure UI updates
         await refreshAllData();
       }
-    } catch (e) { alert("Failed to save award"); }
+    } catch (e) { notifyError("Failed to save award"); }
   };
 
   const handleSaveVolunteer = async (data: Volunteer) => {
@@ -301,7 +302,7 @@ export const Profile: React.FC<ProfileProps> = ({ initialTab = 'Profile' }) => {
         // Force refresh to ensure UI updates
         await refreshAllData();
       }
-    } catch (e) { alert("Failed to save volunteer work"); }
+    } catch (e) { notifyError("Failed to save volunteer work"); }
   };
 
   const handleSaveLanguage = async (data: Language) => {
@@ -320,7 +321,7 @@ export const Profile: React.FC<ProfileProps> = ({ initialTab = 'Profile' }) => {
         // Force refresh to ensure UI updates
         await refreshAllData();
       }
-    } catch (e) { alert("Failed to save language"); }
+    } catch (e) { notifyError("Failed to save language"); }
   };
 
   // Function to refresh all data sections
@@ -422,7 +423,7 @@ export const Profile: React.FC<ProfileProps> = ({ initialTab = 'Profile' }) => {
     if (!identifier) return;
     const publicUrl = `${window.location.protocol}//${window.location.host}/${identifier}`;
     navigator.clipboard.writeText(publicUrl).then(() => {
-      alert('Profile link copied to clipboard!');
+      notifySuccess('Profile link copied to clipboard!');
     }).catch(err => {
       console.error('Failed to copy profile link:', err);
     });
@@ -499,7 +500,7 @@ export const Profile: React.FC<ProfileProps> = ({ initialTab = 'Profile' }) => {
       const res = await apiService.uploadProfilePicture(file);
       if (res && res.imageUrl) {
         setProfile(prev => prev ? { ...prev, profile_image_url: res.imageUrl } : null);
-        alert("Profile picture updated!");
+        notifySuccess("Profile picture updated!");
 
         // Force refresh to update header profile image too
         // Note: Header likely uses a separate fetch or context. For now updates active profile.
@@ -507,7 +508,7 @@ export const Profile: React.FC<ProfileProps> = ({ initialTab = 'Profile' }) => {
       }
     } catch (error) {
       console.error("Avatar upload failed:", error);
-      alert("Failed to upload profile picture. Please try again.");
+      notifyError("Failed to upload profile picture. Please try again.");
     } finally {
       setUploadingAvatar(false);
       if (avatarInputRef.current) avatarInputRef.current.value = '';
@@ -534,11 +535,11 @@ export const Profile: React.FC<ProfileProps> = ({ initialTab = 'Profile' }) => {
       const res = await apiService.updateUserProfile(updatedProfile);
       if (res && res.wallet) {
         setLastSaved(new Date());
-        alert("Profile saved successfully!"); // Replace with toast later
+        notifySuccess("Profile saved successfully!");
       }
     } catch (error) {
       console.error("Error saving profile:", error);
-      alert("Failed to save profile.");
+      notifyError("Failed to save profile.");
     }
   };
 
@@ -616,13 +617,13 @@ export const Profile: React.FC<ProfileProps> = ({ initialTab = 'Profile' }) => {
 
     if (!profile) {
       console.error("❌ Profile state is null");
-      alert("Profile not loaded yet. Please wait or refresh.");
+      notifyWarning("Profile not loaded yet. Please wait or refresh.");
       return;
     }
 
     if (!profile.wallet) {
       console.error("❌ Profile wallet is missing:", profile);
-      alert("Error: Your profile has no wallet address. Please refresh.");
+      notifyError("Your profile has no wallet address. Please refresh.");
       return;
     }
 
@@ -808,11 +809,11 @@ export const Profile: React.FC<ProfileProps> = ({ initialTab = 'Profile' }) => {
       // Refresh all data to show the newly imported resume data
       await refreshAllData();
 
-      alert('✅ Resume parsed and saved! All data has been added to your profile. You can now view it in the respective tabs.');
+      notifySuccess('Resume parsed and saved. All data has been added to your profile. You can now view it in the respective tabs.');
 
     } catch (error: any) {
       console.error("Error parsing resume:", error);
-      alert('Failed to parse resume: ' + (error.message || 'Unknown error'));
+      notifyError('Failed to parse resume: ' + (error.message || 'Unknown error'));
     } finally {
       setParsingResume(false);
       if (resumeInputRef.current) resumeInputRef.current.value = '';
@@ -1776,7 +1777,7 @@ export const Profile: React.FC<ProfileProps> = ({ initialTab = 'Profile' }) => {
                         }
                       } catch (e) {
                         console.error(e);
-                        alert("Failed to save banner");
+                        notifyError("Failed to save banner");
                       }
                     }}
                     className="bg-white/90 backdrop-blur-sm text-text-main text-xs font-bold px-3 py-1.5 rounded-full shadow-sm hover:bg-white flex items-center gap-1"
@@ -2030,7 +2031,7 @@ export const Profile: React.FC<ProfileProps> = ({ initialTab = 'Profile' }) => {
               {/* ATS Score Card (Global Sidebar) */}
               <ATSScoreCard
                 data={atsScoreData}
-                onClickReport={() => alert("Full Report coming soon!")}
+                onClickReport={() => notifyInfo("Full Report coming soon!")}
               />
             </div>
           </aside>

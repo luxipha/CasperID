@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { apiService } from '../services/api';
+import { notifyError, notifySuccess } from '../utils/notify';
 
 interface CidName {
     name: string;
@@ -158,14 +159,14 @@ const NameManagement: React.FC<NameManagementProps> = ({ onRegisterCID }) => {
         try {
             const data = await apiService.saveCnsRoute(selectedNameRoute, routingConfig);
             if (data.success) {
-                alert('✅ Routing preference saved!');
+                notifySuccess('Routing preference saved!');
                 setSelectedNameRoute(null);
                 fetchRoutes();
             } else {
-                alert(`❌ ${data.error}`);
+                notifyError(data.error);
             }
         } catch (err) {
-            alert('❌ Failed to save routing preference');
+            notifyError('Failed to save routing preference');
         }
     };
 
@@ -186,14 +187,14 @@ const NameManagement: React.FC<NameManagementProps> = ({ onRegisterCID }) => {
         try {
             const data = await apiService.createSubName(subNameParent, subNamePrefix.toLowerCase(), subNameContext);
             if (data.success) {
-                alert(`✅ Created ${data.subName}`);
+                notifySuccess(`Created ${data.subName}`);
                 setSubNamePrefix('');
                 fetchMyNames();
             } else {
-                alert(`❌ ${data.error}`);
+                notifyError(data.error);
             }
         } catch (err) {
-            alert('❌ Failed to create sub-name');
+            notifyError('Failed to create sub-name');
         } finally {
             setCreatingSubName(false);
         }

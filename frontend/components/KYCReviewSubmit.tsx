@@ -1,5 +1,6 @@
 
 import React, { useState } from 'react';
+import { notifyError } from '../utils/notify';
 
 interface DocumentData {
   document_type: string;
@@ -69,7 +70,7 @@ export const KYCReviewSubmit: React.FC<KYCReviewSubmitProps> = ({
       onSubmit();
     } catch (error) {
       console.error('[Layer3] Submit failed:', error);
-      alert(error instanceof Error ? error.message : 'Failed to submit verification. Please try again.');
+      notifyError(error instanceof Error ? error.message : 'Failed to submit verification. Please try again.');
       setIsSubmitting(false);
     }
   };

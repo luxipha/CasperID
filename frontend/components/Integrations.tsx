@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { RevokeModal } from './RevokeModal';
 import { apiService } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
+import { notifyError } from '../utils/notify';
 
 // Helper to map backend actions to UI labels (Same as DataControls)
 const PERMISSION_MAP: Record<string, { label: string; sub: string; icon: string; color: string; bg?: string; text?: string; border?: string }> = {
@@ -100,7 +101,7 @@ export const Integrations: React.FC = () => {
       fetchData(); // Refresh list
     } catch (error) {
       console.error('Failed to revoke:', error);
-      alert('Failed to revoke access');
+      notifyError('Failed to revoke access');
     }
   };
 

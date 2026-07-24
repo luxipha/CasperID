@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { apiService } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
+import { notifyError, notifySuccess } from '../utils/notify';
 
 interface DIDManagementProps {
   onCreateNew: () => void;
@@ -58,13 +59,13 @@ export const DIDManagement: React.FC<DIDManagementProps> = ({ onCreateNew, onMan
     try {
       const result = await apiService.mintDID();
       if ((result as any).success) {
-        alert(`DID minted successfully: ${(result as any).did}`);
+        notifySuccess(`DID minted successfully: ${(result as any).did}`);
         // Refresh data
         const profile = await apiService.getUserProfile();
         setUserData(profile as any);
       }
     } catch (error: any) {
-      alert('Failed to mint DID: ' + (error.message || 'Unknown error'));
+      notifyError('Failed to mint DID: ' + (error.message || 'Unknown error'));
     }
   };
 

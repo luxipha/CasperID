@@ -7,6 +7,7 @@ import { Badge } from '../components/ui/badge';
 import { ArrowRight, CheckCircle, Clock, Eye, EyeOff, KeyRound, Loader2, ShieldCheck, XCircle } from 'lucide-react';
 import RequestDetailsModal from './components/request-detail-modal';
 import Logo from '../components/Logo';
+import { notifyError, notifySuccess, notifyWarning } from '../utils/notify';
 
 interface VerificationRequest {
     id: string;
@@ -35,6 +36,12 @@ interface VerificationRequest {
     [key: string]: any;
 }
 
+interface PaymentSettings {
+    verification_fee_ngn: number;
+    usd_to_ngn_rate: number;
+    source?: 'admin' | 'env';
+}
+
 export default function AdminDashboard() {
     const [username, setUsername] = useState('admin');
     const [password, setPassword] = useState('');
@@ -48,6 +55,18 @@ export default function AdminDashboard() {
     const [rejectingRequest, setRejectingRequest] = useState<VerificationRequest | null>(null);
     const [rejectionReason, setRejectionReason] = useState('');
     const [showPassword, setShowPassword] = useState(false);
+    const [paymentSettings, setPaymentSettings] = useState<PaymentSettings>({
+        verification_fee_ngn: 1500,
+        usd_to_ngn_rate: 1650,
+        source: 'env'
+    });
+    const [paymentSettingsDraft, setPaymentSettingsDraft] = useState({
+        verification_fee_ngn: '1500',
+        usd_to_ngn_rate: '1650'
+    });
+    const [paymentSettingsLoading, setPaymentSettingsLoading] = useState(false);
+    const [paymentSettingsSaving, setPaymentSettingsSaving] = useState(false);
+    const [paymentSettingsMessage, setPaymentSettingsMessage] = useState('');
 
     const handleLogin = async () => {
         if (username && password) {
@@ -57,12 +76,31 @@ export default function AdminDashboard() {
                 const { token } = await apiClient.loginAdmin(username, password);
                 setToken(token);
                 setIsAuthenticated(true);
+                await fetchPaymentSettings(token);
                 fetchRequests(token);
             } catch (err: any) {
                 console.error('Login error:', err);
                 setError(err.message || 'Login failed');
                 setLoading(false);
             }
+        }
+    };
+
+    const fetchPaymentSettings = async (authToken: string) => {
+        try {
+            setPaymentSettingsLoading(true);
+            const data = await apiClient.getAdminPaymentSettings(authToken);
+            const settings = data.settings || {};
+            setPaymentSettings(settings);
+            setPaymentSettingsDraft({
+                verification_fee_ngn: String(settings.verification_fee_ngn ?? 1500),
+                usd_to_ngn_rate: String(settings.usd_to_ngn_rate ?? 1650)
+            });
+        } catch (err: any) {
+            console.error('Admin fetch payment settings error:', err);
+            setPaymentSettingsMessage(err.message || 'Failed to load payment settings');
+        } finally {
+            setPaymentSettingsLoading(false);
         }
     };
 
@@ -98,22 +136,46 @@ export default function AdminDashboard() {
             // Use request_id for V2, id for V1
             const requestId = request.source === 'v2' ? (request.request_id || request.id) : request.id;
             await apiClient.issueCredential(token, requestId, approve, request.source, reason);
-            alert(`Request ${approve ? 'approved' : 'rejected'} successfully!`);
+            notifySuccess(`Request ${approve ? 'approved' : 'rejected'} successfully!`);
             setRejectingRequest(null);
             setRejectionReason('');
             setSelectedRequest(null);
             fetchRequests(token);
         } catch (err: any) {
-            alert(err.message || 'Failed to process request');
+            notifyError(err.message || 'Failed to process request');
         }
     };
 
     const handleRejectConfirm = () => {
         if (!rejectingRequest || !rejectionReason.trim()) {
-            alert('Please provide a reason for rejection');
+            notifyWarning('Please provide a reason for rejection');
             return;
         }
         handleAction(rejectingRequest, false, rejectionReason);
+    };
+
+    const handleSavePaymentSettings = async () => {
+        if (!token) return;
+
+        try {
+            setPaymentSettingsSaving(true);
+            setPaymentSettingsMessage('');
+            const data = await apiClient.updateAdminPaymentSettings(token, {
+                verification_fee_ngn: Number(paymentSettingsDraft.verification_fee_ngn),
+                usd_to_ngn_rate: Number(paymentSettingsDraft.usd_to_ngn_rate)
+            });
+            setPaymentSettings(data.settings);
+            setPaymentSettingsDraft({
+                verification_fee_ngn: String(data.settings.verification_fee_ngn),
+                usd_to_ngn_rate: String(data.settings.usd_to_ngn_rate)
+            });
+            setPaymentSettingsMessage('Payment settings updated.');
+        } catch (err: any) {
+            console.error('Admin save payment settings error:', err);
+            setPaymentSettingsMessage(err.message || 'Failed to update payment settings');
+        } finally {
+            setPaymentSettingsSaving(false);
+        }
     };
 
     useEffect(() => {
@@ -326,6 +388,84 @@ export default function AdminDashboard() {
                         {error}
                     </div>
                 )}
+
+                <Card className="p-6 bg-white/10 backdrop-blur-lg border-white/20">
+                    <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
+                        <div className="space-y-2">
+                            <h2 className="text-xl font-bold text-white">Monnify Payment Settings</h2>
+                            <p className="text-sm text-gray-300 max-w-xl">
+                                Control the Nigeria verification fee and the USD to NGN conversion rate used for Monnify .cid checkout.
+                            </p>
+                            <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.16em] text-gray-300">
+                                Source: {paymentSettings.source === 'admin' ? 'Admin override' : 'Environment fallback'}
+                            </div>
+                        </div>
+                        <Button
+                            onClick={() => fetchPaymentSettings(token)}
+                            variant="outline"
+                            className="bg-transparent border-white/20 text-white hover:bg-white/10"
+                            disabled={paymentSettingsLoading}
+                        >
+                            {paymentSettingsLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Reload settings'}
+                        </Button>
+                    </div>
+
+                    <div className="mt-6 grid gap-4 md:grid-cols-2">
+                        <label className="space-y-2">
+                            <span className="text-[11px] font-black uppercase tracking-[0.18em] text-gray-300">Verification Fee (NGN)</span>
+                            <Input
+                                type="number"
+                                min="1"
+                                value={paymentSettingsDraft.verification_fee_ngn}
+                                onChange={(event) => setPaymentSettingsDraft((current) => ({
+                                    ...current,
+                                    verification_fee_ngn: event.target.value
+                                }))}
+                                className="h-12 rounded-2xl border-white/10 bg-slate-900/70 text-white"
+                            />
+                            <p className="text-xs text-gray-400">
+                                Applied to both NIN and BVN verification checkout.
+                            </p>
+                        </label>
+
+                        <label className="space-y-2">
+                            <span className="text-[11px] font-black uppercase tracking-[0.18em] text-gray-300">USD to NGN Rate</span>
+                            <Input
+                                type="number"
+                                min="1"
+                                value={paymentSettingsDraft.usd_to_ngn_rate}
+                                onChange={(event) => setPaymentSettingsDraft((current) => ({
+                                    ...current,
+                                    usd_to_ngn_rate: event.target.value
+                                }))}
+                                className="h-12 rounded-2xl border-white/10 bg-slate-900/70 text-white"
+                            />
+                            <p className="text-xs text-gray-400">
+                                Used when converting USD .cid pricing into Monnify NGN checkout.
+                            </p>
+                        </label>
+                    </div>
+
+                    <div className="mt-5 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                        <div className={`text-sm font-medium ${paymentSettingsMessage.includes('updated') ? 'text-emerald-300' : 'text-gray-300'}`}>
+                            {paymentSettingsMessage || 'Save only when you want to override environment defaults.'}
+                        </div>
+                        <Button
+                            onClick={handleSavePaymentSettings}
+                            disabled={paymentSettingsSaving}
+                            className="bg-purple-600 hover:bg-purple-700 text-white"
+                        >
+                            {paymentSettingsSaving ? (
+                                <>
+                                    <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                                    Saving
+                                </>
+                            ) : (
+                                'Save payment settings'
+                            )}
+                        </Button>
+                    </div>
+                </Card>
 
                 {/* Requests Table */}
                 <Card className="p-6 bg-white/10 backdrop-blur-lg border-white/20">

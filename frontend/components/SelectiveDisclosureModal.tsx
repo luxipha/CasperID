@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
 import { apiService } from '../services/api';
 import { IdentityToolModal } from './ui/IdentityToolModal';
+import { notifyError } from '../utils/notify';
 
 interface SelectiveDisclosureModalProps {
     isOpen: boolean;
@@ -111,7 +112,7 @@ export const SelectiveDisclosureModal: React.FC<SelectiveDisclosureModalProps> =
             }
         } catch (error) {
             console.error('Generation failed:', error);
-            alert('Failed to generate share package');
+            notifyError('Failed to generate share package');
         } finally {
             setGenerating(false);
         }

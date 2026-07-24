@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { apiService } from '../services/api';
 import { LivenessCheck } from './LivenessCheck';
@@ -18,6 +18,9 @@ import { IdentityStatusCard, ReusableKYCCard, TrustScoreCard } from './Dashboard
 import { ConnectedPlatforms } from './ConnectedPlatforms';
 import { ReusableTools } from './ReusableTools';
 import { RecentActivity } from './RecentActivity';
+import { notifyError } from '../utils/notify';
+
+const VERIFICATION_PAYMENT_STORAGE_PREFIX = 'casperid:verification-payment';
 
 type ViewState =
   | 'dashboard'
@@ -89,7 +92,76 @@ export const KYCHome: React.FC<KYCHomeProps> = ({
   const [bvnValue, setBvnValue] = useState<string>('');
   const [identityVerifiedData, setIdentityVerifiedData] = useState<any>(null);
   const [layer3IdentityError, setLayer3IdentityError] = useState<string>('');
+  const [isResumingVerificationPayment, setIsResumingVerificationPayment] = useState(false);
+  const [layer3IdentityDraft, setLayer3IdentityDraft] = useState<{
+    method: NigerianIdentityMethod;
+    nin?: string;
+    bvn?: string;
+    account_number?: string;
+    bank_code?: string;
+  } | null>(null);
+  const [layer3PaymentNotice, setLayer3PaymentNotice] = useState<string>('');
   const { user } = useAuth();
+  const hasHandledVerificationPaymentReturn = useRef(false);
+
+  const getVerificationPaymentStorageKey = (requestId: string, method: NigerianIdentityMethod) =>
+    `${VERIFICATION_PAYMENT_STORAGE_PREFIX}:${requestId}:${method}`;
+
+  const clearVerificationPaymentReturnParams = () => {
+    const params = new URLSearchParams(window.location.search);
+    params.delete('paymentProvider');
+    params.delete('paymentPurpose');
+    params.delete('paymentReference');
+    params.delete('requestId');
+    params.delete('method');
+    const nextQuery = params.toString();
+    window.history.replaceState({}, document.title, nextQuery ? `/dashboard?${nextQuery}` : '/dashboard?view=kyc');
+  };
+
+  const finalizePaidIdentityVerification = async (
+    requestId: string,
+    details: {
+      method: NigerianIdentityMethod;
+      nin?: string;
+      bvn?: string;
+      account_number?: string;
+      bank_code?: string;
+    }
+  ) => {
+    if (details.method === 'nimc' && details.nin) {
+      const response = await apiService.verifyLayer3NIN({
+        request_id: requestId,
+        nin: details.nin
+      });
+      setIdentityMethod('nimc');
+      setLayer3Method('nimc');
+      setNinValue(details.nin);
+      setBvnValue('');
+      setIdentityVerifiedData(response.nin_verification?.identity || { nin: details.nin });
+      return;
+    }
+
+    if (details.method === 'bvn' && details.bvn && details.account_number && details.bank_code) {
+      const response = await apiService.verifyLayer3BVN({
+        request_id: requestId,
+        bvn: details.bvn,
+        account_number: details.account_number,
+        bank_code: details.bank_code
+      });
+      setIdentityMethod('bvn');
+      setLayer3Method('bvn');
+      setBvnValue(details.bvn);
+      setNinValue('');
+      setIdentityVerifiedData(response.bvn_verification?.identity || {
+        bvn: details.bvn,
+        account_number: details.account_number,
+        bank_code: details.bank_code
+      });
+      return;
+    }
+
+    throw new Error('Identity verification details are incomplete.');
+  };
 
   // Check for pending Layer 3 verification on mount
   useEffect(() => {
@@ -120,6 +192,93 @@ export const KYCHome: React.FC<KYCHomeProps> = ({
     checkLayer3Status();
   }, [user]);
 
+  useEffect(() => {
+    const resumeVerificationPayment = async () => {
+      const params = new URLSearchParams(window.location.search);
+      const paymentPurpose = params.get('paymentPurpose');
+      const paymentReference = params.get('paymentReference');
+      const requestId = params.get('requestId');
+      const rawMethod = params.get('method');
+      const method = rawMethod === 'bvn' ? 'bvn' : rawMethod === 'nimc' ? 'nimc' : null;
+
+      if (
+        paymentPurpose !== 'verification' ||
+        !paymentReference ||
+        !requestId ||
+        !method ||
+        isResumingVerificationPayment ||
+        hasHandledVerificationPaymentReturn.current
+      ) {
+        return;
+      }
+
+      hasHandledVerificationPaymentReturn.current = true;
+
+      const storedDetails = window.sessionStorage.getItem(getVerificationPaymentStorageKey(requestId, method));
+      if (!storedDetails) {
+        setLayer3PaymentNotice('');
+        setLayer3IdentityError('Your payment was confirmed, but we could not restore your verification details. Please enter them again to continue.');
+        setVerificationContext('nigeria');
+        setLayer3IdentityDraft({ method });
+        setActiveStep('layer3_nimc_number');
+        clearVerificationPaymentReturnParams();
+        return;
+      }
+
+      try {
+        setIsResumingVerificationPayment(true);
+        setLayer3IdentityError('');
+        setLayer3PaymentNotice('We found your Monnify return. Confirming your payment and restoring your verification session now.');
+        setVerificationContext('nigeria');
+        setActiveStep('layer3_nimc_number');
+        const parsedDetails = JSON.parse(storedDetails);
+        setLayer3IdentityDraft(parsedDetails);
+
+        let paymentStatus: any = null;
+        for (let attempt = 0; attempt < 5; attempt += 1) {
+          paymentStatus = await apiService.getPaymentStatus(paymentReference);
+          if (paymentStatus.status === 'completed' || paymentStatus.status === 'failed' || paymentStatus.status === 'expired') {
+            break;
+          }
+          setLayer3PaymentNotice('Your payment is still being confirmed. This usually takes a few seconds.');
+          await new Promise((resolve) => window.setTimeout(resolve, 2500));
+        }
+
+        if (paymentStatus?.status !== 'completed') {
+          if (paymentStatus?.status === 'failed' || paymentStatus?.status === 'expired') {
+            clearVerificationPaymentReturnParams();
+            throw new Error('Your payment did not complete. Please try again.');
+          }
+          setLayer3PaymentNotice('Your payment is still processing. Stay on this page and try again in a moment if needed.');
+          clearVerificationPaymentReturnParams();
+          return;
+        }
+
+        setLayer3PaymentNotice('Payment confirmed. Restoring your verification session.');
+        const session = await startOrRefreshLayer3Session(method);
+        if (session.requestId !== requestId) {
+          clearVerificationPaymentReturnParams();
+          throw new Error('We could not restore the same verification session after payment. Please restart the Nigeria verification step.');
+        }
+
+        setLayer3PaymentNotice('Payment confirmed. Verifying your identity details now.');
+        await finalizePaidIdentityVerification(session.requestId, parsedDetails);
+        window.sessionStorage.removeItem(getVerificationPaymentStorageKey(requestId, method));
+        setLayer3PaymentNotice('');
+        clearVerificationPaymentReturnParams();
+        setActiveStep('layer3_nin_confirm');
+      } catch (error) {
+        console.error('[Layer3] Failed to resume paid verification:', error);
+        setLayer3PaymentNotice('');
+        setLayer3IdentityError(getFriendlyLayer3IdentityError(error, method));
+      } finally {
+        setIsResumingVerificationPayment(false);
+      }
+    };
+
+    resumeVerificationPayment();
+  }, [isResumingVerificationPayment]);
+
   // Helper for dashboard navigation back
   const goToDashboard = () => setActiveStep('dashboard');
   const exitFlow = () => {
@@ -138,6 +297,8 @@ export const KYCHome: React.FC<KYCHomeProps> = ({
     setNinValue('');
     setBvnValue('');
     setIdentityVerifiedData(null);
+    setLayer3IdentityDraft(null);
+    setLayer3PaymentNotice('');
     setLayer3IdentityError('');
     setExtractedData(null);
     setUploadId('');
@@ -178,7 +339,7 @@ export const KYCHome: React.FC<KYCHomeProps> = ({
       setActiveStep(context === 'nigeria' ? 'layer3_nimc_number' : 'layer3_doc_selection');
     } catch (error) {
       console.error('[Layer3] Failed to start verification session:', error);
-      alert(error instanceof Error ? error.message : 'Failed to start verification. Please try again.');
+      notifyError(error instanceof Error ? error.message : 'Failed to start verification. Please try again.');
     }
   };
   const beginLayer3Liveness = async () => {
@@ -188,7 +349,7 @@ export const KYCHome: React.FC<KYCHomeProps> = ({
       setActiveStep('liveness');
     } catch (error) {
       console.error('[Layer3] Failed to refresh liveness handoff:', error);
-      alert(error instanceof Error ? error.message : 'Failed to start liveness verification. Please try again.');
+      notifyError(error instanceof Error ? error.message : 'Failed to start liveness verification. Please try again.');
     }
   };
 
@@ -303,46 +464,46 @@ export const KYCHome: React.FC<KYCHomeProps> = ({
         onCancel={cancelLayer3Draft}
         error={layer3IdentityError}
         onClearError={() => setLayer3IdentityError('')}
+        ctaLabel={isResumingVerificationPayment ? 'Resuming Verification' : 'Pay & Continue'}
+        helperMessage="Nigeria identity verification continues after a Monnify payment step. CasperID will resume automatically when you return."
+        notice={layer3PaymentNotice}
+        isBusy={isResumingVerificationPayment}
+        initialDetails={layer3IdentityDraft || undefined}
         onNext={async (details) => {
           try {
             setLayer3IdentityError('');
+            setLayer3PaymentNotice('');
             const requestId = layer3Session?.requestId;
             if (!requestId) {
               throw new Error('Layer 3 session is missing. Please restart verification.');
             }
+            setLayer3IdentityDraft(details);
+            window.sessionStorage.setItem(
+              getVerificationPaymentStorageKey(requestId, details.method),
+              JSON.stringify(details)
+            );
 
-            if (details.method === 'nimc' && details.nin) {
-              const response = await apiService.verifyLayer3NIN({
-                request_id: requestId,
-                nin: details.nin
-              });
-              setIdentityMethod('nimc');
-              setLayer3Method('nimc');
-              setNinValue(details.nin);
-              setBvnValue('');
-              setIdentityVerifiedData(response.nin_verification?.identity || { nin: details.nin });
-            } else if (details.method === 'bvn' && details.bvn && details.account_number && details.bank_code) {
-              const response = await apiService.verifyLayer3BVN({
-                request_id: requestId,
-                bvn: details.bvn,
-                account_number: details.account_number,
-                bank_code: details.bank_code
-              });
-              setIdentityMethod('bvn');
-              setLayer3Method('bvn');
-              setBvnValue(details.bvn);
-              setNinValue('');
-              setIdentityVerifiedData(response.bvn_verification?.identity || {
-                bvn: details.bvn,
-                account_number: details.account_number,
-                bank_code: details.bank_code
-              });
-            } else {
-              throw new Error('Identity verification details are incomplete.');
+            const paymentSession = await apiService.createMonnifyVerificationCheckout({
+              requestId,
+              verificationMethod: details.method
+            });
+
+            if (paymentSession.status === 'completed') {
+              await finalizePaidIdentityVerification(requestId, details);
+              window.sessionStorage.removeItem(getVerificationPaymentStorageKey(requestId, details.method));
+              setActiveStep('layer3_nin_confirm');
+              return;
             }
-            setActiveStep('layer3_nin_confirm');
+
+            if (!paymentSession.checkoutUrl) {
+              throw new Error('Monnify checkout could not be started. Please try again.');
+            }
+
+            setLayer3PaymentNotice('Redirecting you to Monnify to complete your payment.');
+            window.location.href = paymentSession.checkoutUrl;
           } catch (error) {
             console.error('[Layer3] Identity verification failed:', error);
+            setLayer3PaymentNotice('');
             setLayer3IdentityError(getFriendlyLayer3IdentityError(error, details.method));
           }
         }}

@@ -1,6 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { apiService } from '../../services/api';
+import { notifySuccess } from '../../utils/notify';
 
 interface MobileLinkingPageProps {
   onComplete: () => void;
@@ -249,7 +250,7 @@ export const MobileLinkingPage: React.FC<MobileLinkingPageProps> = ({ onComplete
                 <button
                   onClick={() => {
                     navigator.clipboard.writeText(window.location.href);
-                    alert('URL copied! Paste in Safari or Chrome.');
+                    notifySuccess('URL copied! Paste in Safari or Chrome.');
                   }}
                   className="px-6 py-3 bg-white border border-gray-200 text-text-main font-bold rounded-xl hover:bg-gray-50 transition-all"
                 >

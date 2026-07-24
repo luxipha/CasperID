@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 
 type IdentityMethod = 'nimc' | 'bvn';
 
@@ -14,6 +14,17 @@ interface KYCNIMCNumberEntryProps {
   onCancel: () => void;
   error?: string;
   onClearError?: () => void;
+  ctaLabel?: string;
+  helperMessage?: string;
+  notice?: string;
+  isBusy?: boolean;
+  initialDetails?: {
+    method?: IdentityMethod;
+    nin?: string;
+    bvn?: string;
+    account_number?: string;
+    bank_code?: string;
+  };
 }
 
 export const KYCNIMCNumberEntry: React.FC<KYCNIMCNumberEntryProps> = ({
@@ -22,12 +33,25 @@ export const KYCNIMCNumberEntry: React.FC<KYCNIMCNumberEntryProps> = ({
   onCancel,
   error,
   onClearError,
+  ctaLabel = 'Continue to Confirm Details',
+  helperMessage,
+  notice,
+  isBusy = false,
+  initialDetails,
 }) => {
-  const [method, setMethod] = useState<IdentityMethod>('nimc');
-  const [nin, setNin] = useState('');
-  const [bvn, setBvn] = useState('');
-  const [accountNumber, setAccountNumber] = useState('');
-  const [bankCode, setBankCode] = useState('');
+  const [method, setMethod] = useState<IdentityMethod>(initialDetails?.method || 'nimc');
+  const [nin, setNin] = useState(initialDetails?.nin || '');
+  const [bvn, setBvn] = useState(initialDetails?.bvn || '');
+  const [accountNumber, setAccountNumber] = useState(initialDetails?.account_number || '');
+  const [bankCode, setBankCode] = useState(initialDetails?.bank_code || '');
+
+  useEffect(() => {
+    setMethod(initialDetails?.method || 'nimc');
+    setNin(initialDetails?.nin || '');
+    setBvn(initialDetails?.bvn || '');
+    setAccountNumber(initialDetails?.account_number || '');
+    setBankCode(initialDetails?.bank_code || '');
+  }, [initialDetails]);
 
   const isValid = method === 'nimc'
     ? nin.length === 11
@@ -48,11 +72,12 @@ export const KYCNIMCNumberEntry: React.FC<KYCNIMCNumberEntryProps> = ({
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-w-4xl">
             <button
+              disabled={isBusy}
               onClick={() => {
                 onClearError?.();
                 setMethod('nimc');
               }}
-              className={`text-left rounded-[28px] border p-6 shadow-soft transition-all ${method === 'nimc' ? 'border-primary bg-primary/5' : 'border-gray-100 bg-white hover:border-primary/30'}`}
+              className={`text-left rounded-[28px] border p-6 shadow-soft transition-all disabled:opacity-60 ${method === 'nimc' ? 'border-primary bg-primary/5' : 'border-gray-100 bg-white hover:border-primary/30'}`}
             >
               <div className="flex items-center gap-4">
                 <div className={`size-12 rounded-2xl flex items-center justify-center ${method === 'nimc' ? 'bg-primary text-white' : 'bg-primary/10 text-primary'}`}>
@@ -68,11 +93,12 @@ export const KYCNIMCNumberEntry: React.FC<KYCNIMCNumberEntryProps> = ({
             </button>
 
             <button
+              disabled={isBusy}
               onClick={() => {
                 onClearError?.();
                 setMethod('bvn');
               }}
-              className={`text-left rounded-[28px] border p-6 shadow-soft transition-all ${method === 'bvn' ? 'border-primary bg-primary/5' : 'border-gray-100 bg-white hover:border-primary/30'}`}
+              className={`text-left rounded-[28px] border p-6 shadow-soft transition-all disabled:opacity-60 ${method === 'bvn' ? 'border-primary bg-primary/5' : 'border-gray-100 bg-white hover:border-primary/30'}`}
             >
               <div className="flex items-center gap-4">
                 <div className={`size-12 rounded-2xl flex items-center justify-center ${method === 'bvn' ? 'bg-primary text-white' : 'bg-primary/10 text-primary'}`}>
@@ -89,6 +115,12 @@ export const KYCNIMCNumberEntry: React.FC<KYCNIMCNumberEntryProps> = ({
           </div>
 
           <div className="bg-white rounded-[32px] border border-gray-100 shadow-soft p-10 max-w-3xl space-y-8">
+            {notice ? (
+              <div className="rounded-2xl border border-primary/15 bg-primary/5 px-5 py-4">
+                <p className="text-sm font-black text-primary">Payment in progress</p>
+                <p className="mt-1 text-sm font-medium text-text-main">{notice}</p>
+              </div>
+            ) : null}
             {error ? (
               <div className="rounded-2xl border border-red-200 bg-red-50 px-5 py-4">
                 <p className="text-sm font-black text-red-800">Verification unavailable</p>
@@ -109,6 +141,7 @@ export const KYCNIMCNumberEntry: React.FC<KYCNIMCNumberEntryProps> = ({
                       onClearError?.();
                       setNin(e.target.value.replace(/\D/g, '').slice(0, 11));
                     }}
+                    disabled={isBusy}
                     className="w-full h-16 pl-14 pr-6 rounded-2xl bg-white border border-gray-100 text-base font-medium text-text-main placeholder:text-text-sub/30 focus:border-primary/50 focus:ring-4 focus:ring-primary/5 transition-all outline-none"
                     placeholder="Enter your 11-digit NIN"
                   />
@@ -128,6 +161,7 @@ export const KYCNIMCNumberEntry: React.FC<KYCNIMCNumberEntryProps> = ({
                       onClearError?.();
                       setBvn(e.target.value.replace(/\D/g, '').slice(0, 11));
                     }}
+                    disabled={isBusy}
                     className="w-full h-16 px-6 rounded-2xl bg-white border border-gray-100 text-base font-medium text-text-main placeholder:text-text-sub/30 focus:border-primary/50 focus:ring-4 focus:ring-primary/5 transition-all outline-none"
                     placeholder="Enter your 11-digit BVN"
                   />
@@ -138,26 +172,28 @@ export const KYCNIMCNumberEntry: React.FC<KYCNIMCNumberEntryProps> = ({
                     <input
                       type="text"
                       value={accountNumber}
-                      onChange={(e) => {
-                        onClearError?.();
-                        setAccountNumber(e.target.value.replace(/\D/g, '').slice(0, 10));
-                      }}
-                      className="w-full h-16 px-6 rounded-2xl bg-white border border-gray-100 text-base font-medium text-text-main placeholder:text-text-sub/30 focus:border-primary/50 focus:ring-4 focus:ring-primary/5 transition-all outline-none"
-                      placeholder="10-digit account number"
-                    />
+                    onChange={(e) => {
+                      onClearError?.();
+                      setAccountNumber(e.target.value.replace(/\D/g, '').slice(0, 10));
+                    }}
+                    disabled={isBusy}
+                    className="w-full h-16 px-6 rounded-2xl bg-white border border-gray-100 text-base font-medium text-text-main placeholder:text-text-sub/30 focus:border-primary/50 focus:ring-4 focus:ring-primary/5 transition-all outline-none"
+                    placeholder="10-digit account number"
+                  />
                   </div>
                   <div className="space-y-3">
                     <label className="text-sm font-black text-text-main">Bank Code</label>
                     <input
                       type="text"
                       value={bankCode}
-                      onChange={(e) => {
-                        onClearError?.();
-                        setBankCode(e.target.value.trimStart());
-                      }}
-                      className="w-full h-16 px-6 rounded-2xl bg-white border border-gray-100 text-base font-medium text-text-main placeholder:text-text-sub/30 focus:border-primary/50 focus:ring-4 focus:ring-primary/5 transition-all outline-none"
-                      placeholder="e.g. 058"
-                    />
+                    onChange={(e) => {
+                      onClearError?.();
+                      setBankCode(e.target.value.trimStart());
+                    }}
+                    disabled={isBusy}
+                    className="w-full h-16 px-6 rounded-2xl bg-white border border-gray-100 text-base font-medium text-text-main placeholder:text-text-sub/30 focus:border-primary/50 focus:ring-4 focus:ring-primary/5 transition-all outline-none"
+                    placeholder="e.g. 058"
+                  />
                   </div>
                 </div>
                 <p className="text-[12px] text-text-sub font-medium opacity-70">
@@ -167,7 +203,7 @@ export const KYCNIMCNumberEntry: React.FC<KYCNIMCNumberEntryProps> = ({
             )}
 
             <button
-              disabled={!isValid}
+              disabled={!isValid || isBusy}
               onClick={() => onNext(
                 method === 'nimc'
                   ? { method, nin }
@@ -175,14 +211,21 @@ export const KYCNIMCNumberEntry: React.FC<KYCNIMCNumberEntryProps> = ({
               )}
               className="w-full h-16 bg-primary text-white rounded-2xl font-black text-base flex items-center justify-center gap-3 shadow-xl shadow-primary/25 hover:shadow-primary/35 transition-all active:scale-[0.98] disabled:opacity-50"
             >
-              Continue to Confirm Details
+              {ctaLabel}
               <span className="material-symbols-outlined text-xl">arrow_forward</span>
             </button>
 
+            {helperMessage ? (
+              <p className="text-center text-xs font-medium text-text-sub leading-relaxed -mt-3">
+                {helperMessage}
+              </p>
+            ) : null}
+
             <div className="pt-4 flex flex-col items-center gap-4 border-t border-gray-50">
               <button
+                disabled={isBusy}
                 onClick={onBack}
-                className="text-text-sub hover:text-text-main font-bold text-sm"
+                className="text-text-sub hover:text-text-main font-bold text-sm disabled:opacity-60"
               >
                 Go back
               </button>
@@ -245,8 +288,9 @@ export const KYCNIMCNumberEntry: React.FC<KYCNIMCNumberEntryProps> = ({
 
       <div className="mt-12 flex justify-center">
         <button
+          disabled={isBusy}
           onClick={onCancel}
-          className="flex items-center gap-2 text-text-sub hover:text-alerts transition-all font-bold text-sm"
+          className="flex items-center gap-2 text-text-sub hover:text-alerts transition-all font-bold text-sm disabled:opacity-60"
         >
           <span className="material-symbols-outlined text-lg">close</span>
           Cancel Verification

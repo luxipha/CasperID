@@ -1,5 +1,6 @@
 import React, { useRef, useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { notifyInfo } from '../../utils/notify';
 
 interface Incentive {
     label: string;
@@ -402,7 +403,7 @@ const ScratchCard: React.FC<ScratchCardProps> = ({
                                             animate={{ y: 0, opacity: 1 }}
                                             transition={{ delay: 0.3 }}
                                             disabled
-                                            onClick={() => alert('Event coming soon!')}
+                                            onClick={() => notifyInfo('Event coming soon!')}
                                             className="px-6 py-2.5 bg-gray-300 dark:bg-gray-600 text-gray-500 dark:text-gray-400 rounded-xl font-bold text-sm cursor-not-allowed transition-all shadow-lg opacity-60"
                                         >
                                             Claim Reward

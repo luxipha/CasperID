@@ -23,7 +23,7 @@ export const RegisterCID: React.FC<RegisterCIDProps> = ({ onBack }) => {
   const [checkResult, setCheckResult] = useState<NameCheckResult | null>(null);
   const [selectedYears, setSelectedYears] = useState(1); // Defaults to 1 for backward compatibility with backend expectations
   const [stage, setStage] = useState<RegistrationStage>('search');
-  const [paymentMethod, setPaymentMethod] = useState<'crypto' | 'fiat'>('crypto');
+  const [paymentMethod, setPaymentMethod] = useState<'crypto' | 'fiat' | 'monnify'>('crypto');
   const [registrationError, setRegistrationError] = useState<string | null>(null);
   const [registeredName, setRegisteredName] = useState<string>('');
   const [txHash, setTxHash] = useState<string | null>(null);
@@ -36,7 +36,7 @@ export const RegisterCID: React.FC<RegisterCIDProps> = ({ onBack }) => {
   const [isPromoApplied, setIsPromoApplied] = useState(false);
   const [promoError, setPromoError] = useState<string | null>(null);
 
-  const [userProfile, setUserProfile] = useState<{ email?: string; name?: string } | null>(null);
+  const [userProfile, setUserProfile] = useState<{ email?: string; name?: string; country?: string } | null>(null);
 
   // Fetch user profile for pre-filling checkout
   useEffect(() => {
@@ -46,7 +46,8 @@ export const RegisterCID: React.FC<RegisterCIDProps> = ({ onBack }) => {
         const fullName = [profile.first_name, profile.last_name].filter(Boolean).join(' ');
         setUserProfile({
           email: profile.email,
-          name: fullName || undefined
+          name: fullName || undefined,
+          country: profile.country
         });
       } catch {
         // User might not be logged in, continue without pre-fill
@@ -117,6 +118,7 @@ export const RegisterCID: React.FC<RegisterCIDProps> = ({ onBack }) => {
   }, [targetPrice, isPromoApplied]);
 
   const currentPrice = displayPrice;
+  const isNigeriaUser = userProfile?.country?.trim().toLowerCase() === 'nigeria';
 
   const handleCheckAvailability = async () => {
     if (!search.trim()) return;
@@ -162,6 +164,15 @@ export const RegisterCID: React.FC<RegisterCIDProps> = ({ onBack }) => {
           return;
         } else {
           setRegistrationError(data.error || 'Failed to initialize crypto checkout');
+          setStage('payment');
+        }
+      } else if (paymentMethod === 'monnify') {
+        const data = await apiService.createMonnifyCnsCheckout(search, selectedYears);
+        if (data.success && data.checkoutUrl) {
+          window.location.href = data.checkoutUrl;
+          return;
+        } else {
+          setRegistrationError(data.error || 'Failed to initialize Monnify checkout');
           setStage('payment');
         }
       } else {
@@ -356,7 +367,7 @@ export const RegisterCID: React.FC<RegisterCIDProps> = ({ onBack }) => {
             {!isPromoApplied && (
               <div className="space-y-6">
                 <p className="text-[11px] font-black text-text-sub uppercase tracking-widest opacity-60">Select Payment Method</p>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className={`grid grid-cols-1 ${isNigeriaUser ? 'md:grid-cols-3' : 'md:grid-cols-2'} gap-4`}>
                   <button
                     onClick={() => setPaymentMethod('crypto')}
                     className={`p-6 rounded-[28px] border-2 transition-all flex flex-col gap-4 text-left ${paymentMethod === 'crypto' ? 'border-primary bg-primary/[0.02]' : 'border-gray-100 hover:border-gray-200'}`}
@@ -383,6 +394,21 @@ export const RegisterCID: React.FC<RegisterCIDProps> = ({ onBack }) => {
                       <p className="text-xs font-medium text-text-sub leading-relaxed">Fast and secure fiat checkout</p>
                     </div>
                   </button>
+
+                  {isNigeriaUser && (
+                    <button
+                      onClick={() => setPaymentMethod('monnify')}
+                      className={`p-6 rounded-[28px] border-2 h-fit transition-all flex flex-col gap-4 text-left ${paymentMethod === 'monnify' ? 'border-primary bg-primary/[0.02]' : 'border-gray-100 hover:border-gray-200'}`}
+                    >
+                      <div className="size-10 rounded-xl bg-amber-50 flex items-center justify-center text-amber-600">
+                        <span className="material-symbols-outlined">account_balance</span>
+                      </div>
+                      <div>
+                        <h4 className="text-base font-black text-text-main">Pay in Naira</h4>
+                        <p className="text-xs font-medium text-text-sub leading-relaxed">Monnify checkout for transfer, card, or USSD</p>
+                      </div>
+                    </button>
+                  )}
                 </div>
               </div>
             )}
@@ -405,7 +431,9 @@ export const RegisterCID: React.FC<RegisterCIDProps> = ({ onBack }) => {
               className={`w-full h-16 rounded-[24px] font-black text-lg transition-all flex items-center justify-center gap-3 ${(lifetimeTimeLeft && !isPromoApplied) ? 'bg-gray-100 text-gray-400 cursor-not-allowed' : 'bg-primary text-white shadow-xl shadow-primary/30 hover:bg-primary/95 active:scale-[0.98]'}`}
             >
               {!isPromoApplied && (
-                <span className="material-symbols-outlined">{paymentMethod === 'crypto' ? 'paid' : 'credit_card'}</span>
+                <span className="material-symbols-outlined">
+                  {paymentMethod === 'crypto' ? 'paid' : paymentMethod === 'monnify' ? 'account_balance' : 'credit_card'}
+                </span>
               )}
               {isPromoApplied ? 'Claim Name Now' : 'Confirm & Pay'}
             </button>

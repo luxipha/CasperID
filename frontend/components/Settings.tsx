@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { apiService } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
+import { notifyError, notifySuccess } from '../utils/notify';
 
 type Tab = 'General' | 'Wallets' | 'Security' | 'Notifications' | 'Permissions';
 
@@ -85,14 +86,14 @@ const GeneralTab = () => {
 
       const response = await apiService.updateUserProfile(updates);
       if (response) {
-        alert('Profile updated successfully');
+        notifySuccess('Profile updated successfully');
         // Refresh global user state to sync with persona/disclosure modals
         await refreshUser();
         // Local state will be updated by useEffect [user]
       }
     } catch (error: any) {
       console.error('Update failed:', error);
-      alert('Failed to update profile: ' + (error.message || 'Unknown error'));
+      notifyError('Failed to update profile: ' + (error.message || 'Unknown error'));
     } finally {
       setSaving(false);
     }
@@ -287,13 +288,13 @@ const SecurityTab = () => {
       if (response.success) {
         // Remove device from list
         setDevices(devices.filter(d => d.credentialId !== credentialId));
-        alert('Device revoked successfully');
+        notifySuccess('Device revoked successfully');
       } else {
-        alert('Failed to revoke device: ' + (response.error || 'Unknown error'));
+        notifyError('Failed to revoke device: ' + (response.error || 'Unknown error'));
       }
     } catch (err: any) {
       console.error('❌ [Settings] Failed to revoke device:', err);
-      alert('Failed to revoke device: ' + (err.message || 'Unknown error'));
+      notifyError('Failed to revoke device: ' + (err.message || 'Unknown error'));
     } finally {
       setRevoking(null);
     }
@@ -313,7 +314,7 @@ const SecurityTab = () => {
       document.body.removeChild(a);
       window.URL.revokeObjectURL(url);
     } catch (err: any) {
-      alert('Failed to export data: ' + (err.message || 'Unknown error'));
+      notifyError('Failed to export data: ' + (err.message || 'Unknown error'));
     } finally {
       setExporting(false);
     }
@@ -331,10 +332,10 @@ const SecurityTab = () => {
     try {
       setDeleting(true);
       await apiService.deleteAccount();
-      alert('Account deleted successfully.');
+      notifySuccess('Account deleted successfully.');
       window.location.href = '/login';
     } catch (err: any) {
-      alert('Failed to delete account: ' + (err.message || 'Unknown error'));
+      notifyError('Failed to delete account: ' + (err.message || 'Unknown error'));
     } finally {
       setDeleting(false);
     }
@@ -485,7 +486,7 @@ const NotificationsTab = () => {
     } catch (e) {
       console.error('Failed to update preference:', e);
       setPrefs(prefs); // Revert on error
-      alert('Failed to update setting');
+      notifyError('Failed to update setting');
     }
   };
 
@@ -572,9 +573,9 @@ const PermissionsTab = () => {
       }
       setProfile({ ...profile, metamask_connected: false, metamask_address: null });
       setGrants([]);
-      alert('MetaMask disconnected successfully.');
+      notifySuccess('MetaMask disconnected successfully.');
     } catch (e: any) {
-      alert('Failed to disconnect: ' + e.message);
+      notifyError('Failed to disconnect: ' + e.message);
     } finally {
       setRevoking(false);
     }
@@ -772,9 +773,9 @@ const WalletsTab = () => {
     try {
       await apiService.unlinkWallet(address);
       await fetchProfile();
-      alert('Wallet unlinked successfully');
+      notifySuccess('Wallet unlinked successfully');
     } catch (error: any) {
-      alert('Failed to unlink: ' + error.message);
+      notifyError('Failed to unlink: ' + error.message);
     } finally {
       setUnlinking(null);
     }

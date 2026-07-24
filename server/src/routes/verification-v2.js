@@ -7,7 +7,7 @@ const { extractApp } = require('../middleware/app-auth');
 const imagekit = require('../services/imagekit');
 const monnifyService = require('../services/monnify');
 const { v4: uuidv4 } = require('uuid');
-const { VerificationRequestV2 } = require('../database/models');
+const { VerificationRequestV2, Payment } = require('../database/models');
 const { DataShare } = require('../database/temporary-shares');
 
 function normalizeComparableValue(value) {
@@ -127,6 +127,25 @@ function buildProviderDocumentMatch(existingData = {}, documentData = {}) {
         comparisons,
         overall_match: comparedValues.length > 0 ? comparedValues.every(Boolean) : null
     };
+}
+
+async function findCompletedVerificationPayment({
+    requestId,
+    userId,
+    verificationMethod
+}) {
+    if (!requestId || !userId || !verificationMethod) {
+        return null;
+    }
+
+    return Payment.findOne({
+        provider: 'monnify',
+        status: 'completed',
+        'metadata.purpose': 'verification',
+        'metadata.verificationRequestId': requestId,
+        'metadata.verificationMethod': verificationMethod,
+        'metadata.userId': userId
+    });
 }
 
 /**
@@ -427,6 +446,20 @@ router.post('/layer3/nin/verify', async (req, res) => {
             });
         }
 
+        const payment = await findCompletedVerificationPayment({
+            requestId: verificationRequest.request_id,
+            userId: sessionData.userAccount.user_id,
+            verificationMethod: 'nimc'
+        });
+
+        if (!payment) {
+            return res.status(402).json({
+                success: false,
+                error: 'Payment is required before NIN verification can continue',
+                code: 'VERIFICATION_PAYMENT_REQUIRED'
+            });
+        }
+
         const providerResult = await monnifyService.verifyNIN(nin);
         const existingData = verificationRequest.verification_data || {};
 
@@ -557,6 +590,20 @@ router.post('/layer3/bvn/verify', async (req, res) => {
                 error: `${duplicateIdentity.label} already exists`,
                 code: 'IDENTITY_ALREADY_EXISTS',
                 duplicate_field: duplicateIdentity.field
+            });
+        }
+
+        const payment = await findCompletedVerificationPayment({
+            requestId: verificationRequest.request_id,
+            userId: sessionData.userAccount.user_id,
+            verificationMethod: 'bvn'
+        });
+
+        if (!payment) {
+            return res.status(402).json({
+                success: false,
+                error: 'Payment is required before BVN verification can continue',
+                code: 'VERIFICATION_PAYMENT_REQUIRED'
             });
         }
 
