@@ -131,10 +131,6 @@ const VerificationRequirementPrompt: React.FC<VerificationRequirementPromptProps
           ))}
         </div>
 
-        <div className="rounded-2xl border border-blue-100 bg-blue-50/60 p-4 text-xs font-semibold leading-relaxed text-blue-900">
-          Verification happens securely on CasperID. {app.name} receives only your verification result and approved permissions.
-        </div>
-
         <div className="space-y-3">
           {desktopHandoff ? (
             <div className="rounded-3xl border border-primary/15 bg-primary/[0.03] p-5 text-center">
@@ -511,7 +507,7 @@ const HostedAuthorize: React.FC = () => {
             </div>
             <h1 className="mt-5 text-2xl font-black text-text-main">Add a passkey on this device</h1>
             <p className="mt-3 text-sm font-semibold leading-relaxed text-text-sub">
-              {recoveryNotice || 'This device does not have a passkey for your CasperID account. Verify your email to add this device.'}
+              {recoveryNotice || 'No passkey was found on this device. Verify your email to add one here.'}
             </p>
             <button
               onClick={() => startRecovery(email)}
@@ -546,7 +542,7 @@ const HostedAuthorize: React.FC = () => {
           email={email}
           verificationId={verificationId}
           title="Recover Your Account"
-          description={`We sent a 6-digit recovery code to ${email}`}
+          description={`Enter the 6-digit code sent to ${email}`}
           backLabel="Back to Sign In"
           successLabel="Verify & Recover"
           errorTitle="Recovery Failed"
@@ -586,11 +582,11 @@ const HostedAuthorize: React.FC = () => {
         <VerificationRequirementPrompt
           app={app}
           layer="Layer 2"
-          description="To continue, complete a short liveness check that confirms you are a real person."
+          description="Complete a quick liveness check to continue."
           requirements={[
-            'Use your phone camera for the liveness check',
-            'Follow the blink and face-positioning instructions',
-            'No identity document is required',
+            'Use your phone camera',
+            'Follow the face check prompts',
+            'No ID document needed',
           ]}
           onContinue={() => setFlowStep('upgrade_l2')}
           onCancel={() => returnError('access_denied', 'The required Layer 2 verification was not completed.')}
@@ -615,11 +611,11 @@ const HostedAuthorize: React.FC = () => {
         <VerificationRequirementPrompt
           app={app}
           layer="Layer 3"
-          description="To continue, submit your identity details and complete the required verification steps."
+          description="Submit your identity details to continue."
           requirements={[
-            'Provide an accepted government identity document',
-            'Complete the required liveness confirmation',
-            'Your submission may require review before final approval',
+            'Provide a government ID',
+            'Complete liveness verification',
+            'Review may be required',
           ]}
           onContinue={() => setFlowStep('upgrade_l3')}
           onCancel={() => returnError('access_denied', 'The required Layer 3 verification was not completed.')}
@@ -640,7 +636,7 @@ const HostedAuthorize: React.FC = () => {
         <div className="min-h-screen bg-[#F8F9FF] px-4 py-5 sm:px-6 sm:py-6">
           {authorizationStatus === 'provisional' && (
             <div className="mx-auto mb-4 max-w-[600px] rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 md:p-4 text-sm font-semibold leading-relaxed text-amber-900">
-              Your Layer 3 review is pending. You can continue to {app.name} now while CasperID completes the review. Your current status remains {tierLabels[currentTier]} until final approval.
+              Layer 3 review is pending. You can continue to {app.name} while CasperID completes the review.
             </div>
           )}
           <ConsentRequest
