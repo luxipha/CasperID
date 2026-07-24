@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { UserProfile, Experience, Education, Certification, Skill, Project, Award, Language, Volunteer } from '../types';
 import { apiService } from '../services/api';
 import { VerifyCredentialDrawer } from './VerifyCredentialDrawer';
+import { ProfileReviewsDrawer } from './ProfileReviewsDrawer';
 
 interface ProfileDisplayProps {
     data: {
@@ -21,6 +22,7 @@ interface ProfileDisplayProps {
 export default function ProfileDisplay({ data, isPublicView = true }: ProfileDisplayProps) {
     const { profile, experiences, education, certifications, skills, projects, awards, languages, volunteers } = data;
     const [verifyDrawerOpen, setVerifyDrawerOpen] = useState(false);
+    const [reviewsDrawerOpen, setReviewsDrawerOpen] = useState(false);
 
     if (!profile) return null;
 
@@ -138,9 +140,13 @@ export default function ProfileDisplay({ data, isPublicView = true }: ProfileDis
                             </a>
                         )}
                         {reviewUrl && (
-                            <a href={reviewUrl} className="inline-flex h-11 items-center justify-center rounded-2xl border border-gray-100 bg-gray-50 px-4 text-[11px] font-black uppercase tracking-[0.18em] text-text-main hover:border-[#8652E2]/30 hover:text-[#8652E2]">
+                            <button
+                                type="button"
+                                onClick={() => setReviewsDrawerOpen(true)}
+                                className="inline-flex h-11 items-center justify-center rounded-2xl border border-gray-100 bg-gray-50 px-4 text-[11px] font-black uppercase tracking-[0.18em] text-text-main hover:border-[#8652E2]/30 hover:text-[#8652E2]"
+                            >
                                 Reviews
-                            </a>
+                            </button>
                         )}
                     </div>
                 </div>
@@ -343,8 +349,14 @@ export default function ProfileDisplay({ data, isPublicView = true }: ProfileDis
                         <img src="/logos/logo.svg" alt="CasperID" className="w-8 h-8 invert brightness-0" />
                     </div>
                     <div>
-                        <h4 className="text-xl font-black">Verified CasperID Profile</h4>
-                        <p className="text-sm text-gray-400 font-medium">This identity is verified and secured on the Casper Mainnet.</p>
+                        <h4 className="text-xl font-black">
+                            {profile.is_verified && profile.credential_hash ? 'Verified CasperID Profile' : 'CasperID Profile'}
+                        </h4>
+                        <p className="text-sm text-gray-400 font-medium">
+                            {profile.is_verified && profile.credential_hash
+                                ? 'This identity is verified and secured on the Casper Mainnet.'
+                                : 'This profile is published on CasperID but does not yet have an active verification proof.'}
+                        </p>
                     </div>
                 </div>
                 <div className="relative z-10 w-full md:w-auto">
@@ -374,6 +386,14 @@ export default function ProfileDisplay({ data, isPublicView = true }: ProfileDis
                     onClose={() => setVerifyDrawerOpen(false)}
                     credentialHash={profile.credential_hash}
                     identifier={profile.cns_name || profile.human_id || undefined}
+                />
+            )}
+            {reviewUrl && (
+                <ProfileReviewsDrawer
+                    isOpen={reviewsDrawerOpen}
+                    onClose={() => setReviewsDrawerOpen(false)}
+                    identifier={profile.human_id || profile.cns_name || profile.wallet || ''}
+                    reviewUrl={reviewUrl}
                 />
             )}
         </div>
