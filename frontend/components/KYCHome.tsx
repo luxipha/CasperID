@@ -48,6 +48,30 @@ export const KYCHome: React.FC<KYCHomeProps> = ({
   onExit,
   onLayer3Submitted,
 }) => {
+  const getFriendlyLayer3IdentityError = (error: unknown, method: 'nimc' | 'bvn') => {
+    const fallback = method === 'bvn'
+      ? 'BVN verification is temporarily unavailable. Please try again shortly or use NIN instead.'
+      : 'NIN verification is temporarily unavailable. Please try again shortly.';
+
+    if (!(error instanceof Error) || !error.message) {
+      return fallback;
+    }
+
+    const normalized = error.message.toLowerCase();
+
+    if (normalized.includes('monnify api keys are not configured')) {
+      return 'Identity verification is temporarily unavailable. Please try again shortly.';
+    }
+
+    if (normalized.includes('live-only') || normalized.includes('live mode')) {
+      return method === 'bvn'
+        ? 'BVN verification is temporarily unavailable right now. Please use NIN or try again later.'
+        : 'NIN verification is temporarily unavailable right now. Please try again later.';
+    }
+
+    return error.message;
+  };
+
   const [activeStep, setActiveStep] = useState<ViewState>(initialStep);
   const [selectedDocType, setSelectedDocType] = useState<string>('passport');
   const [kycSubmitted, setKycSubmitted] = useState(false);
@@ -64,6 +88,7 @@ export const KYCHome: React.FC<KYCHomeProps> = ({
   const [ninValue, setNinValue] = useState<string>('');
   const [bvnValue, setBvnValue] = useState<string>('');
   const [identityVerifiedData, setIdentityVerifiedData] = useState<any>(null);
+  const [layer3IdentityError, setLayer3IdentityError] = useState<string>('');
   const { user } = useAuth();
 
   // Check for pending Layer 3 verification on mount
@@ -113,6 +138,7 @@ export const KYCHome: React.FC<KYCHomeProps> = ({
     setNinValue('');
     setBvnValue('');
     setIdentityVerifiedData(null);
+    setLayer3IdentityError('');
     setExtractedData(null);
     setUploadId('');
     setFrontImageUrl('');
@@ -275,8 +301,11 @@ export const KYCHome: React.FC<KYCHomeProps> = ({
       <KYCNIMCNumberEntry
         onBack={() => setActiveStep('layer3_context')}
         onCancel={cancelLayer3Draft}
+        error={layer3IdentityError}
+        onClearError={() => setLayer3IdentityError('')}
         onNext={async (details) => {
           try {
+            setLayer3IdentityError('');
             const requestId = layer3Session?.requestId;
             if (!requestId) {
               throw new Error('Layer 3 session is missing. Please restart verification.');
@@ -314,7 +343,7 @@ export const KYCHome: React.FC<KYCHomeProps> = ({
             setActiveStep('layer3_nin_confirm');
           } catch (error) {
             console.error('[Layer3] Identity verification failed:', error);
-            alert(error instanceof Error ? error.message : 'Failed to verify identity details. Please try again.');
+            setLayer3IdentityError(getFriendlyLayer3IdentityError(error, details.method));
           }
         }}
       />

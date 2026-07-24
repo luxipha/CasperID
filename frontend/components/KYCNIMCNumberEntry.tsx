@@ -12,9 +12,17 @@ interface KYCNIMCNumberEntryProps {
     bank_code?: string;
   }) => void;
   onCancel: () => void;
+  error?: string;
+  onClearError?: () => void;
 }
 
-export const KYCNIMCNumberEntry: React.FC<KYCNIMCNumberEntryProps> = ({ onBack, onNext, onCancel }) => {
+export const KYCNIMCNumberEntry: React.FC<KYCNIMCNumberEntryProps> = ({
+  onBack,
+  onNext,
+  onCancel,
+  error,
+  onClearError,
+}) => {
   const [method, setMethod] = useState<IdentityMethod>('nimc');
   const [nin, setNin] = useState('');
   const [bvn, setBvn] = useState('');
@@ -40,7 +48,10 @@ export const KYCNIMCNumberEntry: React.FC<KYCNIMCNumberEntryProps> = ({ onBack, 
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-w-4xl">
             <button
-              onClick={() => setMethod('nimc')}
+              onClick={() => {
+                onClearError?.();
+                setMethod('nimc');
+              }}
               className={`text-left rounded-[28px] border p-6 shadow-soft transition-all ${method === 'nimc' ? 'border-primary bg-primary/5' : 'border-gray-100 bg-white hover:border-primary/30'}`}
             >
               <div className="flex items-center gap-4">
@@ -57,7 +68,10 @@ export const KYCNIMCNumberEntry: React.FC<KYCNIMCNumberEntryProps> = ({ onBack, 
             </button>
 
             <button
-              onClick={() => setMethod('bvn')}
+              onClick={() => {
+                onClearError?.();
+                setMethod('bvn');
+              }}
               className={`text-left rounded-[28px] border p-6 shadow-soft transition-all ${method === 'bvn' ? 'border-primary bg-primary/5' : 'border-gray-100 bg-white hover:border-primary/30'}`}
             >
               <div className="flex items-center gap-4">
@@ -75,6 +89,12 @@ export const KYCNIMCNumberEntry: React.FC<KYCNIMCNumberEntryProps> = ({ onBack, 
           </div>
 
           <div className="bg-white rounded-[32px] border border-gray-100 shadow-soft p-10 max-w-3xl space-y-8">
+            {error ? (
+              <div className="rounded-2xl border border-red-200 bg-red-50 px-5 py-4">
+                <p className="text-sm font-black text-red-800">Verification unavailable</p>
+                <p className="mt-1 text-sm font-medium text-red-700">{error}</p>
+              </div>
+            ) : null}
             {method === 'nimc' ? (
               <div className="space-y-3">
                 <label className="text-sm font-black text-text-main">National Identification Number (NIN)</label>
@@ -85,7 +105,10 @@ export const KYCNIMCNumberEntry: React.FC<KYCNIMCNumberEntryProps> = ({ onBack, 
                   <input
                     type="text"
                     value={nin}
-                    onChange={(e) => setNin(e.target.value.replace(/\D/g, '').slice(0, 11))}
+                    onChange={(e) => {
+                      onClearError?.();
+                      setNin(e.target.value.replace(/\D/g, '').slice(0, 11));
+                    }}
                     className="w-full h-16 pl-14 pr-6 rounded-2xl bg-white border border-gray-100 text-base font-medium text-text-main placeholder:text-text-sub/30 focus:border-primary/50 focus:ring-4 focus:ring-primary/5 transition-all outline-none"
                     placeholder="Enter your 11-digit NIN"
                   />
@@ -101,7 +124,10 @@ export const KYCNIMCNumberEntry: React.FC<KYCNIMCNumberEntryProps> = ({ onBack, 
                   <input
                     type="text"
                     value={bvn}
-                    onChange={(e) => setBvn(e.target.value.replace(/\D/g, '').slice(0, 11))}
+                    onChange={(e) => {
+                      onClearError?.();
+                      setBvn(e.target.value.replace(/\D/g, '').slice(0, 11));
+                    }}
                     className="w-full h-16 px-6 rounded-2xl bg-white border border-gray-100 text-base font-medium text-text-main placeholder:text-text-sub/30 focus:border-primary/50 focus:ring-4 focus:ring-primary/5 transition-all outline-none"
                     placeholder="Enter your 11-digit BVN"
                   />
@@ -112,7 +138,10 @@ export const KYCNIMCNumberEntry: React.FC<KYCNIMCNumberEntryProps> = ({ onBack, 
                     <input
                       type="text"
                       value={accountNumber}
-                      onChange={(e) => setAccountNumber(e.target.value.replace(/\D/g, '').slice(0, 10))}
+                      onChange={(e) => {
+                        onClearError?.();
+                        setAccountNumber(e.target.value.replace(/\D/g, '').slice(0, 10));
+                      }}
                       className="w-full h-16 px-6 rounded-2xl bg-white border border-gray-100 text-base font-medium text-text-main placeholder:text-text-sub/30 focus:border-primary/50 focus:ring-4 focus:ring-primary/5 transition-all outline-none"
                       placeholder="10-digit account number"
                     />
@@ -122,7 +151,10 @@ export const KYCNIMCNumberEntry: React.FC<KYCNIMCNumberEntryProps> = ({ onBack, 
                     <input
                       type="text"
                       value={bankCode}
-                      onChange={(e) => setBankCode(e.target.value.trimStart())}
+                      onChange={(e) => {
+                        onClearError?.();
+                        setBankCode(e.target.value.trimStart());
+                      }}
                       className="w-full h-16 px-6 rounded-2xl bg-white border border-gray-100 text-base font-medium text-text-main placeholder:text-text-sub/30 focus:border-primary/50 focus:ring-4 focus:ring-primary/5 transition-all outline-none"
                       placeholder="e.g. 058"
                     />
