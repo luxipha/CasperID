@@ -18,7 +18,18 @@
 /* Light mode (default) */
 :root,
 .light {
-    --bg-app: #f8fafc;
+    --primary-rgb: 134 82 226;
+    --secondary-rgb: 109 232 236;
+    --canvas-rgb: 250 250 252;
+    --surface-rgb: 255 255 255;
+    --surface-muted-rgb: 246 247 250;
+    --surface-elevated-rgb: 252 252 253;
+    --border-subtle-rgb: 229 230 235;
+    --border-strong-rgb: 212 214 221;
+    --text-main-rgb: 26 26 46;
+    --text-sub-rgb: 98 109 133;
+    --alerts-rgb: 230 57 70;
+    --bg-app: #fafafc;
     --text-primary: #0f172a;
     --text-secondary: #64748b;
     --glass-bg: rgba(255, 255, 255, 0.94);
@@ -27,6 +38,17 @@
 
 /* Dark mode */
 .dark {
+    --primary-rgb: 167 139 250;
+    --secondary-rgb: 103 232 249;
+    --canvas-rgb: 11 8 19;
+    --surface-rgb: 23 18 35;
+    --surface-muted-rgb: 31 24 45;
+    --surface-elevated-rgb: 37 29 53;
+    --border-subtle-rgb: 65 59 81;
+    --border-strong-rgb: 88 80 109;
+    --text-main-rgb: 255 255 255;
+    --text-sub-rgb: 148 163 184;
+    --alerts-rgb: 248 113 113;
     --bg-app: #0B0813;
     --text-primary: #ffffff;
     --text-secondary: #94a3b8;
@@ -231,15 +253,53 @@
         --tw-gradient-to: transparent var(--tw-gradient-to-position);
         --tw-gradient-stops: var(--tw-gradient-from), color-mix(in srgb, var(--casperid-primary) 10%, transparent) var(--tw-gradient-via-position), var(--tw-gradient-to);
     }
+
+    .app-page {
+        @apply rounded-[40px] border border-border-subtle bg-surface shadow-soft;
+    }
+
+    .app-panel {
+        @apply rounded-[32px] border border-border-subtle bg-surface shadow-soft;
+    }
+
+    .app-panel-muted {
+        @apply rounded-[32px] border border-border-subtle bg-surface-elevated;
+    }
+
+    .app-card {
+        @apply rounded-[24px] border border-border-subtle bg-surface shadow-soft;
+    }
+
+    .app-input {
+        @apply border border-border-strong bg-surface-muted text-text-main;
+    }
+
+    .app-input::placeholder {
+        color: rgb(var(--text-sub-rgb) / 0.6);
+    }
+
+    .app-pill {
+        @apply border border-border-subtle bg-surface-muted text-text-sub;
+    }
+
+    .app-icon-button {
+        @apply border border-border-subtle bg-surface text-text-sub shadow-sm;
+    }
 }
 
 /* Global Styles */
 :root {
-    --primary: #8652E2;
-    --secondary: #6DE8EC;
-    --bg-light: #F8F9FF;
-    --text-main: #1A1A2E;
-    --text-sub: #626D85;
+    --primary: rgb(var(--primary-rgb));
+    --secondary: rgb(var(--secondary-rgb));
+    --bg-light: rgb(var(--canvas-rgb));
+    --surface-light: rgb(var(--surface-rgb));
+    --surface-muted: rgb(var(--surface-muted-rgb));
+    --surface-elevated: rgb(var(--surface-elevated-rgb));
+    --border-subtle: rgb(var(--border-subtle-rgb));
+    --border-strong: rgb(var(--border-strong-rgb));
+    --text-main: rgb(var(--text-main-rgb));
+    --text-sub: rgb(var(--text-sub-rgb));
+    --alerts: rgb(var(--alerts-rgb));
 }
 
 body {
@@ -247,6 +307,8 @@ body {
     font-family: 'Plus Jakarta Sans', 'Inter', sans-serif;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+    background-color: var(--bg-light);
+    color: var(--text-main);
 }
 
 .no-scrollbar::-webkit-scrollbar {

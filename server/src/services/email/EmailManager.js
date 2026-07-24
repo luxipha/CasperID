@@ -244,6 +244,30 @@ class EmailManager {
         });
     }
 
+    async sendReviewInvitationEmail(email, details) {
+        console.log(`[EmailManager] Sending review invitation to ${email}`);
+
+        const html = this._renderReviewInvitationTemplate(details);
+        return await this.providers.smtp.sendEmail({
+            to: email,
+            subject: `${details.requesterName || 'Someone'} requested a ${details.type} on CasperID`,
+            html,
+            from: process.env.EMAIL_FROM || `"CasperID Reviews" <${(process.env.SMTP_USER || process.env.SUPPORT_EMAIL)}>`
+        });
+    }
+
+    async sendReviewArchivedEmail(email, details) {
+        console.log(`[EmailManager] Sending review archive notice to ${email}`);
+
+        const html = this._renderReviewArchivedTemplate(details);
+        return await this.providers.smtp.sendEmail({
+            to: email,
+            subject: `Your CasperID ${details.type || 'review'} has been archived`,
+            html,
+            from: process.env.EMAIL_FROM || `"CasperID Reviews" <${(process.env.SMTP_USER || process.env.SUPPORT_EMAIL)}>`
+        });
+    }
+
     // ========================================
     // HTML TEMPLATE RENDERERS (SMTP Fallback)
     // ========================================
@@ -545,6 +569,70 @@ class EmailManager {
                         This is an automated security email from CasperID.<br/>
                         © ${new Date().getFullYear()} CasperID Protocol. Secure. Private. Yours.
                     </p>
+                </div>
+            </div>
+        `;
+    }
+
+    _renderReviewInvitationTemplate(details = {}) {
+        const {
+            requesterName = 'A CasperID user',
+            targetName = 'their profile',
+            type = 'review',
+            relationship = 'professional relationship',
+            promptNote = '',
+            inviteUrl = this.frontendUrl
+        } = details;
+
+        return `
+            <div style="${this._getBaseStyles()}">
+                <div style="${this._getCardStyles()}">
+                    <div style="margin-bottom: 28px;">
+                        <img src="https://www.casperid.com/logos/logo.png" width="48" style="margin-bottom: 12px;" />
+                        <h1 style="font-size: 28px; margin: 0 0 10px; color: #1A1A2E;">Review request</h1>
+                        <p style="font-size: 16px; color: #626D85; margin: 0;">
+                            ${requesterName} invited you to leave a ${type} for ${targetName} on CasperID.
+                        </p>
+                    </div>
+
+                    <div style="background:#F8F9FF; border:1px solid #E5E7EB; border-radius:16px; padding:20px; text-align:left; margin:24px 0;">
+                        <p style="margin:0 0 10px; font-weight:700; color:#1A1A2E;">Relationship</p>
+                        <p style="margin:0 0 16px; color:#626D85;">${relationship}</p>
+                        ${promptNote ? `
+                            <p style="margin:0 0 10px; font-weight:700; color:#1A1A2E;">Note from requester</p>
+                            <p style="margin:0; color:#626D85;">${promptNote}</p>
+                        ` : ''}
+                    </div>
+
+                    <a href="${inviteUrl}" style="${this._getButtonStyles()}">Open review request</a>
+
+                    <p style="color:#626D85; font-size:13px; line-height:1.7; margin-top:24px;">
+                        CasperID will ask you to verify your email before you can submit this review.
+                    </p>
+                </div>
+            </div>
+        `;
+    }
+
+    _renderReviewArchivedTemplate(details = {}) {
+        const {
+            requesterName = 'The CasperID profile owner',
+            type = 'review',
+            profileUrl = this.frontendUrl
+        } = details;
+
+        return `
+            <div style="${this._getBaseStyles()}">
+                <div style="${this._getCardStyles()}">
+                    <div style="margin-bottom: 28px;">
+                        <img src="https://www.casperid.com/logos/logo.png" width="48" style="margin-bottom: 12px;" />
+                        <h1 style="font-size: 28px; margin: 0 0 10px; color: #1A1A2E;">Review archived</h1>
+                        <p style="font-size: 16px; color: #626D85; margin: 0;">
+                            ${requesterName} archived the ${type} you submitted on CasperID.
+                        </p>
+                    </div>
+
+                    <a href="${profileUrl}" style="${this._getButtonStyles()}">View profile</a>
                 </div>
             </div>
         `;

@@ -163,6 +163,30 @@ export interface Volunteer {
   display_order?: number;
 }
 
+export interface ProfileReview {
+  id: string;
+  type: 'endorsement' | 'recommendation' | 'testimonial';
+  relationship: string;
+  prompt_note?: string;
+  reviewer_email?: string;
+  reviewer_name?: string | null;
+  reviewer_title?: string | null;
+  reviewer_company?: string | null;
+  rating?: number | null;
+  review_text?: string;
+  status: 'draft' | 'request_sent' | 'opened' | 'submitted' | 'approved' | 'rejected' | 'revoked' | 'expired' | 'archived';
+  created_at?: string;
+  invite_sent_at?: string;
+  opened_at?: string;
+  submitted_at?: string;
+  approved_at?: string;
+  archived_at?: string;
+  expires_at?: string;
+  last_accessed_at?: string;
+  access_lock_until?: string;
+  updated_at?: string;
+}
+
 // Navigation and UI types
 export interface NavItem {
   label: string;

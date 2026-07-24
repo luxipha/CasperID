@@ -353,6 +353,7 @@ app.use('/.well-known', require('./routes/well-known')); // JWKS + OpenID Connec
 app.use('/api/careers', require('./routes/careers')); // Career applications
 app.use('/api/affiliates', require('./routes/affiliates')); // Affiliate applications
 app.use('/api/quest', require('./routes/quest')); // Gamified Quest System
+app.use('/api', require('./routes/reviews')); // Profile reviews / endorsements
 
 // CSRF error handler (must be before general error handler)
 app.use(csrfErrorHandler);

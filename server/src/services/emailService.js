@@ -592,6 +592,24 @@ class EmailService {
             throw error;
         }
     }
+
+    async sendReviewInvitationEmail(email, details) {
+        try {
+            return await EmailManager.sendReviewInvitationEmail(email, details);
+        } catch (error) {
+            console.error('❌ Failed to send review invitation email:', error);
+            throw error;
+        }
+    }
+
+    async sendReviewArchivedEmail(email, details) {
+        try {
+            return await EmailManager.sendReviewArchivedEmail(email, details);
+        } catch (error) {
+            console.error('❌ Failed to send review archived email:', error);
+            throw error;
+        }
+    }
 }
 
 module.exports = new EmailService();

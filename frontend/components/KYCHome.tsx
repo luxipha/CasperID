@@ -491,7 +491,7 @@ export const KYCHome: React.FC<KYCHomeProps> = ({
           </p>
         </div>
 
-        <div className="bg-white rounded-[32px] border border-gray-100 shadow-soft p-6 flex items-center gap-6 min-w-[320px]">
+        <div className="app-panel p-6 flex items-center gap-6 min-w-[320px]">
           <div className="size-14 rounded-2xl bg-primary/5 flex items-center justify-center text-primary">
             <span className="material-symbols-outlined text-[28px]">badge</span>
           </div>
@@ -511,14 +511,14 @@ export const KYCHome: React.FC<KYCHomeProps> = ({
 
       {/* Progress Stepper */}
       <div className="relative pt-8 pb-12">
-        <div className="absolute top-[52px] left-0 w-full h-1 bg-gray-100 rounded-full">
+        <div className="absolute top-[52px] left-0 w-full h-1 bg-border-subtle rounded-full">
           <div className="absolute top-0 left-0 h-full bg-primary rounded-full transition-all duration-1000" style={{ width: `${getProgressPercentage()}%` }}></div>
         </div>
 
         <div className="relative flex justify-between">
           {/* Layer 1 */}
           <div className="flex flex-col items-center gap-4">
-            <div className={`size-10 rounded-full flex items-center justify-center shadow-lg ring-4 ring-bg-light z-10 transition-all ${isLayerCompleted(1) ? 'bg-primary text-white shadow-primary/20' : 'bg-white border-2 border-gray-200 text-text-sub'
+            <div className={`size-10 rounded-full flex items-center justify-center shadow-lg ring-4 ring-canvas z-10 transition-all ${isLayerCompleted(1) ? 'bg-primary text-white shadow-primary/20' : 'bg-surface border-2 border-border-strong text-text-sub'
               }`}>
               {isLayerCompleted(1) ? (
                 <span className="material-symbols-outlined text-[20px] font-bold">check</span>
@@ -533,9 +533,9 @@ export const KYCHome: React.FC<KYCHomeProps> = ({
 
           {/* Layer 2 */}
           <div className="flex flex-col items-center gap-4">
-            <div className={`size-10 rounded-full flex items-center justify-center font-black ring-4 ring-bg-light z-10 transition-all ${isLayerCompleted(2) ? 'bg-primary text-white shadow-lg shadow-primary/20' :
-              getCurrentLayerNumber() >= 2 ? 'bg-white border-2 border-primary text-primary' :
-                'bg-white border-2 border-gray-200 text-text-sub'
+            <div className={`size-10 rounded-full flex items-center justify-center font-black ring-4 ring-canvas z-10 transition-all ${isLayerCompleted(2) ? 'bg-primary text-white shadow-lg shadow-primary/20' :
+              getCurrentLayerNumber() >= 2 ? 'bg-surface border-2 border-primary text-primary' :
+                'bg-surface border-2 border-border-strong text-text-sub'
               }`}>
               {isLayerCompleted(2) ? (
                 <span className="material-symbols-outlined text-[20px] font-bold">check</span>
@@ -551,9 +551,9 @@ export const KYCHome: React.FC<KYCHomeProps> = ({
 
           {/* Layer 3 */}
           <div className="flex flex-col items-center gap-4">
-            <div className={`size-10 rounded-full flex items-center justify-center font-black ring-4 ring-bg-light z-10 transition-all ${isLayerCompleted(3) ? 'bg-primary text-white shadow-lg shadow-primary/20' :
-              getCurrentLayerNumber() >= 3 ? 'bg-white border-2 border-primary text-primary' :
-                'bg-white border-2 border-gray-200 text-text-sub'
+            <div className={`size-10 rounded-full flex items-center justify-center font-black ring-4 ring-canvas z-10 transition-all ${isLayerCompleted(3) ? 'bg-primary text-white shadow-lg shadow-primary/20' :
+              getCurrentLayerNumber() >= 3 ? 'bg-surface border-2 border-primary text-primary' :
+                'bg-surface border-2 border-border-strong text-text-sub'
               }`}>
               {isLayerCompleted(3) ? (
                 <span className="material-symbols-outlined text-[20px] font-bold">check</span>
@@ -573,8 +573,8 @@ export const KYCHome: React.FC<KYCHomeProps> = ({
       <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
 
         {/* Card 1: Basic Identity */}
-        <div className={`bg-white rounded-[40px] border border-gray-100 shadow-soft p-10 flex flex-col h-full relative overflow-hidden group ${isLayerCompleted(1) ? 'opacity-80' : ''}`}>
-          <div className="absolute top-8 right-8 text-gray-100 group-hover:text-primary/5 transition-colors">
+        <div className={`app-page p-10 flex flex-col h-full relative overflow-hidden group ${isLayerCompleted(1) ? 'opacity-80' : ''}`}>
+          <div className="absolute top-8 right-8 text-border-subtle group-hover:text-primary/5 transition-colors">
             <span className="material-symbols-outlined text-6xl">fingerprint</span>
           </div>
           <div className="mb-8">
@@ -601,11 +601,11 @@ export const KYCHome: React.FC<KYCHomeProps> = ({
         </div>
 
         {/* Card 2: Liveness & Wallet */}
-        <div className={`bg-white rounded-[40px] border-2 shadow-soft p-10 flex flex-col h-full relative group transition-all ${kycSubmitted ? 'border-gray-100 opacity-80' :
-          isLayerCompleted(2) ? 'border-gray-100 opacity-90' :
+        <div className={`app-page border-2 p-10 flex flex-col h-full relative group transition-all ${kycSubmitted ? 'border-border-subtle opacity-80' :
+          isLayerCompleted(2) ? 'border-border-subtle opacity-90' :
             'border-primary/20'
           }`}>
-          <div className="absolute top-8 right-8 text-gray-100 group-hover:text-primary/5 transition-colors">
+          <div className="absolute top-8 right-8 text-border-subtle group-hover:text-primary/5 transition-colors">
             <span className="material-symbols-outlined text-6xl">face_retouching_natural</span>
           </div>
           <div className="mb-8">
@@ -639,7 +639,7 @@ export const KYCHome: React.FC<KYCHomeProps> = ({
         </div>
 
         {/* Card 3: Full KYC */}
-        <div className={`bg-white rounded-[40px] border shadow-soft p-10 flex flex-col h-full relative group transition-all ${kycSubmitted ? 'border-primary shadow-glow ring-1 ring-primary/20' : 'border-gray-100'}`}>
+        <div className={`app-page p-10 flex flex-col h-full relative group transition-all ${kycSubmitted ? 'border-primary shadow-glow ring-1 ring-primary/20' : 'border-border-subtle'}`}>
           <div className="absolute top-[-2px] right-8 px-4 py-1.5 bg-primary text-white rounded-b-2xl text-[9px] font-black uppercase tracking-[0.2em] shadow-md z-10">
             Highest Trust
           </div>
@@ -678,7 +678,7 @@ export const KYCHome: React.FC<KYCHomeProps> = ({
                 </div>
                 <p className="text-sm font-bold text-text-sub">Your Layer 3 verification is under review by our team.</p>
               </div>
-              <button onClick={() => setActiveStep('layer3_submission_received')} className="mt-auto w-full h-14 bg-white text-primary border-2 border-primary rounded-[18px] font-black text-sm flex items-center justify-center gap-3 hover:bg-primary/5 transition-all">
+              <button onClick={() => setActiveStep('layer3_submission_received')} className="mt-auto w-full h-14 bg-surface text-primary border-2 border-primary rounded-[18px] font-black text-sm flex items-center justify-center gap-3 hover:bg-primary/5 transition-all">
                 View Progress
               </button>
             </>

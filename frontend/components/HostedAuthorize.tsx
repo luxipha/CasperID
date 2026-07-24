@@ -437,10 +437,19 @@ const HostedAuthorize: React.FC = () => {
   };
 
   const startRecovery = useCallback(async (nextEmail: string) => {
+    const trimmedEmail = nextEmail.trim();
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+    if (!trimmedEmail || !emailRegex.test(trimmedEmail)) {
+      setError('Enter your account email to continue with recovery.');
+      setFlowStep('signin');
+      return;
+    }
+
     try {
       setError('');
-      const response = await apiService.sendRecoveryOTP(nextEmail);
-      setEmail(nextEmail);
+      const response = await apiService.sendRecoveryOTP(trimmedEmail);
+      setEmail(trimmedEmail);
       setVerificationId(response.verificationId);
       setFlowStep('recover_otp');
     } catch (recoveryError: any) {

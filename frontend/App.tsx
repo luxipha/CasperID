@@ -52,6 +52,8 @@ import { VerifyCredentialPage } from './components/VerifyCredentialPage';
 import { VerifyZKClaimsPage } from './components/VerifyZKClaimsPage';
 import { SharedDataView } from './components/SharedDataView';
 import { QRScannerModal } from './components/QRScannerModal';
+import PublicReviewsPage from './components/reviews/PublicReviewsPage';
+import ReviewInvitationPage from './components/reviews/ReviewInvitationPage';
 import OTPPairingNotification from './components/OTPPairingNotification';
 import { useAuth } from './contexts/AuthContext';
 import { useDocumentTitle } from './hooks/useDocumentTitle';
@@ -79,6 +81,21 @@ const DIDProfileWrapper: React.FC = () => {
   return didSlug ? <PublicProfileContainer walletOrUsername={didSlug} /> : null;
 };
 
+const PublicReviewsWrapper: React.FC = () => {
+  const { slug } = useParams<{ slug: string }>();
+  return slug ? <PublicReviewsPage identifier={slug} /> : null;
+};
+
+const SubdomainReviewsWrapper: React.FC = () => {
+  const subdomain = getSubdomain();
+  return subdomain ? <PublicReviewsPage identifier={subdomain} /> : <Navigate to="/" replace />;
+};
+
+const ReviewInvitationWrapper: React.FC = () => {
+  const { token } = useParams<{ token: string }>();
+  return token ? <ReviewInvitationPage token={token} /> : <Navigate to="/" replace />;
+};
+
 const PRouteRedirect: React.FC = () => {
   const { slug } = useParams<{ slug: string }>();
   return <Navigate to={`/profile/${slug}`} replace />;
@@ -99,7 +116,7 @@ const App: React.FC = () => {
             '/share-view', '/verification-center', '/explore', '/health',
             '/pair', '/auth', '/integrations', '/mobile', '/null', '/business',
             '/careers', '/apply-success',
-            '/affiliate', '/p', '/did', '/cns-success', '/events'
+            '/affiliate', '/p', '/did', '/cns-success', '/events', '/reviews'
         ];
         return sysPaths.includes(p) ||
             p.startsWith('/verify/') ||
@@ -114,7 +131,8 @@ const App: React.FC = () => {
             p.startsWith('/profile/') ||
             p.startsWith('/p/') ||
             p.startsWith('/did/') ||
-            p.startsWith('/events/');
+            p.startsWith('/events/') ||
+            p.startsWith('/reviews/');
     };
 
   const location = useLocation();
@@ -609,6 +627,8 @@ const App: React.FC = () => {
         return <Settings />;
       case 'profile':
         return <Profile />;
+      case 'profile-reviews':
+        return <Profile initialTab="Reviews" />;
       case 'kyc':
         return <KYCHome />;
       case 'credentials':
@@ -744,7 +764,7 @@ const App: React.FC = () => {
               <div className="flex gap-3">
                 <button
                   onClick={() => setIsConsentModalOpen(true)}
-                  className="flex items-center gap-2 px-6 py-3.5 bg-white border border-gray-200 text-text-main font-bold text-sm rounded-2xl hover:bg-gray-50 transition-all shadow-sm active:scale-95"
+                  className="flex items-center gap-2 px-6 py-3.5 app-icon-button font-bold text-sm rounded-2xl hover:bg-surface-muted transition-all active:scale-95"
                 >
                   <span className="material-symbols-outlined text-xl">login</span>
                   Consent Demo
@@ -780,6 +800,8 @@ const App: React.FC = () => {
 
   const activeSidebarTab = (currentView === 'did-create' || currentView === 'did-manage' || currentView === 'did-export' || currentView === 'did-import')
     ? 'did-management'
+    : currentView === 'profile-reviews'
+    ? 'profile'
     : currentView;
 
   // Don't show layout chrome during onboarding, public profile view, landing, admin, or credential verification
@@ -803,13 +825,16 @@ const App: React.FC = () => {
         <Route path="/affiliate" element={<AffiliatePage />} />
         <Route path="/events" element={<EventsPage />} />
         <Route path="/cns-success" element={<CnsSuccess />} />
+        <Route path="/profile/:slug/reviews" element={<PublicReviewsWrapper />} />
+        <Route path="/reviews" element={<SubdomainReviewsWrapper />} />
+        <Route path="/reviews/invite/:token" element={<ReviewInvitationWrapper />} />
         <Route path="/profile/:slug" element={<PublicProfileContainerWrapper />} />
         <Route path="/did/*" element={<DIDProfileWrapper />} />
         <Route path="/p/:slug" element={<PRouteRedirect />} />
 
         {/* Dashboard Route - must be before /:slug catch-all */}
         <Route path="/dashboard" element={
-          <div className="flex min-h-screen bg-bg-light font-sans selection:bg-primary/20">
+          <div className="flex min-h-screen bg-canvas font-sans selection:bg-primary/20">
             {!isOnboarding ? (
               <>
                 <Sidebar currentView={activeSidebarTab} onNavigate={setCurrentView} />
@@ -855,7 +880,7 @@ const App: React.FC = () => {
                 </div>
               </>
             ) : (
-              <main className="bg-bg-light min-h-screen w-full">{renderContent()}</main>
+              <main className="bg-canvas min-h-screen w-full">{renderContent()}</main>
             )}
           </div>
         } />
@@ -870,7 +895,7 @@ const App: React.FC = () => {
 
         {/* Main App Dashboard / Catch-all for reserved paths */}
         <Route path="*" element={
-          <div className="flex min-h-screen bg-bg-light font-sans selection:bg-primary/20">
+          <div className="flex min-h-screen bg-canvas font-sans selection:bg-primary/20">
             {/* Dashboard Chrome logic here - but for now we renderContent based on currentView */}
             {!isOnboarding ? (
               <>
@@ -924,7 +949,7 @@ const App: React.FC = () => {
                 </div>
               </>
             ) : (
-              <main className="bg-bg-light min-h-screen w-full">{renderContent()}</main>
+              <main className="bg-canvas min-h-screen w-full">{renderContent()}</main>
             )}
           </div>
         } />

@@ -34,6 +34,10 @@ export default function ProfileDisplay({ data, isPublicView = true }: ProfileDis
         return `${baseUrl}${url.startsWith('/') ? '' : '/'}${url}`;
     };
 
+    const reviewUrl = profile.human_id || profile.cns_name || profile.wallet
+        ? `/profile/${profile.human_id || profile.cns_name || profile.wallet}/reviews`
+        : null;
+
     return (
         <div className="w-full space-y-8 animate-in fade-in duration-700">
             {/* Hero Header Section */}
@@ -131,6 +135,11 @@ export default function ProfileDisplay({ data, isPublicView = true }: ProfileDis
                         {(profile.socials?.website || profile.website) && (
                             <a href={profile.socials?.website || profile.website} target="_blank" rel="noopener" className="size-11 rounded-2xl bg-gray-50 flex items-center justify-center text-text-sub hover:text-[#8652E2] hover:bg-[#8652E2]/5 transition-all border border-gray-100" title="Website">
                                 <span className="material-symbols-outlined">language</span>
+                            </a>
+                        )}
+                        {reviewUrl && (
+                            <a href={reviewUrl} className="inline-flex h-11 items-center justify-center rounded-2xl border border-gray-100 bg-gray-50 px-4 text-[11px] font-black uppercase tracking-[0.18em] text-text-main hover:border-[#8652E2]/30 hover:text-[#8652E2]">
+                                Reviews
                             </a>
                         )}
                     </div>

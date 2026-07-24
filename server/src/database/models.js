@@ -1082,6 +1082,173 @@ const recoveryRequestSchema = new mongoose.Schema({
 });
 
 // ============================================
+// PROFILE REVIEWS / ENDORSEMENTS
+// ============================================
+
+const profileReviewSchema = new mongoose.Schema({
+    review_id: {
+        type: String,
+        required: true,
+        unique: true,
+        index: true
+    },
+    profile_wallet: {
+        type: String,
+        required: true,
+        index: true
+    },
+    target_type: {
+        type: String,
+        enum: ['profile', 'context'],
+        default: 'profile'
+    },
+    profile_human_id: {
+        type: String,
+        index: true
+    },
+    profile_cns_name: String,
+    requested_by_wallet: {
+        type: String,
+        required: true,
+        index: true
+    },
+    type: {
+        type: String,
+        enum: ['endorsement', 'recommendation', 'testimonial'],
+        required: true
+    },
+    relationship: {
+        type: String,
+        required: true,
+        trim: true
+    },
+    prompt_note: {
+        type: String,
+        trim: true,
+        maxlength: 500
+    },
+    reviewer_email: {
+        type: String,
+        required: true,
+        trim: true
+    },
+    reviewer_email_normalized: {
+        type: String,
+        required: true,
+        index: true
+    },
+    reviewer_user_id: {
+        type: String,
+        index: true
+    },
+    reviewer_name: {
+        type: String,
+        trim: true
+    },
+    reviewer_title: {
+        type: String,
+        trim: true
+    },
+    reviewer_company: {
+        type: String,
+        trim: true
+    },
+    rating: {
+        type: Number,
+        min: 1,
+        max: 5
+    },
+    review_text: {
+        type: String,
+        trim: true,
+        maxlength: 250
+    },
+    issuer_type: {
+        type: String,
+        enum: ['personal', 'company'],
+        default: 'personal'
+    },
+    issuer_organization: {
+        type: String,
+        trim: true
+    },
+    invite_token_hash: {
+        type: String,
+        required: true,
+        unique: true,
+        index: true
+    },
+    status: {
+        type: String,
+        enum: ['draft', 'request_sent', 'opened', 'submitted', 'approved', 'rejected', 'revoked', 'expired', 'archived'],
+        default: 'request_sent',
+        index: true
+    },
+    expires_at: {
+        type: Date,
+        required: true,
+        index: true
+    },
+    invite_sent_at: {
+        type: Date,
+        default: Date.now
+    },
+    opened_at: Date,
+    last_accessed_at: Date,
+    submitted_at: Date,
+    approved_at: Date,
+    archived_at: Date,
+    archived_by_wallet: String,
+    otp_sent_count: {
+        type: Number,
+        default: 0
+    },
+    access_start_count: {
+        type: Number,
+        default: 0
+    },
+    access_resend_count: {
+        type: Number,
+        default: 0
+    },
+    last_otp_sent_at: Date,
+    last_access_verified_at: Date,
+    access_lock_until: Date,
+    reviewer_session_expires_at: Date,
+    access_audit: [{
+        event: { type: String, required: true },
+        at: { type: Date, default: Date.now },
+        ip: String,
+        user_agent: String,
+        email: String,
+        success: { type: Boolean, default: true },
+        detail: String,
+        metadata: mongoose.Schema.Types.Mixed
+    }],
+    created_at: {
+        type: Date,
+        default: Date.now
+    },
+    updated_at: {
+        type: Date,
+        default: Date.now
+    }
+});
+
+profileReviewSchema.index(
+    { profile_wallet: 1, reviewer_email_normalized: 1 },
+    { unique: true, name: 'uniq_profile_review_per_email' }
+);
+
+profileReviewSchema.index({ profile_wallet: 1, status: 1, approved_at: -1 });
+profileReviewSchema.index({ requested_by_wallet: 1, created_at: -1 });
+
+profileReviewSchema.pre('save', function (next) {
+    this.updated_at = new Date();
+    next();
+});
+
+// ============================================
 // METAMASK ADVANCED PERMISSIONS (ERC-7715)
 // ============================================
 
@@ -1875,6 +2042,7 @@ paymentSchema.index({ expires_at: 1 }, { expireAfterSeconds: 0 });
 
 const Payment = mongoose.model('Payment', paymentSchema);
 const AuthorizationCode = mongoose.model('AuthorizationCode', authorizationCodeSchema);
+const ProfileReview = mongoose.model('ProfileReview', profileReviewSchema);
 
 module.exports = {
     // Payments
@@ -1914,6 +2082,7 @@ module.exports = {
     Award,
     Language,
     Volunteer,
+    ProfileReview,
 
     // System
     ViewEvent,

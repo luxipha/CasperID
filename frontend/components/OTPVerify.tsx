@@ -13,6 +13,7 @@ interface OTPVerifyProps {
   backLabel?: string;
   successLabel?: string;
   errorTitle?: string;
+  initialResendDelaySeconds?: number;
 }
 
 export const OTPVerify: React.FC<OTPVerifyProps> = ({
@@ -27,11 +28,16 @@ export const OTPVerify: React.FC<OTPVerifyProps> = ({
   backLabel = 'Change Email',
   successLabel = 'Verify & Continue',
   errorTitle = 'Verification Failed',
+  initialResendDelaySeconds = 59,
 }) => {
   const [otp, setOtp] = useState(['', '', '', '', '', '']);
   const [isLoading, setIsLoading] = useState(false);
-  const [timeLeft, setTimeLeft] = useState(59);
+  const [timeLeft, setTimeLeft] = useState(initialResendDelaySeconds);
   const [error, setError] = useState('');
+
+  useEffect(() => {
+    setTimeLeft(initialResendDelaySeconds);
+  }, [verificationId, initialResendDelaySeconds]);
 
   useEffect(() => {
     if (timeLeft > 0) {
@@ -88,7 +94,8 @@ export const OTPVerify: React.FC<OTPVerifyProps> = ({
         : await apiService.resendOTP(verificationId);
 
       if (response.success) {
-        setTimeLeft(59);
+        const resendDelaySeconds = Math.max(1, Math.ceil((response.resendAvailableIn || 59000) / 1000));
+        setTimeLeft(resendDelaySeconds);
         setOtp(['', '', '', '', '', '']);
       } else {
         setError(response.error || 'Failed to resend code');

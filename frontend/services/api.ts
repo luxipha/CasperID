@@ -1717,6 +1717,130 @@ class ApiService {
     }
   }
 
+  async getProfileReviews(identifier: string): Promise<any> {
+    try {
+      const response = await this.client.get(`/api/reviews/profile/${identifier}`);
+      return response.data;
+    } catch (error) {
+      throw this.handleError(error);
+    }
+  }
+
+  async getMyProfileReviews(): Promise<any> {
+    try {
+      const response = await this.client.get('/api/reviews/my-profile');
+      return response.data;
+    } catch (error) {
+      throw this.handleError(error);
+    }
+  }
+
+  async requestProfileReview(identifier: string, payload: {
+    reviewerEmail: string;
+    type: 'endorsement' | 'recommendation' | 'testimonial';
+    relationship: string;
+    promptNote?: string;
+  }): Promise<any> {
+    try {
+      const response = await this.client.post(`/api/reviews/profile/${identifier}/request`, payload);
+      return response.data;
+    } catch (error) {
+      throw this.handleError(error);
+    }
+  }
+
+  async archiveProfileReview(reviewId: string): Promise<any> {
+    try {
+      const response = await this.client.post(`/api/reviews/${reviewId}/archive`);
+      return response.data;
+    } catch (error) {
+      throw this.handleError(error);
+    }
+  }
+
+  async resendProfileReview(reviewId: string): Promise<any> {
+    try {
+      const response = await this.client.post(`/api/reviews/${reviewId}/resend`);
+      return response.data;
+    } catch (error) {
+      throw this.handleError(error);
+    }
+  }
+
+  async revokeProfileReview(reviewId: string): Promise<any> {
+    try {
+      const response = await this.client.post(`/api/reviews/${reviewId}/revoke`);
+      return response.data;
+    } catch (error) {
+      throw this.handleError(error);
+    }
+  }
+
+  async generateProfileReviewLink(reviewId: string): Promise<any> {
+    try {
+      const response = await this.client.post(`/api/reviews/${reviewId}/link`);
+      return response.data;
+    } catch (error) {
+      throw this.handleError(error);
+    }
+  }
+
+  async getReviewInvitation(token: string): Promise<any> {
+    try {
+      const response = await this.client.get(`/api/reviews/invitations/${token}`);
+      return response.data;
+    } catch (error) {
+      throw this.handleError(error);
+    }
+  }
+
+  async startReviewInvitationAccess(token: string, email: string): Promise<any> {
+    try {
+      const response = await this.client.post(`/api/reviews/invitations/${token}/access/start`, { email });
+      return response.data;
+    } catch (error) {
+      throw this.handleError(error);
+    }
+  }
+
+  async resendReviewInvitationAccess(token: string, verificationId: string): Promise<any> {
+    try {
+      const response = await this.client.post(`/api/reviews/invitations/${token}/access/resend`, {
+        verificationId
+      });
+      return response.data;
+    } catch (error) {
+      throw this.handleError(error);
+    }
+  }
+
+  async verifyReviewInvitationAccess(token: string, verificationId: string, otp: string): Promise<any> {
+    try {
+      const response = await this.client.post(`/api/reviews/invitations/${token}/access/verify`, {
+        verificationId,
+        otp
+      });
+      return response.data;
+    } catch (error) {
+      throw this.handleError(error);
+    }
+  }
+
+  async submitReviewInvitation(token: string, payload: {
+    reviewerName: string;
+    reviewerTitle: string;
+    reviewerCompany: string;
+    rating: number;
+    reviewText: string;
+  }): Promise<any> {
+    try {
+      const response = await this.client.post(`/api/reviews/invitations/${token}/submit`, payload);
+      return response.data;
+    } catch (error) {
+      throw this.handleError(error);
+    }
+  }
+
   async getActivityDetail(id: string): Promise<any> {
     try {
       const response = await this.client.get(`/api/activity-log/${id}`);

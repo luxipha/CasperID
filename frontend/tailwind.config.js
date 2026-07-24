@@ -7,17 +7,23 @@ export default {
     theme: {
         extend: {
             colors: {
-                primary: '#8652E2',
-                secondary: '#6DE8EC',
-                'bg-light': '#F8F9FF',
-                'bg-dark': '#FFFFFF',
-                'surface-light': '#FFFFFF',
-                'text-main': '#1A1A2E',
-                'text-sub': '#626D85',
-                'text-muted': '#626D85', // Alias for Business Platform
-                'border-color': '#E5E7EB',
-                'border-muted': '#E5E7EB', // Alias for Business Platform
-                alerts: '#E63946',
+                primary: 'rgb(var(--primary-rgb) / <alpha-value>)',
+                secondary: 'rgb(var(--secondary-rgb) / <alpha-value>)',
+                canvas: 'rgb(var(--canvas-rgb) / <alpha-value>)',
+                surface: 'rgb(var(--surface-rgb) / <alpha-value>)',
+                'surface-muted': 'rgb(var(--surface-muted-rgb) / <alpha-value>)',
+                'surface-elevated': 'rgb(var(--surface-elevated-rgb) / <alpha-value>)',
+                'bg-light': 'rgb(var(--canvas-rgb) / <alpha-value>)',
+                'bg-dark': 'rgb(var(--surface-rgb) / <alpha-value>)',
+                'surface-light': 'rgb(var(--surface-rgb) / <alpha-value>)',
+                'text-main': 'rgb(var(--text-main-rgb) / <alpha-value>)',
+                'text-sub': 'rgb(var(--text-sub-rgb) / <alpha-value>)',
+                'text-muted': 'rgb(var(--text-sub-rgb) / <alpha-value>)',
+                'border-color': 'rgb(var(--border-subtle-rgb) / <alpha-value>)',
+                'border-muted': 'rgb(var(--border-subtle-rgb) / <alpha-value>)',
+                'border-subtle': 'rgb(var(--border-subtle-rgb) / <alpha-value>)',
+                'border-strong': 'rgb(var(--border-strong-rgb) / <alpha-value>)',
+                alerts: 'rgb(var(--alerts-rgb) / <alpha-value>)',
                 // CasperOS (RestoTech) Colors
                 'os-primary': '#e67e22',
                 'os-secondary': '#6DE8EC',

@@ -105,21 +105,68 @@ router.post('/send-otp', async (req, res) => {
 
         // Generate OTP and verification ID
         const otp = isStagingMode ? stagingOtp : emailService.generateOTP();
-        const verificationId = uuidv4();
         const expiresAt = new Date(Date.now() + (10 * 60 * 1000)); // 10 minutes
+        let verificationId = uuidv4();
 
-        // Store OTP in database (MongoDB with TTL auto-cleanup)
-        await EmailVerification.create({
-            verification_id: verificationId,
-            email,
-            user_id: existingUser?.user_id,
-            verification_code: otp,
-            type: isRecovery ? 'recovery' : 'otp_auth',
-            purpose: isRecovery ? 'account_recovery' : undefined,
-            verified: false,
-            attempts: 0,
-            expires_at: expiresAt
-        });
+        if (isRecovery && existingUser?.user_id) {
+            const activeRecoveryVerification = await EmailVerification.findOne({
+                user_id: existingUser.user_id,
+                verified: false,
+                expires_at: { $gt: new Date() },
+                $or: [
+                    { type: 'recovery' },
+                    { purpose: 'account_recovery' }
+                ]
+            }).sort({ created_at: -1 });
+
+            if (activeRecoveryVerification) {
+                verificationId = activeRecoveryVerification.verification_id;
+                activeRecoveryVerification.email = email;
+                activeRecoveryVerification.verification_code = otp;
+                activeRecoveryVerification.type = 'recovery';
+                activeRecoveryVerification.purpose = 'account_recovery';
+                activeRecoveryVerification.attempts = 0;
+                activeRecoveryVerification.verified = false;
+                activeRecoveryVerification.verified_at = undefined;
+                activeRecoveryVerification.expires_at = expiresAt;
+                await activeRecoveryVerification.save();
+
+                await EmailVerification.deleteMany({
+                    user_id: existingUser.user_id,
+                    verified: false,
+                    verification_id: { $ne: verificationId },
+                    $or: [
+                        { type: 'recovery' },
+                        { purpose: 'account_recovery' }
+                    ]
+                });
+            } else {
+                await EmailVerification.create({
+                    verification_id: verificationId,
+                    email,
+                    user_id: existingUser.user_id,
+                    verification_code: otp,
+                    type: 'recovery',
+                    purpose: 'account_recovery',
+                    verified: false,
+                    attempts: 0,
+                    expires_at: expiresAt
+                });
+            }
+        } else {
+            // Store OTP in database (MongoDB with TTL auto-cleanup)
+            await EmailVerification.create({
+                verification_id: verificationId,
+                email,
+                user_id: existingUser?.user_id,
+                verification_code: otp,
+                type: isRecovery ? 'recovery' : 'otp_auth',
+                purpose: isRecovery ? 'account_recovery' : undefined,
+                verified: false,
+                attempts: 0,
+                expires_at: expiresAt
+            });
+        }
 
         // Send OTP email (skip in staging mode)
         if (isStagingMode) {

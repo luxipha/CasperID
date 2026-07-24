@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import Logo from './Logo';
 
@@ -25,6 +25,7 @@ export const AuthEntry: React.FC<AuthEntryProps> = ({
   const [isVerifying, setIsVerifying] = useState(false);
   const [error, setError] = useState('');
   const [errorTitle, setErrorTitle] = useState('Failed to Send Code');
+  const emailInputRef = useRef<HTMLInputElement>(null);
   const { login } = useAuth();
 
   // Detect the current device type
@@ -106,6 +107,22 @@ export const AuthEntry: React.FC<AuthEntryProps> = ({
     }, 2000);
   };
 
+  const handleRecoverClick = () => {
+    const emailInput = emailInputRef.current;
+    const trimmedEmail = email.trim();
+
+    if (!trimmedEmail || !emailInput?.checkValidity()) {
+      setErrorTitle('Email Required');
+      setError('Enter the email for the account you want to recover.');
+      emailInput?.focus();
+      emailInput?.reportValidity();
+      return;
+    }
+
+    setError('');
+    onRecoverAccount?.(trimmedEmail);
+  };
+
   return (
     <div className="min-h-screen bg-[#F8F9FF] flex flex-col items-center justify-center p-6 animate-in fade-in duration-1000">
       {/* Dynamic Background Elements */}
@@ -162,6 +179,7 @@ export const AuthEntry: React.FC<AuthEntryProps> = ({
                 <span className="material-symbols-outlined text-text-sub/40 group-focus-within:text-primary transition-colors">mail</span>
               </div>
               <input
+                ref={emailInputRef}
                 autoFocus
                 type="email"
                 required
@@ -190,8 +208,8 @@ export const AuthEntry: React.FC<AuthEntryProps> = ({
           {onRecoverAccount && (
             <button
               type="button"
-              onClick={() => onRecoverAccount(email)}
-              disabled={!email || isLoading || isVerifying}
+              onClick={handleRecoverClick}
+              disabled={isLoading || isVerifying}
               className="w-full h-12 rounded-2xl border border-gray-200 bg-gray-50 text-sm font-bold text-text-main transition-all hover:bg-gray-100 disabled:opacity-50"
             >
               Recover account

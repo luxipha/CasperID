@@ -24,16 +24,21 @@ import { VolunteerForm } from './forms/VolunteerForm';
 import { LanguageForm } from './forms/LanguageForm';
 import { calculateATSScore } from '../utils/atsAlgorithm';
 import { ATSScoreCard } from './ATSScoreCard';
+import { ProfileReviewsManager } from './reviews/ProfileReviewsManager';
 
 // Reverted to self-contained state for compatibility
 // interface ProfileProps {
 //   activeTab: string;
 // }
 
-export const Profile: React.FC = () => {
+interface ProfileProps {
+  initialTab?: string;
+}
+
+export const Profile: React.FC<ProfileProps> = ({ initialTab = 'Profile' }) => {
   const { refreshUser } = useAuth();
   const [openToWork, setOpenToWork] = useState(false);
-  const [activeTab, setActiveTab] = useState('Profile');
+  const [activeTab, setActiveTab] = useState(initialTab);
   const [showPreview, setShowPreview] = useState(false);
   const [isExiting, setIsExiting] = useState(false);
 
@@ -141,6 +146,10 @@ export const Profile: React.FC = () => {
     };
     loadProfile();
   }, []);
+
+  useEffect(() => {
+    setActiveTab(initialTab);
+  }, [initialTab]);
 
   // Effect to recalculate ATS score whenever data changes
   useEffect(() => {
@@ -391,6 +400,7 @@ export const Profile: React.FC = () => {
 
   const navItems = [
     { label: 'Profile', icon: 'badge' },
+    { label: 'Reviews', icon: 'reviews' },
     { label: 'Experience', icon: 'work_history' },
     { label: 'Education', icon: 'school' },
     { label: 'Skills', icon: 'hotel_class' },
@@ -989,6 +999,9 @@ export const Profile: React.FC = () => {
             </div>
           </>
         );
+
+      case 'Reviews':
+        return <ProfileReviewsManager profile={profile} />;
 
       case 'Experience':
         return (

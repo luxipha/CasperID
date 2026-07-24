@@ -108,7 +108,7 @@ const GeneralTab = () => {
 
   return (
     <div className="space-y-6">
-      <section className="bg-white rounded-[32px] border border-gray-100 shadow-soft p-8">
+      <section className="app-panel p-8">
         <div className="flex justify-between items-start mb-8">
           <h2 className="text-lg font-bold text-text-main">Account Information</h2>
           <button
@@ -123,7 +123,7 @@ const GeneralTab = () => {
         </div>
         <div className="flex flex-col md:flex-row gap-10">
           <div className="flex flex-col items-center gap-3">
-            <div className="w-24 h-24 rounded-full border-2 border-dashed border-gray-200 flex flex-col items-center justify-center bg-gray-50 overflow-hidden relative group">
+            <div className="w-24 h-24 rounded-full border-2 border-dashed border-border-strong flex flex-col items-center justify-center bg-surface-muted overflow-hidden relative group">
               {profile?.profile_image_url ? (
                 <img src={profile.profile_image_url} className="absolute inset-0 w-full h-full object-cover" alt="Profile" />
               ) : (
@@ -143,7 +143,7 @@ const GeneralTab = () => {
                   type="text"
                   value={formData.displayName}
                   onChange={e => setFormData({ ...formData, displayName: e.target.value })}
-                  className="w-full h-11 px-4 rounded-xl bg-gray-50 border-none text-sm font-bold text-text-main focus:ring-2 focus:ring-primary/20"
+                  className="app-input w-full h-11 px-4 rounded-xl text-sm font-bold focus:ring-2 focus:ring-primary/20"
                 />
               </div>
               <div className="space-y-2">
@@ -152,7 +152,7 @@ const GeneralTab = () => {
                   type="email"
                   value={formData.email}
                   onChange={e => setFormData({ ...formData, email: e.target.value })}
-                  className="w-full h-11 px-4 rounded-xl bg-gray-50 border-none text-sm font-bold text-text-main focus:ring-2 focus:ring-primary/20"
+                  className="app-input w-full h-11 px-4 rounded-xl text-sm font-bold focus:ring-2 focus:ring-primary/20"
                 />
               </div>
               <div className="space-y-2">
@@ -161,7 +161,7 @@ const GeneralTab = () => {
                   type="date"
                   value={formData.dateOfBirth}
                   onChange={e => setFormData({ ...formData, dateOfBirth: e.target.value })}
-                  className="w-full h-11 px-4 rounded-xl bg-gray-50 border-none text-sm font-bold text-text-main focus:ring-2 focus:ring-primary/20"
+                  className="app-input w-full h-11 px-4 rounded-xl text-sm font-bold focus:ring-2 focus:ring-primary/20"
                 />
               </div>
             </div>
@@ -172,7 +172,7 @@ const GeneralTab = () => {
                   type="text"
                   readOnly
                   value={profile?.did_address || 'No DID created'}
-                  className="w-full h-11 pl-4 pr-12 rounded-xl bg-gray-50 border-none text-sm font-mono font-medium text-text-sub"
+                  className="app-input w-full h-11 pl-4 pr-12 rounded-xl text-sm font-mono font-medium text-text-sub"
                 />
                 <button
                   onClick={handleCopyDID}
@@ -189,14 +189,14 @@ const GeneralTab = () => {
         </div>
       </section>
 
-      <section className="bg-white rounded-[32px] border border-gray-100 shadow-soft p-8">
+      <section className="app-panel p-8">
         <h2 className="text-lg font-bold text-text-main mb-2">System Preferences</h2>
         <p className="text-sm text-text-sub font-medium mb-8">Settings automatically detected from your device.</p>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div className="space-y-2">
             <label className="text-[10px] font-extrabold text-text-sub uppercase tracking-widest">Language</label>
             <div className="relative">
-              <div className="w-full h-11 px-4 rounded-xl bg-gray-50 border-none text-sm font-bold text-text-main flex items-center justify-between opacity-70 cursor-not-allowed">
+              <div className="app-input w-full h-11 px-4 rounded-xl text-sm font-bold flex items-center justify-between opacity-70 cursor-not-allowed">
                 <span>{systemPrefs.language}</span>
                 <span className="text-[10px] font-black uppercase text-primary bg-primary/10 px-2 py-1 rounded">System Default</span>
               </div>
@@ -205,9 +205,9 @@ const GeneralTab = () => {
           <div className="space-y-2">
             <label className="text-[10px] font-extrabold text-text-sub uppercase tracking-widest">Timezone</label>
             <div className="relative">
-              <div className="w-full h-11 px-4 rounded-xl bg-gray-50 border-none text-sm font-bold text-text-main flex items-center justify-between opacity-70 cursor-not-allowed">
+              <div className="app-input w-full h-11 px-4 rounded-xl text-sm font-bold flex items-center justify-between opacity-70 cursor-not-allowed">
                 <span>{systemPrefs.timezone}</span>
-                <span className="text-[10px] font-black uppercase text-text-sub bg-gray-200 px-2 py-1 rounded">Auto-Detected</span>
+                <span className="text-[10px] font-black uppercase text-text-sub bg-surface px-2 py-1 rounded border border-border-subtle">Auto-Detected</span>
               </div>
             </div>
           </div>
