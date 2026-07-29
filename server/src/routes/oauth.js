@@ -17,11 +17,11 @@ const {
     normalizeRequiredTier
 } = require('../constants/tier-levels');
 const { expandScopesToSharedFields } = require('../utils/business-disclosure');
+const { CORE_SCOPES, resolveRequestedScopes } = require('../utils/business-scopes');
 const { getRootNameForAccount, buildContextualName } = require('../services/contextual-names');
 
 const router = express.Router();
 const AUTHORIZATION_CODE_TTL_MS = 2 * 60 * 1000;
-const DEFAULT_SCOPES = ['verify:identity', 'read:profile', 'read:kyc_level'];
 router.use(rateLimitMiddleware('business_api'));
 
 function sanitizedTheme(app) {
@@ -183,10 +183,8 @@ router.get('/authorize/validate', async (req, res) => {
                 logo_url: app.sdk_config?.logo_url || '',
                 redirect_uri: redirectUri,
                 required_tier: normalizeRequiredTier(app.sdk_config?.requiredTier),
-                requested_scopes: app.requested_scopes?.length ? app.requested_scopes : DEFAULT_SCOPES,
-                shared_fields: expandScopesToSharedFields(
-                    app.requested_scopes?.length ? app.requested_scopes : DEFAULT_SCOPES
-                ),
+                requested_scopes: resolveRequestedScopes(app),
+                shared_fields: expandScopesToSharedFields(resolveRequestedScopes(app)),
                 language: app.sdk_config?.language || 'EN',
                 theme: sanitizedTheme(app)
             }
@@ -289,7 +287,7 @@ router.post('/authorize/complete', requireAuth, async (req, res) => {
             code_challenge_method: 'S256',
             granted_tier: assessment.grantedTier,
             required_tier: assessment.requiredTier,
-            requested_scopes: app.requested_scopes?.length ? app.requested_scopes : DEFAULT_SCOPES,
+            requested_scopes: resolveRequestedScopes(app),
             authorization_status: assessment.authorizationStatus,
             verification_status: assessment.verificationStatus,
             selected_context: selectedContext,
@@ -297,7 +295,7 @@ router.post('/authorize/complete', requireAuth, async (req, res) => {
         });
 
         const sharedFields = expandScopesToSharedFields(
-            app.requested_scopes?.length ? app.requested_scopes : DEFAULT_SCOPES
+            resolveRequestedScopes(app)
         );
 
         return res.json({

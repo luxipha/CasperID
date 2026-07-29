@@ -13,6 +13,7 @@ interface BusinessApp {
   app_id: string;
   name: string;
   environment: 'sandbox' | 'production';
+  requested_scopes?: string[];
   allowed_origins: string[];
   redirect_uris: string[];
   android_digital_assets?: AndroidDigitalAsset[];
@@ -32,6 +33,16 @@ interface BusinessApp {
   };
 }
 
+const deriveProofsFromScopes = (scopes: string[] = []): string[] => {
+  const nextProofs: string[] = [];
+
+  if (scopes.includes('verify:liveness')) nextProofs.push('liveness');
+  if (scopes.includes('verify:kyc')) nextProofs.push('age');
+  if (scopes.includes('read:email')) nextProofs.push('email');
+
+  return nextProofs;
+};
+
 const IntegrationDetail: React.FC = () => {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -48,7 +59,7 @@ const IntegrationDetail: React.FC = () => {
   const [environment, setEnvironment] = useState<'sandbox' | 'production'>('sandbox');
   const [listingStatus, setListingStatus] = useState<'listed' | 'unlisted'>('unlisted');
   const [tier, setTier] = useState('L1');
-  const [proofs, setProofs] = useState<string[]>(['liveness', 'email']);
+  const [proofs, setProofs] = useState<string[]>([]);
   const [logoUrl, setLogoUrl] = useState('');
   const logoInputRef = React.useRef<HTMLInputElement>(null);
 
@@ -80,7 +91,7 @@ const IntegrationDetail: React.FC = () => {
           setEnvironment(a.environment || 'sandbox');
           setListingStatus(a.listing_status || 'unlisted');
           setTier(a.sdk_config?.requiredTier || 'L1');
-          setProofs(a.sdk_config?.proofs || ['liveness', 'email']);
+          setProofs(a.sdk_config?.proofs || deriveProofsFromScopes(a.requested_scopes || []));
           setLogoUrl(a.sdk_config?.logo_url || '');
           setAllowedOrigins(a.allowed_origins || []);
           setRedirectUris(a.redirect_uris || []);

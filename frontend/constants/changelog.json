@@ -1,5 +1,38 @@
 [
   {
+    "version": "4.0.4",
+    "title": "Consent Scope Alignment for Business Login",
+    "date": "July 29, 2026",
+    "status": "Production Update",
+    "highlight": {
+      "title": "Email Sharing Fix",
+      "description": "Business app proof settings now map to real OAuth scopes, so consent and downstream tokens stay aligned.",
+      "type": "shield"
+    },
+    "summary": "This update fixes a mismatch in the CasperID business authorization flow where the consent UI could indicate that a verified email would be shared even when the downstream business token did not include it. Business app proof settings are now resolved into real requested scopes, existing apps fall back through the same scope resolver, and the business app editor now reflects actual scopes instead of drifting from backend sharing behavior.",
+    "categories": [
+      {
+        "id": "v404-auth",
+        "title": "Hosted Authorization Consistency",
+        "items": [
+          "Mapped business proof settings to real OAuth scopes so Email Verification now requests read:email instead of only toggling a UI preference.",
+          "Unified the consent screen and token issuance paths to use the same requested scope resolver.",
+          "Preserved the default profile-sharing behavior for humanId and verification tier while making email sharing explicit and reliable.",
+          "Made existing business apps without stored requested scopes derive them from saved proof settings instead of silently falling back to partial defaults."
+        ]
+      },
+      {
+        "id": "v404-business",
+        "title": "Business App Configuration",
+        "items": [
+          "New business apps now persist a concrete default scope set at creation time.",
+          "Business app updates now sync proof toggles into requested_scopes so backend sharing behavior matches saved dashboard settings.",
+          "The business integration editor now derives proof toggles from real requested scopes when available, preventing misleading email-sharing state in the dashboard."
+        ]
+      }
+    ]
+  },
+  {
     "version": "4.0.3",
     "title": "Nigeria Payments, Recovery Stability, and Toast UX Cleanup",
     "date": "July 24, 2026",

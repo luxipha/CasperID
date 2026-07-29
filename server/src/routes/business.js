@@ -7,6 +7,11 @@ const { requireAuth } = require('../middleware/auth');
 const { rateLimitMiddleware } = require('../utils/rate-limiter');
 const { dispatchEvent, sendTestWebhook } = require('../utils/webhook-dispatcher');
 const { WEBHOOK_EVENTS } = require('../constants/webhook-events');
+const {
+    CORE_SCOPES,
+    deriveRequestedScopesFromProofs,
+    resolveRequestedScopes
+} = require('../utils/business-scopes');
 const multer = require('multer');
 const path = require('path');
 const imagekit = require('../services/imagekit');
@@ -206,7 +211,8 @@ router.post('/apps', requireAuth, rateLimitMiddleware('business_api_key_create')
             redirect_uris,
             environment,
             website_url: (website_url || '').trim(),
-            description: (description || '').trim().slice(0, 300)
+            description: (description || '').trim().slice(0, 300),
+            requested_scopes: CORE_SCOPES
         });
 
         await newApp.save();
@@ -413,6 +419,7 @@ router.patch('/apps/:app_id', requireAuth, async (req, res) => {
             
             if (sdk_config.proofs !== undefined) {
                 app.sdk_config.proofs = sdk_config.proofs;
+                app.requested_scopes = deriveRequestedScopesFromProofs(sdk_config.proofs);
             }
             
             app.markModified('sdk_config');
@@ -429,6 +436,7 @@ router.patch('/apps/:app_id', requireAuth, async (req, res) => {
 
         const updated = app.toObject();
         delete updated.api_secret_hash;
+        updated.requested_scopes = resolveRequestedScopes(updated);
 
         return res.json({ success: true, app: updated });
     } catch (error) {
@@ -1030,7 +1038,7 @@ router.get('/app-metadata/:app_id', async (req, res) => {
                 required_tier: app.sdk_config?.requiredTier || 'L1',
                 website_url: app.website_url || '',
                 description: app.description || '',
-                requested_scopes: app.requested_scopes || ['verify:identity', 'read:profile', 'read:kyc_level'],
+                requested_scopes: resolveRequestedScopes(app),
                 theme: {
                     primaryColor: app.sdk_config?.primary_color || '#8651e1',
                     borderRadius: app.sdk_config?.border_radius || '12',
