@@ -33,6 +33,23 @@ interface BusinessApp {
   };
 }
 
+const TIER_ORDER: Array<'L1' | 'L2' | 'L3'> = ['L1', 'L2', 'L3'];
+const PROOF_MINIMUM_TIER: Record<string, 'L1' | 'L2' | 'L3'> = {
+  email: 'L1',
+  liveness: 'L2',
+  age: 'L3'
+};
+
+const proofAllowedForTier = (proofId: string, tier: string): boolean => {
+  const minimumTier = PROOF_MINIMUM_TIER[proofId];
+  if (!minimumTier) return true;
+  return TIER_ORDER.indexOf(tier as 'L1' | 'L2' | 'L3') >= TIER_ORDER.indexOf(minimumTier);
+};
+
+const sanitizeProofsForTier = (proofIds: string[], tier: string): string[] => {
+  return proofIds.filter((proofId) => proofAllowedForTier(proofId, tier));
+};
+
 const deriveProofsFromScopes = (scopes: string[] = []): string[] => {
   const nextProofs: string[] = [];
 
@@ -155,10 +172,19 @@ const IntegrationDetail: React.FC = () => {
     }
   };
 
+  const handleTierChange = (nextTier: 'L1' | 'L2' | 'L3') => {
+    setTier(nextTier);
+    setProofs((prev) => sanitizeProofsForTier(prev, nextTier));
+  };
+
   const toggleProof = (proofId: string) => {
-    setProofs(prev => 
-      prev.includes(proofId) 
-        ? prev.filter(p => p !== proofId) 
+    if (!proofAllowedForTier(proofId, tier)) {
+      return;
+    }
+
+    setProofs(prev =>
+      prev.includes(proofId)
+        ? prev.filter(p => p !== proofId)
         : [...prev, proofId]
     );
   };
@@ -568,7 +594,7 @@ const IntegrationDetail: React.FC = () => {
                   {['L1', 'L2', 'L3'].map((t) => (
                     <button
                       key={t}
-                      onClick={() => setTier(t)}
+                      onClick={() => handleTierChange(t as 'L1' | 'L2' | 'L3')}
                       className={`flex flex-col items-center justify-center p-4 rounded-xl border-2 transition-all text-center gap-1 ${tier === t ? 'border-primary bg-primary/5' : 'border-border-muted hover:border-primary/50'
                         }`}
                     >
@@ -590,19 +616,23 @@ const IntegrationDetail: React.FC = () => {
                     { id: 'age', label: 'Verify Age', sub: 'Confirm user is 18+ years old' },
                     { id: 'email', label: 'Email Verification', sub: 'Require verified primary email' },
                   ].map((proof) => (
-                    <div key={proof.id} className="flex items-center justify-between">
+                    <div key={proof.id} className={`flex items-center justify-between ${!proofAllowedForTier(proof.id, tier) ? 'opacity-50' : ''}`}>
                       <div className="flex flex-col">
                         <span className="text-sm font-semibold text-text-main">{proof.label}</span>
-                        <span className="text-xs text-text-muted">{proof.sub}</span>
+                        <span className="text-xs text-text-muted">
+                          {proof.sub}
+                          {!proofAllowedForTier(proof.id, tier) ? ` Requires ${PROOF_MINIMUM_TIER[proof.id]}.` : ''}
+                        </span>
                       </div>
                       <label className="relative inline-flex items-center cursor-pointer">
                         <input 
                           type="checkbox" 
                           className="sr-only peer" 
                           checked={proofs.includes(proof.id)} 
+                          disabled={!proofAllowedForTier(proof.id, tier)}
                           onChange={() => toggleProof(proof.id)}
                         />
-                        <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
+                        <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer disabled:cursor-not-allowed peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary peer-disabled:bg-gray-100"></div>
                       </label>
                     </div>
                   ))}
