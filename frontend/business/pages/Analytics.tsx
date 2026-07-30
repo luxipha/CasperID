@@ -2,11 +2,14 @@
 import React, { useState, useEffect } from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { apiService } from '../../services/api';
+import ActivityHeatmap from '../components/ActivityHeatmap';
 
 interface BusinessStats {
   total_requests: number;
+  total_verifications: number;
   active_apps: number;
   total_apps: number;
+  activity: Array<{ date: string; count: number }>;
   top_apps: Array<{ name: string; value: number }>;
 }
 
@@ -75,9 +78,9 @@ const Analytics: React.FC = () => {
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
         {[
           { label: 'Total API Requests', value: stats?.total_requests?.toLocaleString() || '0', icon: 'api', color: 'text-primary' },
+          { label: 'Total Verifications', value: stats?.total_verifications?.toLocaleString() || '0', icon: 'verified', color: 'text-violet-600' },
           { label: 'Active Apps', value: stats?.active_apps?.toString() || '0', icon: 'apps', color: 'text-green-600' },
           { label: 'Total Apps', value: stats?.total_apps?.toString() || '0', icon: 'inventory_2', color: 'text-blue-600' },
-          { label: 'System Status', value: 'Healthy', icon: 'check_circle', color: 'text-green-600' },
         ].map((m, i) => (
           <div key={i} className="bg-white p-6 rounded-xl border border-border-muted shadow-sm flex flex-col gap-2">
             <div className="flex items-center gap-2">
@@ -89,8 +92,14 @@ const Analytics: React.FC = () => {
         ))}
       </div>
 
+      <ActivityHeatmap
+        title="Time-Series Analytics"
+        subtitle="Daily verification volume across all your applications over the last 6 months"
+        data={stats?.activity || []}
+      />
+
       {/* Top Apps by Usage */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+      <div className="grid grid-cols-1 gap-8">
         <div className="bg-white p-6 rounded-2xl border border-border-muted shadow-sm flex flex-col gap-6">
           <div className="flex items-center justify-between">
             <h3 className="font-bold text-text-main">Top Apps by API Usage</h3>
@@ -117,20 +126,6 @@ const Analytics: React.FC = () => {
               </div>
             </div>
           )}
-        </div>
-
-        <div className="bg-white p-6 rounded-2xl border border-border-muted shadow-sm flex flex-col gap-6">
-          <div className="flex items-center justify-between">
-            <h3 className="font-bold text-text-main">Time-Series Analytics</h3>
-            <span className="text-xs text-amber-600 font-bold px-2 py-1 bg-amber-50 rounded">Coming Soon</span>
-          </div>
-          <div className="h-64 flex items-center justify-center text-text-muted border-2 border-dashed border-border-muted rounded-xl">
-            <div className="text-center">
-              <span className="material-symbols-outlined text-4xl mb-2">trending_up</span>
-              <p className="font-medium">Historical trends coming soon</p>
-              <p className="text-sm mt-1">Daily, weekly, and monthly analytics</p>
-            </div>
-          </div>
         </div>
       </div>
 

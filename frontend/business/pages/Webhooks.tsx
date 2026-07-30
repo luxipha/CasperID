@@ -108,6 +108,10 @@ const Webhooks: React.FC = () => {
 
   const handleCreate = async () => {
     if (!selectedApp || !newUrl) return;
+    if (selectedEvents.length === 0) {
+      showToast('Select at least one event', 'error');
+      return;
+    }
     setIsCreating(true);
     try {
       const data = await apiService.createBusinessWebhook({
@@ -312,7 +316,7 @@ const Webhooks: React.FC = () => {
 
             {/* Footer */}
             <div className="px-6 py-3 border-t border-border-muted bg-background-light/30 flex justify-between items-center">
-              <p className="text-xs text-text-muted">Showing {logs.length} of {logsStats?.total || 0} logs (last 30 days)</p>
+              <p className="text-xs text-text-muted">Showing {logs.length} of {logsStats?.total || 0} logs</p>
               <button
                 onClick={() => openLogsModal(selectedWebhookForLogs)}
                 className="text-xs text-primary font-bold hover:underline flex items-center gap-1"
@@ -406,7 +410,7 @@ const Webhooks: React.FC = () => {
 
                 <button
                   onClick={handleCreate}
-                  disabled={isCreating || !newUrl}
+                  disabled={isCreating || !newUrl || selectedEvents.length === 0}
                   className="w-full py-3 bg-primary text-white font-bold rounded-xl hover:bg-primary/90 transition-all shadow-sm shadow-primary/20 active:scale-95 disabled:opacity-50 disabled:scale-100"
                 >
                   {isCreating ? 'Saving...' : 'Save Endpoint'}
