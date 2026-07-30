@@ -3,6 +3,7 @@ const SCOPE_TO_FIELDS = {
     'read:email': ['email'],
     'read:wallet': ['wallet'],
     'read:kyc_level': ['tier'],
+    'verify:age': ['over_18'],
     'verify:identity': ['verified'],
     'verify:kyc': ['verified', 'tier'],
     'verify:liveness': []

@@ -14,6 +14,7 @@ const crypto = require('crypto');
 const jwt = require('jsonwebtoken');
 const { v4: uuidv4 } = require('uuid');
 const { UserAccount, UserProfile, Credential } = require('../database/models');
+const { buildAgeClaims } = require('../utils/age-claims');
 
 // Available claim types
 const CLAIM_TYPES = {
@@ -96,13 +97,11 @@ class ZKClaimsService {
 
             // Check if claim is available and verified
             if (claimId === 'over_18' || claimId === 'over_21') {
-                if (profile?.date_of_birth) {
-                    const age = this.calculateAge(profile.date_of_birth);
-                    const threshold = claimId === 'over_18' ? 18 : 21;
-                    claimInfo.available = age >= threshold;
-                    claimInfo.verified = userAccount.tier === 'layer_3';
-                    claimInfo.verificationSource = claimInfo.verified ? 'KYC Document' : 'Self-declared';
-                }
+                const ageClaims = buildAgeClaims(profile);
+                const thresholdSatisfied = claimId === 'over_18' ? ageClaims.over18 : ageClaims.over21;
+                claimInfo.available = !!thresholdSatisfied;
+                claimInfo.verified = !!thresholdSatisfied && ageClaims.dateOfBirthVerified;
+                claimInfo.verificationSource = claimInfo.verified ? 'KYC Document' : null;
             } else if (claimId === 'tier_2') {
                 claimInfo.available = ['layer_2', 'layer_3'].includes(userAccount.tier);
                 claimInfo.verified = claimInfo.available;
@@ -322,13 +321,11 @@ class ZKClaimsService {
         switch (claimId) {
             case 'over_18':
             case 'over_21': {
-                if (profile?.date_of_birth) {
-                    const age = this.calculateAge(profile.date_of_birth);
-                    const threshold = claimId === 'over_18' ? 18 : 21;
-                    result.valid = age >= threshold;
-                    result.verified = userAccount.tier === 'layer_3';
-                    result.verificationSource = result.verified ? 'KYC Document' : 'Self-declared';
-                }
+                const ageClaims = buildAgeClaims(profile);
+                const thresholdSatisfied = claimId === 'over_18' ? ageClaims.over18 : ageClaims.over21;
+                result.valid = !!thresholdSatisfied;
+                result.verified = !!thresholdSatisfied && ageClaims.dateOfBirthVerified;
+                result.verificationSource = result.verified ? 'KYC Document' : null;
                 break;
             }
 
@@ -366,20 +363,6 @@ class ZKClaimsService {
         }
 
         return result;
-    }
-
-    /**
-     * Calculate age from date of birth
-     */
-    calculateAge(dateOfBirth) {
-        const dob = new Date(dateOfBirth);
-        const today = new Date();
-        let age = today.getFullYear() - dob.getFullYear();
-        const monthDiff = today.getMonth() - dob.getMonth();
-        if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < dob.getDate())) {
-            age--;
-        }
-        return age;
     }
 
     /**

@@ -25,6 +25,7 @@ interface ConsentRequestProps {
 
 const scopeDetails: Record<string, { title: string; description: string; icon: string }> = {
   'verify:identity': { title: 'Identity verification status', description: 'Whether your CasperID identity is verified', icon: 'verified' },
+  'verify:age': { title: '18+ age confirmation', description: 'Whether your verified identity indicates you are 18 or older', icon: 'cake' },
   'verify:liveness': { title: 'Liveness verification', description: 'Whether you completed a liveness check', icon: 'face' },
   'verify:kyc': { title: 'KYC verification status', description: 'Your verification level, not your identity documents', icon: 'shield' },
   'read:profile': { title: 'Basic profile', description: 'Your CasperID display name', icon: 'badge' },
@@ -38,6 +39,7 @@ const sharedFieldLabels: Record<string, string> = {
   human_id: 'Human ID',
   email: 'Email',
   wallet: 'Wallet',
+  over_18: '18+ Age Confirmation',
   tier: 'Verification Level',
   verified: 'Identity Verification Status',
 };

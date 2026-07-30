@@ -3,13 +3,14 @@ const CORE_SCOPES = ['verify:identity', 'read:profile', 'read:kyc_level'];
 const MANAGED_PROOF_SCOPES = {
     email: ['read:email'],
     liveness: ['verify:liveness'],
-    age: ['verify:kyc']
+    age: ['verify:age']
 };
 
 const ALL_SCOPES = new Set([
     ...CORE_SCOPES,
     'read:email',
     'read:wallet',
+    'verify:age',
     'verify:liveness',
     'verify:kyc'
 ]);
@@ -48,6 +49,13 @@ function deriveProofsFromScopes(scopes = []) {
     const proofs = [];
 
     for (const [proof, mappedScopes] of Object.entries(MANAGED_PROOF_SCOPES)) {
+        if (proof === 'age') {
+            if (requestedScopes.includes('verify:age') || requestedScopes.includes('verify:kyc')) {
+                proofs.push(proof);
+            }
+            continue;
+        }
+
         if (mappedScopes.every(scope => requestedScopes.includes(scope))) {
             proofs.push(proof);
         }

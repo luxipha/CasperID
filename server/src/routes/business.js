@@ -952,27 +952,29 @@ router.get('/stats', requireAuth, async (req, res) => {
                     }
                 }
             ]),
-            {
-                $match: {
-                    dapp_id: { $in: appIds }
+            VerificationRequestV2.aggregate([
+                {
+                    $match: {
+                        dapp_id: { $in: appIds }
+                    }
+                },
+                {
+                    $sort: { created_at: -1 }
+                },
+                {
+                    $limit: 10
+                },
+                {
+                    $project: {
+                        _id: 0,
+                        request_id: 1,
+                        dapp_id: 1,
+                        verification_tier: 1,
+                        status: 1,
+                        created_at: 1
+                    }
                 }
-            },
-            {
-                $sort: { created_at: -1 }
-            },
-            {
-                $limit: 10
-            },
-            {
-                $project: {
-                    _id: 0,
-                    request_id: 1,
-                    dapp_id: 1,
-                    verification_tier: 1,
-                    status: 1,
-                    created_at: 1
-                }
-            }
+            ])
         ]);
 
         const activity = activityData.map(item => ({

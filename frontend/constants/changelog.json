@@ -27,7 +27,27 @@
         "items": [
           "New business apps now persist a concrete default scope set at creation time.",
           "Business app updates now sync proof toggles into requested_scopes so backend sharing behavior matches saved dashboard settings.",
-          "The business integration editor now derives proof toggles from real requested scopes when available, preventing misleading email-sharing state in the dashboard."
+          "The business integration editor now derives proof toggles from real requested scopes when available, preventing misleading email-sharing state in the dashboard.",
+          "Fixed the app logo preview regression where switching an integration between sandbox and production could make the saved logo appear to disappear even though it remained persisted."
+        ]
+      },
+      {
+        "id": "v404-claims",
+        "title": "Verification Claims & Source of Truth",
+        "items": [
+          "Enforced verify:liveness at hosted authorization time so apps requesting liveness now require a Layer 2-or-higher user instead of only displaying the scope in consent.",
+          "Replaced the misleading age toggle mapping with a dedicated verify:age scope that now issues a real over_18 business claim.",
+          "Made verify:age require Layer 3 eligibility so age assertions are backed by verified KYC data instead of generic tier state.",
+          "Added explicit date_of_birth verification metadata to the canonical user profile and centralized age-claim derivation so business auth, ZK claims, and verification views read from the same trust path."
+        ]
+      },
+      {
+        "id": "v404-analytics",
+        "title": "Business Analytics Reliability",
+        "items": [
+          "Fixed the business stats endpoint so recent activity aggregation no longer throws and break the Overview or Analytics pages with a Failed to load stats error.",
+          "Corrected the verification heatmap layout so month labels and grid columns share the same width instead of drifting apart and making the chart look cut off after April.",
+          "Kept the six-month verification activity window intact while aligning the rendered heatmap to the actual 26-week data grid."
         ]
       }
     ]

@@ -17,6 +17,9 @@ const ActivityHeatmap: React.FC<ActivityHeatmapProps> = ({
   // 26 weeks * 7 days
   const weeks = 26;
   const daysPerWeek = 7;
+  const cellSize = 12;
+  const cellGap = 6;
+  const gridWidth = (weeks * cellSize) + ((weeks - 1) * cellGap);
   
   const generateData = () => {
     const grid = [];
@@ -92,15 +95,15 @@ const ActivityHeatmap: React.FC<ActivityHeatmapProps> = ({
         <p className="text-xs text-text-muted">{subtitle}</p>
       </div>
       <div className="p-6 overflow-x-auto">
-        <div className="flex gap-4 min-w-[600px]">
+        <div className="flex gap-4" style={{ minWidth: `${gridWidth + 48}px` }}>
           {/* Day Labels */}
           <div className="flex flex-col justify-between py-6 text-[10px] text-text-muted font-bold h-[100px]">
             {dayLabels.map(day => <span key={day}>{day}</span>)}
           </div>
           
-          <div className="flex-1">
+          <div style={{ width: `${gridWidth}px` }}>
             {/* Month Labels */}
-            <div className="relative mb-2 h-4 px-2 text-[10px] text-text-muted font-bold">
+            <div className="relative mb-2 h-4 text-[10px] text-text-muted font-bold" style={{ width: `${gridWidth}px` }}>
               {monthLabels.map(month => (
                 <span
                   key={`${month.label}-${month.weekIndex}`}
@@ -113,7 +116,7 @@ const ActivityHeatmap: React.FC<ActivityHeatmapProps> = ({
             </div>
             
             {/* Grid */}
-            <div className="flex gap-1.5">
+            <div className="flex gap-1.5" style={{ width: `${gridWidth}px` }}>
               {data.map((week, wIndex) => (
                 <div key={wIndex} className="flex flex-col gap-1.5">
                   {week.map((day, dIndex) => (

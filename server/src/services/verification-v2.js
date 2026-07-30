@@ -12,6 +12,7 @@ const {
 const walletGenerator = require('./wallet-generator');
 const geminiService = require('./gemini');
 const { eventBus, EVENTS } = require('./eventBus');
+const { buildAgeClaims } = require('../utils/age-claims');
 
 /**
  * Verification Service V2
@@ -874,19 +875,7 @@ class VerificationServiceV2 {
         const identityProvider = verificationData.identity_provider || null;
         const verificationMethod = verificationData.verification_method || null;
         const verificationCompletedAt = latestLayer3?.completed_at || null;
-
-        const calculateAge = (value) => {
-            if (!value) return null;
-            const dob = new Date(value);
-            if (Number.isNaN(dob.getTime())) return null;
-            const today = new Date();
-            let age = today.getFullYear() - dob.getFullYear();
-            const monthDelta = today.getMonth() - dob.getMonth();
-            if (monthDelta < 0 || (monthDelta === 0 && today.getDate() < dob.getDate())) {
-                age -= 1;
-            }
-            return age;
-        };
+        const ageClaims = buildAgeClaims(profile);
 
         const resolvedCountry = verificationData.country_context === 'nigeria'
             ? 'Nigeria'
@@ -997,19 +986,19 @@ class VerificationServiceV2 {
                 description: 'Nationality from your Layer 3 verification'
             },
             date_of_birth: {
-                value: verificationData.date_of_birth || profile.date_of_birth || null,
-                verified: !!verificationData.date_of_birth,
-                source: verificationData.date_of_birth ? (identityProvider || 'layer3_review') : 'profile',
-                verification_method: verificationData.date_of_birth ? verificationMethod : null,
+                value: profile.date_of_birth || verificationData.date_of_birth || null,
+                verified: !!profile.date_of_birth_verified,
+                source: profile.date_of_birth_verified ? (profile.date_of_birth_source || 'profile') : (verificationData.date_of_birth ? (identityProvider || 'layer3_review') : 'profile'),
+                verification_method: profile.date_of_birth_verified ? 'kyc_verified_profile' : (verificationData.date_of_birth ? verificationMethod : null),
                 sensitive: true,
                 label: 'Date of Birth',
                 description: 'Your date of birth'
             },
             age: {
-                value: calculateAge(verificationData.date_of_birth || profile.date_of_birth),
-                verified: !!(verificationData.date_of_birth || profile.date_of_birth),
-                source: verificationData.date_of_birth ? (identityProvider || 'layer3_review') : 'profile',
-                verification_method: verificationData.date_of_birth ? verificationMethod : null,
+                value: ageClaims.age,
+                verified: ageClaims.dateOfBirthVerified,
+                source: profile.date_of_birth_verified ? (profile.date_of_birth_source || 'profile') : (verificationData.date_of_birth ? (identityProvider || 'layer3_review') : 'profile'),
+                verification_method: profile.date_of_birth_verified ? 'kyc_verified_profile' : (verificationData.date_of_birth ? verificationMethod : null),
                 sensitive: false,
                 label: 'Verified Age',
                 description: 'Calculated from your stored date of birth'

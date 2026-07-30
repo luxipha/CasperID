@@ -18,6 +18,7 @@ const {
 } = require('../constants/tier-levels');
 const { expandScopesToSharedFields } = require('../utils/business-disclosure');
 const { CORE_SCOPES, resolveRequestedScopes } = require('../utils/business-scopes');
+const { buildAgeClaims } = require('../utils/age-claims');
 const { getRootNameForAccount, buildContextualName } = require('../services/contextual-names');
 
 const router = express.Router();
@@ -40,9 +41,31 @@ function hasProvisionedAccount(user) {
         user.wallet !== 'undefined';
 }
 
+function resolveEffectiveRequiredTier(app) {
+    const requestedScopes = resolveRequestedScopes(app);
+    let requiredTier = normalizeRequiredTier(app.sdk_config?.requiredTier);
+
+    if (requestedScopes.includes('verify:liveness') &&
+        (TIER_NUMERIC[requiredTier] ?? 0) < TIER_NUMERIC[TIER_LEVELS.LAYER_2]) {
+        requiredTier = TIER_LEVELS.LAYER_2;
+    }
+
+    if (requestedScopes.includes('verify:age') &&
+        (TIER_NUMERIC[requiredTier] ?? 0) < TIER_NUMERIC[TIER_LEVELS.LAYER_3]) {
+        requiredTier = TIER_LEVELS.LAYER_3;
+    }
+
+    if (requestedScopes.includes('verify:kyc') &&
+        (TIER_NUMERIC[requiredTier] ?? 0) < TIER_NUMERIC[TIER_LEVELS.LAYER_3]) {
+        requiredTier = TIER_LEVELS.LAYER_3;
+    }
+
+    return requiredTier;
+}
+
 async function assessAuthorizationEligibility(app, user) {
     const grantedTier = user.tier || 'layer_0';
-    const requiredTier = normalizeRequiredTier(app.sdk_config?.requiredTier);
+    const requiredTier = resolveEffectiveRequiredTier(app);
     const onboardingRequired = !hasProvisionedAccount(user);
 
     if (onboardingRequired) {
@@ -148,12 +171,14 @@ async function loadBusinessTokenUser(userId, selectedContext = null) {
         personaDisclosures.firstName ? profile?.first_name : null,
         personaDisclosures.lastName ? profile?.last_name : null
     ].filter(Boolean).join(' ') || selectedContext?.name || selectedContext?.alias || null;
+    const ageClaims = buildAgeClaims(profile);
 
     return {
         userId: user.user_id,
         wallet: user.wallet,
         humanId: persona ? (selectedContext?.name || selectedContext?.alias || persona.did) : (profile?.human_id || user.human_id || null),
         name: persona ? personaName : resolvedName,
+        over18: ageClaims.over18,
         verified: user.email_verified || false,
         tier: user.tier || 'layer_0',
         email: persona
@@ -182,7 +207,7 @@ router.get('/authorize/validate', async (req, res) => {
                 name: app.name,
                 logo_url: app.sdk_config?.logo_url || '',
                 redirect_uri: redirectUri,
-                required_tier: normalizeRequiredTier(app.sdk_config?.requiredTier),
+                required_tier: resolveEffectiveRequiredTier(app),
                 requested_scopes: resolveRequestedScopes(app),
                 shared_fields: expandScopesToSharedFields(resolveRequestedScopes(app)),
                 language: app.sdk_config?.language || 'EN',

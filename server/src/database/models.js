@@ -170,6 +170,9 @@ const userProfileSchema = new mongoose.Schema({
     first_name: { type: String },
     last_name: { type: String },
     date_of_birth: { type: Date },
+    date_of_birth_verified: { type: Boolean, default: false },
+    date_of_birth_source: { type: String },
+    date_of_birth_verified_at: { type: Date },
     pronouns: { type: String },
     headline: { type: String, maxlength: 220 },
     profile_image_url: { type: String },
@@ -1749,7 +1752,7 @@ const businessAppSchema = new mongoose.Schema({
     },
     requested_scopes: [{
         type: String,
-        enum: ['verify:identity', 'read:profile', 'read:kyc_level', 'read:email', 'read:wallet'],
+        enum: ['verify:identity', 'read:profile', 'read:kyc_level', 'read:email', 'read:wallet', 'verify:liveness', 'verify:kyc', 'verify:age'],
         default: []
     }],
     created_at: {

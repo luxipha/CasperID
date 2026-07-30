@@ -62,6 +62,7 @@ function generateBusinessToken(userData, appId, authorization = {}) {
         ...(include('wallet') && userData.wallet ? { wallet: userData.wallet } : {}),
         ...(include('human_id') && userData.humanId ? { humanId: userData.humanId } : {}),
         ...(include('name') && userData.name ? { name: userData.name } : {}),
+        ...(include('over_18') && typeof userData.over18 === 'boolean' ? { over_18: userData.over18 } : {}),
         cnsName: userData.cnsName || null, // Premium name if registered
         verified: userData.verified,
         tier: userData.tier,

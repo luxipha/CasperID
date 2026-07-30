@@ -37,7 +37,7 @@ const deriveProofsFromScopes = (scopes: string[] = []): string[] => {
   const nextProofs: string[] = [];
 
   if (scopes.includes('verify:liveness')) nextProofs.push('liveness');
-  if (scopes.includes('verify:kyc')) nextProofs.push('age');
+  if (scopes.includes('verify:age') || scopes.includes('verify:kyc')) nextProofs.push('age');
   if (scopes.includes('read:email')) nextProofs.push('email');
 
   return nextProofs;
@@ -131,8 +131,20 @@ const IntegrationDetail: React.FC = () => {
         setToastMessage('Changes saved successfully!');
         setShowToast(true);
         setTimeout(() => setShowToast(false), 3000);
-        // Update local app state to reflect new environment badge
-        if (app) setApp({ ...app, environment });
+        if (response.app) {
+          const updatedApp = response.app as BusinessApp;
+          setApp(updatedApp);
+          setEnvironment(updatedApp.environment || environment);
+          setListingStatus(updatedApp.listing_status || listingStatus);
+          setTier(updatedApp.sdk_config?.requiredTier || tier);
+          setProofs(updatedApp.sdk_config?.proofs || deriveProofsFromScopes(updatedApp.requested_scopes || []));
+          setLogoUrl(updatedApp.sdk_config?.logo_url || '');
+          setAllowedOrigins(updatedApp.allowed_origins || []);
+          setRedirectUris(updatedApp.redirect_uris || []);
+          setAndroidAssets(updatedApp.android_digital_assets || []);
+          setWebsite(updatedApp.website_url || '');
+          setName(updatedApp.name || name);
+        }
       }
     } catch (err: any) {
       setToastMessage(err.message || 'Failed to save changes');

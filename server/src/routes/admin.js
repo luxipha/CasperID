@@ -583,6 +583,13 @@ router.post('/sync-verified-profiles', adminAuthWithRateLimit, async (req, res) 
                     verification_source: 'manual_sync'
                 };
 
+                if (request.date_of_birth) {
+                    verifiedProfileData.date_of_birth = request.date_of_birth;
+                    verifiedProfileData.date_of_birth_verified = true;
+                    verifiedProfileData.date_of_birth_source = 'manual_sync';
+                    verifiedProfileData.date_of_birth_verified_at = new Date();
+                }
+
                 // Update or create profile
                 const updatedProfile = await UserProfile.findOneAndUpdate(
                     { wallet: request.wallet },

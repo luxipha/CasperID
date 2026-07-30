@@ -182,7 +182,12 @@ async function mintCredential(request) {
         if (request.last_name) verifiedProfileData.last_name = request.last_name;
         if (request.email) verifiedProfileData.email = request.email;
         if (request.phone_number) verifiedProfileData.phone_number = request.phone_number;
-        if (request.date_of_birth) verifiedProfileData.date_of_birth = request.date_of_birth;
+        if (request.date_of_birth) {
+            verifiedProfileData.date_of_birth = request.date_of_birth;
+            verifiedProfileData.date_of_birth_verified = true;
+            verifiedProfileData.date_of_birth_source = request.document_type ? 'kyc_document' : 'verification_request';
+            verifiedProfileData.date_of_birth_verified_at = new Date();
+        }
 
         // Format address properly - store as string (as submitted from KYC)
         if (request.home_address) {
