@@ -32,7 +32,7 @@ export const ReusableTools: React.FC = () => {
     },
     {
       id: 'zk-claims',
-      title: 'ZK Proof Claims',
+      title: 'Private Claims',
       description: 'Prove claims without revealing data',
       icon: 'shield_lock',
       color: 'bg-[#F0E6FF] text-[#8652E2]',

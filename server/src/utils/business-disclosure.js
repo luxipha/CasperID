@@ -6,7 +6,8 @@ const SCOPE_TO_FIELDS = {
     'verify:age': ['over_18'],
     'verify:identity': ['verified'],
     'verify:kyc': ['verified', 'tier'],
-    'verify:liveness': []
+    'verify:liveness': [],
+    'read:trust_capacity': ['trust_capacity']
 };
 
 function unique(values = []) {

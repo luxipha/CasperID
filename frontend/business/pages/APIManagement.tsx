@@ -11,6 +11,11 @@ interface BusinessApp {
   request_count: number;
   last_used_at: string | null;
   created_at: string;
+  service_category?: string;
+  supported_roles?: Array<'consumer' | 'provider'>;
+  trust_events_enabled?: boolean;
+  ratings_enabled?: boolean;
+  trust_capacity_enabled?: boolean;
 }
 
 const APIManagement: React.FC = () => {
@@ -27,6 +32,9 @@ const APIManagement: React.FC = () => {
   const [newAppOrigins, setNewAppOrigins] = useState('');
   const [newAppRedirectUris, setNewAppRedirectUris] = useState('');
   const [newAppEnv, setNewAppEnv] = useState<'sandbox' | 'production'>('sandbox');
+  const [newAppCategory, setNewAppCategory] = useState('other');
+  const [newAppTrustEnabled, setNewAppTrustEnabled] = useState(false);
+  const [newAppTrustCapacityEnabled, setNewAppTrustCapacityEnabled] = useState(false);
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
   const [copied, setCopied] = useState<string | null>(null);
 
@@ -80,7 +88,12 @@ const APIManagement: React.FC = () => {
         name: newAppName,
         allowed_origins: origins,
         redirect_uris: redirectUris,
-        environment: newAppEnv
+        environment: newAppEnv,
+        service_category: newAppCategory,
+        supported_roles: (newAppTrustEnabled || newAppTrustCapacityEnabled) ? ['consumer', 'provider'] : [],
+        trust_events_enabled: newAppTrustEnabled,
+        ratings_enabled: newAppTrustEnabled,
+        trust_capacity_enabled: newAppTrustCapacityEnabled
       });
       if (!data.success) throw new Error(data.error);
 
@@ -89,6 +102,9 @@ const APIManagement: React.FC = () => {
       setNewAppName('');
       setNewAppOrigins('');
       setNewAppRedirectUris('');
+      setNewAppCategory('other');
+      setNewAppTrustEnabled(false);
+      setNewAppTrustCapacityEnabled(false);
       await loadApps();
     } catch (e: any) {
       showToast(e.message || 'Failed to create app', 'error');
@@ -202,6 +218,55 @@ const APIManagement: React.FC = () => {
                   className="w-full p-3 bg-background-light rounded-xl border border-border-muted text-sm text-text-main focus:outline-none focus:border-primary"
                 />
               </div>
+              <div>
+                <label htmlFor="new-app-category" className="text-xs font-bold text-text-sub uppercase tracking-wider block mb-1.5">Service Category</label>
+                <select
+                  id="new-app-category"
+                  value={newAppCategory}
+                  onChange={e => {
+                    setNewAppCategory(e.target.value);
+                    if (e.target.value !== 'mobility') {
+                      setNewAppTrustEnabled(false);
+                      setNewAppTrustCapacityEnabled(false);
+                    }
+                  }}
+                  className="w-full p-3 bg-background-light rounded-xl border border-border-muted text-sm text-text-main focus:outline-none focus:border-primary"
+                >
+                  <option value="other">Identity only</option>
+                  <option value="mobility">Mobility / ride sharing</option>
+                  <option value="commerce">Commerce</option>
+                  <option value="delivery">Delivery</option>
+                  <option value="appointments">Appointments</option>
+                  <option value="rentals">Rentals</option>
+                  <option value="finance">Finance</option>
+                </select>
+              </div>
+              <label className="flex items-start gap-3 p-3 rounded-xl border border-border-muted bg-background-light cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={newAppTrustEnabled}
+                  disabled={newAppCategory !== 'mobility'}
+                  onChange={e => setNewAppTrustEnabled(e.target.checked)}
+                  className="mt-1"
+                />
+                <span>
+                  <span className="block text-sm font-bold text-text-main">Enable portable trust events</span>
+                  <span className="block text-[11px] text-text-sub">Available for the mobility policy pilot. Sandbox events never affect live scores.</span>
+                </span>
+              </label>
+              <label className="flex items-start gap-3 p-3 rounded-xl border border-border-muted bg-background-light cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={newAppTrustCapacityEnabled}
+                  disabled={newAppCategory !== 'mobility'}
+                  onChange={e => setNewAppTrustCapacityEnabled(e.target.checked)}
+                  className="mt-1"
+                />
+                <span>
+                  <span className="block text-sm font-bold text-text-main">Request Trust Capacity at sign-in</span>
+                  <span className="block text-[11px] text-text-sub">Adds consented <code>read:trust_capacity</code>: provider and consumer score, status, timestamp, and policy version only.</span>
+                </span>
+              </label>
               <div>
                 <label className="text-xs font-bold text-text-sub uppercase tracking-wider block mb-1.5">Environment</label>
                 <div className="flex items-center bg-background-light border border-border-muted rounded-xl p-1 w-fit">

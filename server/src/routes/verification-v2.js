@@ -252,7 +252,9 @@ router.post('/liveness', upload.fields([
 
         const files = req.files || {};
         let parsedMetadata = {};
-        if (metadata) {
+        if (metadata && typeof metadata === 'object') {
+            parsedMetadata = metadata;
+        } else if (metadata) {
             try {
                 parsedMetadata = JSON.parse(metadata);
             } catch (parseError) {
@@ -281,15 +283,17 @@ router.post('/liveness', upload.fields([
             totalBytes
         });
 
-        // Validate that we have frames
-        if (!livenessData.imageFrames || livenessData.imageFrames.length === 0) {
+        const isLocalLiveness = parsedMetadata.method === 'on_device' && parsedMetadata.localResult;
+
+        // Layer 3 review still requires frames. Layer 2 can submit an on-device result.
+        if ((!livenessData.imageFrames || livenessData.imageFrames.length === 0) && !isLocalLiveness) {
             return res.status(400).json({
                 success: false,
                 error: 'No image frames provided for liveness verification'
             });
         }
 
-        if (livenessData.imageFrames.length < 10) {
+        if (!isLocalLiveness && livenessData.imageFrames.length < 10) {
             return res.status(400).json({
                 success: false,
                 error: `Insufficient frames for liveness verification. Got ${livenessData.imageFrames.length}, need at least 10`
@@ -1201,11 +1205,7 @@ router.get('/history', async (req, res) => {
                 lastKycAt: new Date(cred.last_kyc_at * 1000),
                 lastLivenessAt: cred.last_liveness_at ? new Date(cred.last_liveness_at * 1000) : null,
                 revoked: cred.revoked,
-                credentialHash: cred.credential_hash,
-                // Attach ZK data from the UserAccount to the credentials
-                zk_verified: sessionData.userAccount.zk_verified || false,
-                zk_transaction_hash: sessionData.userAccount.zk_transaction_hash || null,
-                zk_nullifier: sessionData.userAccount.zk_nullifier || null
+                credentialHash: cred.credential_hash
             })),
             currentStatus: {
                 layerStatus: sessionData.userAccount.tier,
@@ -1413,7 +1413,7 @@ router.get('/requirements', async (req, res) => {
             layer_2: {
                 description: 'Liveness Verification',
                 requirements: ['Liveness check (facial recognition)', 'Optional wallet linking'],
-                benefits: ['Proof of humanity', 'Sybil resistance', 'Basic verification credential'],
+                benefits: ['Verified human presence', 'Casper Layer 2 status', 'Basic verification credential'],
                 estimatedTime: '3-7 minutes'
             },
             layer_3: {

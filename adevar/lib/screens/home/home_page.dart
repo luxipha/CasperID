@@ -279,7 +279,7 @@ class _HomePageState extends State<HomePage> {
             Expanded(
               child: _buildActionCard(
                 icon: Icons.fingerprint,
-                label: 'ZK Liveness',
+                label: 'Liveness Check',
                 onTap: () => Navigator.pushNamed(context, '/zk-liveness'),
               ),
             ),

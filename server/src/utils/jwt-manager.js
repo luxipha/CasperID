@@ -68,6 +68,12 @@ function generateBusinessToken(userData, appId, authorization = {}) {
         tier: userData.tier,
         sharedData,
         ...(include('email') && userData.email ? { email: userData.email } : {}),
+        ...(include('email') && typeof userData.emailVerified === 'boolean'
+            ? { email_verified: userData.emailVerified }
+            : {}),
+        ...(include('trust_capacity') && userData.trustCapacity
+            ? { trust_capacity: userData.trustCapacity }
+            : {}),
         // Business metadata
         app_id: appId,
         token_type: 'business',

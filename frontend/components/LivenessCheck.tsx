@@ -6,8 +6,16 @@ import { LivenessSuccess } from './LivenessSuccess';
 import { VerificationProgress } from './VerificationProgress';
 import { MobileLivenessPage, MobileStep } from './MobileLiveness';
 import { DesktopLivenessQR } from './DesktopLivenessQR';
-import type { FaceLandmark } from '../services/zkProver';
 import { apiService } from '../services/api';
+import { isSuccessfulLivenessResponse } from '../utils/liveness';
+import faceMeshBinaryUrl from '@mediapipe/face_mesh/face_mesh.binarypb?url';
+import faceMeshPackedDataUrl from '@mediapipe/face_mesh/face_mesh_solution_packed_assets.data?url';
+import faceMeshPackedLoaderUrl from '@mediapipe/face_mesh/face_mesh_solution_packed_assets_loader.js?url';
+import faceMeshSimdDataUrl from '@mediapipe/face_mesh/face_mesh_solution_simd_wasm_bin.data?url';
+import faceMeshSimdJsUrl from '@mediapipe/face_mesh/face_mesh_solution_simd_wasm_bin.js?url';
+import faceMeshSimdWasmUrl from '@mediapipe/face_mesh/face_mesh_solution_simd_wasm_bin.wasm?url';
+import faceMeshWasmJsUrl from '@mediapipe/face_mesh/face_mesh_solution_wasm_bin.js?url';
+import faceMeshWasmUrl from '@mediapipe/face_mesh/face_mesh_solution_wasm_bin.wasm?url';
 
 interface LivenessCheckProps {
   onBack?: () => void;
@@ -20,10 +28,20 @@ interface LivenessCheckProps {
   };
 }
 
-type VerificationState = "INITIALIZING" | "POSITIONING" | "CHALLENGE" | "VERIFYING_AI" | "MINTING" | "ZK_PROVING" | "ZK_SUBMITTING" | "SUCCESS" | "COMPLETED" | "SYBIL_REJECTED";
+type VerificationState = "INITIALIZING" | "POSITIONING" | "CHALLENGE" | "VERIFYING" | "MINTING" | "SUCCESS" | "COMPLETED";
 type ChallengeType = "BLINK" | "OPEN_MOUTH";
-const MIN_SUBMISSION_FRAMES = 10;
-const FRAME_CAPTURE_TIMEOUT_MS = 10000;
+const MOUTH_HOLD_MS = 1000;
+
+const FACE_MESH_ASSETS: Record<string, string> = {
+  'face_mesh.binarypb': faceMeshBinaryUrl,
+  'face_mesh_solution_packed_assets.data': faceMeshPackedDataUrl,
+  'face_mesh_solution_packed_assets_loader.js': faceMeshPackedLoaderUrl,
+  'face_mesh_solution_simd_wasm_bin.data': faceMeshSimdDataUrl,
+  'face_mesh_solution_simd_wasm_bin.js': faceMeshSimdJsUrl,
+  'face_mesh_solution_simd_wasm_bin.wasm': faceMeshSimdWasmUrl,
+  'face_mesh_solution_wasm_bin.js': faceMeshWasmJsUrl,
+  'face_mesh_solution_wasm_bin.wasm': faceMeshWasmUrl
+};
 
 const euclideanDist = (p1: any, p2: any) => Math.sqrt(Math.pow(p1.x - p2.x, 2) + Math.pow(p1.y - p2.y, 2));
 
@@ -42,7 +60,7 @@ export const LivenessCheck: React.FC<LivenessCheckProps> = ({ onBack, onComplete
 
   // High-level state
   const [state, setState] = useState<VerificationState>("INITIALIZING");
-  const [guidance, setGuidance] = useState("Loading AI Models...");
+  const [guidance, setGuidance] = useState("Loading on-device face model...");
   const [challenge, setChallenge] = useState<ChallengeType>("BLINK");
   const [progress, setProgress] = useState(0);
   const [ovalColor, setOvalColor] = useState<"white" | "red" | "green">("white");
@@ -59,13 +77,9 @@ export const LivenessCheck: React.FC<LivenessCheckProps> = ({ onBack, onComplete
 
   const { refreshUser } = useAuth();
 
-  // ZK proof state
-  const [zkProgress, setZkProgress] = useState(0);
-  const [sybilError, setSybilError] = useState<string | null>(null);
-  const capturedLandmarks = useRef<FaceLandmark[] | null>(null);
-  const blinkTimestamps = useRef<number[]>([]);
-  const maxMouthOpen = useRef(0);
-  const mouthCaptureStartedAt = useRef<number | null>(null);
+  const mouthOpenStartedAt = useRef<number | null>(null);
+  const maxMouthOpenRatio = useRef(0);
+  const faceHoldCompleted = useRef(false);
   const lastCaptureLogAt = useRef(0);
 
   // Logic refs
@@ -73,44 +87,17 @@ export const LivenessCheck: React.FC<LivenessCheckProps> = ({ onBack, onComplete
     positionTimer: 0,
     blinkCount: 0,
     isBlinking: false,
-    frames: [] as Blob[],
-    lastFrameTime: 0,
-    isSubmitting: false,  // Guard against multiple submissions
-    isCapturing: false    // Guard against concurrent captures
+    isSubmitting: false
   });
 
-  // Async frame capture helper (non-blocking) with guard
-  const captureFrame = async (canvas: HTMLCanvasElement, st: typeof logicState.current, ignoreLimit: boolean = false): Promise<boolean> => {
-    // Synchronous guard - check before starting async operation
-    if (!ignoreLimit && st.frames.length >= 30 || st.isCapturing) return false;
-    st.isCapturing = true;
-
-    return new Promise((resolve) => {
-      canvas.toBlob((blob) => {
-        if (blob && (ignoreLimit || st.frames.length < 30)) {
-          st.frames.push(blob);
-          resolve(true);
-        } else {
-          resolve(false);
-        }
-        st.isCapturing = false;
-      }, 'image/jpeg', 0.5);
-    });
-  };
-
   const resetLivenessState = () => {
-    logicState.current.frames = [];
     logicState.current.blinkCount = 0;
     logicState.current.isSubmitting = false;
-    logicState.current.isCapturing = false;
-    logicState.current.lastFrameTime = 0;
-    capturedLandmarks.current = null;
-    blinkTimestamps.current = [];
-    maxMouthOpen.current = 0;
-    mouthCaptureStartedAt.current = null;
+    mouthOpenStartedAt.current = null;
+    maxMouthOpenRatio.current = 0;
+    faceHoldCompleted.current = false;
     lastCaptureLogAt.current = 0;
     setProgress(0);
-    setZkProgress(0);
     setChallenge("BLINK");
   };
 
@@ -177,8 +164,8 @@ export const LivenessCheck: React.FC<LivenessCheckProps> = ({ onBack, onComplete
       return;
     }
 
-    // Stop everything if we're in minting, ZK, or completed state
-    if (state === "MINTING" || state === "ZK_PROVING" || state === "ZK_SUBMITTING" || state === "SUCCESS") {
+    // Stop camera processing while the credential is being issued or after success.
+    if (state === "MINTING" || state === "SUCCESS") {
       return;
     }
 
@@ -245,6 +232,7 @@ export const LivenessCheck: React.FC<LivenessCheckProps> = ({ onBack, onComplete
         if (valid) {
           st.positionTimer += 33; // Approx time per frame
           if (st.positionTimer > 3000) { // 3 seconds of valid holding
+            faceHoldCompleted.current = true;
             setState("CHALLENGE");
             setGuidance("Great! Now Blink 3 times");
             setOvalColor("green");
@@ -265,29 +253,17 @@ export const LivenessCheck: React.FC<LivenessCheckProps> = ({ onBack, onComplete
           if (ratio < 0.16) { // Closed
             if (!st.isBlinking) {
               st.isBlinking = true;
-              // Preserve evidence of the closed-eye moment, not only the open-eye frame after it.
-              if (canvasRef.current && st.frames.length < 30) {
-                captureFrame(canvasRef.current, st);
-              }
             }
           } else { // Open
             if (st.isBlinking) {
               st.isBlinking = false;
               st.blinkCount++;
-              blinkTimestamps.current.push(now); // Capture blink time for ZK
-
-              // Capture frame when blink completes (async, non-blocking)
-              if (canvasRef.current && st.frames.length < 30) {
-                captureFrame(canvasRef.current, st);
-              }
-
               setProgress((st.blinkCount / 3) * 100);
               if (st.blinkCount >= 3) {
                 setChallenge("OPEN_MOUTH");
                 setGuidance("Now, OPEN your mouth");
                 setProgress(0);
-                st.lastFrameTime = now; // Reset timer for next phase
-                mouthCaptureStartedAt.current = now;
+                mouthOpenStartedAt.current = null;
               }
             }
           }
@@ -302,54 +278,28 @@ export const LivenessCheck: React.FC<LivenessCheckProps> = ({ onBack, onComplete
           const faceHeight = euclideanDist(landmarks[10], landmarks[152]);
           const mouthRatio = mouthOpen / faceHeight;
 
-          // Track max mouth open for ZK proof
-          if (mouthRatio > maxMouthOpen.current) {
-            maxMouthOpen.current = mouthRatio;
-          }
-
-          // Capture landmarks for ZK proof (once when face is well-positioned)
-          if (!capturedLandmarks.current && landmarks.length >= 468) {
-            capturedLandmarks.current = landmarks.map((lm: any) => ({ x: lm.x, y: lm.y, z: lm.z }));
-          }
-
-          // Capture frames periodically during mouth opening
-          if (now - st.lastFrameTime > 100 && st.frames.length < 30 && canvasRef.current && !st.isCapturing) {
-            st.lastFrameTime = now;
-            captureFrame(canvasRef.current, st);
-          }
-
-          // Once the mouth challenge begins, progress represents captured evidence.
-          setProgress(Math.min(100, (st.frames.length / MIN_SUBMISSION_FRAMES) * 100));
-
           if (mouthRatio > 0.13) {
+            maxMouthOpenRatio.current = Math.max(maxMouthOpenRatio.current, mouthRatio);
+            if (mouthOpenStartedAt.current === null) mouthOpenStartedAt.current = now;
+            const heldMs = now - mouthOpenStartedAt.current;
+            setProgress(Math.min(100, (heldMs / MOUTH_HOLD_MS) * 100));
+
             if (now - lastCaptureLogAt.current >= 1000) {
               lastCaptureLogAt.current = now;
             }
 
-            if (st.frames.length < MIN_SUBMISSION_FRAMES) {
-              const elapsed = now - (mouthCaptureStartedAt.current || now);
-              if (elapsed >= FRAME_CAPTURE_TIMEOUT_MS) {
-                setGuidance("Camera capture stalled. Close your mouth and try again.");
-                mouthCaptureStartedAt.current = now;
-              } else {
-                setGuidance("Keep your mouth open...");
-                setProgress(Math.min(100, (st.frames.length / MIN_SUBMISSION_FRAMES) * 100));
-              }
+            if (heldMs < MOUTH_HOLD_MS) {
+              setGuidance("Keep your mouth open...");
               return;
             }
 
             if (!st.isSubmitting) {
               st.isSubmitting = true;
-
-              // Capture PEAK frame
-              if (canvasRef.current) {
-                captureFrame(canvasRef.current, st, true).then(() => {
-                  submitLiveness([...st.frames]);
-                });
-              } else {
-                submitLiveness([...st.frames]);
-              }
+              submitLiveness(heldMs);
             }
+          } else {
+            mouthOpenStartedAt.current = null;
+            setProgress(0);
           }
         }
       }
@@ -369,7 +319,7 @@ export const LivenessCheck: React.FC<LivenessCheckProps> = ({ onBack, onComplete
 
       try {
         faceMesh = new FaceMesh({
-          locateFile: (file: string) => `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/${file}`
+          locateFile: (file: string) => FACE_MESH_ASSETS[file] || file
         });
 
         faceMesh.setOptions({
@@ -417,40 +367,37 @@ export const LivenessCheck: React.FC<LivenessCheckProps> = ({ onBack, onComplete
     };
   }, [state, challenge, isMobile]);
 
-  const submitLiveness = async (frames: Blob[]) => {
+  const submitLiveness = async (mouthHeldMs: number) => {
     // Prevent double submission
-    if (state === "VERIFYING_AI") return;
+    if (state === "VERIFYING") return;
 
     try {
-      setState("VERIFYING_AI"); // Transition to simple verifying UI
-      setGuidance("Analyzing Face...");
+      setState("VERIFYING");
+      setGuidance("Finalizing liveness check...");
 
       let result;
 
-      // V2 accepts the authenticated owner directly or a scoped cross-device pairing token.
-      if (requestId) {
-        result = await apiService.submitLivenessCheckV2(
-          requestId,
-          frames,
-          pairingId || undefined,
-          pairingToken || undefined,
-          ['blink', 'open_mouth']
-        );
-      } else {
-        // Fallback to old endpoint for non-paired flows
-        result = await apiService.verifyLivenessSequence(frames, ['blink', 'open_mouth']);
-      }
+      if (!requestId) throw new Error('Liveness session was not initialized. Please restart the check.');
 
-      if (result.success || result.passed) {
+      result = await apiService.submitOnDeviceLivenessV2(
+        requestId,
+        {
+          faceHeldMs: faceHoldCompleted.current ? 3000 : 0,
+          blinkCount: logicState.current.blinkCount,
+          mouthOpenRatio: maxMouthOpenRatio.current,
+          mouthHeldMs,
+          completedAt: Date.now()
+        },
+        pairingId || undefined,
+        pairingToken || undefined
+      );
+
+      if (isSuccessfulLivenessResponse(result)) {
         setIsApiComplete(true); // Signal progress component to finish immediately
 
-        if (requestId) {
-          await refreshUser();
-          setState("SUCCESS");
-          setTimeout(() => onComplete?.(), 1500);
-        } else {
-          generateAndSubmitZkProof();
-        }
+        await refreshUser();
+        setState("SUCCESS");
+        setTimeout(() => onComplete ? onComplete() : setState("COMPLETED"), 1500);
       } else {
         const failure = result.liveness?.error || result.error || "Verification failed. Please try again.";
         const score = result.liveness?.score ?? result.score;
@@ -470,155 +417,13 @@ export const LivenessCheck: React.FC<LivenessCheckProps> = ({ onBack, onComplete
     }
   };
 
-  const generateAndSubmitZkProof = async () => {
-    // Skip ZK if no landmarks captured
-    if (!capturedLandmarks.current || capturedLandmarks.current.length < 100) {
-      setGuidance("");
-      setState("SUCCESS");
-      setTimeout(() => setState("COMPLETED"), 2000);
-      return;
-    }
-
-    try {
-      setState("ZK_PROVING");
-      setZkProgress(0);
-
-      const { generateLivenessProof } = await import('../services/zkProver');
-
-      // Generate proof client-side
-      const proof = await generateLivenessProof(
-        {
-          faceLandmarks: capturedLandmarks.current,
-          challengeResponses: {
-            blinkTimestamps: blinkTimestamps.current,
-            mouthOpenRatio: maxMouthOpen.current,
-            headMovementDetected: true,
-          },
-          sessionNonce: crypto.randomUUID(),
-          walletAddress: localStorage.getItem('casperid_wallet') || '0x0',
-        },
-        (progress, message) => {
-          setZkProgress(progress);
-          setGuidance(message);
-        }
-      );
-
-      setState("ZK_SUBMITTING");
-      setGuidance("Anchoring to Starknet...");
-
-      // Submit to backend
-      // Backend now handles BOTH Starknet Proof Submission AND Casper Minting in this single call
-      setState("MINTING"); // Change UI state to reflect the long-running backend process
-
-      const result = await apiService.submitZkProof({
-        proof: proof.proof,
-        proofHash: proof.proofHash,
-        publicInputs: proof.publicInputs,
-      });
-
-      if (result.success) {
-        setGuidance(""); // Clear guidance text
-        setState("SUCCESS");
-
-        // Auto-transition to COMPLETED after 2 seconds
-        setTimeout(() => {
-          setState("COMPLETED");
-        }, 2000);
-      } else {
-        // Handle specific error codes from backend
-        throw new Error(result.error || 'Unknown error');
-      }
-    } catch (error: any) {
-      // Check for Sybil/duplicate errors
-      const errorMessage = error?.message || error?.response?.data?.error || '';
-      const errorCode = error?.response?.data?.code || '';
-
-      if (
-        errorCode === 'NULLIFIER_ALREADY_USED' ||
-        errorCode === 'WALLET_ALREADY_VERIFIED' ||
-        errorMessage.includes('already registered') ||
-        errorMessage.includes('already verified') ||
-        errorMessage.includes('biometric identity')
-      ) {
-        // Sybil attack detected - show rejection UI
-        setSybilError(
-          errorCode === 'WALLET_ALREADY_VERIFIED'
-            ? 'This wallet has already been verified with CasperID.'
-            : 'This biometric identity is already linked to another CasperID account. Each person can only have one verified identity.'
-        );
-        setState("SYBIL_REJECTED");
-        return;
-      }
-
-      // For other errors, ZK is optional - don't block user
-      setGuidance("");
-      setState("SUCCESS");
-
-      // Auto-transition to COMPLETED after 2 seconds
-      setTimeout(() => {
-        setState("COMPLETED");
-      }, 2000);
-    }
-  };
-
   const getMobileStep = (): MobileStep => {
     if (state === "SUCCESS") return "success";
-    if (state === "SYBIL_REJECTED") return "position"; // Will be caught by early return above
-    if (state === "VERIFYING_AI" || state === "MINTING" || state === "ZK_PROVING" || state === "ZK_SUBMITTING") return "processing";
+    if (state === "VERIFYING" || state === "MINTING") return "processing";
     if (state === "CHALLENGE" && challenge === "OPEN_MOUTH") return "smile";
     if (state === "CHALLENGE" && challenge === "BLINK") return "blink";
     return "position";
   };
-
-  // Show Sybil rejection UI when duplicate identity detected
-  if (state === "SYBIL_REJECTED") {
-    return (
-      <div className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-red-50 to-orange-50">
-        <div className="max-w-md w-full bg-white rounded-3xl shadow-xl p-8 text-center space-y-6">
-          {/* Warning Icon */}
-          <div className="mx-auto w-20 h-20 bg-red-100 rounded-full flex items-center justify-center">
-            <span className="material-symbols-outlined text-4xl text-red-600">gpp_bad</span>
-          </div>
-
-          {/* Title */}
-          <h2 className="text-2xl font-bold text-gray-900">
-            Identity Already Registered
-          </h2>
-
-          {/* Error Message */}
-          <p className="text-gray-600 leading-relaxed">
-            {sybilError}
-          </p>
-
-          {/* Info Box */}
-          <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 text-left">
-            <div className="flex gap-3">
-              <span className="material-symbols-outlined text-amber-600 text-xl flex-shrink-0">info</span>
-              <div className="text-sm text-amber-800">
-                <p className="font-semibold mb-1">Why am I seeing this?</p>
-                <p>CasperID uses Zero-Knowledge proofs to ensure each person can only verify once. This protects the network from fake accounts (Sybil attacks).</p>
-              </div>
-            </div>
-          </div>
-
-          {/* Actions */}
-          <div className="space-y-3 pt-2">
-            <button
-              onClick={() => {
-                if (onBack) onBack();
-              }}
-              className="w-full py-3 px-6 bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold rounded-xl transition-colors"
-            >
-              Go Back
-            </button>
-            <p className="text-xs text-gray-500">
-              If you believe this is an error, please contact support.
-            </p>
-          </div>
-        </div>
-      </div>
-    );
-  }
 
   // Show success component when verification is completed
   if (state === "COMPLETED") {
@@ -637,7 +442,7 @@ export const LivenessCheck: React.FC<LivenessCheckProps> = ({ onBack, onComplete
   // Handle Mobile Overlay (Mobile user - show camera and do liveness)
   if (isMobile) {
     // Note: VerificationProgress is shown inside state === "MINTING" usually,
-    // but in Layer 2 it happens during state === "VERIFYING" transition.
+    // but in Layer 2 it happens during the verification transition.
     return (
       <MobileLivenessPage
         onCancel={onBack}
@@ -675,9 +480,9 @@ export const LivenessCheck: React.FC<LivenessCheckProps> = ({ onBack, onComplete
       <div className="grid grid-cols-1 lg:grid-cols-[1fr_340px] gap-10 items-start">
 
         {/* Left: Main Verification Area */}
-        <div className={`bg-white rounded-[40px] border border-gray-100 shadow-soft p-8 md:p-12 space-y-8 ${showDesktopQr ? 'lg:min-h-0' : 'min-h-[600px]'} ${(state === 'MINTING' || state === 'ZK_PROVING' || state === 'ZK_SUBMITTING') ? 'flex items-center justify-center' : ''}`}>
+        <div className={`bg-white rounded-[40px] border border-gray-100 shadow-soft p-8 md:p-12 space-y-8 ${showDesktopQr ? 'lg:min-h-0' : 'min-h-[600px]'} ${state === 'MINTING' ? 'flex items-center justify-center' : ''}`}>
 
-          {state === "VERIFYING_AI" ? (
+          {state === "VERIFYING" ? (
             <div className="w-full flex-1 flex flex-col items-center justify-center gap-6 animate-in zoom-in-50 duration-500">
               <div className="w-16 h-16 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
               <h3 className="text-2xl font-black text-text-main">Analyzing Liveness</h3>
@@ -689,34 +494,8 @@ export const LivenessCheck: React.FC<LivenessCheckProps> = ({ onBack, onComplete
             <div className="w-full flex-1 flex items-center justify-center animate-in zoom-in-50 duration-500">
               <VerificationProgress
                 isProcessComplete={state === "SUCCESS" || isApiComplete}
-                onComplete={() => {
-                  // Wait for the ZK flow setTimeout to trigger COMPLETED
-                }}
+                onComplete={() => {}}
               />
-            </div>
-          ) : state === "ZK_PROVING" ? (
-            <div className="w-full flex-1 flex flex-col items-center justify-center gap-6 animate-in zoom-in-50 duration-500">
-              <div className="animate-pulse">
-                <span className="material-symbols-outlined text-purple-500 text-6xl">shield</span>
-              </div>
-              <h3 className="text-2xl font-black text-text-main">Generating Privacy Proof</h3>
-              <p className="text-text-sub text-center max-w-md">
-                Creating a zero-knowledge proof of your liveness check. Your biometric data never leaves your device.
-              </p>
-              <div className="w-full max-w-xs h-2 bg-gray-200 rounded-full overflow-hidden">
-                <div className="h-full bg-purple-500 transition-all duration-300" style={{ width: `${zkProgress}%` }} />
-              </div>
-              <p className="text-sm text-text-sub">{guidance}</p>
-            </div>
-          ) : state === "ZK_SUBMITTING" ? (
-            <div className="w-full flex-1 flex flex-col items-center justify-center gap-6 animate-in zoom-in-50 duration-500">
-              <div className="animate-spin">
-                <span className="material-symbols-outlined text-purple-500 text-6xl">sync</span>
-              </div>
-              <h3 className="text-2xl font-black text-text-main">Anchoring to Starknet</h3>
-              <p className="text-text-sub text-center max-w-md">
-                Submitting your privacy-preserving proof to the blockchain...
-              </p>
             </div>
           ) : (
             <>
@@ -873,8 +652,7 @@ export const LivenessCheck: React.FC<LivenessCheckProps> = ({ onBack, onComplete
                   className="absolute top-0 left-0 w-0.5 bg-primary transition-all duration-1000 ease-in-out"
                   style={{
                     height: state === "SUCCESS" ? '100%' :
-                      state === "MINTING" ? '75%' :
-                        (state === "ZK_PROVING" || state === "ZK_SUBMITTING") ? '50%' : '25%'
+                      state === "MINTING" ? '66%' : '33%'
                   }}
                 ></div>
               </div>
@@ -892,43 +670,22 @@ export const LivenessCheck: React.FC<LivenessCheckProps> = ({ onBack, onComplete
 
               {/* Step 2: Liveness Check */}
               <div className="flex gap-6 items-start relative z-10">
-                <div className={`size-8 rounded-full flex items-center justify-center font-black text-xs shadow-sm ring-4 ring-white transition-colors duration-500 ${["VERIFYING_AI", "MINTING", "ZK_PROVING", "ZK_SUBMITTING", "SUCCESS"].includes(state)
+                <div className={`size-8 rounded-full flex items-center justify-center font-black text-xs shadow-sm ring-4 ring-white transition-colors duration-500 ${["VERIFYING", "MINTING", "SUCCESS"].includes(state)
                   ? "bg-primary text-white shadow-md"
                   : "bg-white border-2 border-primary text-primary"
                   }`}>
-                  {["VERIFYING_AI", "MINTING", "ZK_PROVING", "ZK_SUBMITTING", "SUCCESS"].includes(state) ? (
+                  {["VERIFYING", "MINTING", "SUCCESS"].includes(state) ? (
                     <span className="material-symbols-outlined text-sm font-bold">check</span>
                   ) : "2"}
                 </div>
                 <div className="flex flex-col">
-                  <span className={`text-sm font-black leading-tight ${!["VERIFYING_AI", "MINTING", "ZK_PROVING", "ZK_SUBMITTING", "SUCCESS"].includes(state) ? "text-primary" : "text-text-main"
+                  <span className={`text-sm font-black leading-tight ${!["VERIFYING", "MINTING", "SUCCESS"].includes(state) ? "text-primary" : "text-text-main"
                     }`}>Liveness Check</span>
                   <span className="text-[11px] font-bold text-text-sub mt-0.5">Face scan verification</span>
                 </div>
               </div>
 
-              {/* Step 3: ZK Proof */}
-              <div className={`flex gap-6 items-start relative z-10 transition-opacity duration-500 ${["ZK_PROVING", "ZK_SUBMITTING", "MINTING", "SUCCESS"].includes(state) ? "opacity-100" : "opacity-40"
-                }`}>
-                <div className={`size-8 rounded-full flex items-center justify-center font-black text-xs transition-colors duration-500 ring-4 ring-white ${["MINTING", "SUCCESS"].includes(state) ? "bg-purple-500 text-white shadow-md" :
-                  ["ZK_PROVING", "ZK_SUBMITTING"].includes(state) ? "bg-white border-2 border-purple-500 text-purple-500 animate-pulse" :
-                    "bg-white border-2 border-gray-200 text-text-sub"
-                  }`}>
-                  {["MINTING", "SUCCESS"].includes(state) ? (
-                    <span className="material-symbols-outlined text-sm font-bold">check</span>
-                  ) : "3"}
-                </div>
-                <div className="flex flex-col">
-                  <span className={`text-sm font-black leading-tight ${["ZK_PROVING", "ZK_SUBMITTING"].includes(state) ? "text-purple-500" : "text-text-main"
-                    }`}>Privacy Proof</span>
-                  <span className={`text-[11px] font-bold mt-0.5 ${["ZK_PROVING", "ZK_SUBMITTING"].includes(state) ? "text-purple-500 animate-pulse" : "text-text-sub"}`}>
-                    {state === "ZK_PROVING" ? "Generating proof..." :
-                      state === "ZK_SUBMITTING" ? "Submitting to Starknet..." : "Zero-Knowledge verification"}
-                  </span>
-                </div>
-              </div>
-
-              {/* Step 4: Minting */}
+              {/* Step 3: Minting */}
               <div className={`flex gap-6 items-start relative z-10 transition-opacity duration-500 ${["MINTING", "SUCCESS"].includes(state) ? "opacity-100" : "opacity-40"
                 }`}>
                 <div className={`size-8 rounded-full flex items-center justify-center font-black text-xs transition-colors duration-500 ring-4 ring-white ${state === "SUCCESS" ? "bg-primary text-white shadow-md" :
@@ -937,7 +694,7 @@ export const LivenessCheck: React.FC<LivenessCheckProps> = ({ onBack, onComplete
                   }`}>
                   {state === "SUCCESS" ? (
                     <span className="material-symbols-outlined text-sm font-bold">check</span>
-                  ) : "4"}
+                  ) : "3"}
                 </div>
                 <div className="flex flex-col">
                   <span className={`text-sm font-black leading-tight ${state === "MINTING" ? "text-primary" : "text-text-main"
@@ -948,7 +705,7 @@ export const LivenessCheck: React.FC<LivenessCheckProps> = ({ onBack, onComplete
                 </div>
               </div>
 
-              {/* Step 5: Success */}
+              {/* Step 4: Success */}
               <div className={`flex gap-6 items-start relative z-10 transition-opacity duration-500 ${state === "SUCCESS" ? "opacity-100" : "opacity-40"
                 }`}>
                 <div className={`size-8 rounded-full flex items-center justify-center font-black text-xs transition-colors duration-500 ring-4 ring-white ${state === "SUCCESS"
@@ -957,7 +714,7 @@ export const LivenessCheck: React.FC<LivenessCheckProps> = ({ onBack, onComplete
                   }`}>
                   {state === "SUCCESS" ? (
                     <span className="material-symbols-outlined text-sm font-bold">check</span>
-                  ) : "5"}
+                  ) : "4"}
                 </div>
                 <div className="flex flex-col">
                   <span className={`text-sm font-black leading-tight ${state === "SUCCESS" ? "text-primary" : "text-text-main"
@@ -986,7 +743,7 @@ export const LivenessCheck: React.FC<LivenessCheckProps> = ({ onBack, onComplete
 
       {/* Footer Exit Link */}
       <div className="mt-12 flex justify-center">
-        {!["MINTING", "ZK_PROVING", "ZK_SUBMITTING", "SUCCESS"].includes(state) && (
+        {!["MINTING", "SUCCESS"].includes(state) && (
           <button
             onClick={onBack}
             className="flex items-center gap-2 text-text-sub hover:text-alerts transition-all font-bold text-sm group"

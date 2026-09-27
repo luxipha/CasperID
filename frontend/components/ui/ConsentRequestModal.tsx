@@ -110,7 +110,7 @@ export const ConsentRequestModal: React.FC<ConsentRequestModalProps> = ({
                                         <h4 className="text-[15px] font-bold text-text-main">KYC Verification Status</h4>
                                         <p className="text-[11px] text-green-600 font-bold flex items-center gap-1">
                                             <span className="material-symbols-outlined text-[14px]">lock</span>
-                                            ZK-Proof: Only 'Yes/No' will be shared
+                                            Private claim: Only 'Yes/No' will be shared
                                         </p>
                                     </div>
                                 </div>

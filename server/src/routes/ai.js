@@ -170,8 +170,7 @@ router.post('/ai/verify-liveness-sequence', upload.fields([
 
         // 2. If Passed, Handle Based on Layer
         if (result.passed) {
-            const { Credential, UserAccount, VerificationRequestV2 } = require('../database/models');
-            const crypto = require('crypto');
+            const { UserAccount, VerificationRequestV2 } = require('../database/models');
             const fs = require('fs');
             const path = require('path');
 
@@ -183,7 +182,7 @@ router.post('/ai/verify-liveness-sequence', upload.fields([
             });
 
             // Check if this is Layer 3 flow (user already has Layer 2 OR has pending Layer 3 request)
-            if (userAccount.tier === 'layer_2' || pendingLayer3Request) {
+            if (['layer_2', 'layer_3'].includes(userAccount.tier) || pendingLayer3Request) {
                 // Layer 3 flow - DON'T mint credential yet
                 // Upload key frames to ImageKit for admin review
 
@@ -229,38 +228,37 @@ router.post('/ai/verify-liveness-sequence', upload.fields([
                 });
             }
 
-            // Layer 2 flow - DON'T mint credential yet!
-            // The credential will be minted AFTER successful Starknet ZK submission
-            // This prevents out-of-sync states between Casper and Starknet
-            // Generate a secure liveness session token for the ZK submission step
-            const livenessSessionToken = crypto.randomBytes(32).toString('hex');
-            const livenessSessionExpiry = Date.now() + (30 * 60 * 1000); // 30 minutes
+            // Complete Layer 2 directly through the existing Casper credential flow.
+            const { mintCredential } = require('../utils/credential-minter');
+            const credential = await mintCredential({
+                wallet: userAccount.wallet,
+                tier: 'layer_2',
+                ip: req.ip,
+                userAgent: req.get('user-agent')
+            });
 
-            // Store liveness session in UserAccount for validation during ZK submission
             await UserAccount.updateOne(
                 { _id: userAccount._id },
                 {
                     $set: {
-                        liveness_session_token: livenessSessionToken,
-                        liveness_session_expiry: livenessSessionExpiry,
+                        tier: 'layer_2',
                         liveness_passed_at: new Date(),
                         updated_at: new Date()
                     }
                 }
             );
 
-            // Return success with session token - credential minting happens after ZK
             return res.json({
                 success: true,
                 ...result,
                 layer: 2,
-                next_step: 'zk_submit',
-                liveness_session: livenessSessionToken,
-                message: 'Liveness verification complete. Proceeding to ZK proof submission.'
+                next_step: 'complete',
+                credential,
+                message: 'Liveness verification complete. Layer 2 credential issued on Casper.'
             });
         }
 
-        res.json({ success: true, ...result });
+        res.status(result.passed ? 200 : 422).json({ ...result, success: result.passed === true });
     } catch (error) {
         console.error('[AI] Liveness sequence verification error:', error);
         res.status(500).json({

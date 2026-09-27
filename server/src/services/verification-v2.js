@@ -374,9 +374,13 @@ class VerificationServiceV2 {
                 throw new Error('Not authorized to submit this verification request');
             }
 
-            // Validate imageFrames
-            if (!imageFrames || imageFrames.length === 0) {
-                throw new Error('No image frames provided for liveness verification');
+            const isLayer3 = verificationRequest.verification_tier === 'layer_3';
+            const localLiveness = !isLayer3 && metadata.method === 'on_device'
+                ? validateOnDeviceLiveness(metadata.localResult)
+                : null;
+
+            if (!localLiveness && (!imageFrames || imageFrames.length === 0)) {
+                throw new Error('No image frames or on-device liveness result provided');
             }
 
             // Update status to in_progress
@@ -384,8 +388,7 @@ class VerificationServiceV2 {
             await verificationRequest.save();
 
             // Convert imageFrames (multer file objects) to buffers
-            const frameBuffers = imageFrames.map(frame => frame.buffer);
-            const isLayer3 = verificationRequest.verification_tier === 'layer_3';
+            const frameBuffers = (imageFrames || []).map(frame => frame.buffer);
 
             // Layer 2 is auto-decided and does not need slow admin-review uploads.
             let livenessFrameUrls = [];
@@ -413,19 +416,30 @@ class VerificationServiceV2 {
             // Process liveness using Gemini AI
             let livenessScore;
             let livenessAnalysis;
-            try {
-                livenessAnalysis = await geminiService.verifyLivenessSequence(frameBuffers, stepSequence);
-                // Convert confidence (0-100) to score (0-1)
-                livenessScore = livenessAnalysis.confidence / 100;
-            } catch (aiError) {
-                console.error('Liveness AI analysis failed:', aiError);
-                // Fallback to basic checks if AI fails
-                livenessScore = 0.7; // Conservative score
+            if (localLiveness) {
+                livenessScore = localLiveness.passed ? 1 : 0;
                 livenessAnalysis = {
-                    passed: false,
-                    confidence: 70,
-                    reasoning: 'AI analysis unavailable, using fallback score'
+                    passed: localLiveness.passed,
+                    confidence: localLiveness.passed ? 100 : 0,
+                    reasoning: 'On-device blink and mouth challenges',
+                    validationChecks: localLiveness.checks,
+                    processing: 'on_device'
                 };
+            } else {
+                try {
+                    livenessAnalysis = await geminiService.verifyLivenessSequence(frameBuffers, stepSequence);
+                    // Convert confidence (0-100) to score (0-1)
+                    livenessScore = livenessAnalysis.confidence / 100;
+                } catch (aiError) {
+                    console.error('Liveness AI analysis failed:', aiError);
+                    livenessScore = 0;
+                    livenessAnalysis = {
+                        passed: false,
+                        confidence: 0,
+                        reasoning: 'AI analysis unavailable',
+                        validationChecks: {}
+                    };
+                }
             }
 
             // For Layer 2: AI makes the decision (auto-approve/reject)
@@ -1267,3 +1281,19 @@ class VerificationServiceV2 {
 }
 
 module.exports = new VerificationServiceV2();
+module.exports.validateOnDeviceLiveness = validateOnDeviceLiveness;
+function validateOnDeviceLiveness(localResult = {}) {
+    const completedAt = Number(localResult.completedAt);
+    const ageMs = Math.abs(Date.now() - completedAt);
+    const checks = {
+        recent: Number.isFinite(completedAt) && ageMs <= 5 * 60 * 1000,
+        faceHeld: Number(localResult.faceHeldMs) >= 3000,
+        blinkChallenge: Number(localResult.blinkCount) >= 3,
+        mouthChallenge: Number(localResult.mouthOpenRatio) >= 0.13 && Number(localResult.mouthHeldMs) >= 1000
+    };
+
+    return {
+        passed: Object.values(checks).every(Boolean),
+        checks
+    };
+}

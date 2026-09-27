@@ -1,6 +1,6 @@
 {
   "name": "CasperDrop",
-  "description": "Sybil-Safe Token Distributions. Join the next generation of privacy-first airdrops powered by CasperID.",
+  "description": "Privacy-first token distributions powered by CasperID verified claims.",
   "requestFramePermissions": [],
   "majorCapabilities": []
 }

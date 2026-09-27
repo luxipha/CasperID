@@ -47,8 +47,6 @@ next-env.d.ts
 # Rust
 /target/
 /Cargo.lock
-/casperid_zk/target/
-/casperid_zk/.snfoundry_cache/
 
 # Strategy & Confidential Documents
 STRATEGY.md
@@ -57,7 +55,6 @@ MARKET_ANALYSIS.md
 COMPETITIVE_INTEL.md
 ZK.md
 *.confidential.md
-!casperid_zk/SETUP.md
 
 # Private keys and secrets
 *.pem
@@ -70,6 +67,7 @@ secrets/
 # Specific docs to ignore
 *.md
 !server/docs/webauthn-rpid-migration.md
+!docs/TRUST_EVENTS.md
 roadmap.md
 /server/*.md
 
@@ -82,11 +80,6 @@ github-actions-key.json
 /server/uploads
 /server/scripts
 /server/src/tests
-
-# Starknet / ZK specifics
-casperid_zk/target/
-casperid_zk/.snfoundry_cache/
-casperid_zk/.scarb/
 
 coupon.md
 

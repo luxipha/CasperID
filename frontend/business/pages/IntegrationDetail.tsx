@@ -23,6 +23,12 @@ interface BusinessApp {
   created_at: string;
   website_url?: string;
   listing_status?: 'listed' | 'unlisted';
+  service_category?: string;
+  supported_roles?: Array<'consumer' | 'provider'>;
+  trust_events_enabled?: boolean;
+  trust_capacity_enabled?: boolean;
+  trust_production_approved?: boolean;
+  ratings_enabled?: boolean;
   sdk_config?: {
     requiredTier?: string;
     proofs?: string[];
@@ -75,6 +81,11 @@ const IntegrationDetail: React.FC = () => {
   const [website, setWebsite] = useState('');
   const [environment, setEnvironment] = useState<'sandbox' | 'production'>('sandbox');
   const [listingStatus, setListingStatus] = useState<'listed' | 'unlisted'>('unlisted');
+  const [serviceCategory, setServiceCategory] = useState('other');
+  const [supportedRoles, setSupportedRoles] = useState<Array<'consumer' | 'provider'>>([]);
+  const [trustEventsEnabled, setTrustEventsEnabled] = useState(false);
+  const [trustCapacityEnabled, setTrustCapacityEnabled] = useState(false);
+  const [ratingsEnabled, setRatingsEnabled] = useState(false);
   const [tier, setTier] = useState('L1');
   const [proofs, setProofs] = useState<string[]>([]);
   const [logoUrl, setLogoUrl] = useState('');
@@ -107,6 +118,11 @@ const IntegrationDetail: React.FC = () => {
           setWebsite(a.website_url || '');
           setEnvironment(a.environment || 'sandbox');
           setListingStatus(a.listing_status || 'unlisted');
+          setServiceCategory(a.service_category || 'other');
+          setSupportedRoles(a.supported_roles || []);
+          setTrustEventsEnabled(Boolean(a.trust_events_enabled));
+          setTrustCapacityEnabled(Boolean(a.trust_capacity_enabled));
+          setRatingsEnabled(Boolean(a.ratings_enabled));
           setTier(a.sdk_config?.requiredTier || 'L1');
           setProofs(a.sdk_config?.proofs || deriveProofsFromScopes(a.requested_scopes || []));
           setLogoUrl(a.sdk_config?.logo_url || '');
@@ -128,6 +144,12 @@ const IntegrationDetail: React.FC = () => {
 
   const handleSave = async () => {
     if (!id) return;
+    if ((trustEventsEnabled || trustCapacityEnabled) && supportedRoles.length === 0) {
+      setToastMessage('Select at least one consumer or provider role before enabling Trust Capacity or trust events.');
+      setShowToast(true);
+      setTimeout(() => setShowToast(false), 3000);
+      return;
+    }
     try {
       setSaving(true);
       const response = await apiService.patch(`/api/business/apps/${id}`, {
@@ -135,6 +157,11 @@ const IntegrationDetail: React.FC = () => {
         website_url: website,
         environment,
         listing_status: listingStatus,
+        service_category: serviceCategory,
+        supported_roles: supportedRoles,
+        trust_events_enabled: trustEventsEnabled,
+        trust_capacity_enabled: trustCapacityEnabled,
+        ratings_enabled: ratingsEnabled,
         allowed_origins: allowedOrigins,
         redirect_uris: redirectUris,
         android_digital_assets: androidAssets,
@@ -153,6 +180,11 @@ const IntegrationDetail: React.FC = () => {
           setApp(updatedApp);
           setEnvironment(updatedApp.environment || environment);
           setListingStatus(updatedApp.listing_status || listingStatus);
+          setServiceCategory(updatedApp.service_category || serviceCategory);
+          setSupportedRoles(updatedApp.supported_roles || supportedRoles);
+          setTrustEventsEnabled(Boolean(updatedApp.trust_events_enabled));
+          setTrustCapacityEnabled(Boolean(updatedApp.trust_capacity_enabled));
+          setRatingsEnabled(Boolean(updatedApp.ratings_enabled));
           setTier(updatedApp.sdk_config?.requiredTier || tier);
           setProofs(updatedApp.sdk_config?.proofs || deriveProofsFromScopes(updatedApp.requested_scopes || []));
           setLogoUrl(updatedApp.sdk_config?.logo_url || '');
@@ -187,6 +219,12 @@ const IntegrationDetail: React.FC = () => {
         ? prev.filter(p => p !== proofId)
         : [...prev, proofId]
     );
+  };
+
+  const toggleTrustRole = (role: 'consumer' | 'provider') => {
+    setSupportedRoles((current) => current.includes(role)
+      ? current.filter((item) => item !== role)
+      : [...current, role]);
   };
 
   const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -376,6 +414,7 @@ const IntegrationDetail: React.FC = () => {
               {app.environment === 'production' ? 'Production' : 'Sandbox'}
             </span>
           </div>
+
         </div>
         <p className="text-text-muted">Unique ID: <span className="font-mono text-xs bg-background-light px-2 py-1 rounded">{app.app_id}</span></p>
       </div>
@@ -469,6 +508,102 @@ const IntegrationDetail: React.FC = () => {
                   </div>
                 </div>
               </div>
+            </div>
+          </div>
+
+          <div className="bg-white rounded-xl border border-border-muted shadow-sm overflow-hidden">
+            <div className="px-6 py-4 border-b border-border-muted bg-background-light/30">
+              <h3 className="font-bold text-text-main">Portable Trust</h3>
+              <p className="text-xs text-text-muted mt-1">Configure factual service events separately from profile recommendations.</p>
+            </div>
+            <div className="p-6 flex flex-col gap-5">
+              <div className="flex flex-col gap-2">
+                <label htmlFor="service-category" className="text-sm font-bold text-text-main">Service category</label>
+                <select
+                  id="service-category"
+                  value={serviceCategory}
+                  onChange={(event) => {
+                    const category = event.target.value;
+                    setServiceCategory(category);
+                    if (category !== 'mobility') {
+                      setTrustEventsEnabled(false);
+                      setTrustCapacityEnabled(false);
+                      setRatingsEnabled(false);
+                    }
+                  }}
+                  className="w-full rounded-lg border-border-muted bg-background-light/50 focus:border-primary focus:ring-primary text-sm p-3"
+                >
+                  <option value="other">Identity only</option>
+                  <option value="mobility">Mobility / ride sharing</option>
+                  <option value="commerce">Commerce</option>
+                  <option value="delivery">Delivery</option>
+                  <option value="appointments">Appointments</option>
+                  <option value="rentals">Rentals</option>
+                  <option value="finance">Finance</option>
+                </select>
+              </div>
+
+              <div>
+                <p className="text-sm font-bold text-text-main mb-2">Roles represented by this app</p>
+                <div className="flex gap-3">
+                  {(['consumer', 'provider'] as const).map((role) => (
+                    <label key={role} className="flex-1 flex items-center gap-2 p-3 rounded-lg border border-border-muted bg-background-light/50 cursor-pointer capitalize">
+                      <input type="checkbox" checked={supportedRoles.includes(role)} onChange={() => toggleTrustRole(role)} />
+                      <span className="text-sm font-medium">{role}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+
+              <label className="flex items-center justify-between p-4 rounded-xl bg-background-light/50 border border-border-muted">
+                <span>
+                  <span className="block text-sm font-bold text-text-main">Accept trust events</span>
+                  <span className="block text-xs text-text-muted">Mobility pilot only. Sandbox events never change live scores.</span>
+                </span>
+                <input
+                  type="checkbox"
+                  checked={trustEventsEnabled}
+                  disabled={serviceCategory !== 'mobility'}
+                  onChange={(event) => {
+                    setTrustEventsEnabled(event.target.checked);
+                    if (!event.target.checked) setRatingsEnabled(false);
+                  }}
+                />
+              </label>
+
+              <label className="flex items-center justify-between gap-4 p-4 rounded-xl bg-background-light/50 border border-border-muted">
+                <span>
+                  <span className="block text-sm font-bold text-text-main">Request Trust Capacity at sign-in</span>
+                  <span className="block text-xs text-text-muted">Adds consented <code>read:trust_capacity</code>. The business JWT receives provider and consumer score, status, timestamp, and policy version—never events or review text.</span>
+                </span>
+                <input
+                  type="checkbox"
+                  checked={trustCapacityEnabled}
+                  disabled={serviceCategory !== 'mobility'}
+                  onChange={(event) => setTrustCapacityEnabled(event.target.checked)}
+                />
+              </label>
+
+              <label className="flex items-center justify-between p-4 rounded-xl bg-background-light/50 border border-border-muted">
+                <span>
+                  <span className="block text-sm font-bold text-text-main">Verified numeric ratings</span>
+                  <span className="block text-xs text-text-muted">Maximum 5% influence; written reviews remain on the service platform.</span>
+                </span>
+                <input
+                  type="checkbox"
+                  checked={ratingsEnabled}
+                  disabled={!trustEventsEnabled}
+                  onChange={(event) => setRatingsEnabled(event.target.checked)}
+                />
+              </label>
+
+              {trustEventsEnabled && environment === 'production' ? (
+                <p className={`text-xs rounded-xl p-3 ${app.trust_production_approved ? 'bg-green-50 text-green-700' : 'bg-amber-50 text-amber-700'}`}>
+                  {app.trust_production_approved
+                    ? 'Production trust events are approved to affect scores.'
+                    : 'Production approval is pending. Events are accepted for testing but cannot affect user scores.'}
+                </p>
+              ) : null}
             </div>
           </div>
 

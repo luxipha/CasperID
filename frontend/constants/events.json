@@ -109,9 +109,9 @@
         },
         {
             "id": "4",
-            "title": "ZK-Proof Workshop: Advanced MCI",
-            "description": "Deep dive into implementing zero-knowledge proofs for enterprise identity solutions.",
-            "fullContent": "A technical deep-dive into the mathematics and implementation of zero-knowledge proofs within the CasperID framework. Perfect for developers looking to build enterprise-grade privacy solutions.",
+            "title": "Private Claims Workshop: Advanced MCI",
+            "description": "Deep dive into implementing selective disclosure for enterprise identity solutions.",
+            "fullContent": "A technical deep-dive into consent-based private claims and selective disclosure within the CasperID framework. Perfect for developers building privacy-conscious identity solutions.",
             "date": "Coming Soon",
             "location": "Online Workshop",
             "type": "Workshop",
@@ -121,11 +121,11 @@
             "agenda": [
                 {
                     "time": "TBA",
-                    "activity": "Introduction to ZK-SNARKs"
+                    "activity": "Introduction to Selective Disclosure"
                 },
                 {
                     "time": "TBA",
-                    "activity": "MCI Circuit Design"
+                    "activity": "Private Claim Design"
                 },
                 {
                     "time": "TBA",

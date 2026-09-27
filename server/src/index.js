@@ -172,6 +172,7 @@ app.use((req, res, next) => {
         req.path.startsWith('/api/payment/revenuecat/webhook') ||
         req.path.startsWith('/api/payment/boomfi/webhook') ||
         req.path.startsWith('/api/business') ||
+        req.path === '/api/trust/events' ||
         req.path === '/api/oauth/token' ||
         req.path.startsWith('/api/auth') ||
         req.path.startsWith('/api/passkey') ||
@@ -331,8 +332,7 @@ app.use('/api/admin', adminRoutes);
 app.use('/api/admin', adminAuthRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api', aiRoutes);
-app.use('/api', require('./routes/zk')); // ZK Proof Submission (Starknet)
-app.use('/api/zk-claims', require('./routes/zk-claims')); // ZK Claim Proofs (Privacy-Preserving Claims)
+app.use('/api/zk-claims', require('./routes/zk-claims')); // Legacy route name retained for selective identity claims
 app.use('/api/casperid', casperidAuthRoutes);
 app.use('/api/passkey', passkeyAuthRoutes); // Passkey authentication (Layer 0/1)
 app.use('/api/passkey/pairing/otp', require('./routes/otp-pairing')); // OTP Pairing (Extension-to-Web)
@@ -348,6 +348,7 @@ app.use('/api/payment', require('./routes/payment')); // Premium CID Payments (R
 app.use('/api/coupon', require('./routes/coupon')); // Coupon validation and claiming
 app.use('/api/pending-session', require('./routes/pending-session')); // Mobile Passkey Handoff
 app.use('/api/business', require('./routes/business')); // Business Platform (Identity-as-a-Service)
+app.use('/api/trust', require('./routes/trust')); // Portable trust evidence and mobility scoring
 app.use('/api/oauth', require('./routes/oauth')); // Hosted authorization code flow
 app.use('/.well-known', require('./routes/well-known')); // JWKS + OpenID Connect Discovery
 app.use('/api/careers', require('./routes/careers')); // Career applications

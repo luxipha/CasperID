@@ -1,7 +1,7 @@
 /**
- * ZK Claims Routes
+ * Private Claims Routes
  *
- * Endpoints for generating and verifying Zero-Knowledge claim proofs.
+ * Endpoints for generating and verifying selectively disclosed claims.
  * Allows users to prove claims without revealing actual data.
  */
 
@@ -44,7 +44,7 @@ router.get('/available', async (req, res) => {
 
 /**
  * POST /api/zk-claims/generate
- * Generate a ZK claim proof package
+ * Generate a signed private-claim package. Route name retained for compatibility.
  */
 router.post('/generate', async (req, res) => {
     try {
@@ -67,18 +67,19 @@ router.post('/generate', async (req, res) => {
             });
         }
 
-        const proofPackage = await zkClaimsService.generateClaimProof(sessionToken, claims);
+        const generatedProof = await zkClaimsService.generateClaimProof(sessionToken, claims);
+        const { _storageOwner, ...proofPackage } = generatedProof;
 
         // Store in TTL collection for QR code sharing (1 hour expiry)
         const zkShare = new ZKProofShare({
             proof_id: proofPackage.proof_id,
-            user_id: proofPackage.issuer?.wallet || 'unknown',
-            wallet: proofPackage.issuer?.wallet,
-            human_id: proofPackage.issuer?.human_id,
+            user_id: _storageOwner.user_id,
+            wallet: _storageOwner.wallet,
+            human_id: _storageOwner.human_id,
             proof: proofPackage.proof,
             proof_hash: proofPackage.proof_hash,
             claims: proofPackage.claims,
-            issuer: proofPackage.issuer,
+            issuer: { id: 'CasperID' },
             expires_at: new Date(proofPackage.expires_at)
         });
         await zkShare.save();
@@ -94,7 +95,7 @@ router.post('/generate', async (req, res) => {
         });
 
     } catch (error) {
-        console.error('Failed to generate ZK claim proof:', error);
+        console.error('Failed to generate private claim:', error);
         res.status(400).json({
             success: false,
             error: error.message
@@ -104,7 +105,7 @@ router.post('/generate', async (req, res) => {
 
 /**
  * POST /api/zk-claims/verify
- * Verify a ZK claim proof package (public endpoint - no auth required)
+ * Verify a signed private-claim package (public endpoint - no auth required)
  */
 router.post('/verify', async (req, res) => {
     try {
@@ -127,7 +128,7 @@ router.post('/verify', async (req, res) => {
         });
 
     } catch (error) {
-        console.error('Failed to verify ZK claim proof:', error);
+        console.error('Failed to verify private claim:', error);
         res.status(400).json({
             success: false,
             error: error.message
@@ -137,7 +138,7 @@ router.post('/verify', async (req, res) => {
 
 /**
  * GET /api/zk-claims/proof/:proofId
- * Retrieve a stored ZK proof by ID (for QR code verification pages)
+ * Retrieve a stored private claim by ID (for QR code verification pages)
  * Returns the proof data for client-side display
  */
 router.get('/proof/:proofId', async (req, res) => {
@@ -161,19 +162,20 @@ router.get('/proof/:proofId', async (req, res) => {
         // Verify the proof is still valid
         const result = await zkClaimsService.verifyClaimProof(zkShare.proof);
 
-        res.json({
-            success: true,
+        const responseStatus = result.valid ? 200 : (result.expired ? 410 : 400);
+        res.status(responseStatus).json({
+            success: result.valid,
             proof_id: zkShare.proof_id,
-            claims: zkShare.claims,
-            issuer: zkShare.issuer,
+            claims: result.claims || [],
+            issuer: result.issuer,
             created_at: zkShare.created_at,
-            expires_at: zkShare.expires_at,
+            expires_at: result.expires_at || zkShare.expires_at,
             view_count: zkShare.view_count,
             verification: result
         });
 
     } catch (error) {
-        console.error('Failed to retrieve ZK proof:', error);
+        console.error('Failed to retrieve private claim:', error);
         res.status(400).json({
             success: false,
             error: error.message

@@ -18,7 +18,7 @@ const steps = [
     {
         id: 2,
         title: "Verify Once",
-        description: "Complete a one-time verification. Our MCI Algorithm generates a zero-knowledge proof that you are who you say you are.",
+        description: "Complete a one-time liveness verification to activate your reusable CasperID credential.",
         icon: <ShieldCheck className="w-8 h-8 md:w-12 md:h-12 text-primary" />,
         color: "from-indigo-500/20 to-blue-500/20"
     },

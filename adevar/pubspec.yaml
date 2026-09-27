@@ -1,5 +1,5 @@
 name: adevar
-description: CasperID mobile app - digital identity, ID card, ZK proofs, and data warehouse.
+description: CasperID mobile app - digital identity, ID card, private claims, and data warehouse.
 publish_to: 'none'
 version: 1.0.0+1
 

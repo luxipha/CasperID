@@ -7,7 +7,7 @@ import { notifyError } from '../utils/notify';
 
 // Helper to map backend actions to UI labels
 const PERMISSION_MAP: Record<string, { label: string; sub: string; icon: string }> = {
-  'verify:identity': { label: 'Identity Profile', sub: 'Basic info (ZK-Proof)', icon: 'account_circle' },
+  'verify:identity': { label: 'Identity Profile', sub: 'Approved basic information', icon: 'account_circle' },
   'verify:kyc': { label: 'KYC Status', sub: 'Verified Credential', icon: 'verified' },
   'verify:liveness': { label: 'Liveness Check', sub: 'Biometric Verification', icon: 'face' },
   'spend:verification_fee': { label: 'Wallet Spend', sub: 'Verification Fees', icon: 'account_balance_wallet' },
@@ -68,7 +68,7 @@ export const DataControls: React.FC = () => {
         grant.recentUsage.map((usage: any) => ({
           app: grant.dappName,
           data: getPermissionDetails(usage.action).label,
-          type: 'Zero-Knowledge',
+          type: 'Private Claim',
           typeColor: 'bg-purple-50 text-purple-700 border-purple-100', // Default
           time: new Date(usage.createdAt).toLocaleString(),
           status: usage.result === 'success' ? 'Approved' : usage.result,
@@ -165,7 +165,7 @@ export const DataControls: React.FC = () => {
       <div className="flex flex-col gap-3">
         <h1 className="text-3xl md:text-4xl font-black leading-tight tracking-[-0.03em] text-text-main">Data Controls & Privacy</h1>
         <p className="text-text-sub text-base font-normal max-w-2xl leading-relaxed">
-          Manage your consent, view permissions granted to connected Web2 and Web3 applications, and control your digital footprint with Zero-Knowledge proofs.
+          Manage your consent, view permissions granted to connected applications, and control which verified claims you share.
         </p>
       </div>
 

@@ -83,7 +83,7 @@ export const QRScannerModal: React.FC<QRScannerModalProps> = ({ isOpen, onClose 
             try {
                 if (text.startsWith('{')) {
                     const data = JSON.parse(text);
-                    if (data.type === 'casperid_zk_claims') {
+                    if (['casperid_private_claims', 'casperid_zk_claims'].includes(data.type)) {
                         const proofEncoded = encodeURIComponent(text);
                         navigate(`/verify-zk?proof=${proofEncoded}`);
                         onClose();

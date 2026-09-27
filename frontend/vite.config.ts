@@ -110,8 +110,8 @@ export default defineConfig(({ mode }) => {
           ]
         },
         workbox: {
-          globPatterns: ['**/*.{css,html,ico,png,svg,woff,woff2}'],
-          // Exclude large JS files (Barretenberg WASM is 65MB+)
+          globPatterns: ['**/*.{css,html,ico,png,svg,woff,woff2,js,wasm,data,binarypb}'],
+          // Exclude large generated or vendor JavaScript files from PWA caching.
           globIgnores: ['**/assets/index-*.js'],
           cleanupOutdatedCaches: true,
           clientsClaim: true,
@@ -157,13 +157,6 @@ export default defineConfig(({ mode }) => {
           'top-level-await': true,
         },
       },
-      // Exclude Noir/Barretenberg packages from pre-bundling
-      // They use dynamic imports and WASM that don't work well with esbuild
-      exclude: [
-        '@noir-lang/noir_js',
-        '@noir-lang/backend_barretenberg',
-        '@aztec/bb.js',
-      ],
     },
     worker: {
       format: 'es',

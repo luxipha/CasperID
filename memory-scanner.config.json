@@ -8,11 +8,8 @@
     { "directory": "casperdrop", "projectName": "casperdrop" },
     { "directory": "adevar", "projectName": "adevar" },
     { "directory": "contracts", "projectName": "contracts" },
-    { "directory": "casperid_zk", "projectName": "casperid-zk" },
     { "directory": "scripts", "projectName": "scripts" },
-    { "directory": "utils", "projectName": "utils" },
-    { "directory": "circuits", "projectName": "circuits" },
-    { "directory": "casper_ref", "projectName": "casper-ref" }
+    { "directory": "utils", "projectName": "utils" }
   ],
   "indexTitle": "casperId Project Index",
   "indexTags": ["casperid", "project", "index"],

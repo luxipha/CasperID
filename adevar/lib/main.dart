@@ -30,7 +30,7 @@ class CasperIDApp extends StatelessWidget {
         '/home': (context) => const HomePage(),
         '/id-card': (context) => const IdCardPage(),
         '/qr-scanner': (context) => const QrScannerPage(),
-        '/zk-liveness': (context) => const ZkLivenessPage(),
+        '/zk-liveness': (context) => const LivenessPage(),
         '/pairing': (context) => const PairingPage(),
         '/data-warehouse': (context) => const DataWarehousePage(),
       },

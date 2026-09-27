@@ -2,14 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:camera/camera.dart';
 import '../../config/app_colors.dart';
 
-class ZkLivenessPage extends StatefulWidget {
-  const ZkLivenessPage({super.key});
+class LivenessPage extends StatefulWidget {
+  const LivenessPage({super.key});
 
   @override
-  State<ZkLivenessPage> createState() => _ZkLivenessPageState();
+  State<LivenessPage> createState() => _LivenessPageState();
 }
 
-class _ZkLivenessPageState extends State<ZkLivenessPage> {
+class _LivenessPageState extends State<LivenessPage> {
   CameraController? _cameraController;
   List<CameraDescription>? _cameras;
   bool _initialized = false;
@@ -84,7 +84,7 @@ class _ZkLivenessPageState extends State<ZkLivenessPage> {
     return Scaffold(
       backgroundColor: Colors.black,
       appBar: AppBar(
-        title: const Text('ZK Liveness Check'),
+        title: const Text('Liveness Check'),
         backgroundColor: Colors.black,
         foregroundColor: Colors.white,
       ),

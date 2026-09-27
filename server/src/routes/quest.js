@@ -81,8 +81,8 @@ const verifyQuestCompletion = async (questId, user) => {
             return { eligible: false, reason: `Earn ${10000 - (user.points || 0)} more XP` };
 
         case 'zk_proof_generate':
-            if (user.zk_verified) return { eligible: true };
-            return { eligible: false, reason: 'Generate a ZK proof' };
+            if (['layer_2', 'layer_3'].includes(user.tier)) return { eligible: true };
+            return { eligible: false, reason: 'Complete liveness verification' };
 
         case 'extension_install':
             if (user.extension_installed) return { eligible: true };

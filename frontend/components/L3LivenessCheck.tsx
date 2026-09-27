@@ -1,8 +1,28 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { FaceMesh } from '@mediapipe/face_mesh';
+import faceMeshBinaryUrl from '@mediapipe/face_mesh/face_mesh.binarypb?url';
+import faceMeshPackedDataUrl from '@mediapipe/face_mesh/face_mesh_solution_packed_assets.data?url';
+import faceMeshPackedLoaderUrl from '@mediapipe/face_mesh/face_mesh_solution_packed_assets_loader.js?url';
+import faceMeshSimdDataUrl from '@mediapipe/face_mesh/face_mesh_solution_simd_wasm_bin.data?url';
+import faceMeshSimdJsUrl from '@mediapipe/face_mesh/face_mesh_solution_simd_wasm_bin.js?url';
+import faceMeshSimdWasmUrl from '@mediapipe/face_mesh/face_mesh_solution_simd_wasm_bin.wasm?url';
+import faceMeshWasmJsUrl from '@mediapipe/face_mesh/face_mesh_solution_wasm_bin.js?url';
+import faceMeshWasmUrl from '@mediapipe/face_mesh/face_mesh_solution_wasm_bin.wasm?url';
 import { Camera } from '@mediapipe/camera_utils';
 import { MobileLivenessPage, MobileStep } from './MobileLiveness';
 import { apiService } from '../services/api';
+import { isSuccessfulLivenessResponse } from '../utils/liveness';
+
+const FACE_MESH_ASSETS: Record<string, string> = {
+    'face_mesh.binarypb': faceMeshBinaryUrl,
+    'face_mesh_solution_packed_assets.data': faceMeshPackedDataUrl,
+    'face_mesh_solution_packed_assets_loader.js': faceMeshPackedLoaderUrl,
+    'face_mesh_solution_simd_wasm_bin.data': faceMeshSimdDataUrl,
+    'face_mesh_solution_simd_wasm_bin.js': faceMeshSimdJsUrl,
+    'face_mesh_solution_simd_wasm_bin.wasm': faceMeshSimdWasmUrl,
+    'face_mesh_solution_wasm_bin.js': faceMeshWasmJsUrl,
+    'face_mesh_solution_wasm_bin.wasm': faceMeshWasmUrl
+};
 
 const euclideanDist = (p1: any, p2: any) => Math.sqrt(Math.pow(p1.x - p2.x, 2) + Math.pow(p1.y - p2.y, 2));
 
@@ -301,7 +321,7 @@ export const L3LivenessCheck: React.FC<L3LivenessCheckProps> = ({ onComplete, ve
 
             try {
                 faceMesh = new FaceMesh({
-                    locateFile: (file: string) => `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/${file}`
+                    locateFile: (file: string) => FACE_MESH_ASSETS[file] || file
                 });
 
                 faceMesh.setOptions({
@@ -367,7 +387,7 @@ export const L3LivenessCheck: React.FC<L3LivenessCheckProps> = ({ onComplete, ve
                 ['blink', 'open_mouth']
             );
 
-            if (result.success || result.passed) {
+            if (isSuccessfulLivenessResponse(result)) {
                 // Layer 3 doesn't change user status, so no need to refresh
                 // Call onComplete immediately to prevent App.tsx from routing to dashboard
                 setState("SUCCESS");

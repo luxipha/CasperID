@@ -6,7 +6,7 @@ import { Header } from './components/Header';
 import { MobileHeader } from './components/MobileHeader';
 import { MobileNavigationDrawer } from './components/MobileNavigationDrawer';
 import { BottomNav } from './components/BottomNav';
-import { IdentityStatusCard, ReusableKYCCard, TrustScoreCard } from './components/DashboardCards';
+import { IdentityStatusCard, MobilityTrustCard, ReusableKYCCard, TrustScoreCard } from './components/DashboardCards';
 import { ConnectedPlatforms } from './components/ConnectedPlatforms';
 import { ReusableTools } from './components/ReusableTools';
 import { HumanFirstIdentity } from './components/HumanFirstIdentity';
@@ -161,7 +161,7 @@ const App: React.FC = () => {
     const subdomain = getSubdomain();
     if (subdomain) return 'public-profile';
 
-    // Check for ZK claims verification route (supports /verify-zk and /verify-zk/{proofId})
+    // Check the legacy private-claims route (supports /verify-zk and /verify-zk/{proofId})
     if (path === '/verify-zk' || path.startsWith('/verify-zk/') || path.startsWith('/verify-zk?')) return 'verify-zk-claims';
 
     // Check for credential verification route
@@ -240,7 +240,7 @@ const App: React.FC = () => {
     // Dynamic Route placeholders (Hooks in components will handle more specific titles)
     if (path.startsWith('/careers/')) return 'Position Details | Careers | CasperID';
     if (path.startsWith('/profile/')) return 'Public Profile | CasperID';
-    if (path.startsWith('/verify-zk')) return 'Verify ZK Proof | CasperID';
+    if (path.startsWith('/verify-zk')) return 'Verify Private Claim | CasperID';
     if (path.startsWith('/share-view')) return 'View Shared Data | CasperID';
 
 
@@ -780,6 +780,8 @@ const App: React.FC = () => {
               <ReusableKYCCard onNavigate={setCurrentView} />
               <TrustScoreCard />
             </div>
+
+            <MobilityTrustCard />
 
             {/* Tools & Platforms */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">

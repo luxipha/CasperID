@@ -8,6 +8,8 @@ const { normalizeEmail, buildEmailQuery } = require('../utils/email-normalizer')
 const { extractApp } = require('../middleware/app-auth');
 const { generateBusinessToken } = require('../utils/jwt-manager');
 const { expandScopesToSharedFields } = require('../utils/business-disclosure');
+const { resolveRequestedScopes } = require('../utils/business-scopes');
+const { buildTrustCapacityDisclosure } = require('../services/business-trust-disclosure');
 const { eventBus, EVENTS } = require('../services/eventBus');
 
 // Note: OTP storage now uses MongoDB EmailVerification model with TTL index for auto-cleanup
@@ -434,7 +436,10 @@ router.post('/verify-otp', extractApp, async (req, res) => {
                     verified: true,
                     tier: tier,
                     email: storedData.email,
-                    sharedData: expandScopesToSharedFields(req.businessApp.requested_scopes || [])
+                    sharedData: expandScopesToSharedFields(resolveRequestedScopes(req.businessApp)),
+                    trustCapacity: userAccount?.user_id
+                        ? await buildTrustCapacityDisclosure(userAccount.user_id, req.businessApp)
+                        : null
                 }, req.businessApp.app_id);
             })()
         });

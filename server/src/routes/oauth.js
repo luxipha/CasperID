@@ -17,9 +17,10 @@ const {
     normalizeRequiredTier
 } = require('../constants/tier-levels');
 const { expandScopesToSharedFields } = require('../utils/business-disclosure');
-const { CORE_SCOPES, resolveRequestedScopes } = require('../utils/business-scopes');
+const { CORE_SCOPES, TRUST_CAPACITY_SCOPE, resolveRequestedScopes } = require('../utils/business-scopes');
 const { buildAgeClaims } = require('../utils/age-claims');
 const { getRootNameForAccount, buildContextualName } = require('../services/contextual-names');
+const { buildTrustCapacityDisclosure } = require('../services/business-trust-disclosure');
 
 const router = express.Router();
 const AUTHORIZATION_CODE_TTL_MS = 2 * 60 * 1000;
@@ -180,6 +181,7 @@ async function loadBusinessTokenUser(userId, selectedContext = null) {
         name: persona ? personaName : resolvedName,
         over18: ageClaims.over18,
         verified: user.email_verified || false,
+        emailVerified: user.email_verified || false,
         tier: user.tier || 'layer_0',
         email: persona
             ? (personaDisclosures.email ? (profile?.email || user.recovery_email || null) : null)
@@ -286,6 +288,12 @@ router.post('/authorize/complete', requireAuth, async (req, res) => {
         }
         if (!selectedContext) {
             return res.status(400).json({ success: false, error: 'The selected persona is no longer available.' });
+        }
+        if (resolveRequestedScopes(app).includes(TRUST_CAPACITY_SCOPE) && selectedContext.type !== 'master') {
+            return res.status(400).json({
+                success: false,
+                error: 'Trust Capacity can only be shared from your master CasperID identity.'
+            });
         }
 
         const assessment = await assessAuthorizationEligibility(app, user);
@@ -399,6 +407,7 @@ router.post('/token', async (req, res) => {
 
         userData.tier = consumedCode.granted_tier;
         userData.sharedData = expandScopesToSharedFields(consumedCode.requested_scopes || []);
+        userData.trustCapacity = await buildTrustCapacityDisclosure(consumedCode.user_id, app);
         const isProvisional = consumedCode.authorization_status === 'provisional';
         return res.json({
             access_token: generateBusinessToken(userData, app.app_id, {

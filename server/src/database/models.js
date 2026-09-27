@@ -1,6 +1,7 @@
 const mongoose = require('mongoose');
 const { encryptionPlugin } = require('../utils/field-encryption');
 const { ALL_EVENTS } = require('../constants/webhook-events');
+const { SERVICE_CATEGORIES, TRUST_ROLES, TRUST_EVENT_TYPES } = require('../constants/trust');
 
 // ============================================
 // VERIFICATION & CREDENTIALS (Existing)
@@ -682,6 +683,13 @@ const userAccountSchema = new mongoose.Schema({
         type: Boolean,
         default: false
     },
+    did_mint_status: {
+        type: String,
+        enum: ['pending', 'confirmed', 'failed'],
+        default: undefined
+    },
+    did_mint_started_at: Date,
+    did_mint_error: String,
     onchain_did_tx: String, // Transaction hash of the DID minting
     // Premium .cid name (e.g., "alice" for alice.cid)
     cns_name: {
@@ -788,22 +796,6 @@ const userAccountSchema = new mongoose.Schema({
         security_alerts: { type: Boolean, default: true },
         kyc_updates: { type: Boolean, default: true },
         marketing_news: { type: Boolean, default: false }
-    },
-    // ZK Verification (Starknet)
-    zk_verified: {
-        type: Boolean,
-        default: false
-    },
-    zk_transaction_hash: {
-        type: String
-    },
-    zk_verified_at: {
-        type: Date
-    },
-    zk_nullifier: {
-        type: String,
-        index: true,
-        sparse: true
     },
     // Quest & Gamification
     points: { type: Number, default: 0 },
@@ -1711,6 +1703,35 @@ const businessAppSchema = new mongoose.Schema({
         enum: ['sandbox', 'production'],
         default: 'sandbox'
     },
+    service_category: {
+        type: String,
+        enum: SERVICE_CATEGORIES,
+        default: 'other'
+    },
+    supported_roles: [{
+        type: String,
+        enum: TRUST_ROLES
+    }],
+    trust_events_enabled: {
+        type: Boolean,
+        default: false
+    },
+    trust_capacity_enabled: {
+        type: Boolean,
+        default: false
+    },
+    trust_production_approved: {
+        type: Boolean,
+        default: false
+    },
+    ratings_enabled: {
+        type: Boolean,
+        default: false
+    },
+    trust_event_types: [{
+        type: String,
+        enum: TRUST_EVENT_TYPES
+    }],
     active: {
         type: Boolean,
         default: true
@@ -1752,7 +1773,7 @@ const businessAppSchema = new mongoose.Schema({
     },
     requested_scopes: [{
         type: String,
-        enum: ['verify:identity', 'read:profile', 'read:kyc_level', 'read:email', 'read:wallet', 'verify:liveness', 'verify:kyc', 'verify:age'],
+        enum: ['verify:identity', 'read:profile', 'read:kyc_level', 'read:email', 'read:wallet', 'verify:liveness', 'verify:kyc', 'verify:age', 'read:trust_capacity'],
         default: []
     }],
     created_at: {
@@ -1939,9 +1960,109 @@ const webhookLogSchema = new mongoose.Schema({
 // Auto-expire logs after 30 days
 webhookLogSchema.index({ created_at: 1 }, { expireAfterSeconds: 30 * 24 * 60 * 60 });
 
+// ============================================
+// PORTABLE TRUST EVIDENCE
+// ============================================
+
+const trustEventSchema = new mongoose.Schema({
+    event_id: { type: String, required: true, unique: true, index: true },
+    app_id: { type: String, required: true, index: true },
+    user_id: { type: String, required: true, index: true },
+    service_category: { type: String, enum: SERVICE_CATEGORIES, required: true, index: true },
+    source_environment: { type: String, enum: ['sandbox', 'production'], required: true, index: true },
+    score_eligible: { type: Boolean, required: true, default: false, index: true },
+    actor_role: { type: String, enum: TRUST_ROLES, required: true, index: true },
+    event_type: { type: String, enum: TRUST_EVENT_TYPES, required: true, index: true },
+    source_event_id: { type: String, required: true, maxlength: 200 },
+    interaction_reference_hash: { type: String, required: true, index: true },
+    rating: { type: Number, min: 1, max: 5 },
+    status: {
+        type: String,
+        enum: ['verified', 'reversed'],
+        default: 'verified',
+        index: true
+    },
+    dispute_status: {
+        type: String,
+        enum: ['none', 'pending', 'resolved_upheld', 'resolved_reversed'],
+        default: 'none',
+        index: true
+    },
+    policy_version: { type: String, required: true },
+    occurred_at: { type: Date, required: true, index: true },
+    created_at: { type: Date, default: Date.now }
+});
+
+trustEventSchema.index({ app_id: 1, source_event_id: 1 }, { unique: true });
+trustEventSchema.index(
+    { app_id: 1, user_id: 1, interaction_reference_hash: 1, event_type: 1 },
+    { unique: true }
+);
+
+const trustScoreSnapshotSchema = new mongoose.Schema({
+    user_id: { type: String, required: true, index: true },
+    service_category: { type: String, enum: SERVICE_CATEGORIES, required: true, index: true },
+    role: { type: String, enum: TRUST_ROLES, required: true },
+    score: { type: Number, required: true, min: 0, max: 850 },
+    identity_readiness: { type: Number, required: true, min: 0, max: 100 },
+    components: {
+        service_reliability: Number,
+        financial_reliability: Number,
+        rating_signal: Number
+    },
+    evidence_confidence: { type: Number, min: 0, max: 1 },
+    evidence_count: { type: Number, min: 0 },
+    history_months: { type: Number, min: 0 },
+    duration_cap: { type: Number, min: 0, max: 850 },
+    policy_version: { type: String, required: true },
+    reasons: [{ type: String, maxlength: 300 }],
+    created_at: { type: Date, default: Date.now, index: true }
+});
+
+trustScoreSnapshotSchema.index({ user_id: 1, service_category: 1, role: 1, created_at: -1 });
+
+const trustDisputeSchema = new mongoose.Schema({
+    dispute_id: { type: String, required: true, unique: true, index: true },
+    event_id: { type: String, required: true, unique: true, index: true },
+    user_id: { type: String, required: true, index: true },
+    reason: {
+        type: String,
+        enum: ['not_me', 'incorrect_outcome', 'duplicate', 'retaliatory_rating', 'other'],
+        required: true
+    },
+    detail: { type: String, maxlength: 500, default: '' },
+    status: { type: String, enum: ['pending', 'upheld', 'reversed'], default: 'pending', index: true },
+    resolution_note: { type: String, maxlength: 500, default: '' },
+    resolved_by: { type: String },
+    resolved_at: { type: Date },
+    created_at: { type: Date, default: Date.now }
+});
+
+const trustPolicySchema = new mongoose.Schema({
+    service_category: {
+        type: String,
+        enum: SERVICE_CATEGORIES,
+        required: true,
+        default: 'mobility',
+        index: true
+    },
+    version: { type: String, required: true },
+    policy: { type: mongoose.Schema.Types.Mixed, required: true, immutable: true },
+    active: { type: Boolean, default: false, index: true },
+    published_by: { type: String },
+    published_at: { type: Date, default: Date.now }
+});
+
+trustPolicySchema.index({ service_category: 1, version: 1 }, { unique: true });
+trustPolicySchema.index({ service_category: 1, active: 1, published_at: -1 });
+
 const BusinessApp = mongoose.model('BusinessApp', businessAppSchema);
 const WebhookSubscription = mongoose.model('WebhookSubscription', webhookSubscriptionSchema);
 const WebhookLog = mongoose.model('WebhookLog', webhookLogSchema);
+const TrustEvent = mongoose.model('TrustEvent', trustEventSchema);
+const TrustScoreSnapshot = mongoose.model('TrustScoreSnapshot', trustScoreSnapshotSchema);
+const TrustDispute = mongoose.model('TrustDispute', trustDisputeSchema);
+const TrustPolicy = mongoose.model('TrustPolicy', trustPolicySchema);
 
 // ============================================
 // QUESTS & GAMIFICATION
@@ -2129,5 +2250,9 @@ module.exports = {
     AuthorizationCode,
     WebhookSubscription,
     WebhookLog,
+    TrustEvent,
+    TrustScoreSnapshot,
+    TrustDispute,
+    TrustPolicy,
     Quest
 };

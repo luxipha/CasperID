@@ -1,7 +1,0 @@
-[package]
-name = "liveness_circuit"
-type = "bin"
-authors = ["CasperID Team"]
-compiler_version = ">=0.31.0"
-
-[dependencies]

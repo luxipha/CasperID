@@ -42,6 +42,27 @@ interface PaymentSettings {
     source?: 'admin' | 'env';
 }
 
+interface TrustAdminApp {
+    app_id: string;
+    name: string;
+    environment: 'sandbox' | 'production';
+    trust_events_enabled: boolean;
+    trust_production_approved: boolean;
+}
+
+interface TrustAdminDispute {
+    dispute_id: string;
+    reason: string;
+    detail?: string;
+    user_id: string;
+    created_at: string;
+    event?: {
+        event_type: string;
+        actor_role: string;
+        app_id: string;
+    };
+}
+
 export default function AdminDashboard() {
     const [username, setUsername] = useState('admin');
     const [password, setPassword] = useState('');
@@ -67,6 +88,17 @@ export default function AdminDashboard() {
     const [paymentSettingsLoading, setPaymentSettingsLoading] = useState(false);
     const [paymentSettingsSaving, setPaymentSettingsSaving] = useState(false);
     const [paymentSettingsMessage, setPaymentSettingsMessage] = useState('');
+    const [trustApps, setTrustApps] = useState<TrustAdminApp[]>([]);
+    const [trustDisputes, setTrustDisputes] = useState<TrustAdminDispute[]>([]);
+    const [trustPolicyDraft, setTrustPolicyDraft] = useState({
+        version: 'mobility-v1',
+        rating_percent: '5',
+        provider_service_percent: '55',
+        minimum_months_to_800: '24',
+        minimum_months_to_850: '36'
+    });
+    const [trustAdminLoading, setTrustAdminLoading] = useState(false);
+    const [trustAdminMessage, setTrustAdminMessage] = useState('');
 
     const handleLogin = async () => {
         if (username && password) {
@@ -76,7 +108,7 @@ export default function AdminDashboard() {
                 const { token } = await apiClient.loginAdmin(username, password);
                 setToken(token);
                 setIsAuthenticated(true);
-                await fetchPaymentSettings(token);
+                await Promise.all([fetchPaymentSettings(token), fetchTrustAdmin(token)]);
                 fetchRequests(token);
             } catch (err: any) {
                 console.error('Login error:', err);
@@ -120,6 +152,31 @@ export default function AdminDashboard() {
             }
         } finally {
             setLoading(false);
+        }
+    };
+
+    const fetchTrustAdmin = async (authToken: string) => {
+        try {
+            setTrustAdminLoading(true);
+            const [policyData, appsData, disputesData] = await Promise.all([
+                apiClient.getAdminTrustPolicy(authToken),
+                apiClient.getAdminTrustApps(authToken),
+                apiClient.getAdminTrustDisputes(authToken)
+            ]);
+            const policy = policyData.policy || {};
+            setTrustPolicyDraft({
+                version: policy.version || 'mobility-v1',
+                rating_percent: String((Number(policy.ratingWeight ?? 0.05) * 100).toFixed(1).replace('.0', '')),
+                provider_service_percent: String((Number(policy.providerWeights?.service ?? 0.55) * 100).toFixed(1).replace('.0', '')),
+                minimum_months_to_800: String(policy.minimumMonthsTo800 ?? 24),
+                minimum_months_to_850: String(policy.minimumMonthsTo850 ?? 36)
+            });
+            setTrustApps(appsData.apps || []);
+            setTrustDisputes(disputesData.disputes || []);
+        } catch (err: any) {
+            setTrustAdminMessage(err.message || 'Failed to load portable trust controls');
+        } finally {
+            setTrustAdminLoading(false);
         }
     };
 
@@ -175,6 +232,69 @@ export default function AdminDashboard() {
             setPaymentSettingsMessage(err.message || 'Failed to update payment settings');
         } finally {
             setPaymentSettingsSaving(false);
+        }
+    };
+
+    const handleSaveTrustPolicy = async () => {
+        if (!token) return;
+        const ratingWeight = Number(trustPolicyDraft.rating_percent) / 100;
+        const providerServiceWeight = Number(trustPolicyDraft.provider_service_percent) / 100;
+        const providerFinancialWeight = 1 - providerServiceWeight - ratingWeight;
+        if (providerFinancialWeight < 0) {
+            setTrustAdminMessage('Provider service and rating percentages cannot exceed 100%.');
+            return;
+        }
+        try {
+            setTrustAdminLoading(true);
+            setTrustAdminMessage('');
+            const data = await apiClient.updateAdminTrustPolicy(token, {
+                version: trustPolicyDraft.version,
+                ratingWeight,
+                providerWeights: {
+                    service: providerServiceWeight,
+                    financial: providerFinancialWeight,
+                    rating: ratingWeight
+                },
+                consumerWeights: {
+                    service: 1 - ratingWeight,
+                    financial: 0,
+                    rating: ratingWeight
+                },
+                minimumMonthsTo800: Number(trustPolicyDraft.minimum_months_to_800),
+                minimumMonthsTo850: Number(trustPolicyDraft.minimum_months_to_850)
+            });
+            setTrustAdminMessage(`Published ${data.policy.version}. Use a new version name for the next change.`);
+            await fetchTrustAdmin(token);
+        } catch (err: any) {
+            setTrustAdminMessage(err.message || 'Failed to publish trust policy');
+        } finally {
+            setTrustAdminLoading(false);
+        }
+    };
+
+    const handleTrustAppApproval = async (app: TrustAdminApp) => {
+        if (!token) return;
+        try {
+            setTrustAdminLoading(true);
+            await apiClient.setTrustAppProductionApproval(token, app.app_id, !app.trust_production_approved);
+            await fetchTrustAdmin(token);
+        } catch (err: any) {
+            setTrustAdminMessage(err.message || 'Failed to update app approval');
+        } finally {
+            setTrustAdminLoading(false);
+        }
+    };
+
+    const handleTrustDispute = async (disputeId: string, resolution: 'upheld' | 'reversed') => {
+        if (!token) return;
+        try {
+            setTrustAdminLoading(true);
+            await apiClient.resolveAdminTrustDispute(token, disputeId, resolution);
+            await fetchTrustAdmin(token);
+        } catch (err: any) {
+            setTrustAdminMessage(err.message || 'Failed to resolve dispute');
+        } finally {
+            setTrustAdminLoading(false);
         }
     };
 
@@ -464,6 +584,95 @@ export default function AdminDashboard() {
                                 'Save payment settings'
                             )}
                         </Button>
+                    </div>
+                </Card>
+
+                <Card className="p-6 bg-white/10 backdrop-blur-lg border-white/20">
+                    <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                        <div>
+                            <h2 className="text-xl font-bold text-white">Mobility Trust Policy</h2>
+                            <p className="text-sm text-gray-300 mt-1 max-w-2xl">
+                                Version and approve score policy changes. Ratings remain capped at 5%, and only approved production apps can affect users.
+                            </p>
+                        </div>
+                        <Button
+                            onClick={() => fetchTrustAdmin(token)}
+                            variant="outline"
+                            className="bg-transparent border-white/20 text-white hover:bg-white/10"
+                            disabled={trustAdminLoading}
+                        >
+                            {trustAdminLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Reload trust controls'}
+                        </Button>
+                    </div>
+
+                    <div className="mt-6 grid gap-4 md:grid-cols-2 lg:grid-cols-5">
+                        <label className="space-y-2">
+                            <span className="text-[11px] font-black uppercase tracking-[0.14em] text-gray-300">New policy version</span>
+                            <Input value={trustPolicyDraft.version} onChange={(event) => setTrustPolicyDraft((current) => ({ ...current, version: event.target.value }))} className="h-12 rounded-2xl border-white/10 bg-slate-900/70 text-white" />
+                        </label>
+                        <label className="space-y-2">
+                            <span className="text-[11px] font-black uppercase tracking-[0.14em] text-gray-300">Rating influence %</span>
+                            <Input type="number" min="0" max="5" step="0.5" value={trustPolicyDraft.rating_percent} onChange={(event) => setTrustPolicyDraft((current) => ({ ...current, rating_percent: event.target.value }))} className="h-12 rounded-2xl border-white/10 bg-slate-900/70 text-white" />
+                        </label>
+                        <label className="space-y-2">
+                            <span className="text-[11px] font-black uppercase tracking-[0.14em] text-gray-300">Provider service %</span>
+                            <Input type="number" min="0" max="100" value={trustPolicyDraft.provider_service_percent} onChange={(event) => setTrustPolicyDraft((current) => ({ ...current, provider_service_percent: event.target.value }))} className="h-12 rounded-2xl border-white/10 bg-slate-900/70 text-white" />
+                        </label>
+                        <label className="space-y-2">
+                            <span className="text-[11px] font-black uppercase tracking-[0.14em] text-gray-300">Months before 800</span>
+                            <Input type="number" min="1" value={trustPolicyDraft.minimum_months_to_800} onChange={(event) => setTrustPolicyDraft((current) => ({ ...current, minimum_months_to_800: event.target.value }))} className="h-12 rounded-2xl border-white/10 bg-slate-900/70 text-white" />
+                        </label>
+                        <label className="space-y-2">
+                            <span className="text-[11px] font-black uppercase tracking-[0.14em] text-gray-300">Months before 850</span>
+                            <Input type="number" min="2" value={trustPolicyDraft.minimum_months_to_850} onChange={(event) => setTrustPolicyDraft((current) => ({ ...current, minimum_months_to_850: event.target.value }))} className="h-12 rounded-2xl border-white/10 bg-slate-900/70 text-white" />
+                        </label>
+                    </div>
+
+                    <div className="mt-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                        <p className="text-sm text-gray-300">{trustAdminMessage || 'Changing policy requires a new version name and affects future calculations.'}</p>
+                        <Button onClick={handleSaveTrustPolicy} disabled={trustAdminLoading} className="bg-purple-600 hover:bg-purple-700 text-white">Publish policy version</Button>
+                    </div>
+
+                    <div className="mt-7 grid gap-5 lg:grid-cols-2">
+                        <div className="rounded-2xl border border-white/10 bg-slate-900/40 p-4">
+                            <h3 className="font-bold text-white">Mobility applications</h3>
+                            <div className="mt-3 space-y-2">
+                                {trustApps.length === 0 ? <p className="text-sm text-gray-400">No mobility applications configured.</p> : trustApps.map((app) => (
+                                    <div key={app.app_id} className="flex items-center justify-between gap-3 rounded-xl border border-white/10 p-3">
+                                        <div>
+                                            <p className="text-sm font-bold text-white">{app.name}</p>
+                                            <p className="text-xs text-gray-400">{app.environment} · {app.trust_events_enabled ? 'events enabled' : 'events disabled'}</p>
+                                        </div>
+                                        <Button
+                                            size="sm"
+                                            variant="outline"
+                                            disabled={app.environment !== 'production' || !app.trust_events_enabled || trustAdminLoading}
+                                            onClick={() => handleTrustAppApproval(app)}
+                                            className="bg-transparent border-white/20 text-white hover:bg-white/10"
+                                        >
+                                            {app.trust_production_approved ? 'Revoke' : 'Approve'}
+                                        </Button>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+
+                        <div className="rounded-2xl border border-white/10 bg-slate-900/40 p-4">
+                            <h3 className="font-bold text-white">Pending trust disputes</h3>
+                            <div className="mt-3 space-y-2">
+                                {trustDisputes.length === 0 ? <p className="text-sm text-gray-400">No pending disputes.</p> : trustDisputes.map((dispute) => (
+                                    <div key={dispute.dispute_id} className="rounded-xl border border-white/10 p-3">
+                                        <p className="text-sm font-bold text-white">{dispute.event?.event_type || 'Trust event'} · {dispute.event?.actor_role}</p>
+                                        <p className="mt-1 text-xs text-gray-400">{dispute.reason.replaceAll('_', ' ')} · {dispute.user_id}</p>
+                                        {dispute.detail ? <p className="mt-2 text-xs text-gray-300">{dispute.detail}</p> : null}
+                                        <div className="mt-3 flex gap-2">
+                                            <Button size="sm" onClick={() => handleTrustDispute(dispute.dispute_id, 'upheld')} disabled={trustAdminLoading} className="bg-amber-600 hover:bg-amber-700 text-white">Uphold event</Button>
+                                            <Button size="sm" onClick={() => handleTrustDispute(dispute.dispute_id, 'reversed')} disabled={trustAdminLoading} className="bg-emerald-600 hover:bg-emerald-700 text-white">Reverse event</Button>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
                     </div>
                 </Card>
 

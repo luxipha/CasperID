@@ -2,7 +2,8 @@
 import React, { useState, useEffect } from 'react';
 import { apiService } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
-import { calculateGlobalTrustScore, getScoreGradient } from '../utils/trustScore';
+import { calculateProfileReadiness, getScoreGradient } from '../utils/trustScore';
+import type { TrustCapacityScore } from '../services/api';
 
 interface IdentityStatusCardProps {
   onNavigate?: (view: string) => void;
@@ -284,11 +285,11 @@ export const ReusableKYCCard: React.FC<ReusableKYCCardProps> = ({ onNavigate }) 
 export const TrustScoreCard: React.FC = () => {
   const { user } = useAuth();
 
-  const trustResult = calculateGlobalTrustScore(user);
+  const trustResult = calculateProfileReadiness(user);
   const score = trustResult.total;
   const scoreLabel = (() => {
-    if (score >= 80) return 'Excellent – Fully verified profile';
-    if (score >= 60) return 'Good – Eligible to apply for jobs';
+    if (score >= 80) return 'Excellent – Profile is ready';
+    if (score >= 60) return 'Good – Profile is usable';
     if (score >= 40) return 'Fair – Complete your profile';
     return 'Incomplete – Add profile data to apply';
   })();
@@ -301,7 +302,7 @@ export const TrustScoreCard: React.FC = () => {
       <span className="material-icons-outlined absolute top-10 right-[-10px] text-[120px] text-primary/5 select-none pointer-events-none">shield</span>
 
       <div>
-        <p className="text-[11px] font-bold text-text-sub uppercase tracking-wider mb-2">CASPER TRUST SCORE</p>
+        <p className="text-[11px] font-bold text-text-sub uppercase tracking-wider mb-2">PROFILE READINESS</p>
         <div className="flex items-baseline gap-1 mb-6">
           <span className="text-[48px] font-extrabold text-text-main leading-none tracking-tight">{score}</span>
           <span className="text-[18px] text-text-sub font-bold">/100</span>
@@ -322,5 +323,169 @@ export const TrustScoreCard: React.FC = () => {
         <p className="text-[13px] text-text-sub font-semibold tracking-tight">{scoreLabel}</p>
       </div>
     </div>
+  );
+};
+
+export const MobilityTrustCard: React.FC = () => {
+  type MobilityEvent = {
+    event_id: string;
+    event_type: string;
+    rating?: number;
+    occurred_at: string;
+    dispute_status: 'none' | 'pending' | 'resolved_upheld' | 'resolved_reversed';
+    affects_score: boolean;
+  };
+  const [role, setRole] = useState<'consumer' | 'provider'>('consumer');
+  const [result, setResult] = useState<TrustCapacityScore | null>(null);
+  const [events, setEvents] = useState<MobilityEvent[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [reloadKey, setReloadKey] = useState(0);
+  const [disputingEventId, setDisputingEventId] = useState<string | null>(null);
+  const [disputeReason, setDisputeReason] = useState('incorrect_outcome');
+  const [disputeDetail, setDisputeDetail] = useState('');
+  const [submittingDispute, setSubmittingDispute] = useState(false);
+
+  useEffect(() => {
+    let active = true;
+    setLoading(true);
+    setError(null);
+    setResult(null);
+    setEvents([]);
+    setDisputingEventId(null);
+    Promise.all([apiService.getMyTrustScore(role), apiService.getMyTrustEvents(role)])
+      .then(([score, eventResponse]) => {
+        if (active) {
+          setResult(score);
+          setEvents(eventResponse.events || []);
+        }
+      })
+      .catch((requestError) => {
+        if (active) setError(requestError?.message || 'Trust Capacity is temporarily unavailable.');
+      })
+      .finally(() => {
+        if (active) setLoading(false);
+      });
+    return () => { active = false; };
+  }, [role, reloadKey]);
+
+  const submitDispute = async () => {
+    if (!disputingEventId) return;
+    try {
+      setSubmittingDispute(true);
+      await apiService.disputeTrustEvent(disputingEventId, disputeReason, disputeDetail);
+      setDisputingEventId(null);
+      setDisputeDetail('');
+      setReloadKey((current) => current + 1);
+    } catch (requestError: any) {
+      setError(requestError?.message || 'The dispute could not be submitted.');
+    } finally {
+      setSubmittingDispute(false);
+    }
+  };
+
+  const confidenceLabel = !result
+    ? 'No evidence'
+    : result.evidence_confidence >= 0.7
+      ? 'Established evidence'
+      : result.evidence_confidence >= 0.35
+        ? 'Developing evidence'
+        : 'Early evidence';
+
+  return (
+    <section id="tour-trust-capacity" className="bg-white p-6 md:p-7 rounded-[32px] shadow-soft border border-gray-50">
+      <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-5">
+        <div>
+          <p className="text-[11px] font-bold text-text-sub uppercase tracking-wider mb-2">MOBILITY TRUST CAPACITY</p>
+          <div className="flex items-baseline gap-2">
+            <span className="text-[48px] font-extrabold text-text-main leading-none tracking-tight">
+              {loading ? '—' : result?.score ?? '—'}
+            </span>
+            <span className="text-[18px] text-text-sub font-bold">/850</span>
+          </div>
+          <p className="text-[12px] text-text-sub font-semibold mt-2">
+            Identity readiness {result?.identity_readiness ?? 0}/100 · {confidenceLabel}
+          </p>
+        </div>
+
+        <div className="inline-flex self-start bg-gray-100 p-1 rounded-xl" role="group" aria-label="Mobility role">
+          {(['consumer', 'provider'] as const).map((item) => (
+            <button
+              key={item}
+              type="button"
+              onClick={() => setRole(item)}
+              aria-pressed={role === item}
+              className={`px-4 py-2 rounded-lg text-xs font-bold capitalize transition-colors ${role === item ? 'bg-white text-primary shadow-sm' : 'text-text-sub'}`}
+            >
+              {item}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {error ? (
+        <p className="mt-5 p-4 rounded-2xl bg-red-50 text-red-700 text-sm">{error}</p>
+      ) : result ? (
+        <>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mt-6">
+            <div className="p-4 rounded-2xl bg-gray-50"><p className="text-[10px] uppercase font-bold text-text-sub">Service</p><p className="text-xl font-black text-text-main mt-1">{result.components.service_reliability ?? 'N/A'}</p></div>
+            <div className="p-4 rounded-2xl bg-gray-50"><p className="text-[10px] uppercase font-bold text-text-sub">Financial</p><p className="text-xl font-black text-text-main mt-1">{result.components.financial_reliability ?? 'N/A'}</p></div>
+            <div className="p-4 rounded-2xl bg-gray-50"><p className="text-[10px] uppercase font-bold text-text-sub">Rating signal</p><p className="text-xl font-black text-text-main mt-1">{result.components.rating_signal ?? 'N/A'}</p></div>
+            <div className="p-4 rounded-2xl bg-gray-50"><p className="text-[10px] uppercase font-bold text-text-sub">Evidence</p><p className="text-xl font-black text-text-main mt-1">{result.evidence_count}</p></div>
+          </div>
+          <div className="mt-5 flex flex-col gap-2">
+            {(result.reasons.length ? result.reasons : ['Verified mobility events will explain score changes here.']).slice(0, 3).map((reason) => (
+              <p key={reason} className="text-[12px] text-text-sub flex gap-2">
+                <span className="material-icons-outlined text-[16px] text-primary">check_circle</span>{reason}
+              </p>
+            ))}
+          </div>
+          <div className="mt-6 border-t border-gray-100 pt-5">
+            <h3 className="text-sm font-bold text-text-main">Recent verified evidence</h3>
+            {events.length === 0 ? (
+              <p className="text-[12px] text-text-sub mt-2">No mobility events yet. Sandbox events appear here but never affect the score.</p>
+            ) : (
+              <div className="mt-3 space-y-2">
+                {events.slice(0, 5).map((event) => {
+                  const disputable = event.dispute_status === 'none' && event.event_type !== 'interaction.completed' && event.event_type !== 'obligation.settled_on_time';
+                  return (
+                    <div key={event.event_id} className="rounded-2xl border border-gray-100 p-3">
+                      <div className="flex items-center justify-between gap-3">
+                        <div>
+                          <p className="text-[12px] font-bold text-text-main">{event.event_type.replaceAll('.', ' · ').replaceAll('_', ' ')}</p>
+                          <p className="text-[11px] text-text-sub mt-1">
+                            {new Date(event.occurred_at).toLocaleDateString()} · {event.affects_score ? 'Included in score' : 'Testing only'}
+                            {event.rating ? ` · ${event.rating}/5` : ''}
+                          </p>
+                        </div>
+                        {disputable ? (
+                          <button type="button" onClick={() => setDisputingEventId(event.event_id)} className="text-[11px] font-bold text-primary hover:underline">Dispute</button>
+                        ) : event.dispute_status !== 'none' ? (
+                          <span className="text-[10px] font-bold uppercase text-amber-600">{event.dispute_status.replaceAll('_', ' ')}</span>
+                        ) : null}
+                      </div>
+                      {disputingEventId === event.event_id ? (
+                        <div className="mt-3 grid gap-2 md:grid-cols-[180px_1fr_auto_auto]">
+                          <select value={disputeReason} onChange={(input) => setDisputeReason(input.target.value)} className="rounded-lg border border-gray-200 p-2 text-xs">
+                            <option value="incorrect_outcome">Incorrect outcome</option>
+                            <option value="not_me">Not my interaction</option>
+                            <option value="duplicate">Duplicate event</option>
+                            <option value="retaliatory_rating">Retaliatory rating</option>
+                            <option value="other">Other</option>
+                          </select>
+                          <input value={disputeDetail} onChange={(input) => setDisputeDetail(input.target.value)} maxLength={500} placeholder="Optional explanation" className="rounded-lg border border-gray-200 p-2 text-xs" />
+                          <button type="button" disabled={submittingDispute} onClick={submitDispute} className="rounded-lg bg-primary px-3 py-2 text-xs font-bold text-white disabled:opacity-50">Submit</button>
+                          <button type="button" onClick={() => setDisputingEventId(null)} className="rounded-lg px-3 py-2 text-xs font-bold text-text-sub">Cancel</button>
+                        </div>
+                      ) : null}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </>
+      ) : null}
+    </section>
   );
 };

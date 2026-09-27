@@ -1,4 +1,5 @@
 const CORE_SCOPES = ['verify:identity', 'read:profile', 'read:kyc_level'];
+const TRUST_CAPACITY_SCOPE = 'read:trust_capacity';
 
 const MANAGED_PROOF_SCOPES = {
     email: ['read:email'],
@@ -12,7 +13,8 @@ const ALL_SCOPES = new Set([
     'read:wallet',
     'verify:age',
     'verify:liveness',
-    'verify:kyc'
+    'verify:kyc',
+    TRUST_CAPACITY_SCOPE
 ]);
 
 function unique(values = []) {
@@ -37,11 +39,16 @@ function deriveRequestedScopesFromProofs(proofs = []) {
 
 function resolveRequestedScopes(app) {
     const requestedScopes = normalizeRequestedScopes(app?.requested_scopes || []);
-    if (requestedScopes.length > 0) {
-        return requestedScopes;
-    }
+    const baseScopes = requestedScopes.length > 0
+        ? requestedScopes
+        : deriveRequestedScopesFromProofs(app?.sdk_config?.proofs || []);
 
-    return deriveRequestedScopesFromProofs(app?.sdk_config?.proofs || []);
+    const trustCapacityEligible = app?.service_category === 'mobility' &&
+        Array.isArray(app?.supported_roles) && app.supported_roles.length > 0;
+    if (app?.trust_capacity_enabled && trustCapacityEligible) {
+        return unique([...baseScopes, TRUST_CAPACITY_SCOPE]);
+    }
+    return baseScopes.filter(scope => scope !== TRUST_CAPACITY_SCOPE);
 }
 
 function deriveProofsFromScopes(scopes = []) {
@@ -66,6 +73,7 @@ function deriveProofsFromScopes(scopes = []) {
 
 module.exports = {
     CORE_SCOPES,
+    TRUST_CAPACITY_SCOPE,
     deriveProofsFromScopes,
     deriveRequestedScopesFromProofs,
     normalizeRequestedScopes,

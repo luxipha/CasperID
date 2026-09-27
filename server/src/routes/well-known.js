@@ -62,11 +62,11 @@ router.get('/openid-configuration', (req, res) => {
         response_types_supported: ['token'],
         subject_types_supported: ['public'],
         id_token_signing_alg_values_supported: ['RS256', 'HS256'],
-        scopes_supported: ['openid', 'profile', 'email'],
+        scopes_supported: ['openid', 'profile', 'email', 'read:trust_capacity'],
         token_endpoint_auth_methods_supported: ['client_secret_post', 'client_secret_basic'],
         claims_supported: [
             'sub', 'iss', 'aud', 'exp', 'iat',
-            'wallet', 'humanId', 'name', 'verified', 'tier',
+            'wallet', 'humanId', 'name', 'verified', 'tier', 'trust_capacity',
             'email', 'app_id', 'token_type', 'sharedData'
         ],
 

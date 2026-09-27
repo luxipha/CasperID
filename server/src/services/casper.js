@@ -22,10 +22,62 @@ function buildOdraKey(fieldIndex, mappingKeyBytes) {
 const RPC_API = process.env.CASPER_NODE_URL || 'https://rpc.testnet.casperlabs.io/rpc';
 const CHAIN_NAME = process.env.CASPER_NETWORK || 'casper-test';
 const CONTRACT_HASH = process.env.CONTRACT_HASH;
+const DEPLOY_CONFIRMATION_TIMEOUT_MS = Number(process.env.CASPER_DEPLOY_CONFIRMATION_TIMEOUT_MS || 120000);
+const DEPLOY_POLL_INTERVAL_MS = Number(process.env.CASPER_DEPLOY_POLL_INTERVAL_MS || 5000);
 
 // Initialize client
 const client = new CasperClient(RPC_API);
 const contractClient = new Contracts.Contract(client);
+
+const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+
+/**
+ * Wait until Casper reports an execution result for a submitted deploy.
+ * A deploy hash only proves node acceptance; credentials must not be issued
+ * until the execution result is successful.
+ */
+async function waitForDeployExecution(deployHash, options = {}) {
+    const timeoutMs = options.timeoutMs ?? DEPLOY_CONFIRMATION_TIMEOUT_MS;
+    const pollIntervalMs = options.pollIntervalMs ?? DEPLOY_POLL_INTERVAL_MS;
+    const getDeploy = options.getDeploy || ((hash) => client.getDeploy(hash));
+    const sleep = options.sleep || delay;
+    const deadline = Date.now() + timeoutMs;
+    let lastLookupError = null;
+
+    while (Date.now() < deadline) {
+        let deployInfo;
+        try {
+            const deployResponse = await getDeploy(deployHash);
+            deployInfo = Array.isArray(deployResponse) ? deployResponse[1] : deployResponse;
+            lastLookupError = null;
+        } catch (error) {
+            // Nodes commonly return "deploy not found" until the deploy is included.
+            lastLookupError = error;
+        }
+
+        const executionResult = deployInfo?.execution_results?.[0]?.result;
+        if (executionResult?.Failure) {
+            const message = executionResult.Failure.error_message || 'Casper deploy execution failed';
+            const error = new Error(message);
+            error.code = 'CASPER_DEPLOY_FAILED';
+            error.deployHash = deployHash;
+            throw error;
+        }
+
+        if (executionResult?.Success) {
+            return deployHash;
+        }
+
+        await sleep(Math.min(pollIntervalMs, Math.max(0, deadline - Date.now())));
+    }
+
+    const timeoutError = new Error(
+        `Timed out waiting for Casper deploy ${deployHash} to execute${lastLookupError?.message ? `: ${lastLookupError.message}` : ''}`
+    );
+    timeoutError.code = 'CASPER_DEPLOY_TIMEOUT';
+    timeoutError.deployHash = deployHash;
+    throw timeoutError;
+}
 
 if (CONTRACT_HASH) {
     // Handle 'hash-' prefix if present
@@ -174,6 +226,7 @@ async function mintMasterDID(walletAddress, tier = 'layer_1') {
         );
 
         const deployHash = await client.putDeploy(deploy);
+        await waitForDeployExecution(deployHash);
         console.log(`[Casper] Minted Master DID for ${walletAddress}. Tx: ${deployHash}`);
         return deployHash;
     } catch (error) {
@@ -181,8 +234,8 @@ async function mintMasterDID(walletAddress, tier = 'layer_1') {
 
         // Check if it's a DIDAlreadyExists error (error code 1 from contract)
         if (errorMsg.includes('DIDAlreadyExists') || errorMsg.includes('User Err') && errorMsg.includes('1')) {
-            console.log(`[Casper] DID already exists for ${walletAddress} - returning success`);
-            return { deployHash: 'already_exists', alreadyExists: true };
+            console.log(`[Casper] DID already exists for ${walletAddress} - applying requested tier`);
+            return updateTier(walletAddress, tier);
         }
 
         console.error('[Casper] mintMasterDID error:', error);
@@ -218,6 +271,7 @@ async function updateTier(walletAddress, tier) {
         );
 
         const deployHash = await client.putDeploy(deploy);
+        await waitForDeployExecution(deployHash);
         console.log(`[Casper] Updated tier for ${walletAddress} to ${tier}. Tx: ${deployHash}`);
         return deployHash;
     } catch (error) {
@@ -257,7 +311,9 @@ async function addIssuer(issuerAddress) {
         issuer: toAddressArg(issuerAddress)
     });
     const deploy = contractClient.callEntrypoint('add_issuer', args, keys.publicKey, CHAIN_NAME, '2500000000', [keys]);
-    return client.putDeploy(deploy);
+    const deployHash = await client.putDeploy(deploy);
+    await waitForDeployExecution(deployHash);
+    return deployHash;
 }
 
 /**
@@ -270,7 +326,9 @@ async function removeIssuer(issuerAddress) {
         issuer: toAddressArg(issuerAddress)
     });
     const deploy = contractClient.callEntrypoint('remove_issuer', args, keys.publicKey, CHAIN_NAME, '2500000000', [keys]);
-    return client.putDeploy(deploy);
+    const deployHash = await client.putDeploy(deploy);
+    await waitForDeployExecution(deployHash);
+    return deployHash;
 }
 
 /**
@@ -326,6 +384,7 @@ async function mintCidName(walletAddress, name, boundDid, isPremium = true, expi
         );
 
         const deployHash = await client.putDeploy(deploy);
+        await waitForDeployExecution(deployHash);
         return deployHash;
     } catch (error) {
         console.error('[Casper] Mint CID Name error:', error);
@@ -341,5 +400,6 @@ module.exports = {
     mintDID,
     mintMasterDID,
     updateTier,
-    mintCidName
+    mintCidName,
+    waitForDeployExecution
 };

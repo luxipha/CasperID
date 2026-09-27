@@ -89,10 +89,6 @@ jobs:
             CSRF_SECRET=${{ secrets.CSRF_SECRET }}
             FIELD_ENCRYPTION_KEY=${{ secrets.FIELD_ENCRYPTION_KEY }}
             JWT_EXPIRES_IN=${{ secrets.JWT_EXPIRES_IN }}
-            STARKNET_RPC_URL=${{ secrets.STARKNET_RPC_URL }}
-            STARKNET_RELAY_PRIVATE_KEY=${{ secrets.STARKNET_RELAY_PRIVATE_KEY }}
-            STARKNET_RELAY_ADDRESS=${{ secrets.STARKNET_RELAY_ADDRESS }}
-            CASPERID_ZK_CONTRACT=${{ secrets.CASPERID_ZK_CONTRACT }}
             IMAGEKIT_PUBLIC_KEY=${{ secrets.IMAGEKIT_PUBLIC_KEY }}
             IMAGEKIT_PRIVATE_KEY=${{ secrets.IMAGEKIT_PRIVATE_KEY }}
             IMAGEKIT_URL_ENDPOINT=${{ secrets.IMAGEKIT_URL_ENDPOINT }}

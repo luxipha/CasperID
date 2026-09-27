@@ -32,6 +32,11 @@ const scopeDetails: Record<string, { title: string; description: string; icon: s
   'read:kyc_level': { title: 'Verification level', description: 'Your current CasperID tier', icon: 'workspace_premium' },
   'read:email': { title: 'Email address', description: 'Your verified account email', icon: 'mail' },
   'read:wallet': { title: 'Wallet address', description: 'Your public Casper wallet address', icon: 'account_balance_wallet' },
+  'read:trust_capacity': {
+    title: 'Mobility Trust Capacity',
+    description: 'Provider and consumer scores, status, timestamp, and policy version. No trip history or written reviews.',
+    icon: 'verified_user'
+  },
 };
 
 const sharedFieldLabels: Record<string, string> = {
@@ -42,6 +47,7 @@ const sharedFieldLabels: Record<string, string> = {
   over_18: '18+ Age Confirmation',
   tier: 'Verification Level',
   verified: 'Identity Verification Status',
+  trust_capacity: 'Mobility Trust Capacity',
 };
 
 export const ConsentRequest: React.FC<ConsentRequestProps> = ({

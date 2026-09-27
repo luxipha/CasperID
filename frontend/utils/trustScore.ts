@@ -1,8 +1,9 @@
 /**
- * Global Trust Score Calculator
+ * Profile Readiness Calculator
  *
  * Combines Identity Verification tier + Profile Completeness into a
- * single 0-100 score. Applications require a minimum of 60 to proceed.
+ * single 0-100 profile-readiness score. Applications require a minimum of 60.
+ * This is intentionally separate from the server-side 100-850 Trust Capacity.
  *
  * Scoring Model:
  * - Identity Verification:  50 pts max (Layer1=10, Layer2=25, Layer3=50)
@@ -24,9 +25,9 @@ export interface TrustScoreBreakdown {
     missing: string[];      // human-readable tips (top 3)
 }
 
-export function calculateGlobalTrustScore(user: User | null): TrustScoreBreakdown {
+export function calculateProfileReadiness(user: User | null): TrustScoreBreakdown {
     const missing: string[] = [];
-    const avail = user?.data_availability ?? {};
+    const avail: Partial<NonNullable<User['data_availability']>> = user?.data_availability ?? {};
 
     // ── 1. Identity Verification (max 50 pts) ──────────────────────────────
     const tierScores: Record<string, number> = {
@@ -75,6 +76,9 @@ export function calculateGlobalTrustScore(user: User | null): TrustScoreBreakdow
         missing: missing.slice(0, 3),
     };
 }
+
+// Compatibility alias for existing career/application consumers.
+export const calculateGlobalTrustScore = calculateProfileReadiness;
 
 export function getScoreLabel(score: number): string {
     if (score >= 80) return 'Excellent';

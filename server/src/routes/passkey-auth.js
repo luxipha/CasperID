@@ -20,6 +20,8 @@ const { extractViewer } = require('../middleware/auth');
 const { extractApp } = require('../middleware/app-auth');
 const { generateBusinessToken } = require('../utils/jwt-manager');
 const { expandScopesToSharedFields } = require('../utils/business-disclosure');
+const { resolveRequestedScopes } = require('../utils/business-scopes');
+const { buildTrustCapacityDisclosure } = require('../services/business-trust-disclosure');
 const { dispatchEvent } = require('../utils/webhook-dispatcher');
 const { normalizeEmail, buildEmailQuery } = require('../utils/email-normalizer');
 const { WEBHOOK_EVENTS } = require('../constants/webhook-events');
@@ -187,7 +189,8 @@ router.post('/register/finish', passkeyRateLimit, validatePasskeyAuth, extractAp
                 verified: ua.email_verified || false,
                 tier: ua.tier || 'layer_0',
                 email: ua.recovery_email,
-                sharedData: expandScopesToSharedFields(req.businessApp.requested_scopes || [])
+                sharedData: expandScopesToSharedFields(resolveRequestedScopes(req.businessApp)),
+                trustCapacity: await buildTrustCapacityDisclosure(ua.user_id, req.businessApp)
             }, req.businessApp.app_id);
 
             // Dispatch webhook
@@ -628,7 +631,8 @@ router.post('/auth/finish', extractApp, async (req, res) => {
                 verified: ua.email_verified || false,
                 tier: ua.tier || 'layer_0',
                 email: ua.recovery_email,
-                sharedData: expandScopesToSharedFields(req.businessApp.requested_scopes || [])
+                sharedData: expandScopesToSharedFields(resolveRequestedScopes(req.businessApp)),
+                trustCapacity: await buildTrustCapacityDisclosure(ua.user_id, req.businessApp)
             }, req.businessApp.app_id);
 
             // Emit app authorization event (subscribers handle email, webhook)
@@ -1180,7 +1184,14 @@ router.post('/did/mint', async (req, res) => {
             const realDID = `did:casper:${userAccount.wallet}`;
             await UserAccount.updateOne(
                 { user_id: userAccount.user_id },
-                { did_address: realDID, did_minted: true }
+                {
+                    $set: {
+                        did_address: realDID,
+                        did_minted: true,
+                        did_mint_status: 'confirmed'
+                    },
+                    $unset: { did_mint_error: 1, did_mint_started_at: 1 }
+                }
             );
             return res.json({
                 success: true,
@@ -1190,25 +1201,54 @@ router.post('/did/mint', async (req, res) => {
             });
         }
 
-        // Database-level race condition guard: Check did_minted flag
-        // Reload userAccount to get latest state
-        const freshAccount = await UserAccount.findOne({ user_id: userAccount.user_id });
-        if (freshAccount?.did_minted) {
-            return res.json({
-                success: true,
-                message: 'DID minting already in progress',
-                did: freshAccount.did_address || `did:casper:${userAccount.wallet}`,
-                alreadyExists: true
+        const mintLockTimeoutMs = Number(process.env.DID_MINT_LOCK_TIMEOUT_MS || 300000);
+        const staleMintCutoff = new Date(Date.now() - mintLockTimeoutMs);
+        const mintClaim = await UserAccount.findOneAndUpdate(
+            {
+                user_id: userAccount.user_id,
+                did_minted: { $ne: true },
+                $or: [
+                    { did_mint_status: { $ne: 'pending' } },
+                    { did_mint_started_at: { $lt: staleMintCutoff } }
+                ]
+            },
+            {
+                $set: {
+                    did_mint_status: 'pending',
+                    did_mint_started_at: new Date()
+                },
+                $unset: { did_mint_error: 1 }
+            },
+            { new: true }
+        );
+
+        if (!mintClaim) {
+            return res.status(409).json({
+                success: false,
+                error: 'DID minting is already in progress. Please retry shortly.',
+                code: 'DID_MINT_IN_PROGRESS'
             });
         }
 
-        // Set did_minted flag IMMEDIATELY to prevent race conditions
-        await UserAccount.updateOne(
-            { user_id: userAccount.user_id },
-            { $set: { did_minted: true } }
-        );
-
-        const txHash = await casperService.mintDID(userAccount.wallet, userAccount.tier || 'layer_1');
+        let txHash;
+        try {
+            txHash = await casperService.mintDID(userAccount.wallet, userAccount.tier || 'layer_1');
+        } catch (mintError) {
+            await UserAccount.updateOne(
+                { user_id: userAccount.user_id, did_mint_status: 'pending' },
+                {
+                    $set: {
+                        did_minted: false,
+                        did_mint_status: 'failed',
+                        did_mint_error: mintError.message
+                    },
+                    $unset: { did_mint_started_at: 1 }
+                }
+            ).catch((rollbackError) => {
+                console.error('Failed to release DID mint lock:', rollbackError.message);
+            });
+            throw mintError;
+        }
 
         const realDID = `did:casper:${userAccount.wallet}`;
 
@@ -1217,7 +1257,12 @@ router.post('/did/mint', async (req, res) => {
         await UserAccount.updateOne(
             { user_id: userAccount.user_id },
             {
-                did_address: realDID,
+                $set: {
+                    did_address: realDID,
+                    did_minted: true,
+                    did_mint_status: 'confirmed'
+                },
+                $unset: { did_mint_error: 1, did_mint_started_at: 1 },
                 $addToSet: {
                     linked_wallets: {
                         chain: 'casper',

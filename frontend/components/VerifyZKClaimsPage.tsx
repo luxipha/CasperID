@@ -16,8 +16,6 @@ interface VerificationResult {
     claims?: Claim[];
     issuer?: {
         id: string;
-        wallet: string;
-        human_id: string | null;
     };
     timestamp?: number;
     expires_at?: number;
@@ -53,10 +51,10 @@ export const VerifyZKClaimsPage: React.FC<VerifyZKClaimsPageProps> = ({ proofId:
                 const response = await fetch(`${apiUrl}/api/zk-claims/proof/${proofId}`);
                 const data = await response.json();
 
-                if (data.success) {
+                if (data.success && data.verification?.valid === true) {
                     // Map the response to match VerificationResult interface
                     setResult({
-                        valid: data.verification?.valid ?? true,
+                        valid: data.verification.valid,
                         proof_id: data.proof_id,
                         claims: data.claims,
                         issuer: data.issuer,
@@ -105,7 +103,7 @@ export const VerifyZKClaimsPage: React.FC<VerifyZKClaimsPageProps> = ({ proofId:
             <div className="min-h-screen bg-[#F4F7FA] flex items-center justify-center p-6 font-sans">
                 <div className="text-center space-y-4">
                     <div className="size-16 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto" />
-                    <p className="text-lg font-bold text-gray-400">Verifying ZK Proof...</p>
+                    <p className="text-lg font-bold text-gray-400">Verifying Private Claim...</p>
                 </div>
             </div>
         );
@@ -141,7 +139,7 @@ export const VerifyZKClaimsPage: React.FC<VerifyZKClaimsPageProps> = ({ proofId:
         );
     }
 
-    const shortProofId = result.proof_id ? `ZK-${result.proof_id.slice(0, 4).toUpperCase()}-${result.proof_id.slice(-4).toUpperCase()}` : '';
+    const shortProofId = result.proof_id ? `PC-${result.proof_id.slice(0, 4).toUpperCase()}-${result.proof_id.slice(-4).toUpperCase()}` : '';
     const allVerified = result.claims?.every(c => c.verified) || false;
     const someUnverified = result.claims?.some(c => !c.verified) || false;
 
@@ -160,12 +158,12 @@ export const VerifyZKClaimsPage: React.FC<VerifyZKClaimsPageProps> = ({ proofId:
                             {result.valid ? 'verified_user' : 'cancel'}
                         </span>
                         <span className="text-[11px] font-black uppercase tracking-widest">
-                            {result.valid ? 'ZK PROOF VALID' : 'INVALID PROOF'}
+                            {result.valid ? 'CLAIM VALID' : 'INVALID CLAIM'}
                         </span>
                     </div>
                 </div>
 
-                {/* ZK Claims Card */}
+                {/* Private Claims Card */}
                 <div className="relative aspect-[1.5/1] rounded-[40px] bg-gradient-to-br from-[#8652E2] to-[#6D36D6] p-8 flex flex-col justify-between text-white shadow-2xl overflow-hidden border border-white/20">
                     <div className="absolute inset-0 opacity-10 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] mix-blend-overlay"></div>
                     <div className="absolute inset-0 bg-white/5 backdrop-blur-[1px]"></div>
@@ -188,11 +186,11 @@ export const VerifyZKClaimsPage: React.FC<VerifyZKClaimsPageProps> = ({ proofId:
                         <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/10 backdrop-blur-md border border-white/20 mb-3">
                             <span className="size-1.5 rounded-full bg-green-400 animate-pulse" />
                             <p className="text-[9px] font-black uppercase tracking-widest text-white/80">
-                                Zero-Knowledge Verified
+                                CasperID Verified
                             </p>
                         </div>
-                        <h2 className="text-3xl font-black tracking-tight leading-none mb-1">CasperID ZK Claims</h2>
-                        <p className="text-[10px] font-black opacity-60 uppercase tracking-[0.2em]">No Personal Data Revealed</p>
+                        <h2 className="text-3xl font-black tracking-tight leading-none mb-1">CasperID Private Claims</h2>
+                        <p className="text-[10px] font-black opacity-60 uppercase tracking-[0.2em]">Only Selected Claims Shared</p>
                     </div>
                 </div>
 
@@ -256,7 +254,7 @@ export const VerifyZKClaimsPage: React.FC<VerifyZKClaimsPageProps> = ({ proofId:
                         <div>
                             <p className="text-sm font-bold text-[#8652E2] mb-1">Privacy Protected</p>
                             <p className="text-xs font-medium text-[#8652E2]/70">
-                                No personal data was revealed in this proof. You only see whether each claim is true, not the actual values behind them.
+                                Only the selected claim results and any values shown above were shared. The source identity records remain private.
                             </p>
                         </div>
                     </div>
@@ -310,7 +308,7 @@ export const VerifyZKClaimsPage: React.FC<VerifyZKClaimsPageProps> = ({ proofId:
                 <div className="flex justify-center pt-4">
                     <div className="inline-flex items-center gap-2 px-6 py-3 bg-white rounded-full shadow-sm border border-gray-50 transition-all hover:shadow-md">
                         <div className="size-2 rounded-full bg-[#8652E2] animate-pulse" />
-                        <span className="text-[10px] font-black uppercase tracking-widest text-gray-400">Zero-Knowledge by CasperID</span>
+                        <span className="text-[10px] font-black uppercase tracking-widest text-gray-400">Verified by CasperID</span>
                     </div>
                 </div>
 

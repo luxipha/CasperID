@@ -7,8 +7,10 @@ const { requireAuth } = require('../middleware/auth');
 const { rateLimitMiddleware } = require('../utils/rate-limiter');
 const { dispatchEvent, sendTestWebhook } = require('../utils/webhook-dispatcher');
 const { WEBHOOK_EVENTS } = require('../constants/webhook-events');
+const { SERVICE_CATEGORIES, TRUST_ROLES, TRUST_EVENT_TYPES, MOBILITY_EVENT_TYPES } = require('../constants/trust');
 const {
     CORE_SCOPES,
+    TRUST_CAPACITY_SCOPE,
     deriveRequestedScopesFromProofs,
     resolveRequestedScopes
 } = require('../utils/business-scopes');
@@ -178,7 +180,12 @@ router.post('/apps', requireAuth, rateLimitMiddleware('business_api_key_create')
             redirect_uris = [],
             environment = 'sandbox',
             website_url = '',
-            description = ''
+            description = '',
+            service_category = 'other',
+            supported_roles = [],
+            trust_events_enabled = false,
+            trust_capacity_enabled = false,
+            ratings_enabled = false
         } = req.body;
         const userId = req.user.userId || req.user.wallet;
 
@@ -187,6 +194,28 @@ router.post('/apps', requireAuth, rateLimitMiddleware('business_api_key_create')
             allowed_origins = allowed_origins.split(',').map(o => o.trim()).filter(Boolean);
         }
         redirect_uris = normalizeRedirectUris(redirect_uris);
+
+        if (!SERVICE_CATEGORIES.includes(service_category)) {
+            return res.status(400).json({ success: false, error: 'Invalid service category' });
+        }
+        const normalizedRoles = Array.isArray(supported_roles)
+            ? [...new Set(supported_roles.filter(role => TRUST_ROLES.includes(role)))]
+            : [];
+        const trustEnabled = Boolean(trust_events_enabled);
+        const trustCapacityEnabled = Boolean(trust_capacity_enabled);
+        const ratingsEnabled = trustEnabled && Boolean(ratings_enabled);
+        if (trustEnabled && (service_category !== 'mobility' || normalizedRoles.length === 0)) {
+            return res.status(400).json({
+                success: false,
+                error: 'Mobility trust events require the mobility category and at least one supported role'
+            });
+        }
+        if (trustCapacityEnabled && (service_category !== 'mobility' || normalizedRoles.length === 0)) {
+            return res.status(400).json({
+                success: false,
+                error: 'Trust Capacity disclosure requires the mobility category and at least one supported role'
+            });
+        }
 
         if (!name || name.trim().length < 2) {
             return res.status(400).json({ success: false, error: 'App name must be at least 2 characters' });
@@ -212,7 +241,15 @@ router.post('/apps', requireAuth, rateLimitMiddleware('business_api_key_create')
             environment,
             website_url: (website_url || '').trim(),
             description: (description || '').trim().slice(0, 300),
-            requested_scopes: CORE_SCOPES
+            service_category,
+            supported_roles: normalizedRoles,
+            trust_events_enabled: trustEnabled,
+            trust_capacity_enabled: trustCapacityEnabled,
+            ratings_enabled: ratingsEnabled,
+            trust_event_types: trustEnabled && service_category === 'mobility' ? MOBILITY_EVENT_TYPES : [],
+            requested_scopes: trustCapacityEnabled
+                ? [...CORE_SCOPES, TRUST_CAPACITY_SCOPE]
+                : CORE_SCOPES
         });
 
         await newApp.save();
@@ -234,6 +271,11 @@ router.post('/apps', requireAuth, rateLimitMiddleware('business_api_key_create')
                     environment: newApp.environment,
                     allowed_origins: newApp.allowed_origins,
                     redirect_uris: newApp.redirect_uris,
+                    service_category: newApp.service_category,
+                    supported_roles: newApp.supported_roles,
+                    trust_events_enabled: newApp.trust_events_enabled,
+                    trust_capacity_enabled: newApp.trust_capacity_enabled,
+                    ratings_enabled: newApp.ratings_enabled,
                     created_at: newApp.created_at
                 },
                 api_secret // plaintext shown ONLY here, one time
@@ -356,7 +398,13 @@ router.patch('/apps/:app_id', requireAuth, async (req, res) => {
             website_url,
             description,
             listing_status,
-            sdk_config
+            sdk_config,
+            service_category,
+            supported_roles,
+            trust_events_enabled,
+            trust_capacity_enabled,
+            ratings_enabled,
+            trust_event_types
         } = req.body;
 
         const app = await BusinessApp.findOne({ app_id, owner_user_id: userId, active: true });
@@ -397,6 +445,58 @@ router.patch('/apps/:app_id', requireAuth, async (req, res) => {
         if (website_url !== undefined) app.website_url = website_url.trim();
         if (description !== undefined) app.description = description.trim().slice(0, 300);
         if (listing_status && ['unlisted', 'listed'].includes(listing_status)) app.listing_status = listing_status;
+        if (service_category !== undefined) {
+            if (!SERVICE_CATEGORIES.includes(service_category)) {
+                return res.status(400).json({ success: false, error: 'Invalid service category' });
+            }
+            app.service_category = service_category;
+        }
+        if (supported_roles !== undefined) {
+            if (!Array.isArray(supported_roles) || supported_roles.some(role => !TRUST_ROLES.includes(role))) {
+                return res.status(400).json({ success: false, error: 'Invalid supported roles' });
+            }
+            app.supported_roles = [...new Set(supported_roles)];
+            app.markModified('supported_roles');
+        }
+        if (trust_events_enabled !== undefined) app.trust_events_enabled = Boolean(trust_events_enabled);
+        if (trust_capacity_enabled !== undefined) app.trust_capacity_enabled = Boolean(trust_capacity_enabled);
+        if (app.trust_events_enabled && (app.service_category !== 'mobility' || app.supported_roles.length === 0)) {
+            return res.status(400).json({
+                success: false,
+                error: 'Mobility trust events require the mobility category and at least one supported role'
+            });
+        }
+        if (app.trust_capacity_enabled && (app.service_category !== 'mobility' || app.supported_roles.length === 0)) {
+            return res.status(400).json({
+                success: false,
+                error: 'Trust Capacity disclosure requires the mobility category and at least one supported role'
+            });
+        }
+        if (ratings_enabled !== undefined) app.ratings_enabled = app.trust_events_enabled && Boolean(ratings_enabled);
+        if (trust_event_types !== undefined) {
+            const allowedTypes = app.service_category === 'mobility' ? MOBILITY_EVENT_TYPES : [];
+            if (!Array.isArray(trust_event_types) || trust_event_types.some(type => !TRUST_EVENT_TYPES.includes(type) || !allowedTypes.includes(type))) {
+                return res.status(400).json({ success: false, error: 'Invalid trust event types' });
+            }
+            app.trust_event_types = [...new Set(trust_event_types)];
+            app.markModified('trust_event_types');
+        } else if (service_category !== undefined && app.trust_events_enabled && service_category === 'mobility') {
+            app.trust_event_types = MOBILITY_EVENT_TYPES;
+            app.markModified('trust_event_types');
+        }
+
+        const trustApprovalFields = [
+            'environment',
+            'service_category',
+            'supported_roles',
+            'trust_events_enabled',
+            'trust_capacity_enabled',
+            'ratings_enabled',
+            'trust_event_types'
+        ];
+        if (trustApprovalFields.some(field => Object.prototype.hasOwnProperty.call(req.body, field))) {
+            app.trust_production_approved = false;
+        }
 
         // Handle SDK config updates (Tier and Proofs)
         if (sdk_config) {
@@ -424,6 +524,9 @@ router.patch('/apps/:app_id', requireAuth, async (req, res) => {
             
             app.markModified('sdk_config');
         }
+
+        app.requested_scopes = resolveRequestedScopes(app);
+        app.markModified('requested_scopes');
 
         await app.save();
         await createBusinessNotification(
@@ -1025,7 +1128,7 @@ router.get('/app-metadata/:app_id', async (req, res) => {
 
         // Publicly expose ONLY name, branding info, and requested scopes
         const app = await BusinessApp.findOne({ app_id, active: true })
-            .select('app_id name sdk_config requested_scopes website_url description');
+            .select('app_id name sdk_config requested_scopes service_category supported_roles trust_capacity_enabled website_url description');
 
         if (!app) {
             return res.status(404).json({ success: false, error: 'App not found' });

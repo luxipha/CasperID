@@ -19,6 +19,25 @@ export interface AuthTokens {
   expiresAt: number;
 }
 
+export interface TrustCapacityScore {
+  score: number;
+  identity_readiness: number;
+  status: 'active' | 'identity_incomplete';
+  role: 'consumer' | 'provider';
+  service_category: string;
+  components: {
+    service_reliability: number | null;
+    financial_reliability: number | null;
+    rating_signal: number | null;
+  };
+  evidence_confidence: number;
+  evidence_count: number;
+  history_months: number;
+  duration_cap: number;
+  policy_version: string;
+  reasons: string[];
+}
+
 class ApiService {
   private client: AxiosInstance;
   private baseURL: string;
@@ -35,7 +54,7 @@ class ApiService {
 
     this.client = axios.create({
       baseURL: this.baseURL,
-      timeout: 120000, // 2 minutes for slow Starknet transactions
+      timeout: 240000, // Includes confirmed Casper execution for blockchain-backed verification
       withCredentials: true,
       headers: {
         'Content-Type': 'application/json',
@@ -589,7 +608,7 @@ class ApiService {
   }
 
   // ============================================
-  // ZK CLAIMS (Zero-Knowledge Proofs)
+  // PRIVATE CLAIMS (legacy method names retained for compatibility)
   // ============================================
 
   async getAvailableZKClaims(): Promise<ApiResponse> {
@@ -697,6 +716,37 @@ class ApiService {
     } catch (error: any) {
       // Preserve structured liveness rejection details so the capture UI can
       // show the score/reason and allow a retry without treating it as a transport failure.
+      if (error.response?.data?.liveness) {
+        return error.response.data;
+      }
+      throw this.handleError(error);
+    }
+  }
+
+  async submitOnDeviceLivenessV2(
+    requestId: string,
+    localResult: {
+      faceHeldMs: number;
+      blinkCount: number;
+      mouthOpenRatio: number;
+      mouthHeldMs: number;
+      completedAt: number;
+    },
+    pairingId?: string,
+    pairingToken?: string
+  ): Promise<ApiResponse> {
+    try {
+      const response = await this.client.post('/api/v2/verification/liveness', {
+        requestId,
+        pairingId: pairingId || undefined,
+        pairingToken: pairingToken || undefined,
+        metadata: {
+          method: 'on_device',
+          localResult
+        }
+      });
+      return response.data;
+    } catch (error: any) {
       if (error.response?.data?.liveness) {
         return error.response.data;
       }
@@ -1587,82 +1637,6 @@ class ApiService {
   }
 
   // ============================================
-  // ZK PROOF SUBMISSION (Starknet)
-  // ============================================
-
-  /**
-   * Submit a ZK proof of liveness to Starknet
-   * This registers the user's identity on-chain without revealing biometric data
-   */
-  async submitZkProof(data: {
-    proof: string;
-    proofHash: string;
-    publicInputs: {
-      nullifier: string;
-      sessionNonce: string;
-      timestamp: number;
-      walletAddress: string;
-    };
-  }): Promise<ApiResponse & {
-    transactionHash?: string;
-    explorerUrl?: string;
-  }> {
-    try {
-      const response = await this.client.post('/api/zk/submit-proof', data);
-      return response.data;
-    } catch (error) {
-      throw this.handleError(error);
-    }
-  }
-
-  /**
-   * Check if a wallet is ZK-verified on Starknet
-   */
-  async checkZkVerification(walletAddress: string): Promise<ApiResponse & {
-    isVerified: boolean;
-    transactionHash?: string;
-    verifiedAt?: string;
-  }> {
-    try {
-      const response = await this.client.get(`/api/zk/verification/${walletAddress}`);
-      return response.data;
-    } catch (error) {
-      throw this.handleError(error);
-    }
-  }
-
-  /**
-   * Get ZK service status (Starknet connection info)
-   */
-  async getZkStatus(): Promise<ApiResponse & {
-    configured: boolean;
-    contractAddress?: string;
-    network: string;
-    verifiedCount: number;
-  }> {
-    try {
-      const response = await this.client.get('/api/zk/status');
-      return response.data;
-    } catch (error) {
-      throw this.handleError(error);
-    }
-  }
-
-  /**
-   * Check if a nullifier has been used (Sybil prevention)
-   */
-  async checkNullifier(nullifier: string): Promise<ApiResponse & {
-    isUsed: boolean;
-  }> {
-    try {
-      const response = await this.client.post('/api/zk/check-nullifier', { nullifier });
-      return response.data;
-    } catch (error) {
-      throw this.handleError(error);
-    }
-  }
-
-  // ============================================
   // UTILITY METHODS
   // ============================================
 
@@ -1922,6 +1896,76 @@ class ApiService {
     }
   }
 
+  async getAdminTrustPolicy(token: string): Promise<ApiResponse> {
+    try {
+      const response = await this.client.get('/api/trust/admin/policy', {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      return response.data;
+    } catch (error) {
+      throw this.handleError(error);
+    }
+  }
+
+  async updateAdminTrustPolicy(token: string, policy: Record<string, unknown>): Promise<ApiResponse> {
+    try {
+      const response = await this.client.patch('/api/trust/admin/policy', policy, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      return response.data;
+    } catch (error) {
+      throw this.handleError(error);
+    }
+  }
+
+  async getAdminTrustApps(token: string): Promise<ApiResponse> {
+    try {
+      const response = await this.client.get('/api/trust/admin/apps', {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      return response.data;
+    } catch (error) {
+      throw this.handleError(error);
+    }
+  }
+
+  async setTrustAppProductionApproval(token: string, appId: string, approved: boolean): Promise<ApiResponse> {
+    try {
+      const response = await this.client.patch(`/api/trust/admin/apps/${appId}/production-approval`, { approved }, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      return response.data;
+    } catch (error) {
+      throw this.handleError(error);
+    }
+  }
+
+  async getAdminTrustDisputes(token: string, status = 'pending'): Promise<ApiResponse> {
+    try {
+      const response = await this.client.get('/api/trust/admin/disputes', {
+        params: { status },
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      return response.data;
+    } catch (error) {
+      throw this.handleError(error);
+    }
+  }
+
+  async resolveAdminTrustDispute(token: string, disputeId: string, resolution: 'upheld' | 'reversed', resolutionNote = ''): Promise<ApiResponse> {
+    try {
+      const response = await this.client.patch(`/api/trust/admin/disputes/${disputeId}`, {
+        resolution,
+        resolution_note: resolutionNote
+      }, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      return response.data;
+    } catch (error) {
+      throw this.handleError(error);
+    }
+  }
+
   // --- Admin Quest Management ---
 
   async getAdminQuests(): Promise<{ success: boolean; quests: any[] }> {
@@ -2168,6 +2212,37 @@ class ApiService {
   }
 
   // ============================================
+  // PORTABLE TRUST API
+  // ============================================
+
+  async getMyTrustScore(role: 'consumer' | 'provider' = 'consumer'): Promise<TrustCapacityScore> {
+    try {
+      const response = await this.client.get('/api/trust/me', { params: { role } });
+      return response.data.score;
+    } catch (error) {
+      throw this.handleError(error);
+    }
+  }
+
+  async getMyTrustEvents(role?: 'consumer' | 'provider'): Promise<ApiResponse> {
+    try {
+      const response = await this.client.get('/api/trust/me/events', { params: role ? { role } : {} });
+      return response.data;
+    } catch (error) {
+      throw this.handleError(error);
+    }
+  }
+
+  async disputeTrustEvent(eventId: string, reason: string, detail?: string): Promise<ApiResponse> {
+    try {
+      const response = await this.client.post(`/api/trust/events/${eventId}/disputes`, { reason, detail });
+      return response.data;
+    } catch (error) {
+      throw this.handleError(error);
+    }
+  }
+
+  // ============================================
   // BUSINESS PORTAL API
   // ============================================
 
@@ -2180,7 +2255,16 @@ class ApiService {
     }
   }
 
-  async createBusinessApp(data: { name: string; allowed_origins: string[]; redirect_uris?: string[]; environment: string }): Promise<ApiResponse> {
+  async createBusinessApp(data: {
+    name: string;
+    allowed_origins: string[];
+    redirect_uris?: string[];
+    environment: string;
+    service_category?: string;
+    supported_roles?: Array<'consumer' | 'provider'>;
+    trust_events_enabled?: boolean;
+    ratings_enabled?: boolean;
+  }): Promise<ApiResponse> {
     try {
       const response = await this.client.post('/api/business/apps', data);
       return response.data;

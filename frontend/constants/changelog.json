@@ -144,7 +144,7 @@
         "title": "Verification Architecture Notes",
         "items": [
           "Implemented duplicate enforcement off-chain to avoid introducing additional chain gas costs for identity uniqueness checks.",
-          "Kept biometric nullifier protection scoped to the separate ZK flow rather than coupling it to the standard Layer 3 review flow.",
+          "Kept Layer 2 liveness verification separate from the standard Layer 3 review flow.",
           "Left identity_data_hash as optional future privacy infrastructure instead of making it a requirement for duplicate blocking."
         ]
       }
@@ -160,7 +160,7 @@
       "description": "Root-name payments now finalize server-side, and contextual subdomains consistently resolve from the user-owned alias.",
       "type": "sparkles"
     },
-    "summary": "This update closes the most fragile gaps in the .cid and contextual identity lifecycle. Premium name payments are now fulfilled authoritatively on the server instead of depending on a browser polling loop, the fiat checkout route and plan mapping are aligned across frontend and backend, and contextual identities now consistently treat alias as the owned hostname prefix. We also added local custom host support for contextual testing and isolated the ZK prover entry so the liveness proof path can lazy-load independently from the main frontend flow.",
+    "summary": "This update closes the most fragile gaps in the .cid and contextual identity lifecycle. Premium name payments are now fulfilled authoritatively on the server instead of depending on a browser polling loop, the fiat checkout route and plan mapping are aligned across frontend and backend, and contextual identities now consistently treat alias as the owned hostname prefix. We also added local custom host support for contextual testing and isolated the liveness capture path from the main frontend flow.",
     "categories": [
       {
         "id": "v401-payments",
@@ -201,15 +201,6 @@
           "Added frontend contextual host parsing for custom local domains like name.casperid.cid.",
           "Added localhost-style contextual detection for hosts such as name.localhost and name.casperid.localhost.",
           "Kept ?subdomain=name override support for manual local testing while expanding true host-based contextual routing."
-        ]
-      },
-      {
-        "id": "v401-zk",
-        "title": "ZK Runtime Isolation",
-        "items": [
-          "Removed the circomlibjs Poseidon browser import from the nullifier path to stop that hashing helper from inflating the main frontend bundle.",
-          "Lazy-loaded zkProver from LivenessCheck only when proof generation starts, producing a dedicated small prover entry chunk instead of statically linking the module into the liveness component bundle.",
-          "Confirmed the remaining oversized proof chunk is primarily the Noir/Barretenberg browser proving runtime, not the old browser-side Poseidon helper."
         ]
       }
     ]
@@ -519,7 +510,7 @@
         "title": "Security & Protocol",
         "items": [
           "MetaMask Support: Integrated ECDSA (EIP-191) signature verification for multi-chain account linking.",
-          "Cryptographic Hardening: Transitioned to production-grade Ed25519 digital signatures for ZK proofs.",
+          "Cryptographic Hardening: Transitioned to production-grade Ed25519 digital signatures for private claims.",
           "Protocol Roadmap: Added Phase 5 research for Self-Sovereign Recovery (SSR) mechanisms."
         ]
       }
@@ -560,14 +551,12 @@
       "description": "Launched wildcard identity routing: every user now owns their piece of the web at [name].casperid.com with instant SSL.",
       "type": "sparkles"
     },
-    "summary": "This milestone update introduces the full implementation of Premium .cid names on the Casper Network and the deployment of our Hybrid Privacy Infrastructure. We've integrated Noir-based ZK circuits with Starknet to enable anonymous biometric nullifiers, alongside a Smart Subdomain Gateway for native vanity URLs.",
+    "summary": "This milestone update introduces the full implementation of Premium .cid names on the Casper Network alongside a Smart Subdomain Gateway for native vanity URLs.",
     "categories": [
       {
         "id": "v260-feat",
         "title": "New Features",
         "items": [
-          "CasperID ZK 2.0: Launched the 'Privacy Bridge' using Noir ZK Circuits for anonymous biometric verification.",
-          "Starknet Proof Verification: Integrated on-chain logging of anonymous 'Nullifiers' to prevent Sybil attacks without doxxing users.",
           "Wildcard Subdomain Support: Profiles now resolve directly from vanity URLs (e.g. alice.casperid.com).",
           "Multi-Chain Payment Rails: Integrated Boomfi and RevenueCat for crypto/fiat name registrations.",
           "Casper CNS Protocol: On-chain name registration and NFT minting for premium identity markers.",
@@ -578,7 +567,7 @@
         "id": "v260-fix",
         "title": "Fixes & Syncing",
         "items": [
-          "Hybrid Attestation Model: Updated Noir circuit to verify server-side face-matching signatures for enhanced security.",
+          "Attestation Model: Strengthened the server-side face-matching and credential-signing pipeline.",
           "Unified Identity Sync: Premium names now automatically replace legacy human IDs in profiles and credentials.",
           "JWT Metadata Enhancement: CNS names are now embedded in auth tokens for zero-latency UI updates."
         ]

@@ -199,7 +199,7 @@ const CinematicHero: React.FC = () => {
                         Reuse everywhere
                     </h2>
                     <p className="mt-6 md:mt-8 text-base md:text-xl text-slate-600 max-w-md md:max-w-2xl leading-relaxed font-medium">
-                        Reusable KYC and liveness verification powered by Zero-Knowledge proofs. One secure identity, infinite applications.
+                        Reusable KYC and liveness verification with private, consent-based sharing. One secure identity, infinite applications.
                     </p>
 
                     {/* CTA Buttons */}
@@ -311,7 +311,7 @@ const CinematicHero: React.FC = () => {
                                             </div>
                                             <h3 className="text-2xl md:text-3xl font-bold text-emerald-500 mb-2">Approved</h3>
                                             <p className="text-slate-600 md:text-slate-500 text-xs md:text-sm leading-relaxed">
-                                                Zero-Knowledge Proof verified.
+                                                CasperID credential verified.
                                             </p>
                                             <div className="mt-6 md:mt-8 w-full h-1 bg-emerald-500/20 rounded-full overflow-hidden">
                                                 <motion.div

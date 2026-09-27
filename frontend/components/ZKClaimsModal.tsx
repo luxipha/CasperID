@@ -33,6 +33,7 @@ interface ProofPackage {
     proof: string;
     proof_hash: string;
     timestamp: number;
+    verification_url?: string;
     expires_at: number;
     qr_data: string;
 }
@@ -93,7 +94,7 @@ export const ZKClaimsModal: React.FC<ZKClaimsModalProps> = ({
             }
         } catch (error) {
             console.error('Generation failed:', error);
-            notifyError('Failed to generate ZK proof');
+            notifyError('Failed to generate private claim');
         } finally {
             setGenerating(false);
         }
@@ -128,11 +129,11 @@ export const ZKClaimsModal: React.FC<ZKClaimsModalProps> = ({
             <IdentityToolModal
                 isOpen={isOpen}
                 onClose={handleClose}
-                title="ZK Proof Generated!"
-                subtitle="Zero-Knowledge Claims"
+                title="Private Claim Generated!"
+                subtitle="Selective Disclosure"
                 icon="verified_user"
                 iconBg="bg-green-50 text-green-500"
-                description="Have others scan this QR code to verify your claims without revealing your actual data."
+                description="Have others scan this QR code to verify only the claims you selected."
                 actionLabel="Done"
                 actionIcon="check"
                 onAction={handleClose}
@@ -140,7 +141,7 @@ export const ZKClaimsModal: React.FC<ZKClaimsModalProps> = ({
                     <>
                         <span className="material-symbols-outlined text-text-sub text-[18px]">lock</span>
                         <p className="text-[11px] font-bold text-text-sub/70 leading-none">
-                            No personal data is revealed. Only claim validity is shared.
+                            Only selected claim results and displayed values are shared.
                         </p>
                     </>
                 }
@@ -217,18 +218,18 @@ export const ZKClaimsModal: React.FC<ZKClaimsModalProps> = ({
         <IdentityToolModal
             isOpen={isOpen}
             onClose={onClose}
-            title="ZK Proof Claims"
-            subtitle="Zero-Knowledge"
+            title="Private Claims"
+            subtitle="Selective Disclosure"
             icon="shield_lock"
             iconBg="bg-[#F0E6FF] text-[#8652E2]"
-            description="Select claims to prove without revealing your actual data. Verifiers will only see whether each claim is true, not the underlying values."
-            actionLabel="Generate ZK Proof"
+            description="Select the claims to share. Verifiers see their signed results and any value explicitly shown for a selected claim."
+            actionLabel="Generate Private Claim"
             actionIcon="verified_user"
             onAction={handleGenerate}
             isActionLoading={generating}
             isActionDisabled={selectedClaims.length === 0 || loading}
             tips={[
-                { icon: 'visibility_off', label: 'Your actual data is never revealed' },
+                { icon: 'visibility_off', label: 'Your source identity records stay private' },
                 { icon: 'verified', label: 'Verified claims are backed by KYC' },
                 { icon: 'warning', label: 'Unverified claims are self-declared' },
             ]}
@@ -236,7 +237,7 @@ export const ZKClaimsModal: React.FC<ZKClaimsModalProps> = ({
                 <>
                     <span className="material-symbols-outlined text-text-sub text-[18px]">lock</span>
                     <p className="text-[11px] font-bold text-text-sub/70 leading-none">
-                        Zero-Knowledge: Prove claims without revealing personal data.
+                        Share only the verified claims you select.
                     </p>
                 </>
             }

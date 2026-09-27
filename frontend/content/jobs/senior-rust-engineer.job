@@ -37,7 +37,7 @@ In the informal markets of Lagos and Hanoi, connectivity is expensive and hardwa
 - **Language**: Rust (Backend), TypeScript (Frontend/Integration)
 - **Frameworks**: Axum, Tokio, Next.js
 - **Database/Infra**: PostgreSQL, Redis, Docker, AWS/Vercel
-- **Web3**: Casper, BNB Chain, Starknet (ERC-8004/Identity standards)
+- **Web3**: Casper, BNB Chain (ERC-8004/Identity standards)
 
 ## Compensation & Founding Upside
 

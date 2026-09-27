@@ -5,7 +5,7 @@ const mongoose = require('mongoose');
 // ============================================
 
 /**
- * ZK Proof Share - Stores ZK claim proofs temporarily
+ * Private Claim Share - Stores short-lived selective-disclosure claims
  * TTL: 1 hour (auto-deleted by MongoDB)
  */
 const zkProofShareSchema = new mongoose.Schema({
@@ -28,7 +28,8 @@ const zkProofShareSchema = new mongoose.Schema({
         required: true
     },
     proof_hash: String,
-    // Claims included in this proof (for display without decoding JWT)
+    // Cached claim metadata for owner-side history. Public verification must
+    // display claims decoded from the verified JWT instead of this copy.
     claims: [{
         id: String,
         label: String,

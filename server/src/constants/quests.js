@@ -18,7 +18,7 @@ const QUESTS = [
     { id: 'app_login', title: 'Login to Another App via CasperID', xp: 300, icon: 'login', category: 'engagement' },
     // Advanced
     { id: 'earn_10k_xp', title: 'Earn 10,000 XP', xp: 1000, icon: 'emoji_events', category: 'advanced' },
-    { id: 'zk_proof_generate', title: 'Generate ZK Proof', xp: 500, icon: 'security', category: 'advanced' },
+    { id: 'zk_proof_generate', title: 'Complete Liveness Verification', xp: 500, icon: 'security', category: 'advanced' },
     { id: 'extension_install', title: 'Download Chrome Extension', xp: 200, icon: 'extension', category: 'engagement' },
     { id: 'casperid_connect_login', title: 'Login to CasperID Connect', xp: 200, icon: 'link', category: 'engagement' },
     // Social

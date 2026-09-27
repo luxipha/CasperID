@@ -112,7 +112,15 @@ const requireApp = async (req, res, next) => {
             name: app.name,
             environment: app.environment,
             allowed_origins: allOrigins,
-            owner_user_id: app.owner_user_id
+            owner_user_id: app.owner_user_id,
+            service_category: app.service_category,
+            supported_roles: app.supported_roles || [],
+            trust_events_enabled: Boolean(app.trust_events_enabled),
+            trust_capacity_enabled: Boolean(app.trust_capacity_enabled),
+            trust_production_approved: Boolean(app.trust_production_approved),
+            ratings_enabled: Boolean(app.ratings_enabled),
+            requested_scopes: app.requested_scopes || [],
+            trust_event_types: app.trust_event_types || []
         };
 
         next();
@@ -164,7 +172,15 @@ const extractApp = async (req, res, next) => {
                         name: app.name,
                         environment: app.environment,
                         allowed_origins: allOrigins,
-                        owner_user_id: app.owner_user_id
+                        owner_user_id: app.owner_user_id,
+                        service_category: app.service_category,
+                        supported_roles: app.supported_roles || [],
+                        trust_events_enabled: Boolean(app.trust_events_enabled),
+                        trust_capacity_enabled: Boolean(app.trust_capacity_enabled),
+                        trust_production_approved: Boolean(app.trust_production_approved),
+                        ratings_enabled: Boolean(app.ratings_enabled),
+                        requested_scopes: app.requested_scopes || [],
+                        trust_event_types: app.trust_event_types || []
                     };
                     return next();
                 }
@@ -201,7 +217,15 @@ const extractApp = async (req, res, next) => {
                     name: app.name,
                     environment: app.environment,
                     allowed_origins: allOrigins,
-                    owner_user_id: app.owner_user_id
+                    owner_user_id: app.owner_user_id,
+                    service_category: app.service_category,
+                    supported_roles: app.supported_roles || [],
+                    trust_events_enabled: Boolean(app.trust_events_enabled),
+                    trust_capacity_enabled: Boolean(app.trust_capacity_enabled),
+                    trust_production_approved: Boolean(app.trust_production_approved),
+                    ratings_enabled: Boolean(app.ratings_enabled),
+                    requested_scopes: app.requested_scopes || [],
+                    trust_event_types: app.trust_event_types || []
                 };
                 return next();
             }

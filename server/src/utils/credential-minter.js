@@ -8,6 +8,7 @@ const jwt = require('jsonwebtoken');
 const { Credential, UserProfile, VerificationRequest, UserAccount } = require('../database/models');
 const casperService = require('../services/casper');
 const { walletToHuman } = require('./wallet-to-human');
+const { compareTiers } = require('../constants/tier-levels');
 
 /**
  * Mint a credential for a verification request
@@ -16,13 +17,15 @@ const { walletToHuman } = require('./wallet-to-human');
  */
 async function mintCredential(request) {
     const now = Math.floor(Date.now() / 1000); // Unix timestamp
+    const mintLockTimeoutMs = Number(process.env.DID_MINT_LOCK_TIMEOUT_MS || 300000);
+    const staleMintCutoff = new Date(Date.now() - mintLockTimeoutMs);
 
     // Create credential JSON
     const credentialData = {
         subject_wallet: request.wallet,
         tier: request.tier,
         last_kyc_at: now,
-        last_liveness_at: (request.tier === 'layer_3' || request.tier === 'layer_3') ? now : null,
+        last_liveness_at: ['layer_2', 'layer_3'].includes(request.tier) ? now : null,
         issuer: process.env.ISSUER_ID || 'CasperID-Demo',
         issued_at: now,
         expires_at: 0 // No expiration for now
@@ -45,32 +48,89 @@ async function mintCredential(request) {
     const existingAccount = await UserAccount.findOne({ wallet: request.wallet });
     let tx_hash = null;
 
+    if (existingAccount?.tier && compareTiers(request.tier, existingAccount.tier) < 0) {
+        throw new Error(`Cannot downgrade identity from ${existingAccount.tier} to ${request.tier}`);
+    }
+
     if (existingAccount?.did_minted) {
-        console.log(`[Credential-Minter] DID already minted for ${request.wallet.slice(0, 20)}... (skipping chain call)`);
-        tx_hash = existingAccount.onchain_did_tx || 'already_minted';
+        if (request.tier === 'layer_1') {
+            console.log(`[Credential-Minter] DID already minted for ${request.wallet.slice(0, 20)}... (skipping chain call)`);
+            tx_hash = existingAccount.onchain_did_tx || 'already_minted';
+        } else {
+            // Existing identities must still record Layer 2/3 upgrades on Casper.
+            tx_hash = await casperService.updateTier(request.wallet, request.tier);
+            await UserAccount.updateOne(
+                { wallet: request.wallet },
+                { $set: { onchain_did_tx: tx_hash } }
+            );
+        }
     } else {
-        // Set did_minted flag IMMEDIATELY to prevent race conditions
-        await UserAccount.updateOne(
-            { wallet: request.wallet },
-            { $set: { did_minted: true } }
+        // Atomically claim the mint operation. did_minted is only set after
+        // Casper confirms successful execution.
+        const mintClaim = await UserAccount.findOneAndUpdate(
+            {
+                wallet: request.wallet,
+                did_minted: { $ne: true },
+                $or: [
+                    { did_mint_status: { $ne: 'pending' } },
+                    { did_mint_started_at: { $lt: staleMintCutoff } }
+                ]
+            },
+            {
+                $set: {
+                    did_mint_status: 'pending',
+                    did_mint_started_at: new Date()
+                },
+                $unset: { did_mint_error: 1 }
+            },
+            { new: true }
         );
 
-        // Call Casper contract to set verification (for L1: mints Master DID)
-        tx_hash = await casperService.setVerification(
-            request.wallet,
-            request.tier,
-            now,
-            now,
-            process.env.ISSUER_ID || 'CasperID-Demo',
-            credential_hash,
-            true
-        );
+        if (!mintClaim) {
+            const mintError = new Error('DID minting is already in progress. Please retry shortly.');
+            mintError.code = 'DID_MINT_IN_PROGRESS';
+            throw mintError;
+        }
 
-        // Update with actual transaction hash
-        await UserAccount.updateOne(
-            { wallet: request.wallet },
-            { $set: { onchain_did_tx: tx_hash } }
-        );
+        try {
+            // setVerification checks Casper state and safely chooses mint or update.
+            tx_hash = await casperService.setVerification(
+                request.wallet,
+                request.tier,
+                now,
+                now,
+                process.env.ISSUER_ID || 'CasperID-Demo',
+                credential_hash,
+                true
+            );
+
+            await UserAccount.updateOne(
+                { wallet: request.wallet, did_mint_status: 'pending' },
+                {
+                    $set: {
+                        did_minted: true,
+                        did_mint_status: 'confirmed',
+                        onchain_did_tx: tx_hash
+                    },
+                    $unset: { did_mint_error: 1, did_mint_started_at: 1 }
+                }
+            );
+        } catch (error) {
+            await UserAccount.updateOne(
+                { wallet: request.wallet, did_mint_status: 'pending' },
+                {
+                    $set: {
+                        did_minted: false,
+                        did_mint_status: 'failed',
+                        did_mint_error: error.message
+                    },
+                    $unset: { did_mint_started_at: 1 }
+                }
+            ).catch((rollbackError) => {
+                console.error('[Credential-Minter] Failed to release DID mint lock:', rollbackError.message);
+            });
+            throw error;
+        }
     }
 
     // Generate human-friendly ID
@@ -121,7 +181,7 @@ async function mintCredential(request) {
             {
                 tier: request.tier,
                 last_kyc_at: now,
-                last_liveness_at: (request.tier === 'layer_3' || request.tier === 'layer_3') ? now : null,
+                last_liveness_at: ['layer_2', 'layer_3'].includes(request.tier) ? now : null,
                 credential_json,
                 credential_hash,
                 onchain_tx_hash: tx_hash,
@@ -141,7 +201,7 @@ async function mintCredential(request) {
             human_id: humanId,
             tier: request.tier,
             last_kyc_at: now,
-            last_liveness_at: (request.tier === 'layer_3' || request.tier === 'layer_3') ? now : null,
+            last_liveness_at: ['layer_2', 'layer_3'].includes(request.tier) ? now : null,
             issuer_id: process.env.ISSUER_ID || 'CasperID-Demo',
             credential_json,
             credential_hash,

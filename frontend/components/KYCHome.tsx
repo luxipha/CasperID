@@ -813,7 +813,7 @@ export const KYCHome: React.FC<KYCHomeProps> = ({
           </div>
           <h3 className="text-2xl font-black text-text-main mb-4 tracking-tight">Layer 2: Liveness & Wallet</h3>
           <p className="text-text-sub text-[15px] font-medium leading-relaxed mb-10">
-            Prove you are a real human and link your external wallets. This layer adds strong Sybil resistance.
+            Confirm human presence and optionally link your external wallets to activate Layer 2.
           </p>
           {!isLayerCompleted(2) && !kycSubmitted && (
             <button onClick={() => setActiveStep('liveness')} className="mt-auto w-full h-14 bg-primary text-white rounded-[18px] font-black text-sm flex items-center justify-center gap-3 shadow-lg hover:bg-primary/90 transition-all">

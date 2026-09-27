@@ -1,7 +1,7 @@
 /**
- * ZK Claims Service
+ * Private Claims Service
  *
- * Generates and verifies Zero-Knowledge claim proofs.
+ * Generates and verifies selectively disclosed, CasperID-signed claims.
  * Users can prove claims (e.g., "over 21", "layer 3 verified")
  * without revealing actual data.
  *
@@ -129,7 +129,7 @@ class ZKClaimsService {
     }
 
     /**
-     * Generate a ZK claim proof package
+     * Generate a signed private-claim package.
      */
     async generateClaimProof(sessionToken, selectedClaims) {
         const sessionData = await this.validateUserSession(sessionToken);
@@ -173,13 +173,11 @@ class ZKClaimsService {
         const proofPayload = {
             proof_id: proofId,
             version: '1.0.0',
-            type: 'CASPERID_ZK_CLAIMS',
+            type: 'CASPERID_PRIVATE_CLAIMS',
             claims: selectedClaims,
             results: claimResults,
             issuer: {
-                id: 'CasperID',
-                wallet: userAccount.wallet,
-                human_id: profile?.human_id || null
+                id: 'CasperID'
             },
             timestamp,
             expires_at: expiresAt
@@ -204,15 +202,21 @@ class ZKClaimsService {
             timestamp,
             expires_at: expiresAt,
             qr_data: JSON.stringify({
-                type: 'casperid_zk_claims',
+                type: 'casperid_private_claims',
                 proof_id: proofId,
                 proof: signature
-            })
+            }),
+            // Used only while persisting the share. Routes must not return it.
+            _storageOwner: {
+                user_id: userAccount.user_id,
+                wallet: userAccount.wallet,
+                human_id: profile?.human_id || null
+            }
         };
     }
 
     /**
-     * Verify a ZK claim proof package
+     * Verify a signed private-claim package.
      */
     async verifyClaimProof(proofPackage) {
         try {
