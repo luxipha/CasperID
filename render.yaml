@@ -3,8 +3,8 @@ services:
     name: casperid-frontend-staging
     runtime: static
     rootDir: frontend
-    autoDeploy: false
-    buildCommand: npm ci && npm run build
+    autoDeployTrigger: checksPass
+    buildCommand: npm install --global npm@11.6.1 && npm ci && npm run build
     staticPublishPath: dist
     routes:
       - type: rewrite

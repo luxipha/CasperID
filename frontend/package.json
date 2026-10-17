@@ -84,5 +84,10 @@
     "vite": "^6.2.0",
     "vite-plugin-pwa": "^1.2.0",
     "vitest": "^4.1.6"
+  },
+  "packageManager": "npm@11.6.1",
+  "engines": {
+    "node": ">=24 <25",
+    "npm": ">=11 <12"
   }
 }

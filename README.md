@@ -7,4 +7,5 @@ CNS pricing is loaded from `/api/cns/plans`; the bundled snapshot supports older
 
 This migration is prepared on `migration/web-repository`. Keep it off production `main` until cutover is approved. The former Cloud Run workflow is removed only on this branch; the production branch and service remain unchanged.
 Existing Render staging: repository CasperID, branch migration/web-repository, root frontend, build `npm ci && npm run build`, publish dist. Retain existing environment values and set `VITE_API_URL` to the existing staging API.
-The manual staging workflow needs that service's deploy hook as `RENDER_STAGING_DEPLOY_HOOK` in the staging environment. No production deployment workflow is installed.
+
+Staging CI/CD uses the existing Render service with auto-deploy set to `checksPass`: pushes to its configured branch deploy only after GitHub checks pass. `Verify staging` is a separate manual workflow that checks the exact deployed revision. No deployment hook or production secret is needed.

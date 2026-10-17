@@ -22,7 +22,8 @@ jobs:
           node-version: '24'
           cache: npm
           cache-dependency-path: frontend/package-lock.json
+      - run: npm install --global npm@11.6.1
       - run: npm ci
       - run: npm run type-check
-      - run: npm run test:run -- --pool=threads --maxWorkers=2
+      - run: npm run test:run -- --pool=threads --maxWorkers=1
       - run: npm run build
