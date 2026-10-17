@@ -15,7 +15,7 @@
     "test": "vitest",
     "test:run": "vitest run",
     "test:coverage": "vitest run --coverage",
-    "changelog:gen": "node ../scripts/generate-changelog.js"
+    "changelog:gen": "node scripts/generate-changelog.mjs"
   },
   "dependencies": {
     "@intercom/messenger-js-sdk": "^0.0.18",

@@ -1,0 +1,49 @@
+name: Deploy staging
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: render-staging
+  cancel-in-progress: false
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: npm ci
+      - run: npm run type-check
+      - run: npm run test:run -- --pool=threads --maxWorkers=2
+      - run: npm run build
+  deploy:
+    needs: validate
+    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/migration/web-repository'
+    environment: staging
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Trigger existing staging service
+        env:
+          DEPLOY_HOOK: ${{ secrets.RENDER_STAGING_DEPLOY_HOOK }}
+        run: |
+          test -n "$DEPLOY_HOOK" || { echo 'Configure RENDER_STAGING_DEPLOY_HOOK for the existing staging service.'; exit 1; }
+          curl --fail --silent --show-error -X POST "$DEPLOY_HOOK&ref=${{ github.sha }}" > /dev/null
+      - name: Verify staging revision
+        env:
+          EXPECTED_COMMIT: ${{ github.sha }}
+        run: |
+          sleep 30
+          for attempt in $(seq 1 60); do
+            if curl --fail --silent --show-error https://casperid-frontend-staging.onrender.com/build-info.json > /tmp/staging-revision.json; then
+              if node -e 'const fs = require("fs"); const body = JSON.parse(fs.readFileSync("/tmp/staging-revision.json")); process.exit(body.commit === process.env.EXPECTED_COMMIT ? 0 : 1)'; then exit 0; fi
+            fi
+            sleep 15
+          done
+          echo 'Expected staging revision did not become healthy.'
+          exit 1

@@ -42,6 +42,7 @@ interface BusinessApp {
 const TIER_ORDER: Array<'L1' | 'L2' | 'L3'> = ['L1', 'L2', 'L3'];
 const PROOF_MINIMUM_TIER: Record<string, 'L1' | 'L2' | 'L3'> = {
   email: 'L1',
+  phone: 'L1',
   liveness: 'L2',
   age: 'L3'
 };
@@ -62,6 +63,7 @@ const deriveProofsFromScopes = (scopes: string[] = []): string[] => {
   if (scopes.includes('verify:liveness')) nextProofs.push('liveness');
   if (scopes.includes('verify:age') || scopes.includes('verify:kyc')) nextProofs.push('age');
   if (scopes.includes('read:email')) nextProofs.push('email');
+  if (scopes.includes('read:phone')) nextProofs.push('phone');
 
   return nextProofs;
 };
@@ -750,6 +752,7 @@ const IntegrationDetail: React.FC = () => {
                     { id: 'liveness', label: 'Verify Liveness', sub: 'Biometric face-matching check' },
                     { id: 'age', label: 'Verify Age', sub: 'Confirm user is 18+ years old' },
                     { id: 'email', label: 'Email Verification', sub: 'Require verified primary email' },
+                    { id: 'phone', label: 'Share Contact Phone', sub: 'Request the user’s phone number with their consent' },
                   ].map((proof) => (
                     <div key={proof.id} className={`flex items-center justify-between ${!proofAllowedForTier(proof.id, tier) ? 'opacity-50' : ''}`}>
                       <div className="flex flex-col">

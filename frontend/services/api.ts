@@ -39,6 +39,15 @@ export interface TrustCapacityScore {
 }
 
 class ApiService {
+  async getCnsPlans() {
+    const { data } = await this.client.get('/api/cns/plans');
+    if (!data.success || !Array.isArray(data.plans) || data.plans.length === 0 ||
+        !data.plans.every((plan: any) => Number.isFinite(plan.years) && Number.isFinite(plan.priceUsd) && typeof plan.label === 'string')) {
+      throw new Error('Invalid CNS plans response');
+    }
+    return { defaultYears: data.defaultYears, plans: data.plans };
+  }
+
   private client: AxiosInstance;
   private baseURL: string;
   private csrfToken: string | null = null;

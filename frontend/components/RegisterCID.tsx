@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { CIDExplanationModal } from './ui/CIDexplantionModal';
 import apiService from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
-import cnsPlansConfig from '../../shared/cns-plans.json';
+import cnsPlansConfig from '../config/cns-plans-fallback.json';
 
 interface RegisterCIDProps {
   onBack: () => void;
@@ -17,6 +17,14 @@ interface NameCheckResult {
 
 export const RegisterCID: React.FC<RegisterCIDProps> = ({ onBack }) => {
   const { refreshUser } = useAuth();
+  const [plansConfig, setPlansConfig] = useState(cnsPlansConfig);
+  useEffect(() => {
+    let active = true;
+    apiService.getCnsPlans().then(config => {
+      if (active) setPlansConfig(config as typeof cnsPlansConfig);
+    }).catch(() => { /* Older API versions retain the bundled pricing snapshot. */ });
+    return () => { active = false; };
+  }, []);
   const [search, setSearch] = useState('');
   const [isChecking, setIsChecking] = useState(false);
   const [hasChecked, setHasChecked] = useState(false);
@@ -77,7 +85,7 @@ export const RegisterCID: React.FC<RegisterCIDProps> = ({ onBack }) => {
     return () => clearInterval(timer);
   }, []);
 
-  const pricing = cnsPlansConfig.plans.map(plan => ({
+  const pricing = plansConfig.plans.map(plan => ({
     years: plan.years,
     price: plan.priceUsd,
     discount: plan.discount || null,
