@@ -20,7 +20,7 @@ describe('Business Overview', () => {
   it('renders stats cards when data loads', async () => {
     mockGetBusinessStats.mockResolvedValue({
       success: true,
-      stats: { total_verifications: 1500, active_apps: 3, total_apps: 5, activity: [] },
+      stats: { total_requests: 1500, total_verifications: 1500, active_apps: 3, total_apps: 5, activity: [], recent_activity: [] },
     });
     render(<MemoryRouter><Overview /></MemoryRouter>);
 
@@ -32,17 +32,17 @@ describe('Business Overview', () => {
   it('shows zero state when no activity', async () => {
     mockGetBusinessStats.mockResolvedValue({
       success: true,
-      stats: { total_verifications: 0, active_apps: 0, total_apps: 0, activity: [] },
+      stats: { total_requests: 0, total_verifications: 0, active_apps: 0, total_apps: 0, activity: [], recent_activity: [] },
     });
     render(<MemoryRouter><Overview /></MemoryRouter>);
 
-    expect(await screen.findByText(/no activity yet/i)).toBeInTheDocument();
+    expect(await screen.findByText(/no verification activity yet/i)).toBeInTheDocument();
   });
 
   it('renders quick links', async () => {
     mockGetBusinessStats.mockResolvedValue({
       success: true,
-      stats: { total_verifications: 0, active_apps: 0, total_apps: 0, activity: [] },
+      stats: { total_requests: 0, total_verifications: 0, active_apps: 0, total_apps: 0, activity: [], recent_activity: [] },
     });
     render(<MemoryRouter><Overview /></MemoryRouter>);
 
@@ -53,7 +53,7 @@ describe('Business Overview', () => {
   it('renders integration guide card', async () => {
     mockGetBusinessStats.mockResolvedValue({
       success: true,
-      stats: { total_verifications: 0, active_apps: 0, total_apps: 0, activity: [] },
+      stats: { total_requests: 0, total_verifications: 0, active_apps: 0, total_apps: 0, activity: [], recent_activity: [] },
     });
     render(<MemoryRouter><Overview /></MemoryRouter>);
 

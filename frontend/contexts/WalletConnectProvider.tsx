@@ -79,7 +79,7 @@ export function WalletConnectProvider({ children }: WalletConnectProviderProps) 
                     history: false,
                 }
             };
-            createWeb3Modal(modalConfig as CreateWeb3ModalParameters);
+            createWeb3Modal(modalConfig as Web3ModalConfig);
             isInitialized = true;
         }
     }, []);
