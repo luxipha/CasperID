@@ -10,42 +10,42 @@ describe('SDKPreview', () => {
     isDark: false,
   };
 
-  it('renders welcome back text', () => {
+  it('renders the hosted authorization request', () => {
     render(<SDKPreview {...defaultProps} />);
-    expect(screen.getByText('Welcome back')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Authorize Your application' })).toBeInTheDocument();
   });
 
-  it('renders sign in buttons for desktop', () => {
+  it('renders hosted authorization actions for desktop', () => {
     render(<SDKPreview {...defaultProps} platform="desktop" />);
-    expect(screen.getByText(/sign in with extension/i)).toBeInTheDocument();
-    expect(screen.getByText(/sign in with otp/i)).toBeInTheDocument();
+    expect(screen.getByText('Desktop popup preview')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Continue securely' })).toBeInTheDocument();
   });
 
   it('hides extension button on mobile', () => {
     render(<SDKPreview {...defaultProps} platform="mobile" />);
     expect(screen.queryByText(/sign in with extension/i)).not.toBeInTheDocument();
-    expect(screen.getByText(/sign in with otp/i)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Continue securely' })).toBeInTheDocument();
   });
 
   it('renders feature badges', () => {
     render(<SDKPreview {...defaultProps} />);
-    expect(screen.getByText(/fully audited/i)).toBeInTheDocument();
-    expect(screen.getByText(/non-custodial/i)).toBeInTheDocument();
+    expect(screen.getByText('Confirm your CasperID identity')).toBeInTheDocument();
+    expect(screen.getByText('Share your verification result')).toBeInTheDocument();
   });
 
   it('renders Spanish translations', () => {
     render(<SDKPreview {...defaultProps} language="ES" />);
-    expect(screen.getByText('Bienvenido de nuevo')).toBeInTheDocument();
+    expect(screen.getByText('Autorizar Your application')).toBeInTheDocument();
   });
 
   it('renders French translations', () => {
     render(<SDKPreview {...defaultProps} language="FR" />);
-    expect(screen.getByText('Bon retour')).toBeInTheDocument();
+    expect(screen.getByText('Autoriser Your application')).toBeInTheDocument();
   });
 
   it('renders German translations', () => {
     render(<SDKPreview {...defaultProps} language="DE" />);
-    expect(screen.getByText('Willkommen zurück')).toBeInTheDocument();
+    expect(screen.getByText('Autorisieren Your application')).toBeInTheDocument();
   });
 
   it('displays custom logo when provided', () => {

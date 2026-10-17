@@ -20,14 +20,15 @@ describe('Analytics', () => {
   it('renders key metrics', async () => {
     mockGet.mockResolvedValue({
       success: true,
-      stats: { total_requests: 5000, active_apps: 3, total_apps: 5, top_apps: [{ name: 'App1', value: 3000 }] },
+      stats: { total_requests: 5000, total_verifications: 4500, active_apps: 3, total_apps: 5, top_apps: [{ name: 'App1', value: 3000 }] },
     });
     render(<MemoryRouter><Analytics /></MemoryRouter>);
 
     expect(await screen.findByText('5,000')).toBeInTheDocument();
     expect(screen.getByText('3')).toBeInTheDocument();
     expect(screen.getByText('5')).toBeInTheDocument();
-    expect(screen.getByText('Healthy')).toBeInTheDocument();
+    expect(screen.getByText('4,500')).toBeInTheDocument();
+    expect(screen.getByText('Total Verifications')).toBeInTheDocument();
   });
 
   it('shows error state', async () => {
@@ -54,13 +55,13 @@ describe('Analytics', () => {
     expect(await screen.findByText(/no app usage data yet/i)).toBeInTheDocument();
   });
 
-  it('renders time-series coming soon section', async () => {
+  it('renders the verification time-series heatmap', async () => {
     mockGet.mockResolvedValue({
       success: true,
       stats: { total_requests: 0, active_apps: 0, total_apps: 0, top_apps: [] },
     });
     render(<MemoryRouter><Analytics /></MemoryRouter>);
 
-    expect(await screen.findByText(/historical trends coming soon/i)).toBeInTheDocument();
+    expect(await screen.findByText('Time-Series Analytics')).toBeInTheDocument();
   });
 });

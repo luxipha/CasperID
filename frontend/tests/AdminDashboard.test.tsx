@@ -12,11 +12,11 @@ vi.mock('../services/api', () => ({
 }));
 
 describe('AdminDashboard', () => {
-  beforeEach(() => { vi.clearAllMocks(); });
+  beforeEach(() => { vi.clearAllMocks(); localStorage.clear(); });
 
   it('shows login form when not authenticated', () => {
     render(<AdminDashboard />);
-    expect(screen.getByPlaceholderText(/username/i)).toBeInTheDocument();
+    expect(screen.getByPlaceholderText('admin')).toBeInTheDocument();
     expect(screen.getByPlaceholderText(/admin password/i)).toBeInTheDocument();
   });
 
@@ -25,9 +25,9 @@ describe('AdminDashboard', () => {
     mockGetVerificationRequests.mockResolvedValue({ requests: [] });
 
     render(<AdminDashboard />);
-    fireEvent.change(screen.getByPlaceholderText(/username/i), { target: { value: 'admin' } });
+    fireEvent.change(screen.getByPlaceholderText('admin'), { target: { value: 'admin' } });
     fireEvent.change(screen.getByPlaceholderText(/admin password/i), { target: { value: 'secret' } });
-    fireEvent.click(screen.getByRole('button', { name: /login/i }));
+    fireEvent.click(screen.getByRole('button', { name: /enter operations/i }));
 
     await waitFor(() => {
       expect(mockLoginAdmin).toHaveBeenCalledWith('admin', 'secret');
@@ -43,9 +43,9 @@ describe('AdminDashboard', () => {
     });
 
     render(<AdminDashboard />);
-    fireEvent.change(screen.getByPlaceholderText(/username/i), { target: { value: 'admin' } });
+    fireEvent.change(screen.getByPlaceholderText('admin'), { target: { value: 'admin' } });
     fireEvent.change(screen.getByPlaceholderText(/admin password/i), { target: { value: 'pass' } });
-    fireEvent.click(screen.getByRole('button', { name: /login/i }));
+    fireEvent.click(screen.getByRole('button', { name: /enter operations/i }));
 
     expect(await screen.findByText(/0x123/)).toBeInTheDocument();
   });
@@ -55,9 +55,9 @@ describe('AdminDashboard', () => {
     mockGetVerificationRequests.mockResolvedValue({ requests: [] });
 
     render(<AdminDashboard />);
-    fireEvent.change(screen.getByPlaceholderText(/username/i), { target: { value: 'admin' } });
+    fireEvent.change(screen.getByPlaceholderText('admin'), { target: { value: 'admin' } });
     fireEvent.change(screen.getByPlaceholderText(/admin password/i), { target: { value: 'pass' } });
-    fireEvent.click(screen.getByRole('button', { name: /login/i }));
+    fireEvent.click(screen.getByRole('button', { name: /enter operations/i }));
 
     expect(await screen.findByText(/no requests found/i, {}, { timeout: 5000 })).toBeInTheDocument();
   });

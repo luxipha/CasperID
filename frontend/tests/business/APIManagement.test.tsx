@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, fireEvent } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import APIManagement from '../../business/pages/APIManagement';
@@ -50,7 +50,7 @@ describe('APIManagement', () => {
     render(<MemoryRouter><APIManagement /></MemoryRouter>);
 
     await screen.findByText('My App');
-    await user.click(screen.getByText(/new app/i));
+    fireEvent.click(screen.getByText(/new app/i));
 
     expect(screen.getByText(/new application/i)).toBeInTheDocument();
   });
@@ -62,10 +62,10 @@ describe('APIManagement', () => {
     render(<MemoryRouter><APIManagement /></MemoryRouter>);
 
     await screen.findByText('My App');
-    await user.click(screen.getByText(/new app/i));
+    fireEvent.click(screen.getByText(/new app/i));
 
-    await user.type(screen.getByPlaceholderText(/my restaurant/i), 'New App');
-    await user.click(screen.getByRole('button', { name: /create app/i }));
+    fireEvent.change(screen.getByPlaceholderText(/my restaurant/i), { target: { value: 'New App' } });
+    fireEvent.click(screen.getByRole('button', { name: /create app/i }));
 
     await waitFor(() => {
       expect(mockCreateBusinessApp).toHaveBeenCalledWith(

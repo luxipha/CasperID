@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import ActivityHeatmap from '../../business/components/ActivityHeatmap';
 
@@ -14,11 +14,17 @@ describe('ActivityHeatmap', () => {
     expect(screen.getByText('Activity Overview')).toBeInTheDocument();
   });
 
-  it('renders month labels', () => {
-    render(<ActivityHeatmap data={[]} />);
-    expect(screen.getByText('Sep')).toBeInTheDocument();
-    expect(screen.getByText('Oct')).toBeInTheDocument();
-    expect(screen.getByText('Nov')).toBeInTheDocument();
+  it('renders month labels for a deterministic six-month window', () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2025-11-15T12:00:00Z'));
+    try {
+      render(<ActivityHeatmap data={[]} />);
+      expect(screen.getByText('Sep')).toBeInTheDocument();
+      expect(screen.getByText('Oct')).toBeInTheDocument();
+      expect(screen.getByText('Nov')).toBeInTheDocument();
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it('renders day labels', () => {

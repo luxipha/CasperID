@@ -91,9 +91,9 @@ describe('IntegrationDetail', () => {
     });
 
     renderIntegrationDetail();
-    await screen.findByText('Redirect Configuration');
+    await screen.findByText('OAuth Redirect URIs');
     fireEvent.click(screen.getByRole('button', { name: /add url/i }));
 
-    expect(screen.getByText(/add redirect url/i)).toBeInTheDocument();
+    expect(screen.getByText(/add oauth redirect uri/i)).toBeInTheDocument();
   });
 });

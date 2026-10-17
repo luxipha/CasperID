@@ -48,7 +48,7 @@ describe('OTPVerify', () => {
 
     await waitFor(() => {
       expect(mockVerifyOTP).toHaveBeenCalledWith('vid_1', '012345');
-      expect(onSuccess).toHaveBeenCalledWith('test@test.com');
+      expect(onSuccess).toHaveBeenCalledWith({ success: true });
     });
   });
 
