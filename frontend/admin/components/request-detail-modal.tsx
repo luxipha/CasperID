@@ -36,12 +36,12 @@ export default function RequestDetailsModal({ isOpen, onClose, request, onAction
                             <DialogTitle className="text-2xl font-bold flex items-center gap-2">
                                 {request.first_name ? `${request.first_name} ${request.last_name}` : request.name || "Unknown User"}
                                 {request.wallet && (
-                                    <Badge variant="outline" className="ml-2 text-xs border-slate-500 text-slate-400 font-mono">
+                                    <Badge className="ml-2 text-xs border-slate-500 text-slate-400 font-mono">
                                         {request.wallet.slice(0, 6)}...{request.wallet.slice(-4)}
                                     </Badge>
                                 )}
                                 {request.source === 'v2' && (
-                                    <Badge variant="outline" className="ml-2 text-xs border-purple-500 text-purple-400">
+                                    <Badge className="ml-2 text-xs border-purple-500 text-purple-400">
                                         V2
                                     </Badge>
                                 )}

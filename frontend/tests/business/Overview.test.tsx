@@ -20,7 +20,7 @@ describe('Business Overview', () => {
   it('renders stats cards when data loads', async () => {
     mockGetBusinessStats.mockResolvedValue({
       success: true,
-      stats: { total_requests: 1500, active_apps: 3, total_apps: 5, activity: [] },
+      stats: { total_verifications: 1500, active_apps: 3, total_apps: 5, activity: [] },
     });
     render(<MemoryRouter><Overview /></MemoryRouter>);
 
@@ -32,7 +32,7 @@ describe('Business Overview', () => {
   it('shows zero state when no activity', async () => {
     mockGetBusinessStats.mockResolvedValue({
       success: true,
-      stats: { total_requests: 0, active_apps: 0, total_apps: 0, activity: [] },
+      stats: { total_verifications: 0, active_apps: 0, total_apps: 0, activity: [] },
     });
     render(<MemoryRouter><Overview /></MemoryRouter>);
 
@@ -42,7 +42,7 @@ describe('Business Overview', () => {
   it('renders quick links', async () => {
     mockGetBusinessStats.mockResolvedValue({
       success: true,
-      stats: { total_requests: 0, active_apps: 0, total_apps: 0, activity: [] },
+      stats: { total_verifications: 0, active_apps: 0, total_apps: 0, activity: [] },
     });
     render(<MemoryRouter><Overview /></MemoryRouter>);
 
@@ -53,7 +53,7 @@ describe('Business Overview', () => {
   it('renders integration guide card', async () => {
     mockGetBusinessStats.mockResolvedValue({
       success: true,
-      stats: { total_requests: 0, active_apps: 0, total_apps: 0, activity: [] },
+      stats: { total_verifications: 0, active_apps: 0, total_apps: 0, activity: [] },
     });
     render(<MemoryRouter><Overview /></MemoryRouter>);
 

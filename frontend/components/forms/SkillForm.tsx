@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Skill } from '../../types';
 
 interface SkillFormProps {
-    initialData?: Skill;
+    initialData?: Skill & { name?: string };
     onSave: (data: Skill) => void;
     onCancel: () => void;
 }

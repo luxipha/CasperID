@@ -7,11 +7,11 @@ const mockFetch = vi.fn();
 global.fetch = mockFetch;
 
 describe('SDKDesign', () => {
-  beforeEach(() => { vi.clearAllMocks(); });
+  beforeEach(() => { vi.clearAllMocks(); mockFetch.mockReset(); mockFetch.mockResolvedValue({ ok: true, json: async () => ({ apps: [] }) }); });
 
   it('shows page header', () => {
     render(<SDKDesign />);
-    expect(screen.getByText('SDK Design Playground')).toBeInTheDocument();
+    expect(screen.getByText('Hosted Flow Design Studio')).toBeInTheDocument();
   });
 
   it('shows no apps message when empty', async () => {
@@ -26,7 +26,7 @@ describe('SDKDesign', () => {
       .mockResolvedValueOnce({ ok: true, json: async () => ({ success: true, sdk_config: { primary_color: '#ff0000', border_radius: '16', font_family: 'Roboto' } }) });
 
     render(<SDKDesign />);
-    expect(await screen.findByText('SDK Design Playground')).toBeInTheDocument();
+    expect(await screen.findByText('Hosted Flow Design Studio')).toBeInTheDocument();
     // Wait for the hex color input to appear with the loaded value
     const els = await screen.findAllByDisplayValue('#ff0000', {}, { timeout: 3000 });
     expect(els.length).toBeGreaterThanOrEqual(1);
@@ -40,7 +40,7 @@ describe('SDKDesign', () => {
       .mockResolvedValueOnce({ ok: true });
 
     render(<SDKDesign />);
-    expect(await screen.findByText('SDK Design Playground')).toBeInTheDocument();
+    expect(await screen.findByText('Hosted Flow Design Studio')).toBeInTheDocument();
 
     await user.click(screen.getByText(/save config/i));
 
@@ -58,8 +58,8 @@ describe('SDKDesign', () => {
       .mockResolvedValueOnce({ ok: true, json: async () => ({ success: true, sdk_config: {} }) });
 
     render(<SDKDesign />);
-    expect(await screen.findByText('SDK Design Playground')).toBeInTheDocument();
+    expect(await screen.findByText('Hosted Flow Design Studio')).toBeInTheDocument();
 
-    expect(screen.getByText(/"apiKey"/i)).toBeInTheDocument();
+    expect(screen.getByText(/clientId=/i)).toBeInTheDocument();
   });
 });

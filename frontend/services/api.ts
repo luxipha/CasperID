@@ -2272,6 +2272,7 @@ class ApiService {
     service_category?: string;
     supported_roles?: Array<'consumer' | 'provider'>;
     trust_events_enabled?: boolean;
+    trust_capacity_enabled?: boolean;
     ratings_enabled?: boolean;
   }): Promise<ApiResponse> {
     try {
