@@ -1,11 +1,42 @@
 # CasperID Web
 
 Landing, account, business, and admin share one React application in `frontend/`.
-Run `cd frontend && npm ci && npm run dev`. Development API requests proxy to localhost:3001; production builds use `VITE_API_URL`.
-Validate with `npm run type-check`, `npm run test:run -- --pool=threads --maxWorkers=2`, and `npm run build`.
-CNS pricing is loaded from `/api/cns/plans`; the bundled snapshot supports older API versions during migration.
 
-This migration is prepared on `migration/web-repository`. Keep it off production `main` until cutover is approved. The former Cloud Run workflow is removed only on this branch; the production branch and service remain unchanged.
-Existing Render staging: repository CasperID, branch migration/web-repository, root frontend, build `npm ci && npm run build`, publish dist. Retain existing environment values and set `VITE_API_URL` to the existing staging API.
+## Local development
 
-Staging CI/CD uses the existing Render service with auto-deploy set to `checksPass`: pushes to its configured branch deploy only after GitHub checks pass. `Verify staging` is a separate manual workflow that checks the exact deployed revision. No deployment hook or production secret is needed.
+Use Node 24 and npm 11.6.1. Copy `frontend/.env.example` to `frontend/.env.local`,
+then run `npm ci` and `npm run dev` inside `frontend/`. Start the independently
+configured API from the CasperID-api repository on port 3001. Development API
+requests proxy to localhost:3001; production builds use `VITE_API_URL`.
+
+Validate inside `frontend/` with `npm run type-check`,
+`npm run test:run -- --pool=threads --maxWorkers=1`, and `npm run build`.
+CNS pricing comes from `/api/cns/plans`; a bundled snapshot supports older API versions.
+
+## Repository boundaries
+
+This repository owns Web source and Web deployment configuration. Other projects
+have independent repositories:
+
+- [API](https://github.com/luxipha/CasperID-api)
+- [React and React Native SDK](https://github.com/luxipha/CasperID-sdk)
+- [Mobile](https://github.com/luxipha/CasperID-mobile)
+- [Extension](https://github.com/luxipha/CasperID-extension)
+- [Contracts](https://github.com/luxipha/CasperID-contracts)
+- [CasperDrop](https://github.com/luxipha/CasperDrop)
+
+Open the parent `casperid.code-workspace` for local development across sibling clones.
+No project requires sibling source imports. Do not place credentials or recovery
+snapshots in this repository.
+
+## Deployment
+
+Vercel production follows `main` and builds the existing `frontend/` application.
+The former monorepo Cloud Run workflow is retired here; merging Web changes does
+not redeploy the running API. Future API deployments belong to CasperID-api.
+
+The existing Render Web staging service uses root `frontend`, build command
+`npm install --global npm@11.6.1 && npm ci && npm run build`, publish directory `dist`,
+and the existing staging API URL. Its `checksPass` trigger waits for GitHub checks.
+The manual `Verify staging` workflow checks the exact deployed revision; run it on
+the branch/revision configured for that staging service.
