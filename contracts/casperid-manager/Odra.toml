@@ -1,5 +1,0 @@
-[[contracts]]
-fqn = "identity_registry::IdentityRegistry"
-
-[[contracts]]
-fqn = "cid_name_nft::CidNameNFT"

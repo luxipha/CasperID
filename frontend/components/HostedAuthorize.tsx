@@ -215,7 +215,7 @@ const HostedAuthorize: React.FC = () => {
   }, [app?.shared_fields]);
   const contextOptions = useMemo(() => {
     const rootName = user?.cns_name || user?.human_id || user?.display_name || 'your profile';
-    const options = [{
+    const options: Array<{ id: string; type: 'master' | 'persona'; title: string; subtitle: string; badge: string }> = [{
       id: 'master',
       type: 'master' as const,
       title: 'Master profile',

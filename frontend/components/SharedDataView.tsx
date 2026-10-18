@@ -167,7 +167,7 @@ export const SharedDataView: React.FC<SharedDataViewProps> = ({ shareId: propSha
                                                 ? value
                                                 : typeof value === 'boolean'
                                                     ? (value ? 'Yes' : 'No')
-                                                    : value?.overall_match === true
+                                                    : value !== null && typeof value === 'object' && 'overall_match' in value && value.overall_match === true
                                                         ? 'Matched'
                                                         : JSON.stringify(value)}
                                         </div>

@@ -45,7 +45,7 @@ const ScratchCard: React.FC<ScratchCardProps> = ({
     const particleCanvasRef = useRef<HTMLCanvasElement>(null);
     const containerRef = useRef<HTMLDivElement>(null);
     const particlesRef = useRef<Particle[]>([]);
-    const animationFrameRef = useRef<number>();
+    const animationFrameRef = useRef<number | undefined>(undefined);
     const lastPosRef = useRef<{ x: number; y: number } | null>(null);
 
     const [isScratched, setIsScratched] = useState(false);

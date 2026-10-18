@@ -1,12 +1,12 @@
 import React, { ReactNode } from 'react';
-import { createWeb3Modal, type CreateWeb3ModalParameters } from '@web3modal/wagmi/react';
+import { createWeb3Modal } from '@web3modal/wagmi/react';
 import { defaultWagmiConfig } from '@web3modal/wagmi/react/config';
 import { WagmiProvider } from 'wagmi';
 import { mainnet, polygon, arbitrum, bsc, sepolia } from 'wagmi/chains';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
 // Extend Web3Modal config type to include features property (available at runtime but not in types)
-type Web3ModalConfig = CreateWeb3ModalParameters & {
+type Web3ModalConfig = Parameters<typeof createWeb3Modal>[0] & {
     features?: {
         email?: boolean;
         socials?: boolean;
@@ -79,7 +79,7 @@ export function WalletConnectProvider({ children }: WalletConnectProviderProps) 
                     history: false,
                 }
             };
-            createWeb3Modal(modalConfig as CreateWeb3ModalParameters);
+            createWeb3Modal(modalConfig as Web3ModalConfig);
             isInitialized = true;
         }
     }, []);

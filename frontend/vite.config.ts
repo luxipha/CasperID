@@ -1,4 +1,5 @@
 import path from 'path';
+import { execFileSync } from 'node:child_process';
 import { defineConfig, loadEnv, PluginOption } from 'vite';
 import react from '@vitejs/plugin-react';
 import tailwindcss from '@tailwindcss/vite';
@@ -63,6 +64,13 @@ export default defineConfig(({ mode }) => {
     },
     plugins: [
       react(),
+      {
+        name: 'build-metadata',
+        generateBundle() {
+          const commit = process.env.RENDER_GIT_COMMIT || process.env.GITHUB_SHA || execFileSync('git', ['rev-parse', 'HEAD'], { encoding: 'utf8' }).trim();
+          this.emitFile({ type: 'asset', fileName: 'build-info.json', source: JSON.stringify({ commit }) });
+        },
+      },
       tailwindcss(),
       suppressHmrLogs(),
       VitePWA({

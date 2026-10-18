@@ -615,6 +615,7 @@ export const useAuth = (): AuthContextType => {
       login: async () => ({ success: false, deviceType: undefined, transports: undefined, user: undefined }),
       logout: async () => { },
       register: async () => { },
+      recoverPasskey: async () => { throw new Error('Authentication provider is unavailable.'); },
       updateProfile: async () => { },
       refreshUser: async () => null,
       linkMetaMask: async () => { },

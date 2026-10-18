@@ -1,93 +1,37 @@
-# Dependencies
 node_modules/
-.pnp
-.pnp.js
-
-# Testing
-/coverage
-
-# Next.js (removed from root, only frontend/ and server/ are used)
-/.next/
-/out/
-/app/
-/components/
-/public/
-/next.config.js
-/package.json
-/package-lock.json
-/tsconfig.json
-/components.json
-
-# Production
-/build
-
-# Misc
-.DS_Store
-*.pem
-
-# Debug
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-
-# Local env files
+dist/
+build/
+coverage/
 .env
-.env.local
-.env.development.local
-.env.test.local
-.env.production.local
-
-# Vercel
-.vercel
-
-# TypeScript
-*.tsbuildinfo
-next-env.d.ts
-
-# Rust
-/target/
-/Cargo.lock
-
-# Strategy & Confidential Documents
-STRATEGY.md
-BUSINESS_PLAN.md
-MARKET_ANALYSIS.md
-COMPETITIVE_INTEL.md
-ZK.md
-*.confidential.md
-
-# Private keys and secrets
+.env.*
+!.env.example
+!.env.local.example
 *.pem
 *.key
+*.p12
+*.pfx
+*.jks
+*.keystore
+*.log
+*.tsbuildinfo
+.DS_Store
 keys/
 secrets/
-/server/.env
 .admin-credentials
-
-# Specific docs to ignore
-*.md
-!server/docs/webauthn-rpid-migration.md
-!docs/TRUST_EVENTS.md
-roadmap.md
-/server/*.md
-
-/extension/
-/secrets.json
-/scripts
-/keys
 github-actions-key.json
-/frontend/node_modules/server/test-*.js
-/server/uploads
-/server/scripts
-/server/src/tests
-
-coupon.md
-
-# Scripts and Tests
-scripts/
-script/
-test/
-tests/
-server/scripts/
-server/tests/
-frontend/tests/
+uploads/
+.dart_tool/
+.flutter-plugins-dependencies
+*.iml
+android/local.properties
+android/key.properties
+android/.gradle/
+ios/Pods/
+ios/.symlinks/
+ios/Flutter/ephemeral/
+ios/Flutter/Generated.xcconfig
+ios/Flutter/flutter_export_environment.sh
+target/
+wasm/
+*.tgz
+dev-dist/
